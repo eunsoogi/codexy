@@ -6,7 +6,7 @@ mod followups;
 mod paths;
 
 pub(super) fn values(raw: &str) -> Result<Vec<Value>, String> {
-    let lines = line_ranges(raw);
+    let lines = super::line_ranges(raw);
     let starts = operative_headers(&lines);
     let mut result = Vec::new();
     for (position, line_index) in starts.iter().enumerate() {
@@ -16,7 +16,7 @@ pub(super) fn values(raw: &str) -> Result<Vec<Value>, String> {
             .map(|next| lines[*next].0)
             .unwrap_or(raw.len());
         for (line_start, _, next_line) in &lines[*line_index + 1..] {
-            if *line_start < end && next_line.trim_start().starts_with("## ") {
+            if *line_start < end && super::heading(next_line).is_some() {
                 end = *line_start;
                 break;
             }
@@ -56,30 +56,12 @@ pub(super) fn values(raw: &str) -> Result<Vec<Value>, String> {
     Ok(result)
 }
 
-fn line_ranges(raw: &str) -> Vec<(usize, usize, &str)> {
-    let mut start = 0;
-    let mut result = Vec::new();
-    for part in raw.split_inclusive('\n') {
-        let without_newline = part.strip_suffix('\n').unwrap_or(part);
-        let line = without_newline
-            .strip_suffix('\r')
-            .unwrap_or(without_newline);
-        let end = start + line.len();
-        result.push((start, end, line));
-        start += part.len();
-    }
-    if raw.is_empty() {
-        result.push((0, 0, raw));
-    }
-    result
-}
-
 fn operative_headers(lines: &[(usize, usize, &str)]) -> Vec<usize> {
     let mut in_fence = false;
     let mut result = Vec::new();
     for (index, (_, _, line)) in lines.iter().enumerate() {
         let trimmed = line.trim_start();
-        if trimmed.starts_with("```") {
+        if super::fence_marker(trimmed) {
             in_fence = !in_fence;
             continue;
         }

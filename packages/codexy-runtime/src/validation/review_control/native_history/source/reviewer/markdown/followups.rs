@@ -9,17 +9,18 @@ pub(super) fn values(raw: &str, lines: &[(usize, usize, &str)]) -> Result<Vec<Va
     let mut result = Vec::new();
     for (index, (start, _, line)) in lines.iter().enumerate() {
         let trimmed = line.trim_start();
-        if trimmed.as_bytes().starts_with(&[96, 96, 96]) {
+        if super::super::fence_marker(trimmed) {
             in_fence = !in_fence;
             continue;
         }
         if in_fence || trimmed.starts_with('>') {
             continue;
         }
-        if let Some(title) = trimmed.strip_prefix("## ") {
-            in_followup = title
-                .to_ascii_lowercase()
-                .contains("non-blocking follow-up");
+        if let Some((level, title)) = super::super::heading(line) {
+            in_followup = level == 2
+                && title
+                    .to_ascii_lowercase()
+                    .contains("non-blocking follow-up");
             continue;
         }
         if !in_followup {
@@ -32,7 +33,7 @@ pub(super) fn values(raw: &str, lines: &[(usize, usize, &str)]) -> Result<Vec<Va
             .iter()
             .find(|(_, _, next)| {
                 let next = next.trim_start();
-                next.starts_with("- ") || next.starts_with("## ")
+                next.starts_with("- ") || super::super::heading(next).is_some()
             })
             .map_or(raw.len(), |(start, _, _)| *start);
         let block = raw[*start..end].trim_end();

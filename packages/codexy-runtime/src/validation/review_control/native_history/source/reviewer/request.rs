@@ -21,7 +21,9 @@ pub(super) fn candidate(
         let Some(text) = message_text(map) else {
             continue;
         };
-        let first = text.lines().next().unwrap_or_default().trim();
+        let raw_first = text.lines().next().unwrap_or_default();
+        let leading = raw_first.len() - raw_first.trim_start().len();
+        let first = raw_first.trim();
         if let Some(kind) = explicit_kind(first) {
             merge(
                 &mut result,
@@ -33,8 +35,8 @@ pub(super) fn candidate(
                 "kind".into(),
                 json!({
                     "source": format!("{base}.items[{index}].content"),
-                    "start": 0,
-                    "end": first.len(),
+                    "start": leading,
+                    "end": leading + first.len(),
                     "coordinate": "utf8_bytes"
                 }),
             );
@@ -91,10 +93,7 @@ fn explicit_kind(first: &str) -> Option<String> {
     {
         return Some("delta".into());
     }
-    if (normalized.contains("strict-profile") || normalized.contains("strict profile"))
-        && normalized.contains("review")
-        && !normalized.contains("delta")
-    {
+    if affirmative_strict_review(&normalized) && !normalized.contains("delta") {
         return Some("full".into());
     }
     let (label, value) = normalized.split_once(':')?;
@@ -104,6 +103,23 @@ fn explicit_kind(first: &str) -> Option<String> {
         return Some(value.trim().into());
     }
     None
+}
+
+fn affirmative_strict_review(text: &str) -> bool {
+    let words = text
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>();
+    let strict_profile = words.windows(2).any(|pair| pair == ["strict", "profile"]);
+    let negated = words.windows(2).any(|pair| {
+        matches!(
+            pair,
+            ["not", "strict"] | ["without", "strict"] | ["no", "strict"]
+        )
+    }) || words
+        .windows(3)
+        .any(|triple| triple == ["not", "a", "strict"]);
+    strict_profile && words.contains(&"review") && !negated
 }
 
 fn negated(text: &str, subject: &str) -> bool {
