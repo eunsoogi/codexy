@@ -3,15 +3,15 @@ use crate::support::{fixture_native_launcher, windows_static_python_fixture};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
-fn windows_static_python_fixture_accepts_only_allowlisted_fail_closed_policy_pairs() -> TestResult {
+fn windows_static_python_fixture_accepts_only_retained_safety_pairs() -> TestResult {
     let temp = tempfile::tempdir()?;
-    let shell = temp.path().join("codexy-repository-issue.sh");
-    let command = temp.path().join("codexy-repository-issue.cmd");
-    let python = temp.path().join("codexy-repository-issue.py");
+    let shell = temp.path().join("codexy-destructive-command.sh");
+    let command = temp.path().join("codexy-destructive-command.cmd");
+    let python = temp.path().join("codexy-destructive-command.py");
     std::fs::write(&shell, "#!/bin/sh\n")?;
     std::fs::write(
         &command,
-        "@echo off\nsetlocal EnableExtensions DisableDelayedExpansion\necho CODEXY_REPOSITORY_ISSUE_RUNTIME\n",
+        "@echo off\nsetlocal EnableExtensions DisableDelayedExpansion\necho CODEXY_DESTRUCTIVE_COMMAND_RUNTIME\n",
     )?;
     std::fs::write(&python, "#!/usr/bin/python3\n")?;
     assert_eq!(windows_static_python_fixture(&shell), Some(python));
@@ -27,8 +27,8 @@ fn windows_static_python_fixture_accepts_only_allowlisted_fail_closed_policy_pai
 #[test]
 fn native_fixture_launcher_uses_only_the_platform_entrypoint() -> TestResult {
     let temp = tempfile::tempdir()?;
-    let shell = temp.path().join("codexy-repository-issue.sh");
-    let command = temp.path().join("codexy-repository-issue.cmd");
+    let shell = temp.path().join("codexy-destructive-command.sh");
+    let command = temp.path().join("codexy-destructive-command.cmd");
     std::fs::write(&shell, "#!/bin/sh\n")?;
     std::fs::write(&command, "@echo off\n")?;
     assert_eq!(fixture_native_launcher(false, &shell), Some(shell.clone()));

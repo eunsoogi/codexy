@@ -11,8 +11,7 @@ from .filesystem_state import PathState
 class ExecutionContext:
     cwd: str
     cwd_owned: bool | None
-    policy_status: bool | None
-    policy_identity: tuple[str, str, str] | None
+    repository_status: bool
     git_dir: str | None
     gh_repo: str | None
     environment: tuple[tuple[str, str], ...] = ()

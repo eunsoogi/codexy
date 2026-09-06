@@ -1,26 +1,28 @@
-"""Installed-plugin lifecycle coverage shared by the native hook test entrypoint."""
+"""Installed-plugin lifecycle coverage for the retained GitHub component surface."""
 
 from __future__ import annotations
 
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
-from github_nested_exec_support import VALID_PR_BODY, assert_nested_exec_cases
 from github_native_hook_support import ROOT
 
 
 class GithubNativeHooksInstallationMixin:
     @unittest.skipUnless(shutil.which("codex"), "Codex host is required")
-    def test_isolated_direct_install_exposes_only_installed_github_artifacts(
+    def test_isolated_direct_install_exposes_only_retained_github_artifacts(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory) / "fresh Codex home"
             home.mkdir()
+            workspace = home / "unrelated repository"
+            (workspace / ".git").mkdir(parents=True)
             environment = {**os.environ, "CODEX_HOME": str(home)}
             self._host(environment, "plugin", "marketplace", "add", str(ROOT))
             core = self._host(environment, "plugin", "add", "codexy@codexy")
@@ -31,9 +33,6 @@ class GithubNativeHooksInstallationMixin:
             self.assertFalse(
                 (Path(core["installedPath"]) / "skills/git-workflow").exists()
             )
-            self.assertFalse(
-                (Path(core["installedPath"]) / "agents/codexy-weaver.toml").exists()
-            )
             github = self._host(environment, "plugin", "add", "codexy-github@codexy")
             self._assert_enabled_plugins(
                 self._host(environment, "plugin", "list"),
@@ -43,7 +42,15 @@ class GithubNativeHooksInstallationMixin:
             hook_root = installed / "hooks"
             self.assertTrue((installed / "skills/git-workflow/SKILL.md").is_file())
             self.assertTrue((installed / "agents/codexy-weaver.toml").is_file())
-            self.assertTrue((hook_root / "hooks.json").is_file())
+            hooks = json.loads((hook_root / "hooks.json").read_text(encoding="utf-8"))["hooks"]
+            self.assertEqual(
+                set(hooks), {"UserPromptSubmit", "PermissionRequest", "PreToolUse"}
+            )
+            self.assertEqual(len(hooks["PermissionRequest"]), 1)
+            self.assertEqual(len(hooks["PreToolUse"]), 1)
+            self.assertEqual(hooks["PermissionRequest"][0]["matcher"], "^Bash$")
+            self.assertEqual(hooks["PreToolUse"][0]["matcher"], "^Bash$")
+            self.assertIn("codexy-destructive-command", json.dumps(hooks))
             self.assertIn(
                 "$git-workflow",
                 self._run_process(
@@ -52,167 +59,82 @@ class GithubNativeHooksInstallationMixin:
                     {**environment, "PLUGIN_ROOT": str(installed)},
                 ),
             )
-            admissions = (
-                ("issue", "feat(github): extract workflow", True),
-                ("issue", "Extract GitHub workflow", False),
-                ("issue", "CI : reduce build time", True),
-                ("issue", "Fix(task)— reject invalid titles", True),
-                ("issue", "Fix(task)!— reject invalid titles", True),
-                ("issue", "CI\u0086: reduce build time", True),
-                ("issue", "CI", True),
-                ("pr", "Extract GitHub workflow", True),
-                ("pr", "refactor(github): extract workflow", False),
-                ("pr", "feat: desc", True),
-                ("pr", "feat(task): desc (#900)", True),
-                ("pr", "feat(task): desc (#900) ", True),
-                ("pr", "fix(task): resolve #123 before release", True),
-                ("pr", "fix(task): resolve #123: before release", True),
-                ("pr", "feat(task): desc (#900)  (#926)", True),
-                ("pr", "feat(task): desc PR #900", True),
-                ("pr", "Feat(Task): desc", True),
-            )
-            for rule, title, denied in admissions:
-                self._admission(installed, environment, rule, title, denied)
-            self._admission_payload(
-                installed,
-                environment,
-                "issue",
-                {"cwd": "A", "tool_input": {"title": "extract workflow"}},
-                True,
-            )
-            self._admission_payload(
-                installed,
-                environment,
-                "issue",
-                {
-                    "session_id": "session",
-                    "transcript_path": "/tmp/transcript",
-                    "model": "gpt-5.6-terra",
-                    "turn_id": "turn",
-                    "permission_mode": "default",
-                    "tool_use_id": "tool",
-                    "tool_name": "mcp__codex_apps__github_create_issue",
-                    "tool_input": {"title": "Extract workflow"},
-                },
-                False,
-            )
-            self._admission_payload(
-                installed,
-                environment,
-                "pr",
-                {"cwd": "fix: decoy", "tool_input": {"title": "Extract workflow"}},
-                True,
-            )
-            raw_admissions = (
-                (
-                    '{"tool_input":{"title":"Extract workflow","title":"extract workflow"}}',
-                    True,
-                ),
-                ('{"tool_input":{"title":"Extract\\u0020workflow"}}', False),
-                ("{", True),
-            )
-            for payload, denied in raw_admissions:
-                self._admission_raw(installed, environment, "issue", payload, denied)
-            self._admission_payload(
-                installed,
-                environment,
-                "issue",
-                {
-                    "tool_input": {
-                        "title": "Extract workflow",
-                        "body": "x" * (64 * 1024),
-                    }
-                },
-                True,
-            )
-            unavailable = self._run_process(
-                [str(hook_root / "codexy-github-admission.sh"), "--rule", "issue"],
-                "{}",
-                environment,
-            )
-            self.assertIn("permissionDecision", unavailable)
-            repository_payload = {
-                "hook_event_name": "PreToolUse",
-                "tool_name": "mcp__codex_apps__github_create_issue",
-                "tool_input": {
-                    "repository_full_name": "eunsoogi/codexy",
-                    "title": "Require typed connector ownership",
-                    "body": "## Problem\n\n## Scope\n\n## Acceptance Criteria\n\n## Verification",
-                },
-                "cwd": str(ROOT),
-            }
-            repository_hook = hook_root / "codexy-repository-issue.sh"
-            self.assertEqual(
-                self._run_process(
-                    [str(repository_hook), "PreToolUse"],
-                    json.dumps(repository_payload),
-                    {**environment, "PLUGIN_ROOT": str(installed)},
-                ),
-                "",
-            )
-            repository_pr_hook = hook_root / "codexy-repository-pull-request.sh"
-            repository_pr_cases = (
-                (
-                    "mcp__codex_apps__github_update_pull_request",
-                    {"title": "#951 · PR #953 · Windows 원인 진단"},
-                    True,
-                ),
-                (
-                    "github.update_pull_request",
-                    {
-                        "title": "#951 · PR #953 · Windows 원인 진단",
-                        "body": VALID_PR_BODY,
-                    },
-                    True,
-                ),
-                (
-                    "github.update_pull_request",
-                    {"title": "fix(hooks): update through installed route"},
-                    False,
-                ),
-                (
-                    "github.update_pull_request",
-                    {
-                        "title": "fix(hooks): update title and body",
-                        "body": VALID_PR_BODY,
-                    },
-                    False,
-                ),
-                (
-                    "github.update_pull_request",
-                    {"title": "fix(hooks): reject invalid body", "body": "note"},
-                    True,
-                ),
-                ("github.update_pull_request", {"body": VALID_PR_BODY}, False),
-            )
+
             for event in ("PermissionRequest", "PreToolUse"):
-                for tool, fields, denied in repository_pr_cases:
-                    payload = {
-                        "hook_event_name": event,
-                        "tool_name": tool,
-                        "tool_input": {
-                            "repository_full_name": "eunsoogi/codexy",
-                            "pr_number": 953,
-                            **fields,
-                        },
-                        "cwd": str(ROOT),
-                    }
+                for command in (
+                    "gh issue create --title arbitrary",
+                    "gh workflow run unrelated.yml --ref topic",
+                    "gh api --method POST repos/example/project/releases -f tag_name=v1",
+                ):
                     output = self._run_process(
-                        [str(repository_pr_hook), event],
-                        json.dumps(payload),
+                        [str(hook_root / "codexy-destructive-command.sh"), event],
+                        json.dumps(
+                            {
+                                "hook_event_name": event,
+                                "tool_name": "Bash",
+                                "tool_input": {"command": command},
+                                "cwd": str(workspace),
+                            }
+                        ),
                         {**environment, "PLUGIN_ROOT": str(installed)},
                     )
-                    self.assertEqual(bool(output), denied, (event, tool, fields))
-            assert_nested_exec_cases(
-                self, self._run_process, installed, environment, ROOT
-            )
-            title_checks = {
-                "issue": "Extract GitHub workflow",
-                "pr": "refactor(github): extract workflow",
+                    self.assertEqual(output, "", command)
+                for command in (
+                    "gh auth token",
+                    "GH_TOKEN=fixture gh issue list",
+                    "rm -rf /",
+                ):
+                    output = self._run_process(
+                        [str(hook_root / "codexy-destructive-command.sh"), event],
+                        json.dumps(
+                            {
+                                "hook_event_name": event,
+                                "tool_name": "Bash",
+                                "tool_input": {"command": command},
+                                "cwd": str(workspace),
+                            }
+                        ),
+                        {**environment, "PLUGIN_ROOT": str(installed)},
+                    )
+                    self.assertIn('"deny"', output, command)
+
+            expected_hook_files = {
+                "codexy-destructive-command.cmd",
+                "codexy-destructive-command.py",
+                "codexy-destructive-command.sh",
+                "codexy-github-workflow-context.cmd",
+                "codexy-github-workflow-context.ps1",
+                "codexy-github-workflow-context.sh",
+                "codexy-hook-runtime.sh",
+                "codexy-issue-title-check.sh",
+                "codexy-merge-message-check.sh",
+                "codexy-pr-label-check.sh",
+                "codexy-pr-title-check.sh",
+                "codexy-readiness-guard-json.sh",
+                "codexy-readiness-guard-pr-labels.sh",
+                "codexy-readiness-guard-values.sh",
+                "codexy-readiness-guard.sh",
+                "codexy-title-policy.sh",
             }
-            for kind, title in title_checks.items():
-                title_check = hook_root / f"codexy-{kind}-title-check.sh"
-                self._run(title_check, f"--{kind}-title", title)
+            self.assertEqual(
+                {
+                    path.name
+                    for path in hook_root.iterdir()
+                    if path.is_file() and path.name.startswith("codexy-")
+                },
+                expected_hook_files,
+            )
+
+            self._run(
+                installed / "hooks/codexy-issue-title-check.sh",
+                "--issue-title",
+                "Extract GitHub workflow",
+            )
+            self._run(
+                installed / "hooks/codexy-pr-title-check.sh",
+                "--pr-title",
+                "refactor(github): extract workflow",
+            )
             state = home / "captured PR state.json"
             state.write_text(
                 json.dumps(
@@ -240,3 +162,11 @@ class GithubNativeHooksInstallationMixin:
                 "--merge-message",
                 "refactor(github): extract workflow (#554)\n\nFixes #553\n",
             )
+
+    @staticmethod
+    def _run(path: Path, *arguments: str) -> None:
+        result = subprocess.run(
+            [str(path), *arguments], text=True, capture_output=True, check=False
+        )
+        if result.returncode:
+            raise AssertionError(f"{path.name} failed:\n{result.stdout}{result.stderr}")

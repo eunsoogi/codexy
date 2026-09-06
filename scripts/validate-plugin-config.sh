@@ -96,11 +96,3 @@ PY
 	;;
 esac
 cargo run --quiet --manifest-path "$REPO_ROOT/packages/codexy-runtime/Cargo.toml" --bin codexy-validate -- "$@"
-case " $* " in
-*" --check "*)
-	case " $* " in
-	*" --plugin-root "*) ;;
-	*) "$SCRIPT_DIR/validate-repository-github-policy" ;;
-	esac
-	;;
-esac

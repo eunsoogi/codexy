@@ -1,4 +1,4 @@
-"""Resolve copied or linked GitHub and Git executables before admission."""
+"""Resolve copied or linked Git executables before safety evaluation."""
 
 from __future__ import annotations
 

@@ -13,7 +13,9 @@ repository-generic and does not depend on repository-specific files or policy.
    to that owner instead of creating a competing issue.
 4. Read the live repository taxonomies for labels, milestones, and assignees.
    Select only values that exist in those taxonomies.
-5. Draft a substantive issue body with the required sections below.
+5. If the repository or maintainer selected the issue template below, draft a
+   substantive body with those sections; otherwise follow the requested or
+   repository-owned format.
 6. Immediately before mutation, refresh the duplicate search and the live label,
    milestone, and assignee evidence.
 
@@ -24,17 +26,21 @@ handoff with the canonical issue or pull request when one exists.
 
 ## Issue title
 
-The title MUST be written in English using descriptive, sentence-style wording
-and begin with an ASCII uppercase letter. The title MUST state the problem or
-requested change in plain prose. The title MUST NOT begin with a category, type,
-scope, bracket, colon, or dash. For example, use `Reduce CI build time`, not a
-category label such as `CI: reduce build time` or `[CI] Reduce build time`. The
-title should explain the requested change clearly; a syntax check does not
-replace human review for meaning.
+When this repository or maintainer selects the following title convention, the
+title MUST be written in English using descriptive, sentence-style wording and
+begin with an ASCII uppercase letter. It MUST state the problem or requested
+change in plain prose and MUST NOT begin with a category, type, scope, bracket,
+colon, or dash. For example, use `Reduce CI build time`, not a category label
+such as `CI: reduce CI build time` or `[CI] Reduce CI build time`. Otherwise,
+follow the user or repository's title convention; installing this plugin alone
+does not make the title rule a mutation gate. A syntax check does not replace
+human review for meaning.
 
-## Required issue body
+## Optional issue body template
 
-The body MUST contain substantive content under each heading:
+When this repository or maintainer selects this template, the body MUST contain
+substantive content under each heading. Without that selection, no heading or
+footer is required by this plugin; follow the user or repository-owned format.
 
 ## Problem
 

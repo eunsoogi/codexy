@@ -81,7 +81,7 @@ jobs:
           $ErrorActionPreference = "Stop"
           $env:PYTHONPATH = "packages/getcodexy/src;packages/getcodexy/tests"
           $hookRoot = Join-Path $PWD "plugins/codexy-github/hooks"
-          $expectedContext = '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Codexy GitHub workflow is installed. Use $git-workflow; its package-owned generic admission hooks are active."}}'
+          $expectedContext = '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Codexy GitHub workflow is installed. Use $git-workflow; GitHub authorization remains with the host, connector, and GitHub."}}'
           $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
           $context = '{"prompt":"GitHub"}' | & (Join-Path $hookRoot "codexy-github-workflow-context.cmd")
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -163,6 +163,9 @@ jobs:
           $context = '{"prompt":"Open a GitHub issue"}' | & (Join-Path $hookRoot "codexy-github-workflow-context.cmd")
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ($context -notmatch '\$git-workflow') { throw "installed GitHub hook did not add workflow context" }
-          $admission = '{"tool_input":{"title":"Extract GitHub workflow"}}' | & (Join-Path $hookRoot "codexy-github-admission-issue.cmd")
+          $mutation = '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"gh issue create --title arbitrary"},"cwd":"' + ($PWD.Path -replace '\\', '\\\\') + '"}' | & (Join-Path $hookRoot "codexy-destructive-command.cmd") PreToolUse
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if ($admission -notmatch '"permissionDecision":"deny"') { throw "installed GitHub admission hook did not deny an invalid title" }
+          if ($mutation) { throw "installed GitHub safety hook blocked an authorized mutation" }
+          $credential = '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"gh auth token"},"cwd":"' + ($PWD.Path -replace '\\', '\\\\') + '"}' | & (Join-Path $hookRoot "codexy-destructive-command.cmd") PreToolUse
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($credential -notmatch '"permissionDecision":"deny"') { throw "installed credential protection did not deny token access" }

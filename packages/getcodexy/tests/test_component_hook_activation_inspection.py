@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import json
-import re
 import shutil
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from codexy_runtime_tools import component_registration_matchers as matchers
 from codexy_runtime_tools.component_inspection import doctor, status
 from codexy_runtime_tools.component_registration_health import valid_registration
 from packages.getcodexy.tests.capability_probe_cases import materialize
@@ -182,23 +180,25 @@ class ComponentHookActivationInspectionTests(unittest.TestCase):
             "required-hook-trust-missing",
         )
 
-    def test_github_matcher_contract(self) -> None:
-        issue = re.compile(matchers.ISSUE_MATCHER)
-        prefix = "mcp__codex_apps__github_"
-        for name in matchers.GITHUB_ISSUE_TOOL_NAMES:
-            self.assertIsNotNone(issue.fullmatch(f"{prefix}{name}"))
-        for candidate in (f"{prefix}search_extra", f"{prefix}*", "github.search"):
-            self.assertIsNone(issue.fullmatch(candidate))
-        self.assertRegex("functions.exec", matchers.FUNCTIONS_EXEC_MATCHER)
-        self.assertNotRegex("functionsXexec", matchers.FUNCTIONS_EXEC_MATCHER)
+    def test_github_registration_has_no_mutation_matchers(self) -> None:
         root = Path(__file__).resolve().parents[3]
-        for relative in "plugins/codexy-github/hooks/hooks.json", ".codex/hooks.json":
-            source = root / relative
-            hooks = json.loads(source.read_text(encoding="utf-8"))["hooks"]
-            actual = {
-                group.get("matcher") for groups in hooks.values() for group in groups
-            }
-            self.assertIn(matchers.ISSUE_MATCHER, actual)
+        source = root / "plugins/codexy-github/hooks/hooks.json"
+        hooks = json.loads(source.read_text(encoding="utf-8"))["hooks"]
+        actual = {
+            group.get("matcher") for groups in hooks.values() for group in groups
+        }
+        self.assertEqual(actual, {None, "^Bash$"})
+        self.assertFalse(
+            any(
+                isinstance(matcher, str)
+                and matcher.startswith("^mcp__codex_apps__github_")
+                for matcher in actual
+            )
+        )
+        self.assertEqual(
+            json.loads((root / ".codex/hooks.json").read_text(encoding="utf-8"))["hooks"],
+            {},
+        )
         with fixture({"github"}) as state:
             materialize(state, "github")
             plugin = state.marketplace / "plugins/codexy-github"

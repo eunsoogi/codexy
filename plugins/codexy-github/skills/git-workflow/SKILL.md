@@ -29,28 +29,33 @@ MUST read only the references matching the requested operation before acting.
 
 ## Admission Boundaries
 
-- MUST confirm an issue or explicit maintainer-scoped exception before
-  implementation, then keep one isolated owner branch/worktree aligned to it.
-- MUST read the configured default branch and protection before setup. MUST NOT
-  implement on that branch or force-push a task branch.
+- For issue-sized implementation work, or when a repository or maintainer
+  explicitly selects an issue-owned branch/worktree process, MUST confirm the
+  issue or scoped exception and keep one isolated owner branch/worktree aligned
+  to it. Ordinary authorized GitHub metadata and remote operations do not
+  require an issue, local branch, worktree, or plugin-owned preparation merely
+  because this component is installed.
+- MUST read the configured default branch and protection before branch or
+  worktree setup. MUST NOT implement on that branch or force-push a task branch.
 - MUST read current repository, target, PR, base, head, checks, reviews,
-  comments, labels, issue linkage, and review threads before a readiness claim.
-- MUST route child-owned review fixes to the owning child. Unresolved actionable
-  feedback remains blocking.
-- MUST inspect the live repository taxonomy before issue or PR label mutations.
+  comments, labels, issue linkage, and review threads before a readiness or
+  handoff claim that uses this evidence.
+- MUST route child-owned review fixes to the owning child when that lane exists.
+  Unresolved actionable feedback remains blocking for the selected review or
+  handoff contract.
+- MUST inspect the live repository taxonomy before issue or PR label mutations
+  when labels are part of the requested operation.
 
-Installed generic hooks enforce their matching issue, PR, and merge admission
-events. Commands MUST NOT derive source-checkout, cache, ambient executable, or
-`${PLUGIN_ROOT}` paths to bypass the installed package.
+The installed plugin adds workflow context and narrowly scoped local safety
+checks. It does not admit, deny, or rewrite GitHub mutations. Commands MUST use
+the host, connector, and GitHub authorization that applies to the current
+session; repository-local instructions remain repository-owned.
 
 ## Merge Boundary
 
-Direct or nested connector merge and auto-merge mutations are `UNAVAILABLE`. The
-only Codexy-owned merge entrypoint is the installed host-resolved resource
-`skills/git-workflow/scripts/codexy-authorized-squash-merge.sh`. It fresh-reads
-and validates the exact GitHub authorization and delegates to the canonical
-hooked wrapper. Gate success, generic completion, local state, or parent prose
-does not authorize merge.
+Merge and auto-merge mutations use the normal host or connector route and
+GitHub's server-side permissions and branch protections. Gate success, generic
+completion, local state, or parent prose does not manufacture authorization.
 
 ## GitHub And Local Tools
 

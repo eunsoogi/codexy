@@ -1,10 +1,10 @@
 use crate::support::FixtureCommand as Command;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::collections::HashSet;
 use std::io::Write as _;
 use std::process::Stdio;
+
 const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
-const VALID_PR_BODY: &str = "## Summary\n\nPreserve the safe test path.\n\n## Rationale\n\nKeep the concern fixture admissible.\n\n## Changed Areas\n\nTest payload only.\n\n## Verification\n\nRun the hook suite.\n\n## Evidence\n\nThe hook result is observed.\n\n## Not Run\n\nNo remote mutation.\n\n## Follow-ups\n\nParent owns merge.\n\nFixes #912";
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type LauncherResult = Result<Option<Value>, Box<dyn std::error::Error>>;
 
@@ -24,19 +24,38 @@ impl Concern {
         diagnostic: &'static str,
         tool: &'static str,
     ) -> Self {
-        Self { id, matcher, launcher, diagnostic, tool }
+        Self {
+            id,
+            matcher,
+            launcher,
+            diagnostic,
+            tool,
+        }
     }
 }
 
 const CONCERNS: &[Concern] = &[
-    Concern::new("thread-delivery", "^(?:codex_app__|mcp__codex_app__)send_message_to_thread$", "codexy-thread-delivery", "CODEXY_THREAD_DELIVERY_", "mcp__codex_app__send_message_to_thread"),
-    Concern::new("child-thread-creation", "^(?:codex_app__|mcp__codex_app__)create_thread$", "codexy-child-thread-creation", "CODEXY_CHILD_THREAD_CREATION_", "mcp__codex_app__create_thread"),
-    Concern::new("subagent-ownership", "^(?:(?:agents|multi_agent_v1)__)?spawn_agent$", "codexy-subagent-ownership", "CODEXY_SUBAGENT_OWNERSHIP_", "multi_agent_v1__spawn_agent"),
-    Concern::new("repository-issue", "^mcp__codex_apps__github_(create|update)_issue$", "codexy-repository-issue", "CODEXY_REPOSITORY_ISSUE_", "mcp__codex_apps__github_update_issue"),
-    Concern::new("repository-pull-request", "^(?:mcp__codex_apps__github_(create|update)_pull_request|github\\.(create|update)_pull_request)$", "codexy-repository-pull-request", "CODEXY_REPOSITORY_PULL_REQUEST_", "mcp__codex_apps__github_create_pull_request"),
-    Concern::new("repository-merge", "^mcp__codex_apps__github_(merge_pull_request|enable_auto_merge)$", "codexy-repository-merge", "CODEXY_REPOSITORY_MERGE_", "mcp__codex_apps__github_merge_pull_request"),
-    Concern::new("repository-github-command", "^Bash$", "codexy-repository-github-command", "CODEXY_REPOSITORY_GITHUB_COMMAND_", "Bash"),
-    Concern::new("destructive-command", "^Bash$", "codexy-destructive-command", "CODEXY_DESTRUCTIVE_COMMAND_", "Bash"),
+    Concern::new(
+        "thread-delivery",
+        "^(?:codex_app__|mcp__codex_app__)send_message_to_thread$",
+        "codexy-thread-delivery",
+        "CODEXY_THREAD_DELIVERY_",
+        "mcp__codex_app__send_message_to_thread",
+    ),
+    Concern::new(
+        "child-thread-creation",
+        "^(?:codex_app__|mcp__codex_app__)create_thread$",
+        "codexy-child-thread-creation",
+        "CODEXY_CHILD_THREAD_CREATION_",
+        "mcp__codex_app__create_thread",
+    ),
+    Concern::new(
+        "subagent-ownership",
+        "^(?:(?:agents|multi_agent_v1)__)?spawn_agent$",
+        "codexy-subagent-ownership",
+        "CODEXY_SUBAGENT_OWNERSHIP_",
+        "multi_agent_v1__spawn_agent",
+    ),
 ];
 
 const INSTALLED_IDS: &[&str] = &["thread-delivery", "child-thread-creation", "subagent-ownership"];
@@ -111,56 +130,12 @@ fn capability_contract_accounts_for_every_concern_once() -> TestResult {
 }
 
 #[test]
-fn bash_concern_adapters_observe_safe_and_dangerous_results() -> TestResult {
-    let cases = [
-        (
-            "repository-github-command",
-            "gh issue view 912 --repo eunsoogi/codexy",
-            "gh issue edit 912 --repo eunsoogi/codexy --title bad",
-        ),
-        (
-            "destructive-command",
-            "git status --short",
-            "git reset --hard HEAD",
-        ),
-    ];
-    for event in EVENTS {
-        for (id, safe_command, dangerous_command) in cases {
-            let concern = CONCERNS
-                .iter()
-                .find(|concern| concern.id == id)
-                .ok_or("Bash concern")?;
-            let safe = json!({
-                "hook_event_name": event,
-                "tool_name": concern.tool,
-                "tool_input": {"command": safe_command},
-                "cwd": codexy_runtime::paths::repository_root().display().to_string(),
-            });
-            assert!(run_launcher(concern, event, safe)?.is_none(), "{id} safe input denied");
-            let dangerous = json!({
-                "hook_event_name": event,
-                "tool_name": concern.tool,
-                "tool_input": {"command": dangerous_command},
-                "cwd": codexy_runtime::paths::repository_root().display().to_string(),
-            });
-            let denial = run_launcher(concern, event, dangerous)?.ok_or("dangerous input")?;
-            assert_denial(&denial, event, concern)?;
-        }
-    }
-    Ok(())
-}
-
-#[test]
 fn each_concern_rejects_wrong_events_with_its_diagnostic_family() -> TestResult {
     for event in EVENTS {
         for concern in CONCERNS {
             let payload = admitted_payload(concern, event);
             let admitted = run_launcher(concern, event, payload.clone())?;
-            if concern.id == "repository-merge" {
-                assert_denial(&admitted.ok_or("merge policy denial")?, event, concern)?;
-            } else {
-                assert!(admitted.is_none(), "{} valid input denied", concern.id);
-            }
+            assert!(admitted.is_none(), "{} valid input denied", concern.id);
             let other_event = EVENTS
                 .iter()
                 .copied()
@@ -171,7 +146,9 @@ fn each_concern_rejects_wrong_events_with_its_diagnostic_family() -> TestResult 
             let denial = run_launcher(concern, event, wrong_event)?
                 .ok_or("wrong event must be denied")?;
             assert_denial(&denial, event, concern)?;
-            assert!(denial.to_string().contains(&format!("{}ENVELOPE", concern.diagnostic)));
+            assert!(denial
+                .to_string()
+                .contains(&format!("{}ENVELOPE", concern.diagnostic)));
         }
     }
     Ok(())
@@ -179,12 +156,10 @@ fn each_concern_rejects_wrong_events_with_its_diagnostic_family() -> TestResult 
 
 fn admitted_payload(concern: &Concern, event: &str) -> Value {
     let tool_input = match concern.id {
-        "thread-delivery" | "child-thread-creation" => json!({"model":"gpt-5.6-luna","thinking":"max"}),
+        "thread-delivery" | "child-thread-creation" => {
+            json!({"model":"gpt-5.6-luna","thinking":"max"})
+        }
         "subagent-ownership" => json!({"agent_type":"explorer","message":"Bounded read-only inspection."}),
-        "repository-issue" => json!({"repository_full_name":"eunsoogi/codexy","issue_number":912,"body":"note"}),
-        "repository-pull-request" => json!({"repository_full_name":"eunsoogi/codexy","title":"fix(hooks): preserve safe test path","head_branch":"topic","base_branch":"main","body":VALID_PR_BODY}),
-        "repository-merge" => json!({"repository_full_name":"eunsoogi/codexy","pr_number":912,"merge_method":"squash","expected_head_sha":"592e4a79749b8aba37bfbdbcb4b1c277b22f54e9","commit_title":"fix(hooks): preserve safe test path (#912)","commit_message":"Fixes #912"}),
-        "repository-github-command" | "destructive-command" => json!({"command":"git status --short"}),
         _ => unreachable!(),
     };
     json!({"hook_event_name": event, "tool_name": concern.tool, "tool_input": tool_input,
@@ -192,7 +167,9 @@ fn admitted_payload(concern: &Concern, event: &str) -> Value {
 }
 
 fn expected_group(group: &Value, event: &str) -> Option<&'static Concern> {
-    let [handler] = group["hooks"].as_array()?.as_slice() else { return None };
+    let [handler] = group["hooks"].as_array()?.as_slice() else {
+        return None;
+    };
     CONCERNS.iter().find(|concern| {
         INSTALLED_IDS.contains(&concern.id)
             && group["matcher"] == concern.matcher
