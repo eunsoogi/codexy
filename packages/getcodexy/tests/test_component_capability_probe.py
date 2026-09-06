@@ -20,6 +20,18 @@ class _OSProxy:
         return getattr(os, attribute)
 
 
+class _Pipe:
+    def __init__(self, descriptor: int) -> None:
+        self.descriptor = descriptor
+        self.close_calls = 0
+
+    def fileno(self) -> int:
+        return self.descriptor
+
+    def close(self) -> None:
+        self.close_calls += 1
+
+
 class CapabilityProcessTests(unittest.TestCase):
     def test_windows_batch_hooks_use_explicit_clean_command_processor(self) -> None:
         from codexy_runtime_tools import component_capability_probe as probe
@@ -129,8 +141,59 @@ class CapabilityProcessTests(unittest.TestCase):
         )
         process.kill.assert_called_once_with()
 
+    def test_windows_timeout_force_closes_pipe_handles_after_tree_kill_failure(
+        self,
+    ) -> None:
+        from codexy_runtime_tools import component_capability_probe_process as probe
+
+        streams = tuple(_Pipe(descriptor) for descriptor in (11, 12, 13))
+        process = unittest.mock.Mock(
+            stdin=streams[0], stdout=streams[1], stderr=streams[2]
+        )
+        process.poll.return_value = None
+
+        def kill() -> None:
+            process.poll.return_value = 1
+
+        process.kill.side_effect = kill
+        process.communicate.side_effect = [
+            subprocess.TimeoutExpired(
+                ["hook"], 5, output=b"partial", stderr=b"diagnostic"
+            ),
+            subprocess.TimeoutExpired(
+                ["hook"], 1, output=b"partial", stderr=b"diagnostic"
+            ),
+        ]
+        windows_os = _OSProxy("nt")
+        with (
+            patch.object(probe, "os", windows_os),
+            patch.object(windows_os, "close") as close,
+            patch.object(probe.subprocess, "Popen", return_value=process),
+            patch.object(
+                probe,
+                "_terminate_process_tree",
+                side_effect=lambda target, deadline: target.kill(),
+            ),
+            patch.object(
+                probe, "perf_counter", side_effect=(10.0, 10.0, 10.0, 10.0, 11.5)
+            ),
+        ):
+            result = probe._run(["hook"], Path.cwd(), "{}")
+
+        self.assertEqual(result.category, "timeout")
+        self.assertEqual(result.detail, "diagnostic")
+        self.assertEqual(process.communicate.call_count, 2)
+        self.assertEqual(
+            close.call_args_list,
+            [unittest.mock.call(11), unittest.mock.call(12), unittest.mock.call(13)],
+        )
+        self.assertTrue(all(stream.close_calls == 0 for stream in streams))
+        process.kill.assert_called_once_with()
+
     @unittest.skipUnless(os.name == "nt", "Windows process-tree regression")
-    def test_windows_timeout_kills_cmd_descendant_without_pipe_overrun(self) -> None:
+    def test_windows_timeout_closes_pipes_when_tree_kill_leaves_descendant(
+        self,
+    ) -> None:
         from codexy_runtime_tools import component_capability_probe as probe
         from codexy_runtime_tools import component_capability_probe_process as process
 
@@ -151,12 +214,26 @@ class CapabilityProcessTests(unittest.TestCase):
                 '@echo off\r\npy -3 -I -B "%~dp0pipe-holder.py"\r\n',
                 encoding="utf-8",
             )
-            result = process._run(
-                probe._argv(f'"{launcher}" PermissionRequest', root),
-                root,
-                "{}",
-                os.environ | {"CODEXY_TIMEOUT_PID_FILE": str(pid_file)},
-            )
+            try:
+                with patch.object(
+                    process.subprocess,
+                    "run",
+                    return_value=subprocess.CompletedProcess([], 1),
+                ):
+                    result = process._run(
+                        probe._argv(f'"{launcher}" PermissionRequest', root),
+                        root,
+                        "{}",
+                        os.environ | {"CODEXY_TIMEOUT_PID_FILE": str(pid_file)},
+                    )
+            finally:
+                if pid_file.is_file():
+                    subprocess.run(
+                        ["taskkill", "/pid", pid_file.read_text().strip(), "/t", "/f"],
+                        check=False,
+                        capture_output=True,
+                        timeout=5,
+                    )
             self.assertEqual(result.category, "timeout")
             self.assertIsNone(result.returncode)
             self.assertLess(
