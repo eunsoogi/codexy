@@ -6,13 +6,14 @@ MUST use this reference only when the request explicitly asks for performance
 cost or test efficiency. MUST treat it as an evidence review, not a blanket test
 reduction target.
 
-1. MUST choose one representative workload and MUST record its exact repository
-   head, environment, input shape, and cold or warm state. MUST reuse existing
-   metrics and instrumentation before adding measurement code.
-2. MUST use the same invocation and state for the comparison. MUST record
-   elapsed time, CPU, peak RSS, disk usage, child-process count and time, and
-   fixture bytes. MUST include setup or compile cost when it is part of the
-   requested path.
+1. MUST choose one representative workload and MUST record the baseline and
+   candidate repository revisions separately, along with the environment, input
+   shape, and cold or warm state. MUST reuse existing metrics and instrumentation
+   before adding measurement code.
+2. MUST keep the workload, invocation, environment, and cache state constant for
+   the comparison. MUST record elapsed time, CPU, peak RSS, disk usage,
+   child-process count and time, and fixture bytes. MUST include setup or compile
+   cost when it is part of the requested path.
 3. MUST record the unit, sample or aggregation, source, and comparison baseline
    for every metric. MUST record an uncollected metric as "not measured". MUST
    NOT turn its absence into zero, savings, or success.
@@ -36,16 +37,18 @@ For every candidate test to delete or merge, MUST preserve this evidence chain:
 
 MUST NOT treat deleting a test and seeing a green suite as a replacement oracle;
 it only shows that a check disappeared. MUST keep actual regression and security
-checks, and MUST compare fixture and child-process cost on the same workload and
-head. If there is no measured improvement, or meaning preservation fails, MUST
-report the cause and smallest follow-up without removing tests or lowering the
-bar.
+checks, and MUST compare fixture and child-process cost on the same workload,
+invocation, environment, and cache state while recording baseline and candidate
+revisions separately. If there is no measured improvement, or meaning
+preservation fails, MUST report the cause and smallest follow-up without
+removing tests or lowering the bar.
 
 ## Decision and handoff
 
 MUST NOT assume a particular test runner. MUST name the authentic command and
-MUST record the workload, head, state, measurements, unavailable metrics, and
-cleanup. MUST NOT treat a timeout, skipped measurement, cache change, retry,
+MUST record the workload, baseline and candidate revisions, invocation,
+environment, cache state, measurements, unavailable metrics, and cleanup. MUST
+NOT treat a timeout, skipped measurement, cache change, retry,
 sleep, or sharding change alone as a measured improvement.
 
 MUST end the review with these four items, in order:

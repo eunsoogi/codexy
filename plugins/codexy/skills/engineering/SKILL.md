@@ -1,6 +1,6 @@
 ---
 name: engineering
-description: MUST use for diagnosis, specification, domain modeling, test-driven development, refactoring, or quality assurance in one atomic engineering workflow.
+description: MUST use for diagnosis, specification, domain modeling, test-driven development, refactoring, performance review, or quality assurance in one atomic engineering workflow.
 ---
 
 # Engineering
