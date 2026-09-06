@@ -172,7 +172,10 @@ class GithubNativeHooksInstallationMixin:
                 ),
                 (
                     "github.update_pull_request",
-                    {"title": "fix(hooks): update title and body", "body": VALID_PR_BODY},
+                    {
+                        "title": "fix(hooks): update title and body",
+                        "body": VALID_PR_BODY,
+                    },
                     False,
                 ),
                 (

@@ -10,6 +10,7 @@ from .merge import positive_int
 from . import repository_pull_request as pr
 from .titles import issue_title, pr_title
 
+
 def create(data: dict[str, Any]) -> bool:
     issue = data.get("issue")
     return _valid(

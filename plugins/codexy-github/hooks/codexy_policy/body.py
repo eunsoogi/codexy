@@ -70,10 +70,16 @@ def valid_pull_request_body(value: object, issue: int | None = None) -> bool:
     assert isinstance(value, str)
     references = [int(number) for number in PR_CLOSING.findall(value)]
     final = next((line for line in reversed(value.splitlines()) if line.strip()), "")
-    return len(references) == 1 and final == f"Fixes #{references[0]}" and (
-        issue is None or references[0] == issue
+    return (
+        len(references) == 1
+        and final == f"Fixes #{references[0]}"
+        and (issue is None or references[0] == issue)
     )
 
 
 def valid_pull_request_update(fields: dict[str, object]) -> bool:
-    return "body" not in fields or valid_pull_request_body(fields["body"])
+    return (
+        bool(fields)
+        and set(fields) <= {"title", "body", "base", "maintainer_can_modify"}
+        and ("body" not in fields or valid_pull_request_body(fields["body"]))
+    )

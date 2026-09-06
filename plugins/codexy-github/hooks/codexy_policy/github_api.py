@@ -147,7 +147,7 @@ def _pr_patch(method: str, fields: dict[str, str]) -> bool:
         return False
     if set(fields) == {"state"}:
         return fields["state"] in {"open", "closed"}
-    return set(fields) <= {"title", "body", "base", "maintainer_can_modify"} and valid_pull_request_update(fields)
+    return valid_pull_request_update(fields)
 
 
 def _issue_create(fields: dict[str, str]) -> bool:
