@@ -46,8 +46,14 @@ fn rust_workflow_shares_a_bounded_windows_toolchain_cache_path() -> TestResult {
     assert!(workflow.contains(
         "Remove-Item -LiteralPath \"$HOME/.cargo/registry\", \"packages/codexy-runtime/target\", $toolchainCachePath -Recurse -Force -ErrorAction SilentlyContinue"
     ));
-    assert!(workflow.contains("codexy-rust-normal-measurement-rustup-toolchain-v2-"));
-    assert!(workflow.contains("codexy-rust-rustup-toolchain-v2-"));
+    assert!(workflow.contains("id: rust_toolchain_identity"));
+    assert!(workflow.contains(
+        "if: github.event_name != 'workflow_dispatch' || inputs.cache_mode == 'normal'"
+    ));
+    assert!(workflow.contains("rustc -vV"));
+    assert!(workflow.contains("GITHUB_OUTPUT"));
+    assert!(workflow.contains("codexy-rust-normal-measurement-rustup-toolchain-v3-"));
+    assert!(workflow.contains("codexy-rust-rustup-toolchain-v3-"));
     for required in [
         "runner.os",
         "runner.arch",
@@ -56,6 +62,7 @@ fn rust_workflow_shares_a_bounded_windows_toolchain_cache_path() -> TestResult {
         "profile-test",
         "inputs.head_sha",
         "inputs.cache_identity",
+        "steps.rust_toolchain_identity.outputs.identity",
     ] {
         assert!(workflow.contains(required), "cache key lost identity field: {required}");
     }
