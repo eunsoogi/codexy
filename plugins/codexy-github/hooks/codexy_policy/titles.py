@@ -51,9 +51,7 @@ def pr_title(value: object) -> bool:
     if not isinstance(value, str) or _invalid_character(value) or ": " not in value:
         return False
     prefix, summary = value.split(": ", 1)
-    return (
-        bool(summary.strip()) and _prefix(prefix) and not _marked_reference(summary)
-    )
+    return bool(summary.strip()) and _prefix(prefix) and not _marked_reference(summary)
 
 
 def _type_character(char: str) -> bool:
