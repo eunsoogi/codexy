@@ -8,6 +8,7 @@ from .component_capability_probe import (
     probe_component as _probe_component,
     probe_reason as _probe_reason,
 )
+from .component_capability_observation import component_observations
 from .component_hook_activation import ACTIVATION_STATES
 from .component_health_support import (
     _authority_valid,
@@ -81,7 +82,10 @@ def _component_health(
         reason_code=None,
         safe_fallback=None,
         restart_required=False,
-        observed=_observed(record),
+        observed={
+            **_observed(record),
+            "capabilities": component_observations(component, configured),
+        },
     )
     checks = (
         (admission_error or host_error, "installed", "trusted-inventory-unavailable"),
@@ -102,6 +106,9 @@ def _component_health(
         "name": probe.get("runtime_name"),
         "version": probe.get("runtime_version"),
     }
+    result["observed"]["capabilities"] = component_observations(
+        component, configured, probe
+    )
     if isinstance(probe.get("_capability_probe"), dict):
         result["observed"]["capability_probe"] = dict(probe["_capability_probe"])
     for ready, stage, default in (

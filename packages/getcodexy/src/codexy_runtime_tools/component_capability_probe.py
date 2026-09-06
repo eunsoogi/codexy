@@ -6,6 +6,7 @@ import shlex
 import subprocess
 
 from .component_hook_activation import ACTIVATION_REPAIRS
+from .component_capability_observation import record_probe
 from .component_capability_probe_process import (
     _RUN_OPTIONS,
     _RunResult,
@@ -65,11 +66,13 @@ def probe_component(component, plugin, record):
 
 def _probe_hook(component, plugin, base):
     event, marker = HOOK_SPECS[component]
+    capability = f"hook:{marker}"
     payload = {"prompt": "review GitHub issue 723"}
     if component == "core":
         payload = {"tool_name": "codex_app__send_message_to_thread", "tool_input": {}}
     command = _registered_hook(plugin, event, marker)
     if not command:
+        record_probe(base, capability, False, False, False)
         return _failure(base, "capability-not-exposed")
     result = _run(
         _argv(command, plugin),
@@ -80,8 +83,10 @@ def _probe_hook(component, plugin, base):
     base["_capability_probe"] = _probe_diagnostics(result)
     base["_category"] = result.category
     if result.category == "missing-launcher":
+        record_probe(base, capability, True, False, False)
         return _failure(base, "component-start-failed", started=False)
     if result.category in {"timeout", "nonzero-exit"}:
+        record_probe(base, capability, True, True, False)
         return _failure(base, "capability-call-failed")
     try:
         output = json.loads(result.stdout.strip().splitlines()[-1])[
@@ -95,6 +100,7 @@ def _probe_hook(component, plugin, base):
     if not valid:
         base["_category"] = "malformed-output"
         base["_capability_probe"]["category"] = "malformed-output"
+    record_probe(base, capability, True, True, valid)
     reason = None if valid else "capability-not-exposed"
     return _outcome(base, callable=valid, reason_code=reason)
 
@@ -125,7 +131,15 @@ def _probe_devtools(_component, plugin, base):
     for server in MCP_SPECS:
         server_config = config.get(server) if isinstance(config, dict) else None
         result = probe_server(server, plugin, server_config)
+        record_probe(
+            base,
+            f"mcp:{server}",
+            True,
+            bool(result.get("started")),
+            bool(result.get("callable")),
+        )
         if not result.get("started") or not result.get("callable"):
+            result["_capability_probes"] = dict(base["_capability_probes"])
             return result
         probes.append(result)
     return _outcome(
