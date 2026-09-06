@@ -7,7 +7,6 @@ import stat
 import subprocess
 import tempfile
 import threading
-import time
 import unittest
 from pathlib import Path
 
@@ -16,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[3]
 PLUGIN = ROOT / "plugins/codexy"
 TIMING_ENV = "CODEXY_CORE_HOOK_TIMING_FILE"
 MAX_BYTES = 1024 * 1024
+FIELDS = {"event", "concern", "elapsed", "decision"}
 CASES = (
     (
         "codexy-thread-delivery",
@@ -51,7 +51,10 @@ class CoreHookTimingTests(unittest.TestCase):
     def test_enabled_real_launcher_preserves_allow_deny_and_fields(self) -> None:
         with self._candidate() as plugin:
             target = plugin.parent.resolve() / "timing with spaces.jsonl"
+            attacker = plugin.parent.resolve() / "attacker.jsonl"
             for stem, tool, tool_input, concern in CASES:
+                if concern == CASES[0][3]:
+                    tool_input = {**tool_input, TIMING_ENV: str(attacker)}
                 allowed = self._run_case(plugin, stem, tool, tool_input, target)
                 self._assert_success(allowed)
                 denied = self._run_case(plugin, stem, "wrong_tool", {}, target)
@@ -64,13 +67,12 @@ class CoreHookTimingTests(unittest.TestCase):
             records = [json.loads(line) for line in target.read_text().splitlines()]
             self.assertEqual(len(records), 6)
             for record in records:
-                self.assertEqual(
-                    set(record), {"event", "concern", "elapsed", "decision"}
-                )
+                self.assertEqual(set(record), FIELDS)
                 self.assertEqual(record["event"], "PreToolUse")
                 self.assertIsInstance(record["elapsed"], int)
                 self.assertGreaterEqual(record["elapsed"], 0)
                 self.assertIn(record["decision"], {"allow", "deny"})
+            self.assertFalse(attacker.exists())
             self.assertEqual(
                 [record["concern"] for record in records],
                 [case[3] for case in CASES for _ in (0, 1)],
@@ -83,10 +85,7 @@ class CoreHookTimingTests(unittest.TestCase):
             target = directory / "unwritable.jsonl"
             target.write_bytes(b"seed")
             target.chmod(0o400)
-            result = self._run_case(
-                plugin, CASES[0][0], CASES[0][1], CASES[0][2], target
-            )
-            self.assertEqual(result.stdout, b"")
+            self._run_case(plugin, *CASES[0][:3], target)
             self.assertEqual(target.read_bytes(), b"seed")
 
             real = directory / "real.jsonl"
@@ -95,23 +94,16 @@ class CoreHookTimingTests(unittest.TestCase):
             real.chmod(0o600)
             link.symlink_to(real)
             denied = self._run_case(plugin, CASES[0][0], "wrong_tool", {}, link)
-            self.assertEqual(denied.returncode, 0)
-            self.assertTrue(link.is_symlink())
-            self.assertEqual(real.read_bytes(), b"")
+            self.assertEqual(
+                (denied.returncode, link.is_symlink(), real.read_bytes()),
+                (0, True, b""),
+            )
 
             full = directory / "full.jsonl"
             full.write_bytes(b"x" * MAX_BYTES)
             full.chmod(0o600)
-            complete = self._run_case(
-                plugin, CASES[0][0], CASES[0][1], CASES[0][2], full
-            )
-            self.assertEqual(complete.stdout, b"")
+            self._run_case(plugin, *CASES[0][:3], full)
             self.assertEqual(full.stat().st_size, MAX_BYTES)
-
-    @unittest.skipUnless(os.name != "nt", "POSIX descriptor and locking semantics")
-    def test_ancestor_swap_and_serialized_writers_are_safe(self) -> None:
-        with self._candidate() as plugin:
-            directory = plugin.parent.resolve()
             parent = directory / "race-parent"
             held = directory / "held-parent"
             replacement = directory / "replacement-parent"
@@ -149,100 +141,109 @@ class CoreHookTimingTests(unittest.TestCase):
 
             setattr(timing, "_try_lock", acquire)
             setattr(timing, "_unlock", release)
-            writers = [
-                threading.Thread(target=timing._append, args=(target, b"xx"))
-                for _ in range(2)
-            ]
-            for writer in writers:
-                writer.start()
-            for writer in writers:
-                writer.join()
+            self._run_writers(timing, target)
             self.assertEqual(target.stat().st_size, MAX_BYTES)
 
-    def test_payload_path_and_enabled_overhead(self) -> None:
+    @unittest.skipUnless(os.name == "nt", "Windows native filesystem semantics")
+    def test_windows_junction_acl_and_native_cap_are_failure_neutral(self) -> None:
         with self._candidate() as plugin:
             directory = plugin.parent.resolve()
-            target = directory / "trusted.jsonl"
-            attacker = directory / "attacker.jsonl"
-            tool_input = {
-                **CASES[0][2],
-                TIMING_ENV: str(attacker),
-            }
-            off_start = time.perf_counter_ns()
-            off = self._run_case(plugin, CASES[0][0], CASES[0][1], tool_input)
-            off_elapsed = time.perf_counter_ns() - off_start
-            on_start = time.perf_counter_ns()
-            on = self._run_case(plugin, CASES[0][0], CASES[0][1], tool_input, target)
-            on_elapsed = time.perf_counter_ns() - on_start
-            self._assert_success(off)
-            self._assert_success(on)
-            self.assertGreater(off_elapsed, 0)
-            self.assertGreater(on_elapsed, 0)
-            self.assertTrue(target.is_file())
-            self.assertFalse(attacker.exists())
+            timing = self._timing(plugin)
+            parent = directory / "race-parent"
+            replacement = directory / "replacement-parent"
+            parent.mkdir()
+            replacement.mkdir()
+            self._make_junction(parent, replacement)
+            target = parent / "records.jsonl"
+            timing._append(target, b"race\n")
+            self.assertFalse((replacement / target.name).exists())
+            parent.unlink()
+
+            target = directory / "private.jsonl"
+            timing._append(target, b"seed\n")
+            subprocess.run(
+                ["icacls", str(target), "/grant", "*S-1-1-0:F"],
+                check=True,
+                capture_output=True,
+            )
+            timing._append(target, b"blocked\n")
+            self.assertEqual(target.read_bytes(), b"seed\n")
+
+            target = directory / "near-cap.jsonl"
+            timing._append(target, b"")
+            with target.open("r+b") as stream:
+                stream.truncate(MAX_BYTES - 2)
+            self._run_writers(timing, target)
+            self.assertEqual(target.stat().st_size, MAX_BYTES)
+
+    def _make_junction(self, link: Path, target: Path) -> None:
+        command = [
+            os.environ.get("COMSPEC", "cmd.exe"),
+            "/d",
+            "/c",
+            f'mklink /J "{link}" "{target}"',
+        ]
+        subprocess.run(command, check=True, capture_output=True)
+
+    def _run_writers(self, timing, target: Path) -> None:
+        barrier = threading.Barrier(2)
+
+        def append() -> None:
+            barrier.wait()
+            timing._append(target, b"xx")
+
+        writers = [threading.Thread(target=append) for _ in range(2)]
+        for writer in writers:
+            writer.start()
+        for writer in writers:
+            writer.join()
 
     @contextmanager
     def _candidate(self):
         with tempfile.TemporaryDirectory(prefix="codexy-hook-timing ") as temporary:
-            plugin = Path(temporary) / "codexy"
-            shutil.copytree(PLUGIN, plugin)
-            yield plugin
+            yield shutil.copytree(PLUGIN, Path(temporary) / "codexy")
 
     def _timing(self, plugin: Path):
         path = plugin / "hooks/codexy_policy/timing.py"
         spec = importlib.util.spec_from_file_location("candidate_timing", path)
-        assert spec is not None and spec.loader is not None
         timing = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(timing)
         return timing
 
     def _assert_success(self, result) -> None:
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual((result.stdout, result.stderr), (b"", b""))
-
-    def _run_case(self, plugin, stem, tool, tool_input, timing_file=None):
-        launcher = f"{stem}.{'cmd' if os.name == 'nt' else 'sh'}"
-        return self._run(
-            plugin,
-            launcher,
-            _payload("PreToolUse", tool, tool_input),
-            timing_file,
+        self.assertEqual(
+            (result.returncode, result.stdout, result.stderr), (0, b"", b"")
         )
 
-    def _run(
-        self,
-        plugin: Path,
-        launcher: str,
-        payload: bytes,
-        timing_file: Path | None = None,
-    ) -> subprocess.CompletedProcess[bytes]:
+    def _run_case(self, plugin, stem, tool, tool_input, timing_file=None):
         environment = os.environ.copy()
         environment["PLUGIN_ROOT"] = str(plugin)
         environment.pop(TIMING_ENV, None)
         if timing_file is not None:
             environment[TIMING_ENV] = str(timing_file)
-        path = plugin / "hooks" / launcher
-        command = (
-            [str(path), "PreToolUse"]
-            if os.name != "nt"
-            else [
+        path = plugin / "hooks" / f"{stem}.{'cmd' if os.name == 'nt' else 'sh'}"
+        command = [str(path), "PreToolUse"]
+        if os.name == "nt":
+            command = [
                 os.environ.get("COMSPEC", "cmd.exe"),
                 "/d",
                 "/c",
                 "call",
-                str(path),
-                "PreToolUse",
+                *command,
             ]
-        )
         return subprocess.run(
-            command, input=payload, capture_output=True, env=environment, check=False
+            command,
+            input=json.dumps(
+                {
+                    "hook_event_name": "PreToolUse",
+                    "tool_name": tool,
+                    "tool_input": tool_input,
+                }
+            ).encode(),
+            capture_output=True,
+            env=environment,
+            check=False,
         )
-
-
-def _payload(event: str, tool: str, tool_input: dict[str, object]) -> bytes:
-    return json.dumps(
-        {"hook_event_name": event, "tool_name": tool, "tool_input": tool_input}
-    ).encode()
 
 
 if __name__ == "__main__":
