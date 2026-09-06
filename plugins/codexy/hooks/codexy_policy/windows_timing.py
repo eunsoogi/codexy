@@ -135,14 +135,6 @@ def _private_acl(descriptor: int) -> bool:
     try:
         if result or not dacl.value or not security.value:
             return False
-        control, revision = ctypes.c_ushort(), ctypes.c_uint32()
-        if (
-            not advapi32.GetSecurityDescriptorControl(
-                security, ctypes.byref(control), ctypes.byref(revision)
-            )
-            or not control.value & 0x1000
-        ):
-            return False
         info = (ctypes.c_uint32 * 3)()
         if (
             not advapi32.GetAclInformation(dacl, info, ctypes.sizeof(info), 2)
