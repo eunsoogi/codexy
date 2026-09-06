@@ -206,8 +206,8 @@ class CapabilityProcessTests(unittest.TestCase):
                 "import os, subprocess, sys, time\n"
                 "child = subprocess.Popen([sys.executable, '-c', "
                 '"import time; time.sleep(30)"] )\n'
-                "open(os.environ['CODEXY_TIMEOUT_PID_FILE'], 'w').write(str(child.pid))\n"
-                "while child.poll() is None: time.sleep(0.1)\n",
+                "open(os.environ['CODEXY_TIMEOUT_PID_FILE'], 'w').write(str(os.getpid()))\n"
+                "time.sleep(30)\n",
                 encoding="utf-8",
             )
             launcher.write_text(
