@@ -114,10 +114,6 @@ mod validator_post_cap_external_finding;
 #[cfg(unix)]
 mod validator_actions_external_finding;
 
-#[path = "../validator_actions_external_finding_live.rs"]
-#[cfg(unix)]
-mod validator_actions_external_finding_live;
-
 #[path = "../validator_post_cap_external_finding_negatives.rs"]
 #[cfg(unix)]
 mod validator_post_cap_external_finding_negatives;

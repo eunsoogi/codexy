@@ -125,18 +125,16 @@ pub(super) fn select_issue(response: &Value, locator: &Locator) -> Result<Value,
     let repository = event
         .get("source_repository")
         .and_then(Value::as_str)
-        .or_else(|| {
-            event
-                .get("source")
-                .and_then(Value::as_object)
-                .and_then(|source| source.get("issue"))
-                .and_then(Value::as_object)
-                .and_then(|issue| issue.get("repository"))
-                .and_then(Value::as_object)
-                .and_then(|repo| repo.get("full_name"))
-                .and_then(Value::as_str)
-        })
-        .ok_or_else(|| "Actions owning issue relation is missing repository identity")?;
+        .or(event
+            .get("source")
+            .and_then(Value::as_object)
+            .and_then(|source| source.get("issue"))
+            .and_then(Value::as_object)
+            .and_then(|issue| issue.get("repository"))
+            .and_then(Value::as_object)
+            .and_then(|repo| repo.get("full_name"))
+            .and_then(Value::as_str))
+        .ok_or("Actions owning issue relation is missing repository identity")?;
     if repository != locator.repository {
         return Err("Actions owning issue relation changes repository identity".into());
     }

@@ -54,10 +54,9 @@ pub(super) fn parse_log(log: &str, repository: &str) -> Result<Failure, String> 
     if exceptions.len() != 1 {
         return Err("Actions log must contain exactly one supported exception".into());
     }
-    let (path, line) = paths
-        .into_iter()
-        .next()
-        .expect("checked one traceback path");
+    let Some((path, line)) = paths.into_iter().next() else {
+        return Err("Actions traceback path disappeared during projection".into());
+    };
     Ok(Failure {
         test,
         path,
