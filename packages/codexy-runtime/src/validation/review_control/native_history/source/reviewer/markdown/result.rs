@@ -3,8 +3,9 @@ pub(super) fn parse(value: &str) -> Option<(String, usize)> {
     let mut value = &value[leading..];
     let mut start = leading;
     const HEADING_PREFIX: &str = "## Blocking findings — ";
-    if value.len() >= HEADING_PREFIX.len()
-        && value[..HEADING_PREFIX.len()].eq_ignore_ascii_case(HEADING_PREFIX)
+    if value
+        .get(..HEADING_PREFIX.len())
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case(HEADING_PREFIX))
     {
         start += HEADING_PREFIX.len();
         value = &value[HEADING_PREFIX.len()..];
