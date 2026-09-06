@@ -57,15 +57,10 @@ pub(super) fn values(raw: &str) -> Result<Vec<Value>, String> {
 }
 
 fn operative_headers(lines: &[(usize, usize, &str)]) -> Vec<usize> {
-    let mut in_fence = false;
     let mut result = Vec::new();
-    for (index, (_, _, line)) in lines.iter().enumerate() {
-        let trimmed = line.trim_start();
-        if super::fence_marker(trimmed) {
-            in_fence = !in_fence;
-            continue;
-        }
-        if !in_fence && !trimmed.starts_with('>') && finding_header(line).is_some() {
+    for index in super::operative_line_indices(lines) {
+        let line = lines[index].2;
+        if finding_header(line).is_some() {
             result.push(index);
         }
     }

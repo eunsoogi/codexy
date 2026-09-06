@@ -111,15 +111,49 @@ fn affirmative_strict_review(text: &str) -> bool {
         .filter(|word| !word.is_empty())
         .collect::<Vec<_>>();
     let strict_profile = words.windows(2).any(|pair| pair == ["strict", "profile"]);
-    let negated = words.windows(2).any(|pair| {
+    let Some(review_index) = words.iter().position(|word| *word == "review") else {
+        return false;
+    };
+    let affirmative_start = words.first().is_some_and(|word| {
+        matches!(
+            *word,
+            "strict"
+                | "perform"
+                | "run"
+                | "conduct"
+                | "complete"
+                | "start"
+                | "begin"
+                | "execute"
+                | "authorize"
+                | "authorized"
+                | "please"
+                | "review"
+                | "select"
+                | "selected"
+                | "use"
+                | "we"
+                | "i"
+        )
+    });
+    let prefix = &words[..=review_index];
+    let negated = prefix.iter().any(|word| {
+        matches!(
+            *word,
+            "not" | "without" | "never" | "cannot" | "no" | "neither"
+        )
+    }) || prefix.windows(2).any(|pair| {
         matches!(
             pair,
-            ["not", "strict"] | ["without", "strict"] | ["no", "strict"]
+            ["do", "not"]
+                | ["does", "not"]
+                | ["did", "not"]
+                | ["must", "not"]
+                | ["should", "not"]
+                | ["will", "not"]
         )
-    }) || words
-        .windows(3)
-        .any(|triple| triple == ["not", "a", "strict"]);
-    strict_profile && words.contains(&"review") && !negated
+    });
+    strict_profile && affirmative_start && !negated
 }
 
 fn negated(text: &str, subject: &str) -> bool {

@@ -161,7 +161,7 @@ fn unicode_request_kind_span_uses_raw_utf8_offsets() -> super::TestResult {
     Ok(())
 }
 
-fn request() -> (Value, String, String) {
+pub(crate) fn request() -> (Value, String, String) {
     let mut request = super::fixtures::request();
     let delta_prompt = json!({
         "type": "userMessage",

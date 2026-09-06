@@ -19,8 +19,8 @@ pub(super) fn operative_lines(raw: &str) -> Vec<(usize, usize, &str)> {
     context::operative_lines(raw)
 }
 
-pub(super) fn fence_marker(line: &str) -> bool {
-    context::fence_marker(line)
+pub(super) fn operative_line_indices(lines: &[(usize, usize, &str)]) -> Vec<usize> {
+    context::operative_line_indices(lines)
 }
 
 pub(super) fn heading(line: &str) -> Option<(usize, &str)> {
@@ -114,9 +114,7 @@ fn reviewed_head(raw: &str) -> Result<Option<Located>, String> {
             "at exact pr head",
         ] {
             if lower.starts_with(marker) {
-                let Some((head, offset)) = head_value(&content[marker.len()..]) else {
-                    return Err("markdown reviewed head label lacks a SHA".into());
-                };
+                let (head, offset) = head_value(&content[marker.len()..])?;
                 let start = start + content_start + marker.len() + offset;
                 matches.push(Located {
                     value: head,
@@ -125,7 +123,7 @@ fn reviewed_head(raw: &str) -> Result<Option<Located>, String> {
                 });
             }
         }
-        if let Some((head, offset)) = labelled_sha(line) {
+        if let Some((head, offset)) = labelled_head(line)? {
             let start = start + offset;
             matches.push(Located {
                 value: head,
@@ -187,9 +185,11 @@ fn terminal_label(line: &str, in_terminal_handoff: bool) -> bool {
         || (in_terminal_handoff && label.trim() == "result")
 }
 
-fn labelled_sha(line: &str) -> Option<(String, usize)> {
+pub(super) fn labelled_head(line: &str) -> Result<Option<(String, usize)>, String> {
     let trimmed = line.trim().trim_start_matches("- ").trim();
-    let (label, value) = trimmed.split_once(':')?;
+    let Some((label, value)) = trimmed.split_once(':') else {
+        return Ok(None);
+    };
     let label = label.to_ascii_lowercase().replace(['-', '_'], " ");
     if !matches!(
         label.trim(),
@@ -199,28 +199,36 @@ fn labelled_sha(line: &str) -> Option<(String, usize)> {
             | "exact current head"
             | "reviewed head"
     ) {
-        return None;
+        return Ok(None);
     }
-    let (head, offset) = exact_sha_value(value)?;
-    let line_offset = line.find(value)?;
-    Some((head, line_offset + offset))
+    let (head, offset) = exact_sha_value(value)
+        .ok_or_else(|| "markdown reviewed head label lacks a SHA".to_owned())?;
+    let line_offset = line.find(value).unwrap_or_default();
+    Ok(Some((head, line_offset + offset)))
 }
 
-fn head_value(value: &str) -> Option<(String, usize)> {
+fn head_value(value: &str) -> Result<(String, usize), String> {
     let leading = value.len() - value.trim_start().len();
     let mut start = leading;
     if value[start..].starts_with(':') {
         start += 1;
         start += value[start..].len() - value[start..].trim_start().len();
     }
-    let (head, offset) = exact_sha_value(&value[start..])?;
-    Some((head, start + offset))
+    let (head, offset) = exact_sha_value(&value[start..])
+        .ok_or_else(|| "markdown reviewed head label lacks a SHA".to_owned())?;
+    Ok((head, start + offset))
 }
 
-fn exact_sha_value(value: &str) -> Option<(String, usize)> {
-    let value = value.trim();
+pub(super) fn exact_sha_value(value: &str) -> Option<(String, usize)> {
+    let leading = value.len() - value.trim_start().len();
+    let value = &value[leading..];
     let head = value.trim_matches(|character: char| "`.,;:)]".contains(character));
-    fields::is_sha(head).then(|| (head.to_owned(), value.find(head).unwrap_or_default()))
+    fields::is_sha(head).then(|| {
+        (
+            head.to_owned(),
+            leading + value.find(head).unwrap_or_default(),
+        )
+    })
 }
 
 fn unique(matches: Vec<Located>, label: &str) -> Result<Option<Located>, String> {
@@ -236,11 +244,4 @@ fn unique(matches: Vec<Located>, label: &str) -> Result<Option<Located>, String>
 
 pub(super) fn result_value(value: &str) -> Option<(String, usize)> {
     result::parse(value)
-}
-
-fn clean(value: &str) -> String {
-    value
-        .trim()
-        .trim_matches(|character: char| character == '`' || ",.;()[]".contains(character))
-        .to_owned()
 }

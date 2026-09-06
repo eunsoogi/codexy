@@ -16,21 +16,40 @@ pub(super) fn line_ranges(raw: &str) -> Vec<(usize, usize, &str)> {
 }
 
 pub(super) fn operative_lines(raw: &str) -> Vec<(usize, usize, &str)> {
-    let mut in_fence = false;
+    let lines = line_ranges(raw);
+    operative_line_indices(&lines)
+        .into_iter()
+        .map(|index| lines[index])
+        .collect()
+}
+
+pub(super) fn operative_line_indices(lines: &[(usize, usize, &str)]) -> Vec<usize> {
+    let mut fence = None;
     let mut result = Vec::new();
-    for (start, end, line) in line_ranges(raw) {
+    for (index, (_, _, line)) in lines.iter().enumerate() {
         let trimmed = line.trim_start();
-        if fence_marker(trimmed) {
-            in_fence = !in_fence;
-        } else if !in_fence && !trimmed.starts_with('>') {
-            result.push((start, end, line));
+        if let Some(marker) = fence_info(trimmed) {
+            match fence {
+                None => fence = Some(marker),
+                Some(open) if marker.0 == open.0 && marker.1 >= open.1 => fence = None,
+                Some(_) => {}
+            }
+            continue;
+        }
+        if fence.is_none() && !trimmed.starts_with('>') {
+            result.push(index);
         }
     }
     result
 }
 
-pub(super) fn fence_marker(line: &str) -> bool {
-    line.starts_with("```") || line.starts_with("~~~")
+fn fence_info(line: &str) -> Option<(u8, usize)> {
+    let marker = *line.as_bytes().first()?;
+    if !matches!(marker, b'`' | b'~') {
+        return None;
+    }
+    let length = line.bytes().take_while(|byte| *byte == marker).count();
+    (length >= 3).then_some((marker, length))
 }
 
 pub(super) fn heading(line: &str) -> Option<(usize, &str)> {
