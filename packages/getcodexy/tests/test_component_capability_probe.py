@@ -94,13 +94,17 @@ class CapabilityProcessTests(unittest.TestCase):
         process.communicate.return_value = ("", "")
         with (
             patch.object(probe, "os", _OSProxy("nt")),
-            patch.object(probe.subprocess, "Popen", return_value=process),
+            patch.object(probe.subprocess, "Popen", return_value=process) as popen,
             patch.object(probe, "perf_counter", side_effect=(10.0, 10.5, 14.5)),
         ):
             result = probe._run(["hook"], Path.cwd(), "{}")
         self.assertEqual((result.category, result.returncode), ("success", 0))
         self.assertEqual(result.elapsed_seconds, 4.5)
         self.assertAlmostEqual(process.communicate.call_args.kwargs["timeout"], 4.5)
+        self.assertEqual(
+            popen.call_args.kwargs["creationflags"],
+            getattr(probe.subprocess, "CREATE_NO_WINDOW", 0x08000000),
+        )
 
     def test_windows_timeout_cleanup_does_not_drain_inherited_pipes(self) -> None:
         from codexy_runtime_tools import component_capability_probe_process as probe

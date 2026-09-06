@@ -93,6 +93,7 @@ def _run_windows(argv, cwd, input_text, env, deadline):
         text=True,
         cwd=cwd,
         env=env,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000),
     )
     cleanup_deadline = deadline
     abort_pipes = False
