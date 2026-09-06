@@ -1,8 +1,8 @@
 # Authenticated GitHub connector capture
 
-The supported connector capture uses `provider: "github"`, `method:
-"connector"`, `authenticated: true`, and a `source` object containing the exact
-`mcp__codex_apps__github_get_pr_info` tool, its
+The supported connector capture uses `provider: "github"` and
+`method: "connector"`, with `authenticated: true` and a `source` object
+containing the exact `mcp__codex_apps__github_get_pr_info` tool, its
 `repository_full_name`/`pr_number` arguments, and the raw connector result. The
 canonical producer MUST derive repository, PR number, URL, base branch, base
 OID, and head OID from those observed arguments and result fields, populate only

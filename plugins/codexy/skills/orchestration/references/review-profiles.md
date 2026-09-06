@@ -35,9 +35,9 @@ delta with findings, bind `qualifying_change.finding_ids` exactly to those
 findings, and show the evidence diff changes every finding's recorded path. The
 current snapshot's head and base identity are preserved.
 
-The supported connector capture MUST follow the [authenticated GitHub connector
-capture](connector-capture.md) contract, including its source, derivation,
-contradiction, and live-proof boundaries.
+The supported connector capture MUST follow the
+[authenticated GitHub connector capture](connector-capture.md) contract,
+including its source, derivation, contradiction, and live-proof boundaries.
 
 The external-finding reason MUST be produced from a locator-only
 `authenticated_external_finding_locator` request. The producer MUST perform a
