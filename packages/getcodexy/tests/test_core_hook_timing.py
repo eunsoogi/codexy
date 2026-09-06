@@ -230,9 +230,8 @@ class CoreHookTimingTests(unittest.TestCase):
             else [
                 os.environ.get("COMSPEC", "cmd.exe"),
                 "/d",
-                "/s",
                 "/c",
-                f'"{path}" PreToolUse',
+                "call", str(path), "PreToolUse",
             ]
         )
         return subprocess.run(
