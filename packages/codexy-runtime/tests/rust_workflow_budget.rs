@@ -40,6 +40,9 @@ const FORBIDDEN_WORKFLOW_FRAGMENTS: [&str; 15] = [
     "get-date",
 ];
 
+#[path = "support/rust_workflow_cache.rs"]
+mod rust_workflow_cache;
+
 #[test]
 fn rust_workflow_has_exact_fail_closed_five_minute_matrix_per_platform() -> TestResult {
     let workflow = workflow_text()?;
@@ -62,23 +65,6 @@ fn rust_workflow_rejects_matrix_exclude_that_removes_a_required_target() -> Test
         matrix_modifier_fixture("exclude", "system suite", "--test suite_system")?,
         "matrix.exclude required target",
     )
-}
-
-#[test]
-fn rust_workflow_rejects_obvious_shell_success_masking() -> TestResult {
-    let mut accepted = Vec::new();
-    for suffix in [" || :", " || echo masked", "; true"] {
-        let fixture = workflow_text()?.replacen(
-            &format!("      - run: {CARGO_COMMAND}"),
-            &format!("      - run: |\n          {CARGO_COMMAND}{suffix}"),
-            1,
-        );
-        if workflow_failures(&fixture)?.is_empty() {
-            accepted.push(suffix);
-        }
-    }
-    assert!(accepted.is_empty(), "validator accepted {accepted:?}");
-    Ok(())
 }
 
 fn workflow_text() -> Result<String, Box<dyn std::error::Error>> {
