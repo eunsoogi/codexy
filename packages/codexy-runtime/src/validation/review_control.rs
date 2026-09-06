@@ -76,7 +76,8 @@ pub(super) fn build_pr_state(
     control_text: &str,
     previous_text: &str,
 ) -> Result<Value> {
-    let current: Value = serde_json::from_str(current_text)?;
+    let current: Value = snapshot::normalize(&serde_json::from_str(current_text)?, "current")
+        .map_err(anyhow::Error::msg)?;
     let mut control: Value = serde_json::from_str(control_text)?;
     if !control.is_object() {
         bail!("review control state must be an object");
@@ -88,8 +89,12 @@ pub(super) fn build_pr_state(
         post_cap_disposition::refresh_live(&mut control, Some(&current))
             .map_err(anyhow::Error::msg)?;
     }
-    let previous: Value = serde_json::from_str(previous_text)
-        .map_err(|error| anyhow::anyhow!("previous PR state is invalid: {error}"))?;
+    let previous = snapshot::normalize(
+        &serde_json::from_str(previous_text)
+            .map_err(|error| anyhow::anyhow!("previous PR state is invalid: {error}"))?,
+        "previous",
+    )
+    .map_err(anyhow::Error::msg)?;
     let control = if control.get("profile").and_then(Value::as_str) != Some("light")
         || request::predecessor_has_pre_pr_history(Some(&previous))
     {
@@ -145,6 +150,8 @@ pub(super) fn produce(
             "review control producer must derive prior state from previous_pr_state, not previous_control_state"
         );
     }
+    let (current_pr_state, previous_pr_state) =
+        snapshot::normalize_request_states(&request).map_err(anyhow::Error::msg)?;
     if request.get("authenticated_external_finding").is_some()
         || request
             .get("authenticated_external_finding_capture")
@@ -165,14 +172,14 @@ pub(super) fn produce(
             .map_err(anyhow::Error::msg)?;
         external_finding::normalize_producer(&mut control, &source).map_err(anyhow::Error::msg)?;
     } else if let Some(locator) = request.get("authenticated_finding_disposition_locator") {
-        let current = request.get("current_pr_state").ok_or_else(|| {
+        let current = current_pr_state.as_ref().ok_or_else(|| {
             anyhow::anyhow!("finding disposition producer requires current_pr_state")
         })?;
         post_cap_disposition::validate_locator(locator, current).map_err(anyhow::Error::msg)?;
         let expected_head = request::qualifying_change_to_head(&control);
         let source =
             post_cap_disposition::read_live(locator, expected_head).map_err(anyhow::Error::msg)?;
-        let previous = request.get("previous_pr_state").ok_or_else(|| {
+        let previous = previous_pr_state.as_ref().ok_or_else(|| {
             anyhow::anyhow!("finding disposition producer requires previous_pr_state")
         })?;
         post_cap_disposition::normalize_producer(&mut control, &source, previous)
@@ -190,14 +197,14 @@ pub(super) fn produce(
         .get("profile")
         .and_then(Value::as_str)
         .is_some_and(|profile| profile != "light")
-        || request::predecessor_has_pre_pr_history(request.get("previous_pr_state"))
+        || request::predecessor_has_pre_pr_history(previous_pr_state.as_ref())
     {
         let raw_error = state::check_control(plugin_root, &control).err();
-        let current = request
-            .get("current_pr_state")
+        let current = current_pr_state
+            .as_ref()
             .ok_or_else(|| anyhow::anyhow!("review control producer requires current_pr_state"))?;
-        let previous = request
-            .get("previous_pr_state")
+        let previous = previous_pr_state
+            .as_ref()
             .ok_or_else(|| anyhow::anyhow!("review control producer requires previous_pr_state"))?;
         match transition::check_with_repository(
             plugin_root,
