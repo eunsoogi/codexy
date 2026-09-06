@@ -139,12 +139,9 @@ fn labeled(raw: &str) -> Result<Option<Map<String, Value>>, String> {
                 )?;
             }
             "terminal_result" | "terminal_verdict" => {
-                let result = value
-                    .split_whitespace()
-                    .next()
-                    .map(clean)
-                    .filter(|result| !result.is_empty())
-                    .ok_or("terminal result label is empty")?;
+                let result = markdown::result_value(value)
+                    .map(|(result, _)| result)
+                    .ok_or("terminal result label is invalid")?;
                 merge(
                     &mut map,
                     "terminal_result",

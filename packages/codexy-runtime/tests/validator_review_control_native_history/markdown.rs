@@ -44,15 +44,24 @@ pub(crate) fn actual_request() -> Value {
 }
 
 pub(crate) fn negated_terminal_label_request() -> Value {
+    terminal_value_request("No terminal verdict was issued.\n\nThe prior review remained BLOCK.")
+}
+
+pub(crate) fn invalid_inline_terminal_value_request() -> Value {
+    terminal_value_request("Terminal verdict: not BLOCK")
+}
+
+pub(crate) fn invalid_narrative_terminal_value_request() -> Value {
+    terminal_value_request("## Terminal verdict\n\nThe prior review remained BLOCK.")
+}
+
+fn terminal_value_request(replacement: &str) -> Value {
     let mut request = actual_request();
     let Some(original) = request["reviewer"]["pages"][0]["turns"][0]["items"][1]["text"].as_str()
     else {
         return request;
     };
-    let text = original.replace(
-        "## Terminal verdict\n\n`BLOCK`",
-        "No terminal verdict was issued.\n\nThe prior review remained BLOCK.",
-    );
+    let text = original.replace("## Terminal verdict\n\n`BLOCK`", replacement);
     request["reviewer"]["pages"][0]["turns"][0]["items"][1]["text"] = json!(text);
     request
 }
@@ -63,6 +72,20 @@ fn negated_terminal_prose_is_not_a_label() {
         &negated_terminal_label_request(),
     ));
     assert!(error.contains("terminal result"));
+}
+
+#[test]
+fn unsupported_terminal_values_are_not_substrings() {
+    for request in [
+        invalid_inline_terminal_value_request(),
+        invalid_narrative_terminal_value_request(),
+    ] {
+        let error = super::rejected(super::native_history::normalize_native_history(&request));
+        assert!(
+            error.contains("terminal result"),
+            "unexpected error: {error}"
+        );
+    }
 }
 
 pub(crate) fn request(crlf: bool) -> Value {

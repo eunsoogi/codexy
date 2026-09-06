@@ -4,6 +4,8 @@ use super::super::fields;
 
 #[path = "markdown/findings.rs"]
 mod findings;
+#[path = "markdown/result.rs"]
+mod result;
 #[path = "markdown/settings.rs"]
 mod settings;
 
@@ -112,21 +114,18 @@ fn terminal_result(raw: &str) -> Result<Option<Located>, String> {
         let lower = line.trim().to_ascii_lowercase();
         let has_terminal_label = terminal_label(&lower);
         let value = if lower.starts_with("##") && lower.contains("blocking findings") {
-            find_result(line).map(|(result, offset)| (result, *start + offset))
+            result_value(line).map(|(result, offset)| (result, *start + offset))
         } else if has_terminal_label {
-            line.split_once(':')
-                .and_then(|(prefix, value)| {
-                    find_result(value)
-                        .map(|(result, offset)| (result, *start + prefix.len() + 1 + offset))
-                })
-                .or_else(|| {
-                    lines[index + 1..]
-                        .iter()
-                        .find(|(_, _, next)| !next.trim().is_empty())
-                        .and_then(|(next_start, _, next)| {
-                            find_result(next).map(|(result, offset)| (result, *next_start + offset))
-                        })
-                })
+            match line.split_once(':') {
+                Some((prefix, value)) => result_value(value)
+                    .map(|(result, offset)| (result, *start + prefix.len() + 1 + offset)),
+                None => lines[index + 1..]
+                    .iter()
+                    .find(|(_, _, next)| !next.trim().is_empty())
+                    .and_then(|(next_start, _, next)| {
+                        result_value(next).map(|(result, offset)| (result, *next_start + offset))
+                    }),
+            }
         } else {
             None
         };
@@ -200,22 +199,8 @@ pub(super) fn operative_lines(raw: &str) -> Vec<(usize, usize, &str)> {
     result
 }
 
-fn find_result(value: &str) -> Option<(String, usize)> {
-    let mut start = None;
-    for (index, character) in value
-        .char_indices()
-        .chain(std::iter::once((value.len(), '\0')))
-    {
-        if character.is_ascii_alphabetic() {
-            start.get_or_insert(index);
-        } else if let Some(start) = start.take() {
-            let candidate = value[start..index].to_ascii_uppercase();
-            if ["PASS", "BLOCK", "UNOBSERVABLE"].contains(&candidate.as_str()) {
-                return Some((candidate, start));
-            }
-        }
-    }
-    None
+pub(super) fn result_value(value: &str) -> Option<(String, usize)> {
+    result::parse(value)
 }
 
 fn find_sha(value: &str) -> Option<(String, usize)> {
