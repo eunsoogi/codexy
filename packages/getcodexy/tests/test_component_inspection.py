@@ -24,13 +24,20 @@ _probe_cases = importlib.import_module(
 )
 CapabilityProbeCases = _probe_cases.CapabilityProbeCases
 materialize = _probe_cases.materialize
+_observation_cases = importlib.import_module(
+    "packages.getcodexy.tests.component_capability_observation_cases"
+)
+CapabilityObservationCases = _observation_cases.CapabilityObservationCases
 CORE_HOOK_DEPENDENCIES = importlib.import_module(
     "packages.getcodexy.tests.component_hook_dependencies"
 ).CORE_HOOK_DEPENDENCIES
 
 
 class ComponentInspectionTests(
-    CapabilityProbeCases, ComponentInspectionHostCases, unittest.TestCase
+    CapabilityProbeCases,
+    ComponentInspectionHostCases,
+    CapabilityObservationCases,
+    unittest.TestCase,
 ):
     def test_status_reports_each_actual_compatible_selection_in_canonical_order(
         self,
@@ -228,17 +235,6 @@ class ComponentInspectionTests(
                     agents.symlink_to(target, target_is_directory=True)
                 result = doctor(state.home, codex=state.codex, runner=state.run)
                 self.assertEqual(result["component_health"][0]["state"], "incompatible")
-
-    def test_mcp_client_version_follows_package_authority(self) -> None:
-        from codexy_runtime_tools import component_capability_probe as probe
-
-        version_lock = importlib.import_module("codexy_runtime_tools.version_lock")
-        self.addCleanup(importlib.reload, probe)
-        with patch.object(version_lock, "default_package_version") as version:
-            version.return_value = "9.9.9"
-            importlib.reload(probe)
-            self.assertEqual(probe._INITIALIZE_PARAMS["clientInfo"]["version"], "9.9.9")
-
 
 if __name__ == "__main__":
     unittest.main()
