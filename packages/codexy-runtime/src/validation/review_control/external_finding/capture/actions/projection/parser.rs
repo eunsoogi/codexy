@@ -7,15 +7,8 @@ pub(super) fn scoped_log(
     step: &serde_json::Map<String, serde_json::Value>,
     repository: &str,
     ambiguous_step_boundary: bool,
-    log_group_index: usize,
 ) -> Result<String, String> {
-    scope::scoped_log(
-        log,
-        step,
-        repository,
-        ambiguous_step_boundary,
-        log_group_index,
-    )
+    scope::scoped_log(log, step, repository, ambiguous_step_boundary)
 }
 
 pub(super) struct Failure {

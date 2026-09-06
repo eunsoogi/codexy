@@ -17,15 +17,14 @@ pub(super) fn scoped_log(
     step: &Map<String, Value>,
     repository: &str,
     ambiguous_step_boundary: bool,
-    log_group_index: usize,
 ) -> Result<String, String> {
-    if ambiguous_step_boundary {
-        return project_log(select_step_log_group(log, log_group_index)?, repository);
-    }
     let start = timestamp(text(step, "started_at", "Actions failed step")?)?;
     let end = timestamp(text(step, "completed_at", "Actions failed step")?)?;
     if start >= end {
         return Err("Actions failed step has an invalid time window".into());
+    }
+    if ambiguous_step_boundary {
+        return project_log(select_step_log_group(log, &start, &end)?, repository);
     }
     let lines = log
         .lines()
@@ -64,14 +63,14 @@ fn project_log(log: &str, repository: &str) -> Result<String, String> {
     Ok(excerpt)
 }
 
-fn select_step_log_group(log: &str, expected: usize) -> Result<&str, String> {
-    if expected == 0 {
-        return Err("Actions selected step log group is invalid".into());
-    }
-    let mut group = 0;
+fn select_step_log_group<'a>(
+    log: &'a str,
+    start: &Timestamp,
+    end: &Timestamp,
+) -> Result<&'a str, String> {
+    let mut groups = Vec::new();
     let mut depth = 0usize;
-    let mut start = None;
-    let mut end = log.len();
+    let mut current = None;
     let mut offset = 0;
     for line in log.split_inclusive('\n') {
         if line.contains("##[group]") {
@@ -79,31 +78,52 @@ fn select_step_log_group(log: &str, expected: usize) -> Result<&str, String> {
             let is_step = line.contains("##[group]Run ");
             let is_cleanup =
                 line.contains("##[group]Post Run ") || line.contains("##[group]Complete job");
-            if top_level && is_cleanup && start.is_some() {
-                end = offset;
+            if top_level && is_cleanup {
+                if let Some((timestamp, group_start)) = current.take() {
+                    groups.push((timestamp, group_start, offset));
+                }
                 break;
             }
             if top_level && is_step {
-                group += 1;
-                if start.is_some() {
-                    end = offset;
-                    break;
+                if let Some((timestamp, group_start)) = current.take() {
+                    groups.push((timestamp, group_start, offset));
                 }
-                if group == expected {
-                    start = Some(offset + line.len());
-                }
+                let (timestamp, _) =
+                    timestamped(line).ok_or("Actions step log group has no timestamped header")?;
+                current = Some((timestamp, offset + line.len()));
             }
             depth += 1;
         } else if line.contains("##[endgroup]") {
             depth = depth.saturating_sub(1);
-        } else if start.is_some() && (line.contains(" Post job cleanup.")) {
-            end = offset;
+        } else if current.is_some() && line.contains(" Post job cleanup.") {
+            if let Some((timestamp, group_start)) = current.take() {
+                groups.push((timestamp, group_start, offset));
+            }
             break;
         }
         offset += line.len();
     }
-    let start = start.ok_or("Actions job log does not expose the selected step group")?;
-    let selected = &log[start..end];
+    if let Some((timestamp, group_start)) = current {
+        groups.push((timestamp, group_start, log.len()));
+    }
+    let candidates = groups
+        .iter()
+        .filter(|(timestamp, group_start, group_end)| {
+            timestamp.second >= start.second
+                && timestamp.second <= end.second
+                && log[*group_start..*group_end]
+                    .lines()
+                    .filter_map(timestamped)
+                    .any(|(line_timestamp, _)| {
+                        line_timestamp.second > start.second && line_timestamp.second < end.second
+                    })
+        })
+        .collect::<Vec<_>>();
+    if candidates.len() != 1 {
+        return Err("Actions job log does not expose one time-bound selected step group".into());
+    }
+    let (_, group_start, group_end) = candidates[0];
+    let selected = &log[*group_start..*group_end];
     if selected.trim().is_empty() {
         return Err("Actions selected step log group is empty".into());
     }
@@ -123,15 +143,16 @@ mod tests {
             "completed_at": "2026-01-01T00:02:00Z"
         });
         let log = concat!(
-            "##[group]Run previous step\n",
-            "##[group]Run nested previous command\n",
+            "2026-01-01T00:00:30.000Z ##[group]Run previous step\n",
+            "2026-01-01T00:00:30.050Z ##[group]Run nested previous command\n",
             "2026-01-01T00:01:00.100Z ERROR: unrelated.unittest (unrelated)\n",
             "2026-01-01T00:01:00.200Z Traceback (most recent call last):\n",
             "2026-01-01T00:01:00.300Z   File \"D:\\a\\codexy\\codexy\\packages\\getcodexy\\tests\\unrelated.py\", line 1\n",
             "2026-01-01T00:01:00.400Z NotImplementedError: unrelated\n",
             "##[endgroup]\n",
             "##[endgroup]\n",
-            "##[group]Run selected step\n",
+            "2026-01-01T00:01:00.000Z ##[group]Run selected step\n",
+            "2026-01-01T00:01:30.100Z selected command output\n",
             "2026-01-01T00:02:00.100Z ERROR: packages.getcodexy.tests.test_component_capability_probe.CapabilityProcessTests.test_process_result_captures_bounded_diagnostics (packages.getcodexy.tests.test_component_capability_probe.CapabilityProcessTests)\n",
             "2026-01-01T00:02:00.200Z Traceback (most recent call last):\n",
             "2026-01-01T00:02:00.300Z   File \"D:\\a\\codexy\\codexy\\packages\\getcodexy\\tests\\test_component_capability_probe.py\", line 57\n",
@@ -144,11 +165,65 @@ mod tests {
             step.as_object().expect("step"),
             "eunsoogi/codexy",
             true,
-            2,
         )
         .expect("selected step log");
         assert!(excerpt.contains("NotImplementedError"));
         assert!(!excerpt.contains("unrelated"));
+    }
+
+    #[test]
+    fn does_not_select_an_earlier_top_level_group_outside_the_selected_window() {
+        let step = json!({
+            "started_at": "2026-01-01T00:01:00Z",
+            "completed_at": "2026-01-01T00:02:00Z"
+        });
+        let log = concat!(
+            "2026-01-01T00:00:30.000Z ##[group]Run previous step\n",
+            "##[endgroup]\n",
+            "2026-01-01T00:00:30.050Z ##[group]Run unrelated earlier command\n",
+            "2026-01-01T00:00:30.100Z ERROR: unrelated.unittest (unrelated)\n",
+            "2026-01-01T00:00:30.200Z Traceback (most recent call last):\n",
+            "2026-01-01T00:00:30.300Z   File \"D:\\a\\codexy\\codexy\\packages\\getcodexy\\tests\\unrelated.py\", line 1\n",
+            "2026-01-01T00:00:30.400Z NotImplementedError: unrelated\n",
+            "##[endgroup]\n",
+            "2026-01-01T00:01:00.000Z ##[group]Run selected step\n",
+            "2026-01-01T00:01:30.100Z selected command output\n",
+            "2026-01-01T00:02:00.100Z ERROR: selected.unittest (selected)\n",
+            "2026-01-01T00:02:00.200Z Traceback (most recent call last):\n",
+            "2026-01-01T00:02:00.300Z   File \"D:\\a\\codexy\\codexy\\packages\\getcodexy\\tests\\selected.py\", line 1\n",
+            "2026-01-01T00:02:00.400Z NotImplementedError: selected\n",
+        );
+        let excerpt = scoped_log(
+            log,
+            step.as_object().expect("step"),
+            "eunsoogi/codexy",
+            true,
+        )
+        .expect("selected group");
+        assert!(excerpt.contains("selected"));
+        assert!(!excerpt.contains("unrelated"));
+    }
+
+    #[test]
+    fn rejects_a_boundary_only_failure_without_interior_evidence() {
+        let step = json!({
+            "started_at": "2026-01-01T00:01:00Z",
+            "completed_at": "2026-01-01T00:02:00Z"
+        });
+        let log = concat!(
+            "2026-01-01T00:01:00.000Z ##[group]Run selected step\n",
+            "2026-01-01T00:02:00.100Z ERROR: selected.unittest (selected)\n",
+            "2026-01-01T00:02:00.200Z Traceback (most recent call last):\n",
+            "2026-01-01T00:02:00.300Z   File \"D:\\a\\codexy\\codexy\\packages\\getcodexy\\tests\\selected.py\", line 1\n",
+            "2026-01-01T00:02:00.400Z NotImplementedError: selected\n",
+        );
+        let result = scoped_log(
+            log,
+            step.as_object().expect("step"),
+            "eunsoogi/codexy",
+            true,
+        );
+        assert!(result.is_err());
     }
 }
 
