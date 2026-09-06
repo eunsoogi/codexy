@@ -1,5 +1,6 @@
 use super::super::{TestResult, plugin_root};
 use super::helpers::assert_connector_case;
+use super::VALID_PR_BODY;
 use serde_json::json;
 
 #[test]
@@ -14,12 +15,12 @@ fn connector_title_admission_shares_issue_pr_and_metadata_boundaries() -> TestRe
         (
             "P-PR-scoped-title",
             "github_create_pull_request",
-            json!({"repository_full_name":"eunsoogi/codexy","title":"feat(task): desc","head_branch":"topic","base_branch":"main"}),
+            json!({"repository_full_name":"eunsoogi/codexy","title":"feat(task): desc","head_branch":"topic","base_branch":"main","body":VALID_PR_BODY}),
         ),
         (
             "P-PR-normalized-create",
             "github.create_pull_request",
-            json!({"repository_full_name":"eunsoogi/codexy","title":"fix(hooks): create through normalized connector","head_branch":"topic","base_branch":"main"}),
+            json!({"repository_full_name":"eunsoogi/codexy","title":"fix(hooks): create through normalized connector","head_branch":"topic","base_branch":"main","body":VALID_PR_BODY}),
         ),
         (
             "P-PR-normalized-update-title-only",
@@ -29,7 +30,7 @@ fn connector_title_admission_shares_issue_pr_and_metadata_boundaries() -> TestRe
         (
             "P-PR-normalized-update-title-body",
             "github.update_pull_request",
-            json!({"repository_full_name":"eunsoogi/codexy","pr_number":17,"title":"fix(hooks): update title and body together","body":"note"}),
+            json!({"repository_full_name":"eunsoogi/codexy","pr_number":17,"title":"fix(hooks): update title and body together","body":VALID_PR_BODY}),
         ),
         (
             "P-ISS-metadata-only",
@@ -39,7 +40,7 @@ fn connector_title_admission_shares_issue_pr_and_metadata_boundaries() -> TestRe
         (
             "P-PR-metadata-only",
             "github_update_pull_request",
-            json!({"repository_full_name":"eunsoogi/codexy","pr_number":17,"title":null,"body":"note"}),
+            json!({"repository_full_name":"eunsoogi/codexy","pr_number":17,"title":null,"body":VALID_PR_BODY}),
         ),
     ] {
         assert_connector_case(&root, case_id, tool, input, false)?;

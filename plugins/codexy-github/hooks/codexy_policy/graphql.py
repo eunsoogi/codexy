@@ -4,6 +4,7 @@ import base64
 import json
 import re
 
+from .body import valid_pull_request_body
 from .github_target import (
     GRAPH_BINDINGS,
     graph_bound,
@@ -220,7 +221,9 @@ def _pr_optional(
         if key == "title":
             if value != "null" and not graphql_title(value, pr_title):
                 return False
-        elif key in {"body", "baseRefName"} and not graph_nullable(value):
+        elif key == "body" and not valid_pull_request_body(graph_string(value)):
+            return False
+        elif key == "baseRefName" and not graph_nullable(value):
             return False
         if key in {"draft", "maintainerCanModify"} and value not in {"true", "false"}:
             return False

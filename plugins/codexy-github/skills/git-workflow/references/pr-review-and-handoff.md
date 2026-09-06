@@ -4,10 +4,10 @@
 
 MUST confirm the issue, exact branch/base relationship, local verification, and
 repository taxonomy before opening a PR. Use a Conventional Commit title and a
-body that explains the change, rationale, affected areas, verification,
-evidence, omissions, follow-ups, and issue linkage without prescribing a
-repository-independent heading order. Keep a PR draft while proof or known risk
-is incomplete.
+body with visible `## Summary`, `## Rationale`, `## Changed Areas`,
+`## Verification`, `## Evidence`, `## Not Run`, and `## Follow-ups` sections;
+the only closing reference MUST be the final line `Fixes #<issue>`. Keep a PR
+draft while proof or known risk is incomplete.
 
 The PR title MUST use `type(scope): description`, with a nonempty valid scope
 and a nonempty description. An optional breaking marker goes after the scope:

@@ -4,6 +4,7 @@ use std::collections::HashSet;
 use std::io::Write as _;
 use std::process::Stdio;
 const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
+const VALID_PR_BODY: &str = "## Summary\n\nPreserve the safe test path.\n\n## Rationale\n\nKeep the concern fixture admissible.\n\n## Changed Areas\n\nTest payload only.\n\n## Verification\n\nRun the hook suite.\n\n## Evidence\n\nThe hook result is observed.\n\n## Not Run\n\nNo remote mutation.\n\n## Follow-ups\n\nParent owns merge.\n\nFixes #912";
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type LauncherResult = Result<Option<Value>, Box<dyn std::error::Error>>;
 
@@ -181,7 +182,7 @@ fn admitted_payload(concern: &Concern, event: &str) -> Value {
         "thread-delivery" | "child-thread-creation" => json!({"model":"gpt-5.6-luna","thinking":"max"}),
         "subagent-ownership" => json!({"agent_type":"explorer","message":"Bounded read-only inspection."}),
         "repository-issue" => json!({"repository_full_name":"eunsoogi/codexy","issue_number":912,"body":"note"}),
-        "repository-pull-request" => json!({"repository_full_name":"eunsoogi/codexy","title":"fix(hooks): preserve safe test path","head_branch":"topic","base_branch":"main"}),
+        "repository-pull-request" => json!({"repository_full_name":"eunsoogi/codexy","title":"fix(hooks): preserve safe test path","head_branch":"topic","base_branch":"main","body":VALID_PR_BODY}),
         "repository-merge" => json!({"repository_full_name":"eunsoogi/codexy","pr_number":912,"merge_method":"squash","expected_head_sha":"592e4a79749b8aba37bfbdbcb4b1c277b22f54e9","commit_title":"fix(hooks): preserve safe test path (#912)","commit_message":"Fixes #912"}),
         "repository-github-command" | "destructive-command" => json!({"command":"git status --short"}),
         _ => unreachable!(),

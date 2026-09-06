@@ -24,7 +24,7 @@ fn issue_735_graphql_queries_and_exact_mutations_are_classified_structurally() -
     for (case_id, query) in [
         ("P-ISS-01", "mutation { createIssue(input:{repositoryId:\"REPO_owned\",title:\"Valid issue\",clientMutationId:\"CLIENT\"}) { issue { number } } }"),
         ("P-ISS-02", "mutation { updateIssue(input:{issueId:\"ISS_owned\",title:\"Updated issue\"}) { issue { number } } }"),
-        ("P-PR-01", "mutation { createPullRequest(input:{repositoryId:\"REPO_owned\",title:\"fix(hooks): create PR\",headRefName:\"topic\",baseRefName:\"main\"}) { pullRequest { number } } }"),
+        ("P-PR-01", "mutation { createPullRequest(input:{repositoryId:\"REPO_owned\",title:\"fix(hooks): create PR\",headRefName:\"topic\",baseRefName:\"main\",body:\"## Summary\\n## Rationale\\n## Changed Areas\\n## Verification\\n## Evidence\\n## Not Run\\n## Follow-ups\\nFixes #949\"}) { pullRequest { number } } }"),
         ("P-PR-08", "mutation { markPullRequestReadyForReview(input:{pullRequestId:\"PR_owned\"}) { pullRequest { number } } }"),
     ] {
         let query = bind_query(query);
@@ -71,7 +71,7 @@ fn issue_735_graphql_queries_and_exact_mutations_are_classified_structurally() -
         "subject_id=PR_kwDOS6i-_88AAAABBJnhRQ",
     );
     for (case_id, query) in [
-        ("P-PR-02", "mutation { updatePullRequest(input:{pullRequestId:\"PR_owned\",body:\"note\",maintainerCanModify:false}) { pullRequest { number } } }"),
+        ("P-PR-02", "mutation { updatePullRequest(input:{pullRequestId:\"PR_owned\",body:\"## Summary\\n## Rationale\\n## Changed Areas\\n## Verification\\n## Evidence\\n## Not Run\\n## Follow-ups\\nFixes #949\",maintainerCanModify:false}) { pullRequest { number } } }"),
         ("P-PR-04", "mutation { addComment(input:{subjectId:\"PR_owned\",body:\"note\"}) { comment { id } } }"),
     ] {
         let query = bind_query(query);

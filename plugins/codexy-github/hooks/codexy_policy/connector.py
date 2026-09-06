@@ -4,8 +4,9 @@ from typing import Any
 
 from .connector_operation import operation
 from .merge import positive_int
+from . import repository_pull_request as pr
 from .repository import github_identity, repository_identity, repository_policy_status
-from .titles import issue_title, pr_title
+from .titles import issue_title
 
 READ_OPERATIONS = frozenset(
     """compare_commits download_user_content download_workflow_artifact fetch fetch_blob fetch_commit fetch_commit_workflow_runs fetch_file fetch_issue fetch_issue_comments fetch_pr fetch_pr_comments fetch_pr_file_patch fetch_pr_patch fetch_workflow_job_logs fetch_workflow_job_steps fetch_workflow_run_artifacts fetch_workflow_run_jobs get_commit_combined_status get_issue_comment_reactions get_pr_diff get_pr_info get_pr_reactions get_pr_review_comment_reactions get_profile get_repo get_repo_collaborator_permission get_user_login get_users_recent_prs_in_repo list_installations list_installed_accounts list_pr_changed_filenames list_pull_request_review_threads list_pull_request_reviews list_recent_issues list_repositories list_repositories_by_affiliation list_repositories_by_installation list_user_org_memberships list_user_orgs search search_branches search_commits search_installed_repositories_streaming search_installed_repositories_v2 search_issues search_prs search_repositories""".split()
@@ -110,22 +111,16 @@ def _issue_update(payload: dict[str, Any]) -> bool:
 
 
 def _pr_create(payload: dict[str, Any]) -> bool:
-    return (
-        set(payload)
-        <= set("title body base head draft maintainer_can_modify head_repo".split())
-        and pr_title(payload.get("title"))
-        and _nonempty(payload.get("base"))
-        and _nonempty(payload.get("head"))
-        and _optional(payload)
-    )
+    return pr.create(payload)
 
 
 def _pr_update(payload: dict[str, Any]) -> bool:
     if set(payload) == {"state"}:
         return payload["state"] in {"open", "closed"}
-    if set(payload) <= {"title", "body", "base", "maintainer_can_modify"}:
-        return bool(payload) and _metadata(payload, pr_title)
-    return False
+    return pr.metadata(payload) and (
+        "maintainer_can_modify" not in payload
+        or type(payload["maintainer_can_modify"]) is bool
+    )
 
 
 def _metadata(payload: dict[str, Any], title: Any) -> bool:
