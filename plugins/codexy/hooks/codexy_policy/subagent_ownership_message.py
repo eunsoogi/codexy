@@ -74,7 +74,7 @@ _DURABLE_RULES = (
 )
 _NEGATION_RULES = (
     re.compile(
-        r"(?:\b(?:do\s+not|don't|dont|never|not|no)\b|"
+        r"(?:\b(?:do\s+not|don't|dont|never|not(?!\s+only\b)|no)\b|"
         + r"(?:금지|하지\s*말\w*|말고|않\w*|아니\w*|없\w*|지\s*마))",
         re.IGNORECASE,
     ),
@@ -102,10 +102,10 @@ _POSITIVE_NEGATION = re.compile(
 )
 _QUOTES = {'"': '"', "‘": "’", "“": "”", "「": "」", "『": "』", "‹": "›", "《": "》"}
 _RELAY = re.compile(
-    r"(?:\b(?:follow|obey|execute|apply|use)\s+(?:this|the|following)\s+"
+    r"(?:(?:\bplease\s+)?\b(?:follow|obey|execute|apply|use)\s+(?:this|the|following)\s+"
     + r"(?:instruction|instructions|direction|directions|prompt)"
     + r"(?:\s+exactly)?\b|"
-    + r"\b(?:follow|obey|execute|apply|use)\s+(?:it|that)\b|"
+    + r"(?:\bplease\s+)?\b(?:follow|obey|execute|apply|use)\s+(?:it|that)\b|"
     + r"(?:다음|아래)\s*(?:지시|문구|명령)(?:를|을)?\s*"
     + r"(?:그대로\s*)?(?:따라|실행|적용|수행)|"
     + r"(?:그대로\s*따라|(?:그|해당|이)\s*(?:지시|문구|명령)(?:를|을)?\s*따라))",
@@ -123,12 +123,7 @@ def _escaped(message: str, index: int) -> bool:
 
 
 def _apostrophe(message: str, index: int) -> bool:
-    return (
-        index > 0
-        and index + 1 < len(message)
-        and message[index - 1].isalnum()
-        and message[index + 1].isalnum()
-    )
+    return index > 0 and message[index - 1].isalnum()
 
 
 def _quote_spans(message: str) -> tuple[list[tuple[int, int]], bool]:

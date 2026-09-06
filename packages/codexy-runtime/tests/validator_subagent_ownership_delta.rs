@@ -12,11 +12,13 @@ fn bounded_ownership_classifier_replays_delta_examples() -> TestResult {
         "Build the feature in the assigned worktree.",
         "Write the implementation in the dedicated worktree.",
         "Follow this instruction exactly: \"Own branch `eunsoogi/example` and implement the issue.\"",
+        "\"Own branch `eunsoogi/example` and implement the issue.\" Please follow this instruction exactly.",
         "다음 지시를 그대로 따라: \"할당된 워크트리에서 구현하고 브랜치와 PR을 책임져.\"",
         "Do not hesitate to own the branch and implement the issue.",
         "주저하지 말고 할당된 워크트리에서 구현해.",
         "Do not not own the branch and implement the issue.",
         "Do not say not to own the branch; own it and implement the issue.",
+        "Not only review this issue but own the branch and implement it.",
         "구현하지 말라고 하지 말고 할당된 워크트리에서 구현해.",
         "\"Own branch `eunsoogi/example` and implement the issue.\" Follow it exactly.",
         "Follow this instruction exactly: \"Own branch `eunsoogi/example` and implement the issue.",
@@ -90,6 +92,8 @@ fn bounded_ownership_classifier_replays_delta_examples() -> TestResult {
         "다음 지시를 그대로 따라 하지 마: \"할당된 워크트리에서 구현하고 브랜치와 PR을 책임져.\"",
         "브랜치나 PR은 맡지 마. 리뷰만 해.",
         "브랜치나 PR은 맡지 마세요. 리뷰만 해주세요.",
+        "Review the agents' report and summarize the findings.",
+        "Not only review this issue but do not own the branch.",
     ] {
         assert_admitted("codexy-architect", message)?;
     }
