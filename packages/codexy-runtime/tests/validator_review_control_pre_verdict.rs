@@ -11,8 +11,23 @@ mod disposition_fixture;
 #[path = "support/post_cap_review_graph.rs"]
 mod graph;
 
+#[path = "support/connector_snapshot.rs"]
+mod connector_snapshot;
+
+#[path = "validator_review_control_pre_verdict/connector.rs"]
+mod connector;
+
+#[test]
+fn next_review_eligibility_normalizes_source_only_connector() -> TestResult {
+    eligibility_accepts(true)
+}
+
 #[test]
 fn next_review_eligibility_accepts_an_authentic_two_event_predecessor() -> TestResult {
+    eligibility_accepts(false)
+}
+
+fn eligibility_accepts(connector: bool) -> TestResult {
     let temporary = tempfile::tempdir()?;
     let repository = graph::SyntheticRepository::create(temporary.path())?;
     let control = direct_state::post_cap_disposition_control(
@@ -36,6 +51,11 @@ fn next_review_eligibility_accepts_an_authentic_two_event_predecessor() -> TestR
         &previous_head,
         Some(previous_control),
     );
+    let (current, previous) = if connector {
+        (connector_snapshot::source_only(&current), connector_snapshot::source_only(&previous))
+    } else {
+        (current, previous)
+    };
     let current_path = temporary.path().join("current.json");
     let previous_path = temporary.path().join("previous.json");
     let input_path = temporary.path().join("input.json");
