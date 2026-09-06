@@ -2,7 +2,7 @@ use std::path::Path;
 
 use serde_json::{Map, Value, json};
 
-use super::{history, migration, policy, snapshot};
+use super::{history, migration, policy, pre_pr, snapshot};
 
 #[path = "state/lifecycle.rs"]
 mod lifecycle;
@@ -140,6 +140,7 @@ fn check_with_mode(
             "terminal_review_history",
             "post_cap_re_review",
             "reviewer_migration",
+            "pre_pr_import",
         ]
         .iter()
         .any(|field| control.contains_key(*field))
@@ -148,7 +149,6 @@ fn check_with_mode(
         }
         return Ok(());
     }
-
     let issue_number = count(control, "issue_number")?;
     let Some(reviewer) = profile.reviewer.as_ref() else {
         return Err("selected reviewer is unavailable".into());
@@ -192,9 +192,6 @@ fn check_with_mode(
         .and_then(Value::as_str)
         .filter(|head| !head.is_empty())
         .ok_or_else(|| "review control state must bind reviewed_head".to_owned())?;
-    if reviewed_head != head {
-        return Err("review control state reviewed_head is stale".into());
-    }
     let terminal = control
         .get("terminal_result")
         .and_then(Value::as_str)
@@ -235,6 +232,13 @@ fn check_with_mode(
     if require_pass && !findings.is_empty() {
         return Err("review control state has unresolved actionable findings".into());
     }
+    pre_pr::check_state(
+        matches!(source, StateSource::PrSnapshot),
+        require_pass,
+        head,
+        reviewed_head,
+        control,
+    )?;
     Ok(())
 }
 

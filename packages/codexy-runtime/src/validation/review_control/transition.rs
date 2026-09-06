@@ -2,7 +2,7 @@ use std::path::Path;
 
 use serde_json::{Map, Value};
 
-use super::{migration, policy, snapshot, state};
+use super::{migration, policy, pre_pr, snapshot, state};
 
 mod evidence;
 
@@ -17,6 +17,7 @@ pub(super) fn check_with_repository(
     snapshot::check(current, "current")?;
     snapshot::same_pr(previous, current)?;
     snapshot::same_issue(previous, current)?;
+    pre_pr::check_ancestry(repository_root, previous, current)?;
     if current.get("reviewControl").is_some() {
         return Err(
             "review control current PR snapshot must not carry a caller-supplied predecessor"
@@ -56,6 +57,13 @@ pub(super) fn check_with_repository(
     }
 
     let mut normalized_control = current_control.clone();
+    if current_control
+        .get("reviewed_head")
+        .or_else(|| current_control.get("head_oid"))
+        != current.get("headRefOid")
+    {
+        return Err("review control transition current state must bind the current head".into());
+    }
     let migration = if previous_is_legacy {
         Some(migration::marker(
             current_profile,
@@ -66,6 +74,7 @@ pub(super) fn check_with_repository(
         previous_control.get("reviewer_migration").cloned()
     };
     migration::reconcile(&mut normalized_control, migration)?;
+    pre_pr::reconcile(&normalized_control, previous_control.get("pre_pr_import"))?;
 
     let current_state = with_control(current, &normalized_control)?;
     state::check_pr_state(plugin_root, &current_state, false)?;
