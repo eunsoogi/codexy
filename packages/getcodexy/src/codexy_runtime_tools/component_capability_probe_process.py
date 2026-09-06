@@ -144,13 +144,14 @@ def _terminate_process_tree(process, deadline):
 
 
 def _close_process_pipes(process, abort=False, deadline=None):
+    threads_stopped = True
     if abort:
-        _cancel_windows_pipe_threads(process, deadline)
+        threads_stopped = _cancel_windows_pipe_threads(process, deadline)
     for attribute in ("stdin", "stdout", "stderr"):
         stream = getattr(process, attribute, None)
         if stream is None:
             continue
-        if abort:
+        if abort and not threads_stopped:
             _abort_process_pipe(process, attribute, stream)
             continue
         try:
@@ -180,6 +181,8 @@ def _cancel_windows_pipe_threads(process, deadline):
         for attribute in ("stdin_thread", "stdout_thread", "stderr_thread")
     ]
     threads = [thread for thread in threads if isinstance(thread, threading.Thread)]
+    if not threads:
+        return False
     for thread in threads:
         if thread.is_alive():
             _cancel_synchronous_io(thread)
@@ -189,6 +192,7 @@ def _cancel_windows_pipe_threads(process, deadline):
         remaining = max(0.0, deadline - perf_counter())
         if remaining:
             thread.join(remaining)
+    return all(not thread.is_alive() for thread in threads)
 
 
 def _cancel_synchronous_io(thread):
