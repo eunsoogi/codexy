@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 TOOLS = frozenset(
     {"codex_app__send_message_to_thread", "mcp__codex_app__send_message_to_thread"}
 )
+TIMING_FILE_ENV = "CODEXY_CORE_HOOK_TIMING_FILE"
 
 
 def main() -> int:
@@ -29,13 +30,25 @@ def main() -> int:
         "--event", required=True, choices=("PreToolUse", "PermissionRequest")
     )
     event = parser.parse_args().event
-    output = evaluate(
-        event,
-        sys.stdin.buffer.read(1024 * 1024 + 1),
-        TOOLS,
-        "CODEXY_THREAD_DELIVERY_",
-        forbidden,
-    )
+    payload = sys.stdin.buffer.read(1024 * 1024 + 1)
+    timing = None
+    started_ns = None
+    if os.environ.get(TIMING_FILE_ENV):
+        try:
+            from codexy_policy import timing as timing_module
+
+            timing = timing_module
+            started_ns = timing.start()
+        except Exception:
+            timing = None
+    output = evaluate(event, payload, TOOLS, "CODEXY_THREAD_DELIVERY_", forbidden)
+    if timing is not None and started_ns is not None:
+        timing.record(
+            event,
+            "thread-delivery",
+            started_ns,
+            "deny" if output else "allow",
+        )
     if output:
         sys.stdout.buffer.write(output)
     return 0

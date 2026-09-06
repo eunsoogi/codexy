@@ -14,9 +14,10 @@ plugin_root=${PLUGIN_ROOT-}
 [ -n "$plugin_root" ] || plugin_root=${0%/hooks/codexy-hook-runtime.sh}
 runtime_home=${HOME-}
 runtime_user=${USER-}
+timing_file=${CODEXY_CORE_HOOK_TIMING_FILE-}
 for candidate in /usr/local/bin/python3 /usr/bin/python3; do
 	[ -x "$candidate" ] || continue
-	/usr/bin/env -i PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin HOME="$runtime_home" USER="$runtime_user" PLUGIN_ROOT="$plugin_root" \
+	/usr/bin/env -i PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin HOME="$runtime_home" USER="$runtime_user" PLUGIN_ROOT="$plugin_root" CODEXY_CORE_HOOK_TIMING_FILE="$timing_file" \
 		"$candidate" -I -B "${plugin_root}/hooks/${entrypoint}" --event "$event" \
 		2>/dev/null
 	status=$?

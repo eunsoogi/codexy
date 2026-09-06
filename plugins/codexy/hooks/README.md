@@ -38,10 +38,19 @@ handlers are independent and any denial is conservative. Malformed governed
 input fails visibly rather than guessing.
 
 The launchers run Python isolated from user configuration and never install,
-cache, update, or mutate user state. Their configured outer hook timeout bounds
-execution; if the static runtime is unavailable, they fail closed with the
-matching event-native denial. Plugin hooks require Codex trust for their exact
-hash and are excluded when an administrator enables managed-hooks-only mode.
+cache, update, or mutate user state by default. A trusted operator may set the
+absolute `CODEXY_CORE_HOOK_TIMING_FILE` environment variable to enable one
+bounded local JSONL record per core-hook decision. Each record contains only
+`event`, `concern`, integer nanosecond `elapsed`, and `decision`; the payload
+cannot choose the setting or path. The file is created private to its owner,
+rejects symlinks, non-regular or permissive targets, and stops before exceeding
+1 MiB. Timing write failures do not change admission, and the setting is not
+forwarded from the hook payload. The timing file's parent must already exist.
+
+The configured outer hook timeout bounds execution; if the static runtime is
+unavailable, the launchers fail closed with the matching event-native denial.
+Plugin hooks require Codex trust for their exact hash and are excluded when an
+administrator enables managed-hooks-only mode.
 
 These checks do not claim to enforce labels, reviews, CI, owner/Sentinel state,
 or prior tool use because those facts are not authoritative hook input.
