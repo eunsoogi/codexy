@@ -8,7 +8,10 @@ mod external_finding;
 mod history;
 mod migration;
 mod policy;
+mod post_cap_disposition;
 mod pre_pr;
+mod pre_verdict;
+mod request;
 mod snapshot;
 mod state;
 mod transition;
@@ -41,15 +44,22 @@ pub(super) fn check_economics(
 }
 
 pub(super) fn check_handoff(plugin_root: &Path, state: &Value) -> Vec<String> {
-    if let Some(control) = state.get("reviewControl") {
-        if external_finding::requires_source(control) {
-            let mut control = control.clone();
+    let mut state = state.clone();
+    if let Some(mut control) = state.get("reviewControl").cloned() {
+        if external_finding::requires_source(&control) {
             if let Err(error) = external_finding::refresh_live(&mut control) {
                 return vec![error];
             }
+        } else if post_cap_disposition::requires_source(&control) {
+            if let Err(error) = post_cap_disposition::refresh_live(&mut control, Some(&state)) {
+                return vec![error];
+            }
+        }
+        if let Some(object) = state.as_object_mut() {
+            object.insert("reviewControl".into(), control);
         }
     }
-    state::check_pr_state(plugin_root, state, true)
+    state::check_pr_state(plugin_root, &state, true)
         .err()
         .into_iter()
         .collect()
@@ -74,10 +84,14 @@ pub(super) fn build_pr_state(
     if external_finding::requires_source(&control) {
         external_finding::refresh_live(&mut control).map_err(anyhow::Error::msg)?;
     }
+    if post_cap_disposition::requires_source(&control) {
+        post_cap_disposition::refresh_live(&mut control, Some(&current))
+            .map_err(anyhow::Error::msg)?;
+    }
     let previous: Value = serde_json::from_str(previous_text)
         .map_err(|error| anyhow::anyhow!("previous PR state is invalid: {error}"))?;
     let control = if control.get("profile").and_then(Value::as_str) != Some("light")
-        || predecessor_has_pre_pr_history(Some(&previous))
+        || request::predecessor_has_pre_pr_history(Some(&previous))
     {
         transition::check_with_repository(
             plugin_root,
@@ -135,26 +149,48 @@ pub(super) fn produce(
         || request
             .get("authenticated_external_finding_capture")
             .is_some()
+        || request.get("authenticated_finding_disposition").is_some()
+        || request
+            .get("authenticated_finding_disposition_capture")
+            .is_some()
+        || request.get("finding_disposition").is_some()
     {
         bail!(
             "review control producer rejects caller-supplied external finding source or capture; provide authenticated_external_finding_locator"
         );
     }
     if let Some(locator) = request.get("authenticated_external_finding_locator") {
-        let expected_commit = qualifying_change_from_head(&control).map(ToOwned::to_owned);
+        let expected_commit = request::qualifying_change_from_head(&control).map(ToOwned::to_owned);
         let source = external_finding::read_live(locator, expected_commit.as_deref())
             .map_err(anyhow::Error::msg)?;
         external_finding::normalize_producer(&mut control, &source).map_err(anyhow::Error::msg)?;
+    } else if let Some(locator) = request.get("authenticated_finding_disposition_locator") {
+        let current = request.get("current_pr_state").ok_or_else(|| {
+            anyhow::anyhow!("finding disposition producer requires current_pr_state")
+        })?;
+        post_cap_disposition::validate_locator(locator, current).map_err(anyhow::Error::msg)?;
+        let expected_head = request::qualifying_change_to_head(&control);
+        let source =
+            post_cap_disposition::read_live(locator, expected_head).map_err(anyhow::Error::msg)?;
+        let previous = request.get("previous_pr_state").ok_or_else(|| {
+            anyhow::anyhow!("finding disposition producer requires previous_pr_state")
+        })?;
+        post_cap_disposition::normalize_producer(&mut control, &source, previous)
+            .map_err(anyhow::Error::msg)?;
     } else if external_finding::requires_source(&control) {
         bail!(
             "review control producer requires authenticated_external_finding_locator for external repair"
+        );
+    } else if post_cap_disposition::requires_source(&control) {
+        bail!(
+            "review control producer requires authenticated_finding_disposition_locator for mixed findings"
         );
     }
     let control = if control
         .get("profile")
         .and_then(Value::as_str)
         .is_some_and(|profile| profile != "light")
-        || predecessor_has_pre_pr_history(request.get("previous_pr_state"))
+        || request::predecessor_has_pre_pr_history(request.get("previous_pr_state"))
     {
         let raw_error = state::check_control(plugin_root, &control).err();
         let current = request
@@ -183,21 +219,19 @@ pub(super) fn produce(
     Ok(serde_json::json!({"control_state": control}))
 }
 
-fn predecessor_has_pre_pr_history(state: Option<&Value>) -> bool {
-    state
-        .and_then(Value::as_object)
-        .and_then(|state| state.get("reviewControl"))
-        .and_then(Value::as_object)
-        .is_some_and(|control| control.contains_key("pre_pr_import"))
-}
-
-fn qualifying_change_from_head(control: &Value) -> Option<&str> {
-    control
-        .get("post_cap_re_review")
-        .and_then(Value::as_object)
-        .and_then(|post_cap| post_cap.get("qualifying_change"))
-        .and_then(Value::as_object)
-        .and_then(|change| change.get("from_head"))
-        .and_then(Value::as_str)
-        .filter(|head| !head.is_empty())
+pub(super) fn check_next_review_eligibility(
+    plugin_root: &Path,
+    repository_root: &Path,
+    current_text: &str,
+    previous_text: &str,
+    request_text: &str,
+) -> Result<Value> {
+    pre_verdict::check(
+        plugin_root,
+        repository_root,
+        current_text,
+        previous_text,
+        request_text,
+    )
+    .map_err(anyhow::Error::msg)
 }

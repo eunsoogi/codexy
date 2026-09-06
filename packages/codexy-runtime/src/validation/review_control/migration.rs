@@ -2,22 +2,28 @@ use serde_json::{Map, Value, json};
 
 use super::policy;
 
-pub(super) fn boundary(
+#[derive(Clone, Copy)]
+pub(super) enum HistoryMode {
+    None,
+    LegacyPrefix(usize),
+    LegacyEvent(usize),
+}
+
+pub(super) fn mode(
     control: &Map<String, Value>,
     profile: &str,
     current_reviewer: &Value,
     history_len: usize,
-) -> Result<Option<usize>, String> {
+) -> Result<HistoryMode, String> {
     let Some(value) = control.get("reviewer_migration") else {
-        return Ok(None);
+        return Ok(HistoryMode::None);
     };
     let object = value
         .as_object()
         .ok_or_else(|| "review control state reviewer_migration must be an object".to_owned())?;
-    if object
-        .keys()
-        .any(|key| !["schema", "from", "to", "history_boundary"].contains(&key.as_str()))
-    {
+    if object.keys().any(|key| {
+        !["schema", "from", "to", "history_boundary", "direction"].contains(&key.as_str())
+    }) {
         return Err("review control state reviewer_migration contains an unknown field".into());
     }
     if object.get("schema").and_then(Value::as_str) != Some(policy::REVIEWER_MIGRATION_SCHEMA) {
@@ -43,7 +49,23 @@ pub(super) fn boundary(
     if boundary == 0 || boundary > history_len {
         return Err("review control state reviewer_migration boundary is invalid".into());
     }
-    Ok(Some(boundary))
+    let direction = object
+        .get("direction")
+        .map(|value| {
+            value.as_str().ok_or_else(|| {
+                "review control state reviewer migration direction must be a string".to_owned()
+            })
+        })
+        .transpose()?
+        .unwrap_or("legacy_prefix_current_suffix");
+    match direction {
+        "legacy_prefix_current_suffix" => Ok(HistoryMode::LegacyPrefix(boundary)),
+        "current_prefix_legacy_event" if boundary == 1 => Ok(HistoryMode::LegacyEvent(boundary)),
+        "current_prefix_legacy_event" => Err(
+            "review control state historical reviewer exception must target the delta event".into(),
+        ),
+        _ => Err("review control state reviewer migration direction is unsupported".into()),
+    }
 }
 
 pub(super) fn marker(

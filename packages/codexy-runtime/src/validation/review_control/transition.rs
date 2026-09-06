@@ -6,6 +6,21 @@ use super::{migration, policy, pre_pr, snapshot, state};
 
 mod evidence;
 
+pub(super) struct PreVerdictContext<'a> {
+    pub(super) repository_root: &'a Path,
+    pub(super) previous_base: &'a str,
+    pub(super) current_base: &'a str,
+    pub(super) current: &'a Map<String, Value>,
+    pub(super) prior_delta: &'a Map<String, Value>,
+    pub(super) from: &'a str,
+    pub(super) to: &'a str,
+    pub(super) source: &'a Value,
+}
+
+pub(super) fn check_pre_verdict(context: &PreVerdictContext<'_>) -> Result<(), String> {
+    evidence::pre_verdict::check(context)
+}
+
 pub(super) fn check_with_repository(
     plugin_root: &Path,
     repository_root: &Path,

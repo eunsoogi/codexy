@@ -83,3 +83,25 @@ pub fn produce_review_control(
 ) -> Result<serde_json::Value> {
     review_control::produce(plugin_root, repository_root, request)
 }
+
+/// Checks whether one authenticated mixed-finding post-cap review may run.
+///
+/// # Errors
+///
+/// Returns an error for stale snapshots, forged inputs, incomplete sources, or
+/// a predecessor that is not the exact two-event delta BLOCK state.
+pub fn check_next_review_eligibility(
+    plugin_root: &Path,
+    repository_root: &Path,
+    current: &str,
+    previous: &str,
+    request: &str,
+) -> Result<serde_json::Value> {
+    review_control::check_next_review_eligibility(
+        plugin_root,
+        repository_root,
+        current,
+        previous,
+        request,
+    )
+}

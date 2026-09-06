@@ -37,19 +37,21 @@ incomplete provenance.
 
 After full and delta are both consumed, exactly one third
 `required_current_head` review may be admitted when the current head moved for
-mandatory base integration, an in-scope contract/root repair, or an
-authenticated external finding discovered on the clean delta-PASS head. It MUST
-use the current policy reviewer (with any previously authenticated migration
-marker preserved) and carry a typed `post_cap_re_review` reason plus the prior
-delta head. The marker MUST carry a qualifying-change object whose `from_head`
-is the delta head, whose `to_head` is the current head, and whose
-`evidence_commit` is an ancestor between them. Mandatory base integration MUST
-change `baseRefOid` and prove base and integration ancestry. Contract/root
-repair MUST preserve `baseRefOid`, require a prior `BLOCK` delta with non-empty
-findings, bind `finding_ids` exactly to those findings, and show the evidence
-diff changes every finding's recorded path. Authenticated external finding
-repair MUST preserve `baseRefOid`, require a clean prior `PASS` delta with no
-unresolved findings, and be produced from a locator-only
+mandatory base integration, an in-scope contract/root repair, an authenticated
+external finding discovered on the clean delta-PASS head, or an authenticated
+mixed-finding disposition from a blocked delta. It MUST use the current policy
+reviewer (with any previously authenticated migration marker preserved) and
+carry a typed `post_cap_re_review` reason plus the prior delta head taken from
+`terminal_review_history[1].reviewed_head`, never a substitute snapshot head.
+The marker MUST carry a qualifying-change object whose `from_head` is the delta
+head, whose `to_head` is the current head, and whose `evidence_commit` is an
+ancestor between them. Mandatory base integration MUST change `baseRefOid` and
+prove base and integration ancestry. Contract/root repair MUST preserve
+`baseRefOid`, require a prior `BLOCK` delta with non-empty findings, bind
+`finding_ids` exactly to those findings, and show the evidence diff changes
+every finding's recorded path. Authenticated external finding repair MUST
+preserve `baseRefOid`, require a clean prior `PASS` delta with no unresolved
+findings, and be produced from a locator-only
 `authenticated_external_finding_locator` request. The producer MUST perform a
 fixed-argument, host-authorized GitHub GraphQL read, persist its raw response
 and deterministic projection in the source envelope, and reject caller-supplied
@@ -70,8 +72,22 @@ terminal verdict MUST be rejected. A third `BLOCK` permits only the bounded
 issue-contract/root repair and refreshed exact-head proof; a third
 `UNOBSERVABLE` requires maintainer disposition and current proof.
 
-The third verdict does not authorize completion by itself. Exact-head `PASS`, no
-unresolved findings, tests, validators, CI, review-thread, ownership, safety,
-LOC, and merge gates remain required. Both third-result paths waive only review
-four, which MUST NOT occur. Reviewer MUST NOT be messaged, interrupted,
-replaced, duplicated, or polled.
+The mixed-finding disposition MUST preserve the unchanged base, bind every prior
+delta finding exactly once, use the locator-only
+`authenticated_finding_disposition_locator`, and refresh its authenticated CI
+rollup and maintainer decision at production, build, and handoff. Classification
+MUST follow the retained finding's semantic kind, not a path prefix: CI
+observations require a non-empty exact-head all-success CheckRun rollup; a
+source defect under a workflow path still requires code repair; the policy
+finding requires an immutable, unminimized OWNER/MEMBER comment bound to the
+exact repository, owning issue, PR, base, head, finding ID/path, and accepted
+model tuple. Other findings require an evidence diff touching their exact
+repository-relative paths, and at least one such code repair is mandatory.
+Caller-supplied source, capture, classification, and IDs are rejected; producer,
+build, and handoff MUST refresh and rederive the live classification before
+comparison. The disposition never waives code, CI, review, merge, or quota
+requirements. The third verdict does not authorize completion by itself.
+Exact-head `PASS`, no unresolved findings, tests, validators, CI, review-thread,
+ownership, safety, LOC, and merge gates remain required. Both third-result paths
+waive only review four, which MUST NOT occur. Reviewer MUST NOT be messaged,
+interrupted, replaced, duplicated, or polled.

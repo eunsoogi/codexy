@@ -1,6 +1,6 @@
 use std::{fs, path::Path};
 
-use serde_json::{Value, json};
+use serde_json::Value;
 
 use crate::support::{FixtureCommand, TestResult, make_executable};
 #[path = "review_control_direct_state.rs"]
@@ -9,58 +9,17 @@ mod direct_state;
 mod graph;
 #[path = "post_cap_external_finding_fixture.rs"]
 mod external_finding_fixture;
+#[path = "post_cap_disposition_fixture.rs"]
+mod disposition_fixture;
+#[path = "post_cap_review/disposition.rs"]
+mod disposition;
 
-pub(crate) fn validate_readiness(
-    control: Value,
-    issue_number: u64,
-    head: &str,
-) -> TestResult<std::process::Output> {
-    let temporary = tempfile::tempdir()?;
-    let handoff = temporary.path().join("handoff.md");
-    let state = temporary.path().join("state.json");
-    let repository = graph::SyntheticRepository::create(temporary.path())?;
-    let root_repair = control["post_cap_re_review"]["reason"].as_str()
-        == Some("in_scope_contract_root_repair");
-    let external_finding = control["post_cap_re_review"]["reason"].as_str()
-        == Some("authenticated_external_finding_repair");
-    let head = repository.resolve(head, root_repair, external_finding)?;
-    let (control, _, current_base) = repository.prepare(
-        &control,
-        direct_state::SYNTHETIC_BASE,
-        direct_state::SYNTHETIC_BASE,
-    )?;
-    fs::write(&handoff, "PASS on the exact current head.\n")?;
-    fs::write(
-        &state,
-        serde_json::to_vec(&json!({
-            "repository": "eunsoogi/codexy",
-            "number": issue_number,
-            "url": format!("https://github.com/eunsoogi/codexy/pull/{issue_number}"),
-            "baseRefName": "main",
-            "baseRefOid": current_base,
-            "capture": {
-                "provider": "github",
-                "method": "graphql",
-                "authenticated": true,
-                "owningIssue": {
-                    "repository": "eunsoogi/codexy",
-                    "number": issue_number,
-                    "url": format!("https://github.com/eunsoogi/codexy/issues/{issue_number}"),
-                    "association": "owner-assignment"
-                }
-            },
-            "state": "OPEN",
-            "isDraft": true,
-            "mergeStateStatus": "CLEAN",
-            "headRefOid": head,
-            "reviewProfile": control["profile"].clone(),
-            "reviewControl": control
-        }))?,
-    )?;
-    Ok(crate::support::validator_completion_handoff_files(
-        &handoff, &state,
-    )?)
-}
+#[allow(unused_imports)]
+pub(crate) use disposition::{
+    produce_disposition, run_build_with_disposition_ci, run_build_with_disposition_maintainer,
+    validate_readiness,
+};
+
 pub(crate) fn build_pr_state(
     control: &Value,
     previous_base: &str,
@@ -84,6 +43,7 @@ pub(crate) fn build_pr_state(
         &previous,
         &output,
         &control,
+        None,
     )?;
     assert!(
         result.status.success(),
@@ -92,6 +52,7 @@ pub(crate) fn build_pr_state(
     );
     Ok(serde_json::from_slice(&fs::read(output)?)?)
 }
+
 pub(crate) fn run_build(
     control: &Value,
     previous_base: &str,
@@ -115,8 +76,10 @@ pub(crate) fn run_build(
         &previous,
         &output,
         &control,
+        None,
     )?)
 }
+
 fn write_review_inputs(
     root: &std::path::Path,
     control: &Value,
@@ -165,6 +128,7 @@ fn invoke_build(
     previous: &std::path::Path,
     output: &std::path::Path,
     review_control: &Value,
+    disposition_sources: Option<(disposition_fixture::CiSources, Value)>,
 ) -> TestResult<std::process::Output> {
     let mut command = FixtureCommand::new(
         codexy_runtime::paths::repository_root().join("scripts/build-pr-state"),
@@ -207,6 +171,32 @@ fn invoke_build(
         command
             .env_path_list("PATH", paths)
             .env_path("CODEXY_TEST_GITHUB_RESPONSE", response_file);
+    } else if review_control["post_cap_re_review"]["reason"].as_str()
+        == Some("authenticated_finding_disposition")
+    {
+        let state: Value = serde_json::from_slice(&fs::read(current)?)?;
+        let base = state["baseRefOid"].as_str().ok_or("disposition base")?;
+        let head = state["headRefOid"].as_str().ok_or("disposition head")?;
+        let issue = review_control["issue_number"].as_u64().ok_or("disposition issue")?;
+        let pull = state["number"].as_u64().ok_or("disposition pull")?;
+        let (ci_sources, maintainer_value) = disposition_sources.unwrap_or_else(|| {
+            (
+                disposition_fixture::ci_sources(pull, base, head),
+                disposition_fixture::maintainer_response(pull, issue, base, head),
+            )
+        });
+        let fixture = disposition_fixture::write_gh_fixture(
+            output.parent().ok_or("build output parent")?,
+            &ci_sources,
+            &maintainer_value,
+        )?;
+        command
+            .env_path_list("PATH", fixture.path)
+            .env_path("CODEXY_TEST_CI_RESPONSE", fixture.ci)
+            .env_path("CODEXY_TEST_REQUIRED_STATUS_RESPONSE", fixture.required)
+            .env_path("CODEXY_TEST_EXPECTED_CHECKS_RESPONSE", fixture.expected)
+            .env_path("CODEXY_TEST_CHECK_SUITES_RESPONSE", fixture.suites)
+            .env_path("CODEXY_TEST_MAINTAINER_RESPONSE", fixture.maintainer);
     }
     Ok(command.output()?)
 }
