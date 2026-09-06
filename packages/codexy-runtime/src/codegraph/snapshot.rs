@@ -22,7 +22,7 @@ pub(super) fn environment_digest(root: &Path) -> [u8; 32] {
         })
         .build()
         .filter_map(Result::ok)
-        .filter(|entry| entry.file_type().is_some_and(|kind| kind.is_file()))
+        .filter(|entry| entry.path().is_file())
         .filter(|entry| is_environment_file(entry.path()))
         .filter_map(|entry| entry.into_path().canonicalize().ok())
         .collect::<Vec<_>>();

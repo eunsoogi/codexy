@@ -174,7 +174,7 @@ impl ParseCache {
     fn reset(&mut self) {
         self.root = None;
         self.environment_digest = None;
-        self.files.clear();
+        self.files = Vec::new();
         self.clear_entries();
     }
 
@@ -219,5 +219,19 @@ fn empty_graph_file(file: &str) -> GraphFile {
         path: file.to_owned(),
         imports: Vec::new(),
         exports: Vec::new(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reset_releases_oversized_file_index_capacity() {
+        let mut cache = ParseCache::default();
+        cache.files = Vec::with_capacity(MAX_CACHE_BYTES / size_of::<String>() + 1);
+        assert!(cache.files.capacity() * size_of::<String>() > MAX_CACHE_BYTES);
+        cache.reset();
+        assert_eq!(cache.files.capacity(), 0);
     }
 }
