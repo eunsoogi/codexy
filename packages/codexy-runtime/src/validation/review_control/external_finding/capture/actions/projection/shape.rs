@@ -58,7 +58,18 @@ pub(super) fn check_shape(capture: &Map<String, Value>) -> Result<(), String> {
             "conclusion",
         ],
     )?;
-    check_raw_object(raw, "step", &["number", "name", "status", "conclusion"])?;
+    check_raw_object(
+        raw,
+        "step",
+        &[
+            "number",
+            "name",
+            "status",
+            "conclusion",
+            "started_at",
+            "completed_at",
+        ],
+    )?;
     check_raw_object(raw, "relation", &["repository", "number", "url"])?;
     check_raw_object(
         raw,

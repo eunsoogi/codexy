@@ -55,7 +55,14 @@ pub(super) fn select_job(
         );
     }
     let mut selected_step = Map::new();
-    for field in ["number", "name", "status", "conclusion"] {
+    for field in [
+        "number",
+        "name",
+        "status",
+        "conclusion",
+        "started_at",
+        "completed_at",
+    ] {
         selected_step.insert(
             field.into(),
             step.get(field)

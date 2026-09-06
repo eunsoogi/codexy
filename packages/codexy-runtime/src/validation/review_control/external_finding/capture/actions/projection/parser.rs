@@ -1,5 +1,15 @@
 use regex::Regex;
 
+mod scope;
+
+pub(super) fn scoped_log(
+    log: &str,
+    step: &serde_json::Map<String, serde_json::Value>,
+    repository: &str,
+) -> Result<String, String> {
+    scope::scoped_log(log, step, repository)
+}
+
 pub(super) struct Failure {
     pub(super) test: String,
     pub(super) path: String,
@@ -82,10 +92,10 @@ pub(super) fn normalize_log(log: &str) -> String {
                     return line[index..].to_owned();
                 }
             }
-            if let Ok(exception) = Regex::new(r"[A-Za-z_][A-Za-z0-9_]*(?:Error|Exception):")
-                && let Some(found) = exception.find(&line)
-            {
-                return line[found.start()..].to_owned();
+            if let Ok(exception) = Regex::new(r"[A-Za-z_][A-Za-z0-9_]*(?:Error|Exception):") {
+                if let Some(found) = exception.find(&line) {
+                    return line[found.start()..].to_owned();
+                }
             }
             line.to_string()
         })

@@ -47,10 +47,12 @@ fn read_locator(locator: Locator, expected_commit: Option<&str>) -> Result<Value
         &format!("issues/{}/timeline?per_page=100", locator.pull_request),
     )?;
     let issue_relation = select_issue(&timeline, &locator)?;
-    let log = projection::normalize_log(&api_log(
-        &locator,
-        &format!("actions/jobs/{}/logs", locator.job),
-    )?);
+    let step_object = object(Some(&step), "Actions failed step")?;
+    let log = projection::scoped_log(
+        &api_log(&locator, &format!("actions/jobs/{}/logs", locator.job))?,
+        step_object,
+        &locator.repository,
+    )?;
     let raw = json!({
         "repository": locator.repository,
         "run": minimal_run(run_object)?,

@@ -16,26 +16,7 @@ const RAW_FIELDS: [&str; 8] = [
 ];
 
 pub(super) fn read_live(locator: &Value, expected_commit: Option<&str>) -> Result<Value, String> {
-    let object = locator
-        .as_object()
-        .ok_or_else(|| "authenticated external finding locator must be an object".to_owned())?;
-    let has_graphql = object
-        .keys()
-        .any(|key| matches!(key.as_str(), "reviewThread" | "reviewComment"));
-    let has_actions = object.keys().any(|key| {
-        matches!(
-            key.as_str(),
-            "workflowRun" | "runAttempt" | "job" | "workflowPath" | "jobName" | "stepName"
-        )
-    });
-    match (has_graphql, has_actions) {
-        (true, true) => {
-            Err("authenticated external finding locator mixes GraphQL and Actions keys".into())
-        }
-        (false, true) => actions::read_live(locator, expected_commit),
-        (true, false) => live::read_graphql_live(locator, expected_commit),
-        (false, false) => live::read_graphql_live(locator, expected_commit),
-    }
+    live::read_graphql_live(locator, expected_commit)
 }
 
 pub(super) fn read_actions_live(

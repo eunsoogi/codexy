@@ -12,6 +12,8 @@ pub(crate) const WORKFLOW_ID: u64 = 9001;
 pub(crate) const PULL_REQUEST: u64 = 12;
 pub(crate) const OWNING_ISSUE: u64 = 11;
 pub(crate) const FINDING_PATH: &str = "packages/getcodexy/tests/test_component_capability_probe.py";
+const STEP_STARTED: &str = "2026-01-01T00:01:00Z";
+const STEP_COMPLETED: &str = "2026-01-01T00:02:00Z";
 
 pub(crate) fn locator() -> serde_json::Value {
     json!({
@@ -86,7 +88,7 @@ impl ActionsGhFixture {
                 "id": JOB_ID, "name": "synthetic-failure-job", "run_attempt": RUN_ATTEMPT,
                 "head_sha": delta, "status": "completed", "conclusion": "failure",
                 "steps": [
-                    {"number": 5, "name": "synthetic failing unittest step", "status": "completed", "conclusion": "failure"}
+                    {"number": 5, "name": "synthetic failing unittest step", "status": "completed", "conclusion": "failure", "started_at": STEP_STARTED, "completed_at": STEP_COMPLETED}
                 ]
             }]))?,
         )?;
@@ -108,7 +110,7 @@ impl ActionsGhFixture {
         )?;
         fs::write(
             &log,
-            "ERROR: packages.getcodexy.tests.test_component_capability_probe.CapabilityProcessTests.test_process_result_captures_bounded_diagnostics (packages.getcodexy.tests.test_component_capability_probe.CapabilityProcessTests)\nTraceback (most recent call last):\n  File \"D:\\a\\codexy-fixture\\codexy-fixture\\packages\\getcodexy\\tests\\test_component_capability_probe.py\", line 57, in test_process_result_captures_bounded_diagnostics\n  File \"C:\\python\\lib\\pathlib.py\", line 1195, in cwd\n  File \"C:\\python\\lib\\pathlib.py\", line 1223, in absolute\nNotImplementedError: cannot instantiate 'PosixPath' on your system\n",
+            "2026-01-01T00:01:01Z ERROR: packages.getcodexy.tests.test_component_capability_probe.CapabilityProcessTests.test_process_result_captures_bounded_diagnostics (packages.getcodexy.tests.test_component_capability_probe.CapabilityProcessTests)\n2026-01-01T00:01:02Z Traceback (most recent call last):\n2026-01-01T00:01:03Z   File \"D:\\a\\codexy-fixture\\codexy-fixture\\packages\\getcodexy\\tests\\test_component_capability_probe.py\", line 57, in test_process_result_captures_bounded_diagnostics\n2026-01-01T00:01:04Z   File \"C:\\python\\lib\\pathlib.py\", line 1195, in cwd\n2026-01-01T00:01:05Z   File \"C:\\python\\lib\\pathlib.py\", line 1223, in absolute\n2026-01-01T00:01:06Z NotImplementedError: cannot instantiate 'PosixPath' on your system\n",
         )?;
         let gh = bin.join("gh");
         fs::write(

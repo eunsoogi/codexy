@@ -23,6 +23,14 @@ pub(super) fn normalize_log(log: &str) -> String {
     parser::normalize_log(log)
 }
 
+pub(super) fn scoped_log(
+    log: &str,
+    step: &Map<String, Value>,
+    repository: &str,
+) -> Result<String, String> {
+    parser::scoped_log(log, step, repository)
+}
+
 pub(super) fn check(
     capture: &Map<String, Value>,
     source: &Map<String, Value>,
