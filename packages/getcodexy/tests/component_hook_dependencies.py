@@ -17,5 +17,6 @@ CORE_HOOK_DEPENDENCIES = (
     "hooks/codexy_policy/subagent_ownership_message.py",
     "hooks/codexy_policy/envelope.py",
     "hooks/codexy_policy/timing.py",
+    "hooks/codexy_policy/windows_timing.py",
     "hooks/codexy_policy/thread_delivery_support.py",
 )

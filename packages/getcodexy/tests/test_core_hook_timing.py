@@ -5,6 +5,7 @@ import os
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 import threading
 import unittest
@@ -111,20 +112,21 @@ class CoreHookTimingTests(unittest.TestCase):
             replacement.mkdir()
             target = parent / "records.jsonl"
             timing = self._timing(plugin)
-            original = timing._real_directory
+            original = timing._open_parent
 
-            def swap_after_check(path: Path) -> bool:
-                allowed = original(path)
-                if allowed:
-                    parent.rename(held)
-                    parent.symlink_to(replacement, target_is_directory=True)
-                return allowed
+            def swap_after_open(path: Path) -> int:
+                descriptor = original(path)
+                parent.rename(held)
+                parent.symlink_to(replacement, target_is_directory=True)
+                return descriptor
 
-            setattr(timing, "_real_directory", swap_after_check)
-            timing._append(target, b"race\n")
+            setattr(timing, "_open_parent", swap_after_open)
+            try:
+                timing._append(target, b"race\n")
+            finally:
+                setattr(timing, "_open_parent", original)
             self.assertFalse((replacement / target.name).exists())
-            self.assertFalse((held / target.name).exists())
-            setattr(timing, "_real_directory", original)
+            self.assertEqual((held / target.name).read_bytes(), b"race\n")
             target = plugin.parent.resolve() / "near-cap.jsonl"
             target.write_bytes(b"x" * (MAX_BYTES - 2))
             target.chmod(0o600)
@@ -198,6 +200,9 @@ class CoreHookTimingTests(unittest.TestCase):
 
     def _timing(self, plugin: Path):
         path = plugin / "hooks/codexy_policy/timing.py"
+        hooks = str(path.parent.parent)
+        if hooks not in sys.path:
+            sys.path.insert(0, hooks)
         spec = importlib.util.spec_from_file_location("candidate_timing", path)
         timing = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(timing)
