@@ -32,7 +32,7 @@ const CONCERNS: &[Concern] = &[
     Concern::new("child-thread-creation", "^(?:codex_app__|mcp__codex_app__)create_thread$", "codexy-child-thread-creation", "CODEXY_CHILD_THREAD_CREATION_", "mcp__codex_app__create_thread"),
     Concern::new("subagent-ownership", "^(?:(?:agents|multi_agent_v1)__)?spawn_agent$", "codexy-subagent-ownership", "CODEXY_SUBAGENT_OWNERSHIP_", "multi_agent_v1__spawn_agent"),
     Concern::new("repository-issue", "^mcp__codex_apps__github_(create|update)_issue$", "codexy-repository-issue", "CODEXY_REPOSITORY_ISSUE_", "mcp__codex_apps__github_update_issue"),
-    Concern::new("repository-pull-request", "^mcp__codex_apps__github_(create|update)_pull_request$", "codexy-repository-pull-request", "CODEXY_REPOSITORY_PULL_REQUEST_", "mcp__codex_apps__github_create_pull_request"),
+    Concern::new("repository-pull-request", "^(?:mcp__codex_apps__github_(create|update)_pull_request|github\\.(create|update)_pull_request)$", "codexy-repository-pull-request", "CODEXY_REPOSITORY_PULL_REQUEST_", "mcp__codex_apps__github_create_pull_request"),
     Concern::new("repository-merge", "^mcp__codex_apps__github_(merge_pull_request|enable_auto_merge)$", "codexy-repository-merge", "CODEXY_REPOSITORY_MERGE_", "mcp__codex_apps__github_merge_pull_request"),
     Concern::new("repository-github-command", "^Bash$", "codexy-repository-github-command", "CODEXY_REPOSITORY_GITHUB_COMMAND_", "Bash"),
     Concern::new("destructive-command", "^Bash$", "codexy-destructive-command", "CODEXY_DESTRUCTIVE_COMMAND_", "Bash"),

@@ -8,8 +8,8 @@ import re
 import sys
 from pathlib import Path
 
+from .title_policy import issue_title, pr_title
 
-CONVENTIONAL = re.compile(r"^[a-z0-9-]+(?:!|\([a-z0-9_/-]+\)!?)?:\s+\S.*$")
 CLOSING = {
     "close",
     "closes",
@@ -28,19 +28,22 @@ def fail(message: str) -> None:
     raise ValueError(message)
 
 
-def conventional(title: str) -> bool:
-    return bool(CONVENTIONAL.fullmatch(title))
-
-
 def check_issue_title(title: str) -> None:
-    if not title[:1].isupper():
+    if not issue_title(title):
+        if (
+            title[:1].isascii()
+            and title[:1].isupper()
+            and not any(
+                ord(char) < 32 or ord(char) in {127, 0x85, 0x2028, 0x2029}
+                for char in title
+            )
+        ):
+            fail("issue title must not use Conventional Commit style")
         fail("issue title must start with an uppercase descriptive title")
-    if conventional(title.lower()) or re.match(r"^[^\s]+(?:\([^)]*\)|!|:)", title):
-        fail("issue title must not use Conventional Commit style")
 
 
 def check_pr_title(title: str) -> None:
-    if not conventional(title):
+    if not pr_title(title):
         fail("PR title must use Conventional Commit style")
 
 
@@ -103,7 +106,7 @@ def check_merge_message(
         fail(
             f"merge commit subject must end with the expected PR suffix: (#{expected_pr})"
         )
-    if not conventional(subject.removesuffix(suffix)):
+    if not pr_title(subject.removesuffix(suffix)):
         fail("merge commit subject must use Conventional Commit style")
     references = _references(message)
     if expected_issue is None:

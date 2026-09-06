@@ -2,42 +2,13 @@
 # shellcheck disable=SC2086 # Intentional controlled splitting with a temporary IFS.
 set -efu
 
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck disable=SC1091 # Packaged sibling is resolved at runtime.
+. "$script_dir/codexy-title-policy.sh"
+
 fail() {
 	printf '%s\n' "error: $1"
 	exit 1
-}
-is_ident() {
-	case "$1" in
-	"" | *[!abcdefghijklmnopqrstuvwxyz0123456789-]*) return 1 ;;
-	esac
-}
-is_scope() {
-	case "$1" in
-	"" | *[!abcdefghijklmnopqrstuvwxyz0123456789_/-]*) return 1 ;;
-	esac
-}
-check_conventional_subject() {
-	subject="$1"
-	case "$subject" in
-	*": "*) ;; *) return 1 ;;
-	esac
-	prefix=${subject%%: *}
-	summary=${subject#*: }
-	case "$summary" in
-	*[![:space:]]*) ;; *) return 1 ;;
-	esac
-	case "$prefix" in
-	*!) prefix=${prefix%!} ;; *) ;;
-	esac
-	case "$prefix" in
-	*"("*")")
-		commit_type=${prefix%%(*}
-		scope=${prefix#*(}
-		scope=${scope%)}
-		is_ident "$commit_type" && is_scope "$scope"
-		;;
-	*) is_ident "$prefix" ;;
-	esac
 }
 is_closing_keyword() {
 	keyword=${1%:}
@@ -212,14 +183,8 @@ pr-title)
 	;;
 issue-title)
 	[ -n "$issue_title" ] || fail "--issue-title is required"
-	lc_issue_title=$(printf '%s' "$issue_title" | tr '[:upper:]' '[:lower:]')
-	check_conventional_subject "$lc_issue_title" && fail "issue title must not use Conventional Commit style"
-	issue_prefix=$(printf '%s\n' "$lc_issue_title" | awk '{ print $1; exit }')
-	issue_token=$issue_prefix
-	case "$issue_prefix" in *:*) issue_prefix=${issue_prefix%%:*} ;; esac
-	while :; do case "$issue_prefix" in *:) issue_prefix=${issue_prefix%:} ;; *) break ;; esac done
-	case "$issue_token" in *"("*")" | *! | *:*) check_conventional_subject "$issue_prefix: issue" && fail "issue title must not use Conventional Commit style" ;; esac
-	case "$issue_title" in [ABCDEFGHIJKLMNOPQRSTUVWXYZ]*) ;; *) fail "issue title must start with an uppercase descriptive title" ;; esac
+	is_issue_category "$issue_title" && fail "issue title must not use Conventional Commit style"
+	check_issue_title "$issue_title" || fail "issue title must start with an uppercase descriptive title"
 	;;
 pr-labels)
 	check_pr_labels

@@ -43,6 +43,14 @@ fn readiness_guard_checks_pr_titles() -> Result<(), Box<dyn std::error::Error>> 
         String::from_utf8_lossy(&bad.stdout)
     );
 
+    let bad_reference = Command::new(&script)
+        .args(["--check-pr-title", "--pr-title", "fix(task): resolve #123 before release"])
+        .output()?;
+    assert!(
+        !bad_reference.status.success(),
+        "guard should reject marked references before trailing summary text"
+    );
+
     let good = Command::new(&script)
         .args([
             "--check-pr-title",

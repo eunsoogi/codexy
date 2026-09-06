@@ -111,6 +111,6 @@ def build_literal_matcher(prefix: str, values: tuple[str, ...]) -> str:
 
 
 ISSUE_MATCHER = build_literal_matcher(GITHUB_CONNECTOR_PREFIX, GITHUB_ISSUE_TOOL_NAMES)
-PULL_REQUEST_MATCHER = r"^mcp__codex_apps__github_(create|update)_pull_request$"
+PULL_REQUEST_MATCHER = r"^(?:mcp__codex_apps__github_(create|update)_pull_request|github\.(create|update)_pull_request)$"
 MERGE_MATCHER = r"^mcp__codex_apps__github_(merge_pull_request|enable_auto_merge)$"
 FUNCTIONS_EXEC_MATCHER = build_literal_matcher("", ("functions.exec",))

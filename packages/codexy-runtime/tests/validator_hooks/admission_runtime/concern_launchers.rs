@@ -115,7 +115,9 @@ fn launchers(tool: &str) -> TestResult<Vec<&'static str>> {
             Ok(vec!["codexy-child-thread-creation"])
         }
         "mcp__codex_apps__github_create_pull_request"
-        | "mcp__codex_apps__github_update_pull_request" => {
+        | "mcp__codex_apps__github_update_pull_request"
+        | "github.create_pull_request"
+        | "github.update_pull_request" => {
             Ok(vec!["codexy-repository-pull-request"])
         }
         "mcp__codex_apps__github_merge_pull_request"
