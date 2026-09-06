@@ -145,20 +145,7 @@ pub(super) fn produce(
             "review control producer must derive prior state from previous_pr_state, not previous_control_state"
         );
     }
-    if request.get("authenticated_external_finding").is_some()
-        || request
-            .get("authenticated_external_finding_capture")
-            .is_some()
-        || request.get("authenticated_actions_finding").is_some()
-        || request
-            .get("authenticated_actions_finding_capture")
-            .is_some()
-        || request.get("authenticated_finding_disposition").is_some()
-        || request
-            .get("authenticated_finding_disposition_capture")
-            .is_some()
-        || request.get("finding_disposition").is_some()
-    {
+    if request::has_caller_supplied_finding(&request) {
         bail!(
             "review control producer rejects caller-supplied external finding source or capture; provide authenticated_external_finding_locator"
         );
