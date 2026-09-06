@@ -78,7 +78,10 @@ fn collect_spawns(pages: &PageSet) -> Result<Vec<Spawn>, String> {
             let map = fields::object(&item, "owner item")?;
             if fields::text(map, &["type"], "tool item type")?.as_deref()
                 != Some("collabAgentToolCall")
-                || fields::text(map, &["tool"], "tool name")?.as_deref() != Some("spawnAgent")
+                || !matches!(
+                    fields::text(map, &["tool"], "tool name")?.as_deref(),
+                    Some("spawnAgent" | "spawn_agent")
+                )
             {
                 continue;
             }

@@ -9,6 +9,8 @@ mod fixtures;
 mod live;
 #[path = "validator_review_control_native_history/markdown.rs"]
 mod markdown;
+#[path = "validator_review_control_native_history/native.rs"]
+mod native;
 
 type TestResult = Result<(), String>;
 
