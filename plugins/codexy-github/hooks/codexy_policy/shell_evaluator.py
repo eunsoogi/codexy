@@ -99,7 +99,7 @@ class _CredentialPolicy:
             invocation.arguments[:2] == ["auth", "token"]
             or _auth_status_exposes_token(invocation.arguments)
             or _credential_header(invocation.arguments),
-            CommandEffect(outer),
+            CommandEffect(outer, outer),
         )
 
 

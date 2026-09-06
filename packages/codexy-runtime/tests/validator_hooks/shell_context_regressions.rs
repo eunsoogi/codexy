@@ -18,7 +18,7 @@ fn issue_735_read_only_github_and_git_corpus_is_admitted_for_both_events() -> Te
         "gh api repos/eunsoogi/codexy/assignees/eunsoogi --jq '.login'",
         "gh api repos/eunsoogi/codexy/branches/main/protection --jq '.required_pull_request_reviews'",
         "gh api repos/eunsoogi/codexy/milestones/23 --jq '.title'",
-        "gh issue list --repo eunsoogi/codexy --limit 100",
+        "gh issue list || printf safe",
         "gh label list --repo eunsoogi/codexy --limit 100",
         "gh pr list --repo eunsoogi/codexy --state all --limit 100",
         "gh release list --repo eunsoogi/codexy --limit 100",
@@ -95,6 +95,7 @@ fn issue_735_closed_cli_and_rest_mutation_matrix_has_one_eligible_operation() ->
         "gh workflow run deploy.yml --repo eunsoogi/codexy",
         "gh release create v9 --repo eunsoogi/codexy",
         "gh api --method PATCH repos/eunsoogi/codexy/security-advisories/GHSA-fixture -f state=closed",
+        "gh issue list || GH_TOKEN=fixture gh issue list",
         "gh pr merge 42 --repo eunsoogi/codexy --squash",
         "gh api --method POST repos/eunsoogi/codexy/import -f source=fixture",
         "gh api graphql -f owner=eunsoogi -f name=codexy -f query='mutation { deleteProjectV2(input:{projectV2Id:\"fixture\"}) { clientMutationId } }'",
@@ -127,16 +128,12 @@ fn git_aliases_keep_the_normalized_repository_context() -> TestResult {
     for (cwd, target, denied) in [(&foreign, &owned, true), (&owned, &foreign, false)] {
         let git_dir = shell_path(&target.join(".git"))?;
         let target = shell_path(target)?;
-        assert_case(
-            &root, cwd,
-            &format!("git -C {target} -c alias.wipe='!git reset --hard' wipe"),
-            denied, &[],
-        )?;
-        assert_case(
-            &root, cwd,
-            &format!("git --git-dir={git_dir} -c alias.wipe='!git reset --hard' wipe"),
-            denied, &[],
-        )?;
+        for command in [
+            format!("git -C {target} -c alias.wipe='!git reset --hard' wipe"),
+            format!("git --git-dir={git_dir} -c alias.wipe='!git reset --hard' wipe"),
+        ] {
+            assert_case(&root, cwd, &command, denied, &[])?;
+        }
     }
     Ok(())
 }
