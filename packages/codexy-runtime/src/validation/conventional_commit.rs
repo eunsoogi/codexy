@@ -60,10 +60,8 @@ fn is_conventional_prefix(prefix: &str) -> bool {
 }
 
 fn has_marked_reference(summary: &str) -> bool {
-    regex::Regex::new(
-        r"(?i)(?:^|[ \t])(?:#[0-9]+|\([ \t]*#[0-9]+[ \t]*\)|\[#[0-9]+\]|\([ \t]*(?:pr|issue)[ \t]+#[0-9]+[ \t]*\)|(?:pr|issue)[ \t]+#[0-9]+)(?:[.,]|[ \t]|$)",
-    )
-    .is_ok_and(|reference| reference.is_match(summary))
+    regex::Regex::new(r"(?i)(?:^|[ \t(\[])#[0-9]+(?:[^A-Za-z0-9_]|$)")
+        .is_ok_and(|reference| reference.is_match(summary))
 }
 
 fn is_issue_category(value: &str) -> bool {

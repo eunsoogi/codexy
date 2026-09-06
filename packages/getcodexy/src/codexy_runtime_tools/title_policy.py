@@ -8,7 +8,7 @@ import re
 _TYPE = re.compile(r"^[a-z0-9-]+$")
 _SCOPE = re.compile(r"^[a-z0-9_/-]+$")
 _REFERENCE = re.compile(
-    r"(?:^|\s)(?:#[0-9]+|\(\s*#[0-9]+\s*\)|\[#[0-9]+\]|\(\s*(?:pr|issue)\s+#[0-9]+\s*\)|(?:pr|issue)\s+#[0-9]+)(?=$|[\s.,])",
+    r"(?:^|\s|\(|\[)#[0-9]+(?=$|[^A-Za-z0-9_])",
     re.IGNORECASE,
 )
 

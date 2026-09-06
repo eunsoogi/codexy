@@ -23,7 +23,7 @@ has_marked_reference() {
 	printf '%s\n' "$1" | awk '
 {
  lower = tolower($0)
- if (lower ~ /(^|[ \t])((#[0-9]+)|\([ \t]*#[0-9]+[ \t]*\)|\[#[0-9]+\]|\([ \t]*(pr|issue)[ \t]+#[0-9]+[ \t]*\)|(pr|issue)[ \t]+#[0-9]+)([.,]|[ \t]|$)/) exit 0
+ if (lower ~ /(^|[ \t]|\(|\[)#[0-9]+([^[:alnum:]_]|$)/) exit 0
  exit 1
 }'
 }

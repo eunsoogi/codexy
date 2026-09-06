@@ -65,6 +65,7 @@ class GithubPublicChecksTests(unittest.TestCase):
             "feat(task): desc (#900)",
             "feat(task): desc (#900) ",
             "fix(task): resolve #123 before release",
+            "fix(task): resolve #123: before release",
             "feat(task): desc #900",
             "feat(task): desc (PR #926)",
             "feat(task): desc PR #926",

@@ -10,7 +10,7 @@ function Test-InvalidCharacter([string]$value) {
 }
 
 function Test-MarkedReference([string]$value) {
-  return $value -match '(?:^|\s)(?:#[0-9]+|\(\s*#[0-9]+\s*\)|\[#[0-9]+\]|\(\s*(?:pr|issue)\s+#[0-9]+\s*\)|(?:pr|issue)\s+#[0-9]+)(?=$|[\s.,])'
+  return $value -match '(?:^|\s|\(|\[)#[0-9]+(?=$|[^A-Za-z0-9_])'
 }
 
 function Test-ConventionalPrefix([string]$value) {
