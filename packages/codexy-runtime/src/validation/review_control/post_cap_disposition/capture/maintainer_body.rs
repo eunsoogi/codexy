@@ -17,7 +17,7 @@ const OPERATIVE_PREFIXES: [&str; 8] = [
 ];
 const ACCEPTED_PREFIX: &str = "the retained Sentinel's actual ";
 const ACCEPTED_SUFFIX: &str = " execution may stand despite the planned newer model routing. Preserve the actual native reviewer identity, runtime model, verdicts and review count; do not relabel execution or repeat review solely for the model difference.";
-const NON_WAIVER: &str = "This disposition accepts only that model-policy difference for the bound review history. It does not accept code defects, waive CI or review findings, authorize merge, reset review counters, or authorize a fourth review. Future source validation must reread this comment and verify its identity, repository authority and exact scope.";
+const NON_WAIVER: &str = "This disposition accepts only that model-policy difference for the bound review history. It does not accept code defects, waive CI or review findings, authorize merge, reset review counters, or authorize a fourth review. Exact-head CI and the remaining code/source-provenance repair must be independently established. Future source validation must reread this comment and verify its identity, repository authority and exact scope.";
 
 pub(super) fn parse(
     body: &str,
