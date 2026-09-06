@@ -58,9 +58,15 @@ pub(super) fn check_with_repository(
     let legacy_reviewer = policy::legacy_reviewer(current_profile);
     let previous_is_current = previous_reviewer == Some(&current_reviewer);
     let previous_is_legacy = legacy_reviewer.as_ref() == previous_reviewer;
+    let previous_is_native_history = previous_control.contains_key("native_history_recovery");
     if previous_count == 0 {
         check_genesis(plugin_root, previous_control)?;
         check_genesis_snapshot(previous, previous_control)?;
+    } else if previous_is_current && previous_is_native_history {
+        state::check_native_history_predecessor(plugin_root, previous)?;
+        if current.get("nativeHistoryRecovery") != previous.get("nativeHistoryRecovery") {
+            return Err("review control transition must preserve native history recovery".into());
+        }
     } else if previous_is_current {
         state::check_pr_state(plugin_root, previous, false)?;
     } else if previous_is_legacy {

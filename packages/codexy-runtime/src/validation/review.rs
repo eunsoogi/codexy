@@ -71,6 +71,20 @@ pub fn import_pre_pr_review_history(
     review_control::import_pre_pr_history(plugin_root, repository_root, current, envelope)
 }
 
+/// Recovers complete post-PR native review history without admitting readiness.
+///
+/// # Errors
+///
+/// Returns an error for unauthenticated or stale current snapshots, incomplete
+/// source pages, conflicting facts, or an existing review history.
+pub fn recover_native_review_history(
+    plugin_root: &Path,
+    current: &str,
+    input: &str,
+) -> Result<serde_json::Value> {
+    review_control::recover_native_history(plugin_root, current, input)
+}
+
 /// Returns direct review state from the compatibility producer entry point.
 ///
 /// # Errors

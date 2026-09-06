@@ -4,8 +4,12 @@
 //! access. Callers must capture the supported host records first and bind a
 //! separately captured PR snapshot only through bind_current_pr_snapshot.
 
+use std::path::Path;
+
 #[path = "native_history/projection.rs"]
 mod projection;
+#[path = "native_history/recovery.rs"]
+mod recovery;
 #[path = "native_history/source.rs"]
 mod source;
 
@@ -29,4 +33,12 @@ pub(crate) fn bind_current_pr_snapshot(
     snapshot: &serde_json::Value,
 ) -> Result<serde_json::Value, String> {
     projection::bind(receipt, snapshot)
+}
+
+pub(crate) fn recover_text(
+    plugin_root: &Path,
+    current_text: &str,
+    input_text: &str,
+) -> Result<serde_json::Value, String> {
+    recovery::recover_text(plugin_root, current_text, input_text)
 }

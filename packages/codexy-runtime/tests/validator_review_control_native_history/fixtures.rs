@@ -37,6 +37,67 @@ pub(crate) fn current_snapshot(created: u64, head: &str) -> Value {
     })
 }
 
+pub(crate) fn recovery_snapshot() -> Value {
+    let mut current = current_snapshot(50, CURRENT_HEAD);
+    current["reviewProfile"] = json!("strict");
+    current["capture"]["owningIssue"] = json!({
+        "repository": "octo/example",
+        "number": 17,
+        "url": "https://github.com/octo/example/issues/17",
+        "association": "owner-assignment"
+    });
+    current
+}
+
+pub(crate) fn snapshot_with_heads(created: u64, base: &str, head: &str) -> Value {
+    let mut current = recovery_snapshot();
+    current["createdAtEpoch"] = json!(created);
+    current["headRefOid"] = json!(head);
+    current["baseRefOid"] = json!(base);
+    current
+}
+
+pub(crate) fn next_control(
+    recovered: &Value,
+    delta_head: &str,
+    current_head: &str,
+) -> crate::support::TestResult<Value> {
+    let mut control = recovered["reviewControl"].clone();
+    let history = control["terminal_review_history"]
+        .as_array()
+        .cloned()
+        .ok_or("recovered history")?;
+    let mut history = history;
+    history.push(json!({
+        "id": "required-current",
+        "kind": "required_current_head",
+        "reviewer": control["reviewer"].clone(),
+        "reviewed_head": current_head,
+        "terminal_result": "PASS",
+        "unresolved_findings": []
+    }));
+    control["reviewed_head"] = json!(current_head);
+    control["terminal_result"] = json!("PASS");
+    control["unresolved_findings"] = json!([]);
+    control["terminal_review_count"] = json!(3);
+    control["terminal_review_history"] = Value::Array(history);
+    control["post_cap_re_review"] = json!({
+        "reason": "mandatory_base_integration",
+        "prior_reviewed_head": delta_head,
+        "qualifying_change": {
+            "from_head": delta_head,
+            "to_head": current_head,
+            "evidence_commit": current_head,
+            "finding_ids": []
+        }
+    });
+    control
+        .as_object_mut()
+        .ok_or("review control")?
+        .remove("native_history_recovery");
+    Ok(control)
+}
+
 fn owner_pages() -> Vec<Value> {
     let selected = json!({
         "type": "collabAgentToolCall",

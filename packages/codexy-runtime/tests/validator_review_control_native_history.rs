@@ -1,6 +1,6 @@
 use serde_json::{Value, json};
 
-#[path = "../src/validation/review_control/native_history.rs"]
+#[path = "validator_review_control_native_history/pure.rs"]
 mod native_history;
 
 #[path = "validator_review_control_native_history/fixtures.rs"]

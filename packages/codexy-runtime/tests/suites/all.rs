@@ -29,3 +29,9 @@ mod read_batch_identity;
 
 #[path = "../validator_read_batch_bounds.rs"]
 mod read_batch_bounds;
+
+#[path = "../validator_review_control_native_history.rs"]
+mod review_control_native_history;
+
+#[path = "../validator_review_control_native_history_recovery.rs"]
+mod review_control_native_history_recovery;
