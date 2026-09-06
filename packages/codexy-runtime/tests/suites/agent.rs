@@ -126,6 +126,10 @@ mod validator_post_cap_finding_disposition_handoff;
 #[cfg(unix)]
 mod validator_post_cap_finding_disposition_negatives;
 
+#[path = "../validator_post_cap_finding_disposition_preamble_negatives.rs"]
+#[cfg(unix)]
+mod validator_post_cap_finding_disposition_preamble_negatives;
+
 #[path = "../validator_review_control_pre_verdict.rs"]
 #[cfg(unix)]
 mod validator_review_control_pre_verdict;
