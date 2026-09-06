@@ -5,9 +5,12 @@ use serde_json::{Value, json};
 
 #[path = "support/review_control_direct_state.rs"]
 mod direct_state;
+#[path = "validator_pr_state_capture/connector.rs"]
+mod connector;
 
 const BASE_OID: &str = "0000000000000000000000000000000000000001";
 const HEAD_OID: &str = "0000000000000000000000000000000000000002";
+
 #[test]
 fn direct_review_control_accepts_state_without_ceremony() -> TestResult {
     let state = capture(direct_state::strict_control(725, HEAD_OID))?;
@@ -157,6 +160,7 @@ fn capture(control: Value) -> TestResult<Value> {
     );
     Ok(serde_json::from_slice(&fs::read(output)?)?)
 }
+
 fn validate_readiness(control: Value) -> TestResult<std::process::Output> {
     validate_readiness_with(control, "임의의 prose와 순서입니다.\n", json!({}))
 }
@@ -215,6 +219,7 @@ fn state_files(
     )?;
     Ok((base, control_path, previous_path, output))
 }
+
 fn run_capture(
     base: &Path,
     control: &Path,

@@ -2,6 +2,12 @@ use std::collections::HashSet;
 
 use serde_json::{Map, Value};
 
+mod connector;
+#[path = "snapshot/request.rs"]
+mod request;
+
+pub(super) use request::normalize_request_states;
+
 const ISSUE_ASSOCIATIONS: [&str; 3] = [
     "owner-assignment",
     "closing-issue-reference",
@@ -38,18 +44,21 @@ pub(super) fn check(value: &Value, label: &str) -> Result<(), String> {
         .ok_or_else(|| {
             format!("review control {label} PR snapshot must carry capture provenance")
         })?;
-    reject_unknown(
-        capture,
-        &["provider", "method", "authenticated", "owningIssue"],
-        "capture",
-    )?;
     if required_text(capture, "provider", "capture")? != "github"
-        || required_text(capture, "method", "capture")? != "graphql"
         || capture.get("authenticated") != Some(&Value::Bool(true))
     {
         return Err(format!(
-            "review control {label} PR snapshot capture is not authenticated GitHub GraphQL"
+            "review control {label} PR snapshot capture is not authenticated GitHub"
         ));
+    }
+    match required_text(capture, "method", "capture")? {
+        "graphql" => check_graphql_capture(capture, label)?,
+        "connector" => connector::check(capture, object, label)?,
+        _ => {
+            return Err(format!(
+                "review control {label} PR snapshot capture method is unsupported"
+            ));
+        }
     }
     let owning_issue = capture
         .get("owningIssue")
@@ -58,6 +67,36 @@ pub(super) fn check(value: &Value, label: &str) -> Result<(), String> {
             format!("review control {label} PR snapshot capture must carry owning issue identity")
         })?;
     check_owning_issue(owning_issue, repository, label)?;
+    Ok(())
+}
+
+pub(super) fn normalize(value: &Value, label: &str) -> Result<Value, String> {
+    let is_connector = value
+        .get("capture")
+        .and_then(Value::as_object)
+        .and_then(|capture| capture.get("method"))
+        .and_then(Value::as_str)
+        == Some("connector");
+    if is_connector {
+        let normalized = connector::normalize(value, label)?;
+        check(&normalized, label)?;
+        return Ok(normalized);
+    }
+    check(value, label)?;
+    Ok(value.clone())
+}
+
+fn check_graphql_capture(capture: &Map<String, Value>, label: &str) -> Result<(), String> {
+    reject_unknown(
+        capture,
+        &["provider", "method", "authenticated", "owningIssue"],
+        "capture",
+    )?;
+    if required_text(capture, "method", "capture")? != "graphql" {
+        return Err(format!(
+            "review control {label} PR snapshot capture method is unsupported"
+        ));
+    }
     Ok(())
 }
 

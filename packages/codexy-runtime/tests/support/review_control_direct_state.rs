@@ -2,9 +2,13 @@ use serde_json::{Value, json};
 
 #[path = "review_control_direct_state/disposition.rs"]
 mod disposition;
+#[path = "review_control_direct_state/connector.rs"]
+mod connector;
 
 #[allow(unused_imports)]
 pub(crate) use disposition::post_cap_disposition_control;
+#[allow(unused_imports)]
+pub(crate) use connector::{connector_pr_snapshot, connector_pr_snapshot_without_derived};
 
 pub(crate) const SYNTHETIC_BASE: &str = "synthetic-base";
 pub(crate) const SYNTHETIC_UPDATED_BASE: &str = "synthetic-updated-base";
