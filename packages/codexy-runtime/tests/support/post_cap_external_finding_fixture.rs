@@ -51,6 +51,20 @@ pub(crate) fn pr938_response(observed_commit: &str) -> Value {
     }})
 }
 
+pub(crate) fn pr938_response_with_unrelated_reply(observed_commit: &str) -> Value {
+    let mut response = pr938_response(observed_commit);
+    response["data"]["thread"]["comments"]["nodes"]
+        .as_array_mut()
+        .expect("review thread comments")
+        .push(json!({
+            "id":"PRRC_kwDOS6i-_87q4eM1","databaseId":3940672309u64,
+            "url":"https://github.com/eunsoogi/codexy/pull/938#discussion_r3940672309",
+            "author":{"login":"other-reviewer"},"commit":{"oid":observed_commit},
+            "path":"packages/codexy-runtime/src/validation/review_control/state.rs"
+        }));
+    response
+}
+
 fn pr938_projection(observed_commit: &str) -> Value {
     let repository = "eunsoogi/codexy";
     let pull_url = "https://github.com/eunsoogi/codexy/pull/938";

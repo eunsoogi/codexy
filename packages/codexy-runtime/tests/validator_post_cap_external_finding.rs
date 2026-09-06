@@ -22,7 +22,7 @@ const EVIDENCE: &str = direct_state::SYNTHETIC_EXTERNAL_EVIDENCE;
 const FINDING_ID: &str = "github-pr938-discussion-r3940672308";
 
 #[test]
-fn post_cap_re_review_accepts_authenticated_external_finding_repair_after_delta_pass() -> TestResult {
+fn post_cap_re_review_refresh_ignores_unrelated_thread_reply_after_delta_pass() -> TestResult {
     let finding_id = "github-pr938-discussion-r3940672308";
     let mut control = direct_state::post_cap_control_with_findings(
         947,

@@ -1,6 +1,7 @@
 use serde_json::{Map, Value, json};
 
 use super::super::super::pre_pr::{number, object, reject_unknown, text};
+use super::RAW_FIELDS;
 use super::live::Locator;
 
 mod identity;
@@ -11,17 +12,6 @@ use identity::{
 
 #[cfg(test)]
 mod tests;
-
-const RAW_FIELDS: [&str; 8] = [
-    "repository",
-    "owningIssue",
-    "pullRequest",
-    "reviewThread",
-    "reviewComment",
-    "author",
-    "observedCommit",
-    "findings",
-];
 
 pub(super) fn check(
     capture: &Map<String, Value>,
