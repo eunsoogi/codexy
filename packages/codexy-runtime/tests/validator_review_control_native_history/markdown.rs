@@ -2,6 +2,8 @@ use serde_json::{Value, json};
 
 use super::fixtures::{DELTA_HEAD, FULL_HEAD};
 
+const UNICODE_TERMINAL_VALUE: &str = "Terminal verdict: 한국어로 결론이 없고 이전 BLOCK을 인용함";
+
 pub(crate) fn actual_request() -> Value {
     let mut request = super::fixtures::request();
     request["reviewer"]["pages"][0]["turns"][0]["items"] = json!([
@@ -90,12 +92,17 @@ fn unsupported_terminal_values_are_not_substrings() {
 
 #[test]
 fn unicode_terminal_values_fail_closed_without_panicking() {
-    let request = terminal_value_request("Terminal verdict: 한국어로 결론이 없고 이전 BLOCK을 인용함");
-    let result = std::panic::catch_unwind(|| {
-        super::native_history::normalize_native_history(&request)
-    });
+    let request = terminal_value_request(UNICODE_TERMINAL_VALUE);
+    let result = std::panic::catch_unwind(|| normalize(&request));
     let error = super::rejected(result.expect("Unicode terminal value must not panic"));
-    assert!(error.contains("terminal result"), "unexpected error: {error}");
+    assert!(
+        error.contains("terminal result"),
+        "unexpected error: {error}"
+    );
+}
+
+fn normalize(request: &Value) -> Result<Value, String> {
+    super::native_history::normalize_native_history(request)
 }
 
 pub(crate) fn request(crlf: bool) -> Value {
