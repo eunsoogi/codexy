@@ -163,9 +163,7 @@ pub(super) fn select_issue(response: &Value, locator: &Locator) -> Result<Value,
             event.get("event").and_then(Value::as_str) == Some("cross-referenced")
                 && source.get("type").and_then(Value::as_str) == Some("issue")
                 && issue.get("number").and_then(Value::as_u64) == Some(locator.owning_issue)
-                && !issue
-                    .get("pull_request")
-                    .is_some_and(|pull_request| !pull_request.is_null())
+                && issue.get("pull_request").is_none_or(Value::is_null)
         })
         .collect::<Vec<_>>();
     if matches.len() != 1 {
