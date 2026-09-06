@@ -17,8 +17,8 @@ the user explicitly authorizes the supported opt-in.
 
 For several requests in one workspace, agents MUST use the additive `lsp_batch`
 tool. Batches MUST put `root`, `workspaceRoot`, `server`, `timeoutMs`, and an
-optional `deadlineMs` at the batch level; each item MUST supply one full
-`lsp_*` method and `path`. Batches MUST contain at most eight items, MUST use
-one server session, and MUST return one ordered result per item. The batch
-deadline MUST be capped at 60 seconds, and a server failure MUST mark the
-active and remaining items explicitly.
+optional `deadlineMs` at the batch level; each item MUST supply one full `lsp_*`
+method and `path`. Batches MUST contain at most eight items, MUST use one server
+session, and MUST return one ordered result per item. The batch deadline MUST be
+capped at 60 seconds, and a server failure MUST mark the active and remaining
+items explicitly.
