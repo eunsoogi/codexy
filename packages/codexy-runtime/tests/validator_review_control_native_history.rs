@@ -204,6 +204,7 @@ fn actual_host_markdown_without_structured_metadata_is_lossless() -> TestResult 
     assert_eq!(receipt["events"][0]["reviewed_head"], fixtures::FULL_HEAD);
     assert_eq!(receipt["events"][1]["message_id"], "actual-message-delta");
     assert_eq!(receipt["events"][1]["kind"], "delta");
+    assert_eq!(receipt["events"][1]["terminal_result"], "BLOCK");
     assert_eq!(receipt["events"][1]["reviewed_head"], fixtures::DELTA_HEAD);
     for event in receipt["events"].as_array().ok_or("events")? {
         let text = event["raw_text"].as_str().ok_or("raw text")?;

@@ -103,14 +103,24 @@ pub(crate) fn conflicting_finding_labels_request() -> Value {
 }
 
 fn actual_markdown(head: &str, path: &str, label: &str) -> String {
+    let terminal_label = if label == "delta" {
+        "Terminal verdict"
+    } else {
+        "Terminal result"
+    };
     format!(
-        "## Blocking findings\n\n1. **P1 — {label} source issue** — `in_scope_blocker`\n\n[{path}](https://example.test/{path})\n\n## Terminal result\n\n`BLOCK`\n\n- Exact head: `{head}`\n"
+        "## Blocking findings\n\n1. **P1 — {label} source issue** — `in_scope_blocker`\n\n[{path}](https://example.test/{path})\n\n## {terminal_label}\n\n`BLOCK`\n\n- Exact head: `{head}`\n"
     )
 }
 
 fn markdown_text(head: &str, path: &str, model: &str, crlf: bool) -> String {
+    let terminal_label = if path == "src/delta.rs" {
+        "Terminal verdict"
+    } else {
+        "Terminal result"
+    };
     let text = format!(
-        "## Blocking findings — \x60BLOCK\x60\nAt exact PR HEAD \x60{head}\x60.\n\n1. **High — observed code issue** (\x60in_scope_blocker\x60)\n\n[{path}](https://example.test/{path})\n\n- Terminal result: BLOCK\n- Reviewer setting: {model} / medium\n\n2. **Medium — sibling issue (\x60in_scope_blocker\x60).** Same-line prose with (parentheses).\n\n[src/sibling.rs](https://example.test/src/sibling.rs)\n\n> - Terminal result: PASS\n> 1. **High — quoted issue** (\x60in_scope_blocker\x60)\n\n\x60\x60\x60text\n- Terminal result: PASS\n1. **High — fenced issue** (\x60in_scope_blocker\x60)\n\x60\x60\x60\n\n## Non-blocking follow-up\n- **\x60out_of_scope_followup\x60:** [plugins/followup.toml](https://example.test/plugins/followup.toml:3) remains outside this change.\n"
+        "## Blocking findings — \x60BLOCK\x60\nAt exact PR HEAD \x60{head}\x60.\n\n1. **High — observed code issue** (\x60in_scope_blocker\x60)\n\n[{path}](https://example.test/{path})\n\n- {terminal_label}: BLOCK\n- Reviewer setting: {model} / medium\n\n2. **Medium — sibling issue (\x60in_scope_blocker\x60).** Same-line prose with (parentheses).\n\n[src/sibling.rs](https://example.test/src/sibling.rs)\n\n> - Terminal verdict: PASS\n> 1. **High — quoted issue** (\x60in_scope_blocker\x60)\n\n\x60\x60\x60text\n- Terminal verdict: PASS\n1. **High — fenced issue** (\x60in_scope_blocker\x60)\n\x60\x60\x60\n\n## Non-blocking follow-up\n- **\x60out_of_scope_followup\x60:** [plugins/followup.toml](https://example.test/plugins/followup.toml:3) remains outside this change.\n"
     );
     if crlf {
         text.replace('\n', "\r\n")

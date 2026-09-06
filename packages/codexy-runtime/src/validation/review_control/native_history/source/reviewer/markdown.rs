@@ -110,9 +110,10 @@ fn terminal_result(raw: &str) -> Result<Option<Located>, String> {
     let lines = operative_lines(raw);
     for (index, (start, _, line)) in lines.iter().enumerate() {
         let lower = line.trim().to_ascii_lowercase();
+        let has_terminal_label = terminal_label(&lower);
         let value = if lower.starts_with("##") && lower.contains("blocking findings") {
             find_result(line).map(|(result, offset)| (result, *start + offset))
-        } else if lower.contains("terminal result") {
+        } else if has_terminal_label {
             line.split_once(':')
                 .and_then(|(prefix, value)| {
                     find_result(value)
@@ -129,7 +130,7 @@ fn terminal_result(raw: &str) -> Result<Option<Located>, String> {
         } else {
             None
         };
-        if lower.contains("terminal result") && value.is_none() {
+        if has_terminal_label && value.is_none() {
             return Err("markdown terminal result label is invalid".into());
         }
         if let Some((value, offset)) = value {
@@ -142,6 +143,12 @@ fn terminal_result(raw: &str) -> Result<Option<Located>, String> {
         }
     }
     unique(matches, "markdown terminal result")
+}
+
+fn terminal_label(line: &str) -> bool {
+    ["terminal result", "terminal verdict"]
+        .iter()
+        .any(|label| line.contains(label))
 }
 
 fn labelled_sha(line: &str) -> Option<(String, usize)> {
