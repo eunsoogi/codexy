@@ -47,6 +47,8 @@ jobs:
       fail-fast: false
       matrix:
         target: &rust-targets
+          - name: orchestration suite
+            args: --test suite_orchestration
           - name: library and binaries
             args: --lib --bins
           - name: support suite
@@ -55,8 +57,6 @@ jobs:
             args: --test suite_agent
           - name: child suite
             args: --test suite_child
-          - name: orchestration suite
-            args: --test suite_orchestration
           - name: governance suite
             args: --test suite_governance
           - name: governance workflows suite
