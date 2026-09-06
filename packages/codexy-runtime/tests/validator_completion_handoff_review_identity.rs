@@ -5,6 +5,8 @@ use serde_json::{Value, json};
 
 #[path = "support/review_control_direct_state.rs"]
 mod direct_state;
+#[path = "validator_completion_handoff_review_identity/connector.rs"]
+mod connector;
 
 const BASE_OID: &str = "0000000000000000000000000000000000000001";
 const HEAD_OID: &str = "0000000000000000000000000000000000000002";

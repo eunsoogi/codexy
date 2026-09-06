@@ -8,6 +8,8 @@ use super::{history, migration, policy, pre_pr, snapshot};
 mod check;
 #[path = "state/lifecycle.rs"]
 mod lifecycle;
+#[path = "state/native_history.rs"]
+mod native_history;
 
 pub(super) const CONTROL_SCHEMA: &str = "codexy.review-control-state.v1";
 
@@ -41,6 +43,13 @@ pub(super) fn check_control(plugin_root: &Path, control: &Value) -> Result<(), S
     )
 }
 
+pub(super) fn check_native_history_predecessor(
+    plugin_root: &Path,
+    state: &Value,
+) -> Result<(), String> {
+    native_history::check_predecessor(plugin_root, state)
+}
+
 #[derive(Clone, Copy)]
 enum ReviewerMode {
     Current,
@@ -58,6 +67,18 @@ pub(super) fn check_pr_state(
     state: &Value,
     require_pass: bool,
 ) -> Result<(), String> {
+    if state
+        .get("reviewControl")
+        .and_then(Value::as_object)
+        .is_some_and(|control| control.contains_key("native_history_recovery"))
+    {
+        return Err("native history recovery is not eligible for current PR admission".into());
+    }
+    if let Some(control) = state.get("reviewControl").and_then(Value::as_object) {
+        if control.contains_key("native_history_provenance") {
+            native_history::check_provenance(state, control)?;
+        }
+    }
     check::with_mode(
         plugin_root,
         state,

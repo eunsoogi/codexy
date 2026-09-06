@@ -31,8 +31,8 @@ pub(super) fn check(
             "next-review eligibility requires a finding disposition locator".to_owned()
         })?;
 
-    snapshot::check(&previous, "previous")?;
-    snapshot::check(&current, "current")?;
+    let previous = snapshot::normalize(&previous, "previous")?;
+    let current = snapshot::normalize(&current, "current")?;
     if current.get("reviewControl").is_some() {
         return Err("current PR snapshot must not carry reviewControl".into());
     }
