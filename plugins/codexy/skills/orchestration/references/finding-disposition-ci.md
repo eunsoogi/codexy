@@ -25,5 +25,5 @@ future jobs. The source may claim only `registered_check_runs` and registered
 check-suite coverage; it MUST NOT invent a universal expected-job list.
 
 The producer MUST derive finding IDs, paths, and kinds from the authenticated
-prior delta, reject caller-supplied source, capture, classification, or IDs,
-and reread both source families at producer, build, and completion-handoff.
+prior delta, reject caller-supplied source, capture, classification, or IDs, and
+reread both source families at producer, build, and completion-handoff.

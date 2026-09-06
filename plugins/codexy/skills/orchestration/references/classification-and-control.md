@@ -224,20 +224,20 @@ is provenance and MUST NOT replace the target `reviewControl.issue_number`. For
 `authenticated_finding_disposition`, the base OID MUST remain unchanged, the
 prior delta MUST be `BLOCK` with non-empty findings, and the producer MUST cover
 every prior finding exactly once through a locator-only
-`authenticated_finding_disposition_locator` request. Its exact authenticated
-CI and maintainer-source contract is defined in [authenticated
-finding-disposition CI](finding-disposition-ci.md). The producer MUST derive
-IDs, paths, and kinds from the prior authenticated delta, reject caller-supplied
-source, capture, classification, or IDs, and reread both sources at producer,
-build, and handoff.
-Disposition classification MUST come from each retained finding's semantic kind,
-not its path: a `ci_incomplete_observation` resolves through CI, the policy
-finding through the maintainer decision, and a source defect—including one under
-the workflow directory—through an evidence diff; at least one code repair MUST
-remain. This source MUST NOT waive code, CI, review, merge, or quota
-requirements. In all four cases, the evidence commit MUST descend from the prior
-delta and precede the current head; repair evidence MUST change the reviewed
-tree. Arbitrary JSON agreement is not authenticated readback authority.
+`authenticated_finding_disposition_locator` request. Its exact authenticated CI
+and maintainer-source contract is defined in
+[authenticated finding-disposition CI](finding-disposition-ci.md). The producer
+MUST derive IDs, paths, and kinds from the prior authenticated delta, reject
+caller-supplied source, capture, classification, or IDs, and reread both sources
+at producer, build, and handoff. Disposition classification MUST come from each
+retained finding's semantic kind, not its path: a `ci_incomplete_observation`
+resolves through CI, the policy finding through the maintainer decision, and a
+source defect—including one under the workflow directory—through an evidence
+diff; at least one code repair MUST remain. This source MUST NOT waive code, CI,
+review, merge, or quota requirements. In all four cases, the evidence commit
+MUST descend from the prior delta and precede the current head; repair evidence
+MUST change the reviewed tree. Arbitrary JSON agreement is not authenticated
+readback authority.
 
 Light retains its existing no-reviewer route and MUST NOT carry terminal review
 history or post-cap fields. A third `BLOCK` or `UNOBSERVABLE` remains a terminal
