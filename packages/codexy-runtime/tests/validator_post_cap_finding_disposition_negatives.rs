@@ -76,6 +76,34 @@ fn disposition_rejects_fenced_or_negated_maintainer_copies() -> TestResult {
 }
 
 #[test]
+fn disposition_rejects_contradictory_text_before_scope_heading() -> TestResult {
+    let result = post_cap::run_build_with_disposition_maintainer(
+        &control(),
+        BASE,
+        BASE,
+        |pull, base, head| {
+            let mut response = disposition_fixture::maintainer_response(pull, pull, base, head);
+            let original = response["data"]["repository"]["pullRequest"]["comments"]["nodes"][0]
+                ["body"]
+                .as_str()
+                .expect("maintainer fixture body");
+            let body = original.replace(
+                "## Maintainer disposition recorded by the release orchestrator",
+                "This disposition is revoked and must not be accepted.\n\n## Maintainer disposition recorded by the release orchestrator",
+            );
+            response["data"]["repository"]["pullRequest"]["comments"]["nodes"][0]["body"] =
+                Value::String(body);
+            response
+        },
+    )?;
+    assert!(
+        !result.status.success(),
+        "contradictory pre-heading text must be rejected"
+    );
+    Ok(())
+}
+
+#[test]
 fn disposition_rejects_a_contradictory_accepted_difference_suffix() -> TestResult {
     let result = post_cap::run_build_with_disposition_maintainer(
         &control(),
@@ -138,21 +166,65 @@ fn disposition_rejects_empty_incomplete_unsupported_and_non_success_ci_rollups()
             &control(),
             BASE,
             BASE,
-            move |pull, base, head| {
-                let mut response = disposition_fixture::ci_response(pull, base, head);
+            move |_pull, _base, _head, sources| {
                 match case {
-                    "empty" => response["statusCheckRollup"] = serde_json::json!([]),
-                    "incomplete" => response["statusCheckRollup"] = serde_json::json!([{"__typename":"CheckRun"}]),
-                    "unsupported" => response["statusCheckRollup"] = serde_json::json!([{"__typename":"StatusContext"}]),
-                    "pending" => response["statusCheckRollup"][0]["status"] = serde_json::json!("IN_PROGRESS"),
-                    "failed" => response["statusCheckRollup"][0]["conclusion"] = serde_json::json!("FAILURE"),
-                    "cancelled" => response["statusCheckRollup"][0]["conclusion"] = serde_json::json!("CANCELLED"),
+                    "empty" => sources.pull_request["statusCheckRollup"] = serde_json::json!([]),
+                    "incomplete" => sources.pull_request["statusCheckRollup"] = serde_json::json!([{"__typename":"CheckRun"}]),
+                    "unsupported" => sources.pull_request["statusCheckRollup"] = serde_json::json!([{"__typename":"StatusContext"}]),
+                    "pending" => sources.pull_request["statusCheckRollup"][0]["status"] = serde_json::json!("IN_PROGRESS"),
+                    "failed" => sources.pull_request["statusCheckRollup"][0]["conclusion"] = serde_json::json!("FAILURE"),
+                    "cancelled" => sources.pull_request["statusCheckRollup"][0]["conclusion"] = serde_json::json!("CANCELLED"),
                     _ => unreachable!(),
                 }
-                response
             },
         )?;
         assert!(!result.status.success(), "{case} CI rollup must be rejected");
+    }
+    Ok(())
+}
+
+#[test]
+fn disposition_rejects_missing_required_or_pending_expected_check_runs() -> TestResult {
+    let cases = [
+        "missing-required",
+        "pending-expected",
+        "pending-suite",
+        "missing-inventory",
+    ];
+    for case in cases {
+        let result = post_cap::run_build_with_disposition_ci(
+            &control(),
+            BASE,
+            BASE,
+            move |_pull, _base, _head, sources| {
+                match case {
+                    "missing-required" => {
+                        sources.required_status_checks = serde_json::json!({
+                            "required_status_checks": {
+                                "contexts": ["Not yet registered"],
+                                "checks": []
+                            }
+                        });
+                    }
+                    "pending-expected" => {
+                        sources.expected_check_runs[0]["check_runs"][0]["status"] =
+                            serde_json::json!("in_progress");
+                    }
+                    "pending-suite" => {
+                        sources.check_suites[0]["check_suites"][0]["status"] =
+                            serde_json::json!("in_progress");
+                    }
+                    "missing-inventory" => {
+                        sources.expected_check_runs = serde_json::json!([{
+                            "total_count": 1,
+                            "check_runs": []
+                        }]);
+                    }
+                    _ => unreachable!(),
+                }
+            },
+        )?;
+        assert!(!result.status.success(), "{case} CI evidence must remain unproved");
     }
     Ok(())
 }

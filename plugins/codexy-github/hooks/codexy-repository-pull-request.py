@@ -14,6 +14,8 @@ TOOLS = frozenset(
     {
         "mcp__codex_apps__github_create_pull_request",
         "mcp__codex_apps__github_update_pull_request",
+        "github.create_pull_request",
+        "github.update_pull_request",
     }
 )
 

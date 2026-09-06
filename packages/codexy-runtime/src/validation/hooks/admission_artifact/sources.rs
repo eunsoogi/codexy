@@ -54,6 +54,7 @@ pub(super) const POLICY_SOURCES: &[Source] = &[
     source!("codexy_policy/destructive_command.py"),
     source!("codexy_policy/body.py"),
     source!("codexy_policy/connector.py"),
+    source!("codexy_policy/connector_operation.py"),
     source!("codexy_policy/execution_context.py"),
     source!("codexy_policy/execution_context_types.py"),
     source!("codexy_policy/execution_filesystem.py"),

@@ -37,7 +37,8 @@
     "privacyPolicyURL": "https://github.com/eunsoogi/codexy",
     "termsOfServiceURL": "https://github.com/eunsoogi/codexy/blob/main/LICENSE",
     "defaultPrompt": [
-      "Use $developer-tools for optional local Codegraph and LSP work when Codexy Devtools is installed."
+      "Use $codegraph for optional local repository search and dependency navigation when Codexy Devtools is installed.",
+      "Use $lsp for optional language-aware diagnostics, symbols, definitions, references, and bounded batches."
     ],
     "brandColor": "#2F6F5E",
     "composerIcon": "./assets/codexy-devtools-icon.png",

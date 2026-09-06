@@ -10,8 +10,12 @@ MUST turn each completion claim into observable evidence.
    response for API; visible state for browser or desktop; repository state for
    GitHub; parser, frontmatter, schema, structured dump, package validator, and
    installed invocation for plugin/configuration work.
-3. Run automated checks first, then drive every user-visible or externally
-   observable surface directly.
+3. MUST run automated checks that cover the changed or claimed requirements
+   first. MUST drive each user-visible or externally observable surface actually
+   changed or claimed, using the channel required by that surface; a CLI
+   behavior claim requires real CLI execution, while a documentation-only
+   correction does not require installing unrelated components. MUST preserve
+   authentic evidence and report cleanup and failures.
 4. Bind PASS to the exact file state or head and account for temporary files,
    ports, sessions, screenshots, traces, and worktrees.
 

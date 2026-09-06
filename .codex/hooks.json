@@ -14,7 +14,7 @@
         ]
       },
       {
-        "matcher": "^mcp__codex_apps__github_(create|update)_pull_request$",
+        "matcher": "^(?:mcp__codex_apps__github_(create|update)_pull_request|github\\.(create|update)_pull_request)$",
         "hooks": [
           {
             "type": "command",
@@ -60,7 +60,7 @@
         ]
       },
       {
-        "matcher": "^mcp__codex_apps__github_(create|update)_pull_request$",
+        "matcher": "^(?:mcp__codex_apps__github_(create|update)_pull_request|github\\.(create|update)_pull_request)$",
         "hooks": [
           {
             "type": "command",

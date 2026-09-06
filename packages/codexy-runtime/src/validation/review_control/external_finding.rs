@@ -54,7 +54,10 @@ pub(super) fn normalize_producer(control: &mut Value, source: &Value) -> Result<
                 "external finding repair requires qualifying change evidence".to_owned()
             })?;
         if let Some(existing) = change.get("external_finding") {
-            if existing != source {
+            check(existing)?;
+            let existing = object(Some(existing), "existing authenticated external finding")?;
+            let source = object(Some(source), "authenticated external finding")?;
+            if capture::compare_projection(existing, source).is_err() {
                 return Err("external finding source changes during producer normalization".into());
             }
         }

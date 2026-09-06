@@ -2,6 +2,7 @@ from pathlib import Path
 import re
 from typing import Any
 
+from .connector_operation import operation
 from .merge import positive_int
 from .repository import github_identity, repository_identity, repository_policy_status
 from .titles import issue_title, pr_title
@@ -14,11 +15,10 @@ READ_OPERATIONS = frozenset(
 def connector_admitted(tool: str, data: dict[str, Any], cwd: object) -> bool:
     if not isinstance(cwd, str) or not Path(cwd).is_absolute():
         return False
-    operation = tool.rsplit("github_", 1)[-1]
-    return operation in READ_OPERATIONS or (
+    return operation(tool) in READ_OPERATIONS or (
         repository_policy_status(cwd) is not None
         and _owned(data, cwd)
-        and _eligible(operation, data)
+        and _eligible(operation(tool), data)
     )
 
 

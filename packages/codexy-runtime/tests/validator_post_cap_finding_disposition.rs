@@ -32,6 +32,41 @@ fn mixed_delta_block_admits_one_authenticated_finding_disposition() -> TestResul
             .map(Vec::len),
         Some(3)
     );
+    let ci = &state["reviewControl"]["post_cap_re_review"]["qualifying_change"]
+        ["finding_disposition"]["sources"]["currentHeadCi"];
+    assert_eq!(ci["requiredStatusChecks"]["state"], "known_empty");
+    assert_eq!(ci["expectedCheckRuns"]["coverage"], "registered_check_runs");
+    assert_eq!(ci["checkSuites"].as_array().map(Vec::len), Some(1));
+    Ok(())
+}
+
+#[test]
+fn disposition_accepts_a_bounded_preamble_without_release_specific_wording() -> TestResult {
+    let control = disposition_control();
+    let result = post_cap::run_build_with_disposition_maintainer(
+        &control,
+        BASE,
+        BASE,
+        |pull, base, head| {
+            let mut response = disposition_fixture::maintainer_response(pull, pull, base, head);
+            let original = response["data"]["repository"]["pullRequest"]["comments"]["nodes"][0]
+                ["body"]
+                .as_str()
+                .expect("maintainer fixture body");
+            let body = original.replace(
+                "planned 1.7.0 specialist routing",
+                "planned reviewer routing",
+            );
+            response["data"]["repository"]["pullRequest"]["comments"]["nodes"][0]["body"] =
+                serde_json::Value::String(body);
+            response
+        },
+    )?;
+    assert!(
+        result.status.success(),
+        "bounded non-version-specific preamble must remain accepted: {}",
+        String::from_utf8_lossy(&result.stderr)
+    );
     Ok(())
 }
 

@@ -1,6 +1,6 @@
 use std::fs;
 
-use crate::support::{FixtureCommand, TestResult, make_executable};
+use crate::support::{FixtureCommand, TestResult};
 
 #[path = "support/review_control_direct_state.rs"]
 mod direct_state;
@@ -35,31 +35,22 @@ fn completion_handoff_refreshes_current_and_changed_live_disposition_sources() -
     fs::write(&state_path, serde_json::to_vec(&state)?)?;
     fs::write(&handoff_path, "PASS on the exact current head.\n")?;
 
-    let ci_path = temporary.path().join("ci-response.json");
-    let maintainer_path = temporary.path().join("maintainer-response.json");
-    fs::write(
-        &ci_path,
-        serde_json::to_vec(&disposition_fixture::ci_response(
-            issue,
-            &current_base,
-            &current_head,
-        ))?,
-    )?;
-    fs::write(
-        &maintainer_path,
-        serde_json::to_vec(&disposition_fixture::maintainer_response(
-            issue,
-            issue,
-            &current_base,
-            &current_head,
-        ))?,
+    let sources = disposition_fixture::ci_sources(issue, &current_base, &current_head);
+    let maintainer = disposition_fixture::maintainer_response(
+        issue,
+        issue,
+        &current_base,
+        &current_head,
+    );
+    let fixture = disposition_fixture::write_gh_fixture(
+        temporary.path(),
+        &sources,
+        &maintainer,
     )?;
     let current = run_completion_handoff(
-        &temporary,
         &handoff_path,
         &state_path,
-        &ci_path,
-        &maintainer_path,
+        &fixture,
     )?;
     assert!(
         current.status.success(),
@@ -73,11 +64,9 @@ fn completion_handoff_refreshes_current_and_changed_live_disposition_sources() -
         serde_json::json!("current_head_ci_terminal");
     fs::write(&state_path, serde_json::to_vec(&tampered)?)?;
     let rejected = run_completion_handoff(
-        &temporary,
         &handoff_path,
         &state_path,
-        &ci_path,
-        &maintainer_path,
+        &fixture,
     )?;
     assert!(!rejected.status.success());
     assert!(
@@ -85,31 +74,26 @@ fn completion_handoff_refreshes_current_and_changed_live_disposition_sources() -
     );
     fs::write(&state_path, serde_json::to_vec(&state)?)?;
 
-    let mut changed_ci = disposition_fixture::ci_response(issue, &current_base, &current_head);
+    let mut changed_ci = sources.pull_request.clone();
     changed_ci["headRefOid"] = serde_json::json!("0000000000000000000000000000000000000000");
-    fs::write(&ci_path, serde_json::to_vec(&changed_ci)?)?;
+    fs::write(&fixture.ci, serde_json::to_vec(&changed_ci)?)?;
     let changed = run_completion_handoff(
-        &temporary,
         &handoff_path,
         &state_path,
-        &ci_path,
-        &maintainer_path,
+        &fixture,
     )?;
     assert!(!changed.status.success(), "changed live CI source must be rejected");
     assert!(
         String::from_utf8_lossy(&changed.stderr).contains("sources disagree")
-            || String::from_utf8_lossy(&changed.stderr).contains("stale"),
+            || String::from_utf8_lossy(&changed.stderr).contains("stale")
+            || String::from_utf8_lossy(&changed.stderr).contains("different head"),
         "changed source diagnostic must be explicit: {}",
         String::from_utf8_lossy(&changed.stderr)
     );
 
     fs::write(
-        &ci_path,
-        serde_json::to_vec(&disposition_fixture::ci_response(
-            issue,
-            &current_base,
-            &current_head,
-        ))?,
+        &fixture.ci,
+        serde_json::to_vec(&sources.pull_request)?,
     )?;
     let mut rewritten_reviewer = state.clone();
     rewritten_reviewer["reviewControl"]["terminal_review_history"][1]["reviewer"]["model"] =
@@ -120,11 +104,9 @@ fn completion_handoff_refreshes_current_and_changed_live_disposition_sources() -
         .remove("reviewer_migration");
     fs::write(&state_path, serde_json::to_vec(&rewritten_reviewer)?)?;
     let rewritten = run_completion_handoff(
-        &temporary,
         &handoff_path,
         &state_path,
-        &ci_path,
-        &maintainer_path,
+        &fixture,
     )?;
     assert!(
         !rewritten.status.success(),
@@ -147,11 +129,9 @@ fn completion_handoff_refreshes_current_and_changed_live_disposition_sources() -
     wrong_base["baseRefOid"] = serde_json::json!(updated_base);
     fs::write(&state_path, serde_json::to_vec(&wrong_base)?)?;
     let wrong_base_result = run_completion_handoff(
-        &temporary,
         &handoff_path,
         &state_path,
-        &ci_path,
-        &maintainer_path,
+        &fixture,
     )?;
     assert!(
         !wrong_base_result.status.success(),
@@ -167,26 +147,10 @@ fn completion_handoff_refreshes_current_and_changed_live_disposition_sources() -
 }
 
 fn run_completion_handoff(
-    temporary: &tempfile::TempDir,
     handoff: &std::path::Path,
     state: &std::path::Path,
-    ci_response: &std::path::Path,
-    maintainer_response: &std::path::Path,
+    fixture: &disposition_fixture::GhFixture,
 ) -> TestResult<std::process::Output> {
-    let bin = temporary.path().join("bin");
-    if !bin.exists() {
-        fs::create_dir(&bin)?;
-        let gh = bin.join("gh");
-        fs::write(
-            &gh,
-            "#!/bin/sh\nif [ \"$1\" = \"pr\" ]; then cat \"$CODEXY_TEST_CI_RESPONSE\"; else cat \"$CODEXY_TEST_MAINTAINER_RESPONSE\"; fi\n",
-        )?;
-        make_executable(&gh)?;
-    }
-    let mut paths = vec![bin];
-    if let Some(path) = std::env::var_os("PATH") {
-        paths.extend(std::env::split_paths(&path));
-    }
     let mut command = FixtureCommand::new(env!("CARGO_BIN_EXE_codexy-validate"));
     command
         .args(["--check-completion-handoff", "--handoff-file"])
@@ -195,9 +159,12 @@ fn run_completion_handoff(
         .arg_path(state)
         .args(["--plugin-root"])
         .arg_path(codexy_runtime::paths::repository_root().join("plugins/codexy"))
-        .env_path_list("PATH", paths)
-        .env_path("CODEXY_TEST_CI_RESPONSE", ci_response)
-        .env_path("CODEXY_TEST_MAINTAINER_RESPONSE", maintainer_response);
+        .env_path_list("PATH", fixture.path.clone())
+        .env_path("CODEXY_TEST_CI_RESPONSE", &fixture.ci)
+        .env_path("CODEXY_TEST_REQUIRED_STATUS_RESPONSE", &fixture.required)
+        .env_path("CODEXY_TEST_EXPECTED_CHECKS_RESPONSE", &fixture.expected)
+        .env_path("CODEXY_TEST_CHECK_SUITES_RESPONSE", &fixture.suites)
+        .env_path("CODEXY_TEST_MAINTAINER_RESPONSE", &fixture.maintainer);
     Ok(command.output()?)
 }
 

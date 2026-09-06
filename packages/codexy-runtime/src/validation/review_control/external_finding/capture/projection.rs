@@ -1,6 +1,7 @@
 use serde_json::{Map, Value, json};
 
 use super::super::super::pre_pr::{number, object, reject_unknown, text};
+use super::RAW_FIELDS;
 use super::live::Locator;
 
 mod identity;
@@ -9,16 +10,8 @@ use identity::{
     relative_path,
 };
 
-const RAW_FIELDS: [&str; 8] = [
-    "repository",
-    "owningIssue",
-    "pullRequest",
-    "reviewThread",
-    "reviewComment",
-    "author",
-    "observedCommit",
-    "findings",
-];
+#[cfg(test)]
+mod tests;
 
 pub(super) fn check(
     capture: &Map<String, Value>,
@@ -113,7 +106,7 @@ pub(super) fn project_response(
     if !nodes
         .iter()
         .filter_map(Value::as_object)
-        .any(|node| node.get("number").and_then(Value::as_u64) == Some(locator.owning_issue))
+        .any(|node| check_issue_identity(node, locator).is_ok())
     {
         return Err("authenticated GitHub owning issue is not a closing PR reference".into());
     }

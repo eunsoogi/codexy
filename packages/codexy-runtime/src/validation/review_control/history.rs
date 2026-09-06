@@ -56,7 +56,7 @@ pub(super) fn check(
         return Err("review control state reviewer migration has conflicting directions".into());
     }
     if let Some(boundary) = context.legacy_history_boundary {
-        if boundary == 0 || boundary >= history.len() {
+        if boundary == 0 || boundary > history.len() {
             return Err("review control state reviewer migration boundary is invalid".into());
         }
     }

@@ -7,6 +7,8 @@ use helpers::{assert_connector_case, corrupt_foreign_input};
 mod helpers;
 #[path = "connector_inputs/nested_exec.rs"]
 mod nested_exec;
+#[path = "connector_inputs/title_policy.rs"]
+mod title_policy;
 
 #[test]
 fn connector_inputs_require_owned_repository_and_reject_unknown_fields() -> TestResult {

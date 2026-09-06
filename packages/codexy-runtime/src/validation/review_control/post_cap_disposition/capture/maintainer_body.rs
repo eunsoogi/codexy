@@ -17,7 +17,16 @@ const OPERATIVE_PREFIXES: [&str; 8] = [
 ];
 const ACCEPTED_PREFIX: &str = "the retained Sentinel's actual ";
 const ACCEPTED_SUFFIX: &str = " execution may stand despite the planned newer model routing. Preserve the actual native reviewer identity, runtime model, verdicts and review count; do not relabel execution or repeat review solely for the model difference.";
-const NON_WAIVER: &str = "This disposition accepts only that model-policy difference for the bound review history. It does not accept code defects, waive CI or review findings, authorize merge, reset review counters, or authorize a fourth review. Future source validation must reread this comment and verify its identity, repository authority and exact scope.";
+const NON_WAIVER: &str = "This disposition accepts only that model-policy difference for the bound review history. It does not accept code defects, waive CI or review findings, authorize merge, reset review counters, or authorize a fourth review. Exact-head CI and the remaining code/source-provenance repair must be independently established. Future source validation must reread this comment and verify its identity, repository authority and exact scope.";
+const PREAMBLE_TITLE: &str = "## Maintainer disposition recorded by the release orchestrator";
+const PREAMBLE_START: &str =
+    "This records the maintainer's existing instruction in the release conversation: ";
+const PREAMBLE_SUBJECT_PREFIX: &str =
+    "differences between the actually used specialist models and the planned ";
+const PREAMBLE_SUBJECT_SUFFIX: &str = " routing";
+const PREAMBLE_END: &str = " are accepted for this milestone.";
+const PREAMBLE_ATTRIBUTION: &str =
+    " The orchestrator is recording that instruction, not obtaining or inventing a new approval.";
 
 pub(super) fn parse(
     body: &str,
@@ -39,6 +48,7 @@ pub(super) fn parse(
     let [heading] = headings.as_slice() else {
         return Err("maintainer decision body must contain one bounded disposition section".into());
     };
+    check_preamble(&lines[..*heading])?;
     let mut end = heading + 1;
     while end < lines.len() && !lines[end].is_empty() {
         if !lines[end].starts_with("- ")
@@ -150,4 +160,38 @@ fn line<'a>(lines: &[&'a str], prefix: &str) -> Result<&'a str, String> {
 
 fn is_oid(value: &str) -> bool {
     value.len() == 40 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+fn check_preamble(lines: &[&str]) -> Result<(), String> {
+    if lines.len() != 4
+        || lines[0] != PREAMBLE_TITLE
+        || !lines[1].is_empty()
+        || !lines[3].is_empty()
+    {
+        return Err(
+            "maintainer decision body contains an unsupported or contradictory preamble".into(),
+        );
+    }
+    let statement = lines[2]
+        .strip_prefix(PREAMBLE_START)
+        .and_then(|line| line.strip_suffix(PREAMBLE_ATTRIBUTION))
+        .and_then(|line| line.strip_suffix(PREAMBLE_END))
+        .filter(|line| !line.is_empty() && line.len() <= 512)
+        .ok_or("maintainer decision body contains an unsupported or contradictory preamble")?;
+    statement
+        .strip_prefix(PREAMBLE_SUBJECT_PREFIX)
+        .and_then(|value| value.strip_suffix(PREAMBLE_SUBJECT_SUFFIX))
+        .filter(|value| is_route_descriptor(value))
+        .ok_or("maintainer decision body contains an unsupported or contradictory preamble")?;
+    Ok(())
+}
+
+fn is_route_descriptor(value: &str) -> bool {
+    !value.is_empty()
+        && value.split(' ').all(|token| {
+            !token.is_empty()
+                && token
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'_'))
+        })
 }

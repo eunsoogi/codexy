@@ -9,6 +9,13 @@ evidence, omissions, follow-ups, and issue linkage without prescribing a
 repository-independent heading order. Keep a PR draft while proof or known risk
 is incomplete.
 
+The PR title MUST use `type(scope): description`, with a nonempty valid scope
+and a nonempty description. An optional breaking marker goes after the scope:
+`feat(task)!: change behavior`. The PR title MUST NOT include an issue or PR
+number. The squash subject MUST be the validated PR title followed by one ASCII
+space and `(#<actual PR number>)`. It MUST be added only after the captured PR
+title has passed validation.
+
 If selected review occurred before PR creation, the owning child MUST locally
 verify one complete pre-PR import envelope and publish the Draft PR before the
 first selected review for this lifecycle. The envelope MUST preserve the real

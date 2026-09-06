@@ -5,7 +5,7 @@ query($owner:String!, $name:String!, $pullRequest:Int!, $owningIssue:Int!, $revi
       url
       repository { nameWithOwner }
       closingIssuesReferences(first:100) {
-        nodes { number url }
+        nodes { number url repository { nameWithOwner } }
         pageInfo { hasNextPage }
       }
     }
