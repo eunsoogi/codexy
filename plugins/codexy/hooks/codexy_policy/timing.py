@@ -63,7 +63,7 @@ def _append(path: Path, line: bytes) -> None:
             before = _lstat(path)
         else:
             parent_descriptor = _open_parent(path)
-            before = _lstat_at(parent_descriptor, path.name)
+            before = _lstat(path, parent_descriptor)
         if before is not None and not _private_writable_file(before):
             return
         flags = os.O_WRONLY | os.O_APPEND
@@ -166,7 +166,7 @@ def _windows_create_file(path: Path, *, directory: bool, create: bool) -> int:
 
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     kernel32.CreateFileW.restype = ctypes.c_void_p
-    access, flags = (0x80, 0x2200000) if directory else (0x84, 0x200000)
+    access, flags = (0x80, 0x2200000) if directory else (0x40000000, 0x200000)
     name = ctypes.c_wchar_p(str(path))
     handle = kernel32.CreateFileW(name, access, 3, None, int(create) or 3, flags, None)
     if handle == ctypes.c_void_p(-1).value:
@@ -190,16 +190,11 @@ def _real_directory(path: Path) -> bool:
     return True
 
 
-def _lstat(path: Path) -> os.stat_result | None:
+def _lstat(path: Path, parent_descriptor: int | None = None) -> os.stat_result | None:
     try:
-        return os.lstat(path)
-    except FileNotFoundError:
-        return None
-
-
-def _lstat_at(parent_descriptor: int, name: str) -> os.stat_result | None:
-    try:
-        return os.stat(name, dir_fd=parent_descriptor, follow_symlinks=False)
+        if parent_descriptor is None:
+            return os.lstat(path)
+        return os.stat(path.name, dir_fd=parent_descriptor, follow_symlinks=False)
     except FileNotFoundError:
         return None
 
@@ -209,23 +204,16 @@ def _private_writable_file(details: os.stat_result) -> bool:
     if not stat.S_ISREG(mode) or details.st_nlink != 1:
         return False
     if os.name == "nt":
-        return bool(mode & stat.S_IWRITE) and not _windows_reparse(details)
+        return bool(mode & stat.S_IWRITE) and not bool(
+            getattr(details, "st_file_attributes", 0) & 0x400
+        )
     return stat.S_IMODE(mode) & 0o077 == 0 and bool(mode & stat.S_IWUSR)
-
-
-def _windows_reparse(details: os.stat_result) -> bool:
-    return os.name == "nt" and bool(getattr(details, "st_file_attributes", 0) & 0x400)
 
 
 def _try_lock(descriptor: int):
     if os.name == "nt":
         try:
-            import msvcrt
-
-            _ = os.lseek(descriptor, 0, os.SEEK_SET)
-            msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
-            _ = os.lseek(descriptor, 0, os.SEEK_END)
-            return msvcrt
+            return _try_windows_lock(descriptor)
         except (ImportError, OSError):
             return False
     try:
@@ -237,13 +225,25 @@ def _try_lock(descriptor: int):
         return False
 
 
+def _try_windows_lock(descriptor: int):
+    import ctypes
+    import msvcrt
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    lock_file = kernel32.LockFile
+    lock_file.argtypes = [ctypes.c_void_p] + [ctypes.c_uint32] * 4
+    lock_file.restype = ctypes.c_int
+    handle = ctypes.c_void_p(msvcrt.get_osfhandle(descriptor))
+    return (kernel32, handle) if lock_file(handle, 0, 0, MAX_BYTES, 0) else False
+
+
 def _unlock(descriptor: int, lock) -> None:
-    if lock is not None and lock is not False:
-        try:
-            if os.name == "nt":
-                _ = os.lseek(descriptor, 0, os.SEEK_SET)
-                lock.locking(descriptor, lock.LK_UNLCK, 1)
-            else:
-                lock.flock(descriptor, lock.LOCK_UN)
-        except OSError:
-            pass
+    if lock in (None, False):
+        return
+    try:
+        if os.name == "nt":
+            lock[0].UnlockFile(lock[1], 0, 0, MAX_BYTES, 0)
+        else:
+            lock.flock(descriptor, lock.LOCK_UN)
+    except OSError:
+        pass
