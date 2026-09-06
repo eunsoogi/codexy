@@ -1,11 +1,12 @@
-from __future__ import annotations
-
+from contextlib import contextmanager
+import importlib.util
 import json
 import os
 import shutil
 import stat
 import subprocess
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -44,37 +45,16 @@ class CoreHookTimingTests(unittest.TestCase):
             timing.unlink()
             target = plugin.parent.resolve() / "timing.jsonl"
             for stem, tool, tool_input, _ in CASES:
-                result = self._run(
-                    plugin,
-                    self._launcher(stem),
-                    _payload("PreToolUse", tool, tool_input),
-                )
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(result.stdout, b"")
-                self.assertEqual(result.stderr, b"")
+                self._assert_success(self._run_case(plugin, stem, tool, tool_input))
             self.assertFalse(target.exists())
 
-    def test_enabled_real_launcher_preserves_allow_deny_and_allowed_fields(
-        self,
-    ) -> None:
+    def test_enabled_real_launcher_preserves_allow_deny_and_fields(self) -> None:
         with self._candidate() as plugin:
             target = plugin.parent.resolve() / "timing with spaces.jsonl"
             for stem, tool, tool_input, concern in CASES:
-                allowed = self._run(
-                    plugin,
-                    self._launcher(stem),
-                    _payload("PreToolUse", tool, tool_input),
-                    target,
-                )
-                self.assertEqual(allowed.returncode, 0, allowed.stderr)
-                self.assertEqual(allowed.stdout, b"")
-                self.assertEqual(allowed.stderr, b"")
-                denied = self._run(
-                    plugin,
-                    self._launcher(stem),
-                    _payload("PreToolUse", "wrong_tool", {}),
-                    target,
-                )
+                allowed = self._run_case(plugin, stem, tool, tool_input, target)
+                self._assert_success(allowed)
+                denied = self._run_case(plugin, stem, "wrong_tool", {}, target)
                 self.assertEqual(denied.returncode, 0, denied.stderr)
                 self.assertEqual(denied.stderr, b"")
                 self.assertEqual(
@@ -105,15 +85,8 @@ class CoreHookTimingTests(unittest.TestCase):
             target = directory / "unwritable.jsonl"
             target.write_bytes(b"seed")
             target.chmod(0o400)
-            result = self._run(
-                plugin,
-                self._launcher("codexy-thread-delivery"),
-                _payload(
-                    "PreToolUse",
-                    "mcp__codex_app__send_message_to_thread",
-                    CASES[0][2],
-                ),
-                target,
+            result = self._run_case(
+                plugin, CASES[0][0], CASES[0][1], CASES[0][2], target
             )
             self.assertEqual(result.stdout, b"")
             self.assertEqual(target.read_bytes(), b"seed")
@@ -123,12 +96,7 @@ class CoreHookTimingTests(unittest.TestCase):
             real.write_bytes(b"")
             real.chmod(0o600)
             link.symlink_to(real)
-            denied = self._run(
-                plugin,
-                self._launcher("codexy-thread-delivery"),
-                _payload("PreToolUse", "wrong_tool", {}),
-                link,
-            )
+            denied = self._run_case(plugin, CASES[0][0], "wrong_tool", {}, link)
             self.assertEqual(denied.returncode, 0)
             self.assertTrue(link.is_symlink())
             self.assertEqual(real.read_bytes(), b"")
@@ -136,22 +104,64 @@ class CoreHookTimingTests(unittest.TestCase):
             full = directory / "full.jsonl"
             full.write_bytes(b"x" * MAX_BYTES)
             full.chmod(0o600)
-            complete = self._run(
-                plugin,
-                self._launcher("codexy-thread-delivery"),
-                _payload(
-                    "PreToolUse",
-                    "mcp__codex_app__send_message_to_thread",
-                    CASES[0][2],
-                ),
-                full,
+            complete = self._run_case(
+                plugin, CASES[0][0], CASES[0][1], CASES[0][2], full
             )
             self.assertEqual(complete.stdout, b"")
             self.assertEqual(full.stat().st_size, MAX_BYTES)
 
-    def test_payload_cannot_select_target_and_enabled_overhead_is_measured(
-        self,
-    ) -> None:
+    @unittest.skipUnless(os.name != "nt", "POSIX descriptor and locking semantics")
+    def test_ancestor_swap_and_serialized_writers_are_safe(self) -> None:
+        with self._candidate() as plugin:
+            directory = plugin.parent.resolve()
+            parent = directory / "race-parent"
+            held = directory / "held-parent"
+            replacement = directory / "replacement-parent"
+            parent.mkdir()
+            replacement.mkdir()
+            target = parent / "records.jsonl"
+            timing = self._timing(plugin)
+            original = timing._real_directory
+
+            def swap_after_check(path: Path) -> bool:
+                allowed = original(path)
+                if allowed:
+                    parent.rename(held)
+                    parent.symlink_to(replacement, target_is_directory=True)
+                return allowed
+
+            setattr(timing, "_real_directory", swap_after_check)
+            timing._append(target, b"race\n")
+            self.assertFalse((replacement / target.name).exists())
+            self.assertFalse((held / target.name).exists())
+            setattr(timing, "_real_directory", original)
+            target = plugin.parent.resolve() / "near-cap.jsonl"
+            target.write_bytes(b"x" * (MAX_BYTES - 2))
+            target.chmod(0o600)
+            barrier = threading.Barrier(2)
+            lock = threading.Lock()
+
+            def acquire(_descriptor: int):
+                barrier.wait()
+                lock.acquire()
+                return lock
+
+            def release(_descriptor: int, held) -> None:
+                held.release()
+
+            setattr(timing, "_try_lock", acquire)
+            setattr(timing, "_unlock", release)
+            writers = [
+                threading.Thread(target=timing._append, args=(target, b"xx"))
+                for _ in range(2)
+            ]
+            for writer in writers:
+                writer.start()
+            for writer in writers:
+                writer.join()
+            self.assertEqual(target.stat().st_size, MAX_BYTES)
+
+    def test_payload_path_and_enabled_overhead(self) -> None:
         with self._candidate() as plugin:
             directory = plugin.parent.resolve()
             target = directory / "trusted.jsonl"
@@ -161,37 +171,45 @@ class CoreHookTimingTests(unittest.TestCase):
                 TIMING_ENV: str(attacker),
             }
             off_start = time.perf_counter_ns()
-            off = self._run(
-                plugin,
-                self._launcher("codexy-thread-delivery"),
-                _payload("PreToolUse", CASES[0][1], tool_input),
-            )
+            off = self._run_case(plugin, CASES[0][0], CASES[0][1], tool_input)
             off_elapsed = time.perf_counter_ns() - off_start
             on_start = time.perf_counter_ns()
-            on = self._run(
-                plugin,
-                self._launcher("codexy-thread-delivery"),
-                _payload("PreToolUse", CASES[0][1], tool_input),
-                target,
-            )
+            on = self._run_case(plugin, CASES[0][0], CASES[0][1], tool_input, target)
             on_elapsed = time.perf_counter_ns() - on_start
-            self.assertEqual(off.stdout, b"")
-            self.assertEqual(on.stdout, b"")
-            self.assertEqual(off.stderr, b"")
-            self.assertEqual(on.stderr, b"")
+            self._assert_success(off)
+            self._assert_success(on)
             self.assertGreater(off_elapsed, 0)
             self.assertGreater(on_elapsed, 0)
             self.assertTrue(target.is_file())
             self.assertFalse(attacker.exists())
 
+    @contextmanager
     def _candidate(self):
-        temporary = tempfile.TemporaryDirectory(prefix="codexy-hook-timing ")
-        plugin = Path(temporary.name) / "codexy"
-        shutil.copytree(PLUGIN, plugin)
-        return _TemporaryPlugin(temporary, plugin)
+        with tempfile.TemporaryDirectory(prefix="codexy-hook-timing ") as temporary:
+            plugin = Path(temporary) / "codexy"
+            shutil.copytree(PLUGIN, plugin)
+            yield plugin
 
-    def _launcher(self, stem: str) -> str:
-        return f"{stem}.{'cmd' if os.name == 'nt' else 'sh'}"
+    def _timing(self, plugin: Path):
+        path = plugin / "hooks/codexy_policy/timing.py"
+        spec = importlib.util.spec_from_file_location("candidate_timing", path)
+        assert spec is not None and spec.loader is not None
+        timing = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(timing)
+        return timing
+
+    def _assert_success(self, result) -> None:
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((result.stdout, result.stderr), (b"", b""))
+
+    def _run_case(self, plugin, stem, tool, tool_input, timing_file=None):
+        launcher = f"{stem}.{'cmd' if os.name == 'nt' else 'sh'}"
+        return self._run(
+            plugin,
+            launcher,
+            _payload("PreToolUse", tool, tool_input),
+            timing_file,
+        )
 
     def _run(
         self,
@@ -206,35 +224,20 @@ class CoreHookTimingTests(unittest.TestCase):
         if timing_file is not None:
             environment[TIMING_ENV] = str(timing_file)
         path = plugin / "hooks" / launcher
-        command = [str(path), "PreToolUse"]
-        if os.name == "nt":
-            command = [
+        command = (
+            [str(path), "PreToolUse"]
+            if os.name != "nt"
+            else [
                 os.environ.get("COMSPEC", "cmd.exe"),
                 "/d",
                 "/s",
                 "/c",
                 f'"{path}" PreToolUse',
             ]
-        return subprocess.run(
-            command,
-            input=payload,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=environment,
-            check=False,
         )
-
-
-class _TemporaryPlugin:
-    def __init__(self, temporary: tempfile.TemporaryDirectory, plugin: Path):
-        self.temporary = temporary
-        self.plugin = plugin
-
-    def __enter__(self) -> Path:
-        return self.plugin
-
-    def __exit__(self, *exc_info) -> None:
-        self.temporary.cleanup()
+        return subprocess.run(
+            command, input=payload, capture_output=True, env=environment, check=False
+        )
 
 
 def _payload(event: str, tool: str, tool_input: dict[str, object]) -> bytes:
