@@ -149,6 +149,10 @@ pub(super) fn produce(
         || request
             .get("authenticated_external_finding_capture")
             .is_some()
+        || request.get("authenticated_actions_finding").is_some()
+        || request
+            .get("authenticated_actions_finding_capture")
+            .is_some()
         || request.get("authenticated_finding_disposition").is_some()
         || request
             .get("authenticated_finding_disposition_capture")
@@ -159,10 +163,16 @@ pub(super) fn produce(
             "review control producer rejects caller-supplied external finding source or capture; provide authenticated_external_finding_locator"
         );
     }
-    if let Some(locator) = request.get("authenticated_external_finding_locator") {
-        let expected_commit = request::qualifying_change_from_head(&control).map(ToOwned::to_owned);
-        let source = external_finding::read_live(locator, expected_commit.as_deref())
-            .map_err(anyhow::Error::msg)?;
+    let graphql_locator = request.get("authenticated_external_finding_locator");
+    let actions_locator = request.get("authenticated_actions_finding_locator");
+    let expected_commit = request::qualifying_change_from_head(&control).map(ToOwned::to_owned);
+    let source = external_finding::read_from_locators(
+        graphql_locator,
+        actions_locator,
+        expected_commit.as_deref(),
+    )
+    .map_err(anyhow::Error::msg)?;
+    if let Some(source) = source {
         external_finding::normalize_producer(&mut control, &source).map_err(anyhow::Error::msg)?;
     } else if let Some(locator) = request.get("authenticated_finding_disposition_locator") {
         let current = request.get("current_pr_state").ok_or_else(|| {

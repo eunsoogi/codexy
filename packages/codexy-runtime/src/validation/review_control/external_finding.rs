@@ -7,7 +7,7 @@ use super::pre_pr::{number, object, reject_unknown, text};
 mod capture;
 mod producer;
 
-pub(super) use producer::{read_live, refresh_live};
+pub(super) use producer::{read_actions_live, read_live, refresh_live};
 
 pub(super) const REASON: &str = "authenticated_external_finding_repair";
 
@@ -32,6 +32,22 @@ pub(super) fn requires_source(control: &Value) -> bool {
         .and_then(|post_cap| post_cap.get("reason"))
         .and_then(Value::as_str)
         == Some(REASON)
+}
+
+pub(super) fn read_from_locators(
+    graphql: Option<&Value>,
+    actions: Option<&Value>,
+    expected_commit: Option<&str>,
+) -> Result<Option<Value>, String> {
+    match (graphql, actions) {
+        (Some(_), Some(_)) => Err(
+            "review control producer requires exactly one authenticated external finding locator"
+                .into(),
+        ),
+        (Some(locator), None) => read_live(locator, expected_commit).map(Some),
+        (None, Some(locator)) => read_actions_live(locator, expected_commit).map(Some),
+        (None, None) => Ok(None),
+    }
 }
 
 pub(super) fn normalize_producer(control: &mut Value, source: &Value) -> Result<(), String> {
@@ -92,6 +108,7 @@ pub(super) fn check(value: &Value) -> Result<Facts, String> {
             "repository",
             "owningIssue",
             "pullRequest",
+            "source",
             "reviewThread",
             "reviewComment",
             "author",
@@ -131,31 +148,6 @@ pub(super) fn check(value: &Value) -> Result<Facts, String> {
     {
         return Err("external finding pull request URL is not canonical".into());
     }
-    let pull_url = text(pull_request, "url", "external finding pull request")?;
-
-    let thread = object(source.get("reviewThread"), "external finding review thread")?;
-    reject_unknown(thread, &["id", "url"], "external finding review thread")?;
-    text(thread, "id", "external finding review thread")?;
-    let comment = object(
-        source.get("reviewComment"),
-        "external finding review comment",
-    )?;
-    reject_unknown(
-        comment,
-        &["id", "databaseId", "url"],
-        "external finding review comment",
-    )?;
-    text(comment, "id", "external finding review comment")?;
-    let database_id = number(comment, "databaseId", "external finding review comment")?;
-    if database_id == 0 {
-        return Err("external finding review comment databaseId is invalid".into());
-    }
-    let expected_comment_url = format!("{pull_url}#discussion_r{database_id}");
-    if text(comment, "url", "external finding review comment")? != expected_comment_url
-        || text(thread, "url", "external finding review thread")? != expected_comment_url
-    {
-        return Err("external finding review identity is not bound to its canonical URL".into());
-    }
     text(source, "author", "authenticated external finding")?;
     let observed_commit = text(source, "observedCommit", "authenticated external finding")?;
     if observed_commit.len() != 40 || !observed_commit.bytes().all(|byte| byte.is_ascii_hexdigit())
@@ -174,7 +166,7 @@ pub(super) fn check(value: &Value) -> Result<Facts, String> {
         let finding = object(Some(finding), "authenticated external finding record")?;
         reject_unknown(
             finding,
-            &["id", "path"],
+            &["id", "path", "test", "exception", "line"],
             "authenticated external finding record",
         )?;
         let id = text(finding, "id", "authenticated external finding record")?;
