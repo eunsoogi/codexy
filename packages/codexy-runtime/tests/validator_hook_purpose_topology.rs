@@ -29,13 +29,25 @@ fn packaged_hooks_are_lifecycle_quiet() -> Result<(), Box<dyn std::error::Error>
 }
 
 #[test]
-fn validator_rejects_an_unaccounted_safe_lifecycle_hook() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_rejects_unaccounted_lifecycle_and_duplicate_bindings()
+-> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = lifecycle_quiet_fixture(temp.path())?;
 
     let output = validate_hooks(&plugin_root)?;
     assert!(!output.status.success());
     assert!(output_text(&output).contains("only the two preventive concern events"));
+    for duplicate in [false, true] {
+        let temp = tempfile::tempdir()?;
+        let plugin_root = temp.path().join("codexy");
+        copy_plugin(&plugin_root)?;
+        let hooks_path = plugin_root.join("hooks/hooks.json");
+        let mut hooks = read_hooks(&hooks_path)?;
+        let groups = hooks["hooks"]["PreToolUse"].as_array_mut().ok_or("groups")?;
+        if duplicate { groups[1] = groups[0].clone(); } else { groups.pop(); }
+        std::fs::write(hooks_path, serde_json::to_string_pretty(&hooks)?)?;
+        assert!(!validate_hooks(&plugin_root)?.status.success(), "accepted binding mutation");
+    }
     Ok(())
 }
 

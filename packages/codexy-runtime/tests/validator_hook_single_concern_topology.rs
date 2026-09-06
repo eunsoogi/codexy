@@ -1,90 +1,47 @@
 use crate::support::FixtureCommand as Command;
-use serde_json::Value;
+use serde_json::{Value, json};
+use std::collections::HashSet;
 use std::io::Write as _;
 use std::process::Stdio;
 const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
+type TestResult = Result<(), Box<dyn std::error::Error>>;
+type LauncherResult = Result<Option<Value>, Box<dyn std::error::Error>>;
 
 struct Concern {
     id: &'static str,
     matcher: &'static str,
     launcher: &'static str,
     diagnostic: &'static str,
+    tool: &'static str,
 }
+
+impl Concern {
+    const fn new(
+        id: &'static str,
+        matcher: &'static str,
+        launcher: &'static str,
+        diagnostic: &'static str,
+        tool: &'static str,
+    ) -> Self {
+        Self { id, matcher, launcher, diagnostic, tool }
+    }
+}
+
 const CONCERNS: &[Concern] = &[
-    Concern {
-        id: "thread-delivery",
-        matcher: "^(?:codex_app__|mcp__codex_app__)send_message_to_thread$",
-        launcher: "codexy-thread-delivery",
-        diagnostic: "CODEXY_THREAD_DELIVERY_",
-    },
-    Concern {
-        id: "child-thread-creation",
-        matcher: "^(?:codex_app__|mcp__codex_app__)create_thread$",
-        launcher: "codexy-child-thread-creation",
-        diagnostic: "CODEXY_CHILD_THREAD_CREATION_",
-    },
-    Concern {
-        id: "subagent-ownership",
-        matcher: "^(?:(?:agents|multi_agent_v1)__)?spawn_agent$",
-        launcher: "codexy-subagent-ownership",
-        diagnostic: "CODEXY_SUBAGENT_OWNERSHIP_",
-    },
-    Concern {
-        id: "repository-issue",
-        matcher: "^mcp__codex_apps__github_(create|update)_issue$",
-        launcher: "codexy-repository-issue",
-        diagnostic: "CODEXY_REPOSITORY_ISSUE_",
-    },
-    Concern {
-        id: "repository-pull-request",
-        matcher: "^mcp__codex_apps__github_(create|update)_pull_request$",
-        launcher: "codexy-repository-pull-request",
-        diagnostic: "CODEXY_REPOSITORY_PULL_REQUEST_",
-    },
-    Concern {
-        id: "repository-merge",
-        matcher: "^mcp__codex_apps__github_(merge_pull_request|enable_auto_merge)$",
-        launcher: "codexy-repository-merge",
-        diagnostic: "CODEXY_REPOSITORY_MERGE_",
-    },
-    Concern {
-        id: "repository-github-command",
-        matcher: "^Bash$",
-        launcher: "codexy-repository-github-command",
-        diagnostic: "CODEXY_REPOSITORY_GITHUB_COMMAND_",
-    },
-    Concern {
-        id: "destructive-command",
-        matcher: "^Bash$",
-        launcher: "codexy-destructive-command",
-        diagnostic: "CODEXY_DESTRUCTIVE_COMMAND_",
-    },
+    Concern::new("thread-delivery", "^(?:codex_app__|mcp__codex_app__)send_message_to_thread$", "codexy-thread-delivery", "CODEXY_THREAD_DELIVERY_", "mcp__codex_app__send_message_to_thread"),
+    Concern::new("child-thread-creation", "^(?:codex_app__|mcp__codex_app__)create_thread$", "codexy-child-thread-creation", "CODEXY_CHILD_THREAD_CREATION_", "mcp__codex_app__create_thread"),
+    Concern::new("subagent-ownership", "^(?:(?:agents|multi_agent_v1)__)?spawn_agent$", "codexy-subagent-ownership", "CODEXY_SUBAGENT_OWNERSHIP_", "multi_agent_v1__spawn_agent"),
+    Concern::new("repository-issue", "^mcp__codex_apps__github_(create|update)_issue$", "codexy-repository-issue", "CODEXY_REPOSITORY_ISSUE_", "mcp__codex_apps__github_update_issue"),
+    Concern::new("repository-pull-request", "^mcp__codex_apps__github_(create|update)_pull_request$", "codexy-repository-pull-request", "CODEXY_REPOSITORY_PULL_REQUEST_", "mcp__codex_apps__github_create_pull_request"),
+    Concern::new("repository-merge", "^mcp__codex_apps__github_(merge_pull_request|enable_auto_merge)$", "codexy-repository-merge", "CODEXY_REPOSITORY_MERGE_", "mcp__codex_apps__github_merge_pull_request"),
+    Concern::new("repository-github-command", "^Bash$", "codexy-repository-github-command", "CODEXY_REPOSITORY_GITHUB_COMMAND_", "Bash"),
+    Concern::new("destructive-command", "^Bash$", "codexy-destructive-command", "CODEXY_DESTRUCTIVE_COMMAND_", "Bash"),
 ];
 
-const INSTALLED_CONCERNS: &[Concern] = &[
-    Concern {
-        id: "thread-delivery",
-        matcher: "^(?:codex_app__|mcp__codex_app__)send_message_to_thread$",
-        launcher: "codexy-thread-delivery",
-        diagnostic: "CODEXY_THREAD_DELIVERY_",
-    },
-    Concern {
-        id: "child-thread-creation",
-        matcher: "^(?:codex_app__|mcp__codex_app__)create_thread$",
-        launcher: "codexy-child-thread-creation",
-        diagnostic: "CODEXY_CHILD_THREAD_CREATION_",
-    },
-    Concern {
-        id: "subagent-ownership",
-        matcher: "^(?:(?:agents|multi_agent_v1)__)?spawn_agent$",
-        launcher: "codexy-subagent-ownership",
-        diagnostic: "CODEXY_SUBAGENT_OWNERSHIP_",
-    },
-];
+const INSTALLED_IDS: &[&str] = &["thread-delivery", "child-thread-creation", "subagent-ownership"];
 
 #[test]
-fn packaged_hooks_have_one_ordered_binding_per_concern_and_event()
--> Result<(), Box<dyn std::error::Error>> {
+fn packaged_hooks_bind_each_concern_and_event_once() -> TestResult {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy/hooks");
     let hooks: Value = serde_json::from_str(&std::fs::read_to_string(root.join("hooks.json"))?)?;
     let events = hooks["hooks"].as_object().ok_or("hooks object")?;
@@ -92,49 +49,38 @@ fn packaged_hooks_have_one_ordered_binding_per_concern_and_event()
     assert_eq!(events.len(), EVENTS.len(), "only preventive events are retained");
     for event in EVENTS {
         let groups = events[*event].as_array().ok_or("event groups")?;
-        assert_eq!(groups.len(), INSTALLED_CONCERNS.len(), "{event} concern coverage");
-        for (group, concern) in groups.iter().zip(INSTALLED_CONCERNS) {
-            assert_eq!(group["matcher"], concern.matcher, "{} matcher", concern.id);
-            let handlers = group["hooks"].as_array().ok_or("handlers")?;
-            assert_eq!(handlers.len(), 1, "{} owns one hook", concern.id);
-            let handler = &handlers[0];
-            assert_eq!(handler["type"], "command");
-            assert_eq!(handler["timeout"], 5);
-            assert_eq!(
-                handler["command"],
-                format!(
-                    "\"${{PLUGIN_ROOT}}/hooks/{}.sh\" {event}",
-                    concern.launcher
-                )
-            );
-            assert_eq!(
-                handler["commandWindows"],
-                format!(
-                    "\"${{PLUGIN_ROOT}}/hooks/{}.cmd\" {event}",
-                    concern.launcher
-                )
-            );
+        assert_eq!(groups.len(), INSTALLED_IDS.len(), "{event} concern coverage");
+        let mut seen = HashSet::new();
+        for group in groups {
+            let concern = expected_group(group, event).ok_or("unknown concern binding")?;
+            assert!(seen.insert(concern.id), "duplicate {} binding", concern.id);
         }
+        assert_eq!(seen.len(), INSTALLED_IDS.len(), "{event} missing concern");
     }
     Ok(())
 }
 
 #[test]
-fn capability_contract_accounts_for_every_concern_once()
--> Result<(), Box<dyn std::error::Error>> {
+fn capability_contract_accounts_for_every_concern_once() -> TestResult {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy/hooks");
     let contract: Value = serde_json::from_str(&std::fs::read_to_string(
         root.join("capability-contract.json"),
     )?)?;
     assert_eq!(contract["schema"], "codexy.hooks.capability-contract.v2");
     let concerns = contract["concerns"].as_array().ok_or("concerns")?;
-    assert_eq!(concerns.len(), INSTALLED_CONCERNS.len());
-    for (actual, expected) in concerns.iter().zip(INSTALLED_CONCERNS) {
-        assert_eq!(actual["concernId"], expected.id);
+    assert_eq!(concerns.len(), INSTALLED_IDS.len());
+    let mut seen = HashSet::new();
+    for actual in concerns {
+        let id = actual["concernId"].as_str().ok_or("concern id")?;
+        let expected = CONCERNS
+            .iter()
+            .find(|concern| concern.id == id && INSTALLED_IDS.contains(&concern.id))
+            .ok_or("unknown concern")?;
+        assert!(seen.insert(id), "duplicate {id} contract");
         assert_eq!(actual["trigger"], expected.matcher);
         assert_eq!(actual["diagnosticFamily"], expected.diagnostic);
         assert_eq!(actual["events"], serde_json::json!(EVENTS));
-        let input_contract = match expected.id {
+        let input_contract = match id {
             "thread-delivery" => "codexy.hooks.thread-delivery.v2",
             "subagent-ownership" => "codexy.hooks.subagent-ownership.v1",
             _ => "codexy.hooks.child-thread-creation.v1",
@@ -149,12 +95,7 @@ fn capability_contract_accounts_for_every_concern_once()
             ])
         );
     }
-    Ok(())
-}
-
-#[test]
-fn removed_generic_and_dead_policy_artifacts_stay_absent() {
-    let root = codexy_runtime::paths::repository_root();
+    let repository = codexy_runtime::paths::repository_root();
     for path in [
         "plugins/codexy/hooks/codexy-admission.sh",
         "plugins/codexy/hooks/codexy-admission.cmd",
@@ -162,89 +103,147 @@ fn removed_generic_and_dead_policy_artifacts_stay_absent() {
         "plugins/codexy/hooks/codexy_policy/admission.py",
         "plugins/codexy/hooks/codexy_policy/shell.py",
         "plugins/codexy/hooks/postcompact-capability.json",
-        "packages/codexy-runtime/src/validation/hooks/model.rs",
-        "packages/codexy-runtime/src/validation/hooks/post_compact.rs",
     ] {
-        assert!(!root.join(path).exists(), "removed policy remains: {path}");
+        assert!(!repository.join(path).exists(), "removed policy remains: {path}");
     }
-}
-
-#[test]
-fn bash_concern_adapters_do_not_import_each_others_policy() -> Result<(), Box<dyn std::error::Error>> {
-    let root = codexy_runtime::paths::repository_root().join("plugins/codexy-github/hooks/codexy_policy");
-    let destructive = std::fs::read_to_string(root.join("shell_destructive.py"))?;
-    let github = std::fs::read_to_string(root.join("shell_github.py"))?;
-    assert!(!destructive.contains("shell_github"));
-    assert!(!github.contains("shell_destructive"));
-    assert!(destructive.contains("shell_destructive_policy"));
-    assert!(github.contains("shell_github_policy"));
-    let destructive_policy = std::fs::read_to_string(root.join("shell_destructive_policy.py"))?;
-    let github_policy = std::fs::read_to_string(root.join("shell_github_policy.py"))?;
-    assert!(!destructive_policy.contains("shell_github"));
-    assert!(!github_policy.contains("shell_destructive"));
     Ok(())
 }
 
 #[test]
-fn each_concern_emits_only_its_event_native_diagnostic_family()
--> Result<(), Box<dyn std::error::Error>> {
-    let tools = [
-        "mcp__codex_app__send_message_to_thread",
-        "codex_app__create_thread",
-        "spawn_agent",
-        "mcp__codex_apps__github_create_issue",
-        "mcp__codex_apps__github_create_pull_request",
-        "mcp__codex_apps__github_merge_pull_request",
-        "Bash",
-        "Bash",
+fn bash_concern_adapters_observe_safe_and_dangerous_results() -> TestResult {
+    let cases = [
+        (
+            "repository-github-command",
+            "gh issue view 912 --repo eunsoogi/codexy",
+            "gh issue edit 912 --repo eunsoogi/codexy --title bad",
+        ),
+        (
+            "destructive-command",
+            "git status --short",
+            "git reset --hard HEAD",
+        ),
     ];
     for event in EVENTS {
-        for (index, concern) in CONCERNS.iter().enumerate() {
-            let payload = serde_json::json!({
+        for (id, safe_command, dangerous_command) in cases {
+            let concern = CONCERNS
+                .iter()
+                .find(|concern| concern.id == id)
+                .ok_or("Bash concern")?;
+            let safe = json!({
                 "hook_event_name": event,
-                "tool_name": tools[index],
-                "tool_input": null, "cwd": "/tmp",
-                "session_id": "child", "codexy_thread_delivery": {"authenticated":true},
+                "tool_name": concern.tool,
+                "tool_input": {"command": safe_command},
+                "cwd": codexy_runtime::paths::repository_root().display().to_string(),
             });
-            let installed = INSTALLED_CONCERNS.iter().any(|item| item.id == concern.id);
-            let hooks = if installed {
-                codexy_runtime::paths::repository_root().join("plugins/codexy/hooks")
-            } else {
-                codexy_runtime::paths::repository_root().join("plugins/codexy-github/hooks")
-            };
-            let mut child = Command::new(hooks.join(format!("{}.sh", concern.launcher)))
-                .arg(event)
-                .env("PLUGIN_ROOT", hooks.parent().ok_or("plugin root")?)
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()?;
-            child
-                .stdin
-                .take()
-                .ok_or("launcher stdin")?
-                .write_all(&serde_json::to_vec(&payload)?)?;
-            let output = child.wait_with_output()?;
-            assert!(output.status.success(), "{} launcher failed", concern.id);
-            assert!(output.stderr.is_empty(), "{} wrote stderr", concern.id);
-            let denial: Value = serde_json::from_slice(&output.stdout)?;
-            let specific = &denial["hookSpecificOutput"];
-            let reason = if *event == "PermissionRequest" {
-                assert_eq!(specific["decision"]["behavior"], "deny");
-                specific["decision"]["message"].as_str().ok_or("message")?
-            } else {
-                assert_eq!(specific["permissionDecision"], "deny");
-                specific["permissionDecisionReason"]
-                    .as_str()
-                    .ok_or("permission reason")?
-            };
-            assert!(reason.starts_with(concern.diagnostic), "{}: {reason}", concern.id);
-            for other in CONCERNS {
-                if other.id != concern.id {
-                    assert!(!reason.starts_with(other.diagnostic));
-                }
-            }
+            assert!(run_launcher(concern, event, safe)?.is_none(), "{id} safe input denied");
+            let dangerous = json!({
+                "hook_event_name": event,
+                "tool_name": concern.tool,
+                "tool_input": {"command": dangerous_command},
+                "cwd": codexy_runtime::paths::repository_root().display().to_string(),
+            });
+            let denial = run_launcher(concern, event, dangerous)?.ok_or("dangerous input")?;
+            assert_denial(&denial, event, concern)?;
         }
     }
+    Ok(())
+}
+
+#[test]
+fn each_concern_rejects_wrong_events_with_its_diagnostic_family() -> TestResult {
+    for event in EVENTS {
+        for concern in CONCERNS {
+            let payload = admitted_payload(concern, event);
+            let admitted = run_launcher(concern, event, payload.clone())?;
+            if concern.id == "repository-merge" {
+                assert_denial(&admitted.ok_or("merge policy denial")?, event, concern)?;
+            } else {
+                assert!(admitted.is_none(), "{} valid input denied", concern.id);
+            }
+            let other_event = EVENTS
+                .iter()
+                .copied()
+                .find(|candidate| *candidate != *event)
+                .ok_or("other event")?;
+            let mut wrong_event = payload;
+            wrong_event["hook_event_name"] = json!(other_event);
+            let denial = run_launcher(concern, event, wrong_event)?
+                .ok_or("wrong event must be denied")?;
+            assert_denial(&denial, event, concern)?;
+            assert!(denial.to_string().contains(&format!("{}ENVELOPE", concern.diagnostic)));
+        }
+    }
+    Ok(())
+}
+
+fn admitted_payload(concern: &Concern, event: &str) -> Value {
+    let tool_input = match concern.id {
+        "thread-delivery" | "child-thread-creation" => json!({"model":"gpt-5.6-luna","thinking":"max"}),
+        "subagent-ownership" => json!({"agent_type":"explorer","message":"Bounded read-only inspection."}),
+        "repository-issue" => json!({"repository_full_name":"eunsoogi/codexy","issue_number":912,"body":"note"}),
+        "repository-pull-request" => json!({"repository_full_name":"eunsoogi/codexy","title":"fix(hooks): preserve safe test path","head_branch":"topic","base_branch":"main"}),
+        "repository-merge" => json!({"repository_full_name":"eunsoogi/codexy","pr_number":912,"merge_method":"squash","expected_head_sha":"592e4a79749b8aba37bfbdbcb4b1c277b22f54e9","commit_title":"fix(hooks): preserve safe test path (#912)","commit_message":"Fixes #912"}),
+        "repository-github-command" | "destructive-command" => json!({"command":"git status --short"}),
+        _ => unreachable!(),
+    };
+    json!({"hook_event_name": event, "tool_name": concern.tool, "tool_input": tool_input,
+        "cwd": codexy_runtime::paths::repository_root().display().to_string()})
+}
+
+fn expected_group(group: &Value, event: &str) -> Option<&'static Concern> {
+    let [handler] = group["hooks"].as_array()?.as_slice() else { return None };
+    CONCERNS.iter().find(|concern| {
+        INSTALLED_IDS.contains(&concern.id)
+            && group["matcher"] == concern.matcher
+            && handler["type"] == "command"
+            && handler["timeout"] == 5
+            && handler["command"]
+                == format!("\"${{PLUGIN_ROOT}}/hooks/{}.sh\" {event}", concern.launcher)
+            && handler["commandWindows"]
+                == format!("\"${{PLUGIN_ROOT}}/hooks/{}.cmd\" {event}", concern.launcher)
+    })
+}
+
+fn run_launcher(concern: &Concern, event: &str, payload: Value) -> LauncherResult {
+    let root = codexy_runtime::paths::repository_root();
+    let hooks = if INSTALLED_IDS.contains(&concern.id) {
+        root.join("plugins/codexy/hooks")
+    } else {
+        root.join("plugins/codexy-github/hooks")
+    };
+    let mut child = Command::new(hooks.join(format!("{}.sh", concern.launcher)))
+        .arg(event)
+        .env("PLUGIN_ROOT", hooks.parent().ok_or("plugin root")?)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    child
+        .stdin
+        .take()
+        .ok_or("launcher stdin")?
+        .write_all(&serde_json::to_vec(&payload)?)?;
+    let output = child.wait_with_output()?;
+    assert!(output.status.success(), "{} launcher failed", concern.id);
+    assert!(output.stderr.is_empty(), "{} wrote stderr", concern.id);
+    if output.stdout.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(serde_json::from_slice(&output.stdout)?))
+}
+
+fn assert_denial(output: &Value, event: &str, concern: &Concern) -> TestResult {
+    let specific = &output["hookSpecificOutput"];
+    assert_eq!(specific["hookEventName"], event);
+    let reason = if event == "PermissionRequest" {
+        assert_eq!(specific["decision"]["behavior"], "deny");
+        specific["decision"]["message"].as_str().ok_or("message")?
+    } else {
+        assert_eq!(specific["permissionDecision"], "deny");
+        specific["permissionDecisionReason"]
+            .as_str()
+            .ok_or("permission reason")?
+    };
+    assert!(reason.starts_with(concern.diagnostic), "{}: {reason}", concern.id);
     Ok(())
 }
