@@ -19,8 +19,13 @@ fn nested_exec_github_mutations_use_the_repository_admission_route() -> TestResu
         ),
         (
             "valid nested PR",
-            r#"await tools.mcp__codex_apps__github_create_pull_request({repository_full_name:"eunsoogi/codexy", title:"fix(hooks): create nested PR safely", head_branch:"topic", base_branch:"main"});"#,
+            r###"await tools.mcp__codex_apps__github_create_pull_request({repository_full_name:"eunsoogi/codexy", title:"fix(hooks): create nested PR safely", head_branch:"topic", base_branch:"main", body:"## Summary\n\nValidate nested pull request bodies.\n\n## Rationale\n\nKeep nested calls on the shared contract.\n\n## Changed Areas\n\nNested connector adapter.\n\n## Verification\n\nRun the actual nested launcher.\n\n## Evidence\n\nThe launcher result is captured.\n\n## Not Run\n\nNo remote mutation is used for this case.\n\n## Follow-ups\n\nParent owns the next gate.\n\nFixes #949"});"###,
             false,
+        ),
+        (
+            "invalid nested PR body",
+            r#"await tools.mcp__codex_apps__github_create_pull_request({repository_full_name:"eunsoogi/codexy", title:"fix(hooks): reject nested PR body", head_branch:"topic", base_branch:"main", body:"note"});"#,
+            true,
         ),
         (
             "invalid nested PR title",
@@ -59,7 +64,7 @@ fn nested_exec_github_mutations_use_the_repository_admission_route() -> TestResu
         ),
         (
             "valid nested PR metadata",
-            r#"await tools.mcp__codex_apps__github_create_pull_request({repository_full_name:"eunsoogi/codexy", title:"fix(hooks): create nested PR with metadata", head_branch:"topic", base_branch:"main", body:"details", draft:true, maintainer_can_modify:false, head_repo:"eunsoogi/codexy"});"#,
+            r###"await tools.mcp__codex_apps__github_create_pull_request({repository_full_name:"eunsoogi/codexy", title:"fix(hooks): create nested PR with metadata", head_branch:"topic", base_branch:"main", body:"## Summary\n\nValidate nested pull request metadata.\n\n## Rationale\n\nKeep metadata beside the shared body contract.\n\n## Changed Areas\n\nNested connector adapter.\n\n## Verification\n\nRun the actual nested launcher.\n\n## Evidence\n\nThe launcher result is captured.\n\n## Not Run\n\nNo remote mutation is used for this case.\n\n## Follow-ups\n\nParent owns the next gate.\n\nFixes #949", draft:true, maintainer_can_modify:false, head_repo:"eunsoogi/codexy"});"###,
             false,
         ),
         (

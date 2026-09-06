@@ -7,6 +7,10 @@ use helpers::{assert_connector_case, corrupt_foreign_input};
 mod helpers;
 #[path = "connector_inputs/nested_exec.rs"]
 mod nested_exec;
+#[path = "connector_inputs/title_policy.rs"]
+mod title_policy;
+
+pub(super) const VALID_PR_BODY: &str = "## Summary\n\nValidate pull request bodies before mutation.\n\n## Rationale\n\nKeep every supported GitHub route on one contract.\n\n## Changed Areas\n\nShared policy adapters and route fixtures.\n\n## Verification\n\nRun registered hook and package tests.\n\n## Evidence\n\nThe exact launcher result is captured.\n\n## Not Run\n\nNo unrelated release mutation was run.\n\n## Follow-ups\n\nParent will own review and merge.\n\nFixes #949";
 
 #[test]
 fn connector_inputs_require_owned_repository_and_reject_unknown_fields() -> TestResult {
@@ -68,8 +72,8 @@ fn issue_735_connector_positive_matrix_is_explicit() -> TestResult {
         ("P-ISS-06-remove", "github_remove_issue_assignees", json!({"repository_full_name":"eunsoogi/codexy","issue_number":17,"assignees":["old"]})),
         ("P-ISS-06-clear", "github_update_issue", json!({"repository_full_name":"eunsoogi/codexy","issue_number":17,"assignees":[]})),
         ("P-ISS-07", "github_update_issue", json!({"repository_full_name":"eunsoogi/codexy","issue_number":17,"milestone":23})),
-        ("P-PR-01", "github_create_pull_request", json!({"repository_full_name":"eunsoogi/codexy","title":"fix(hooks): create safe PR","head_branch":"topic","base_branch":"main"})),
-        ("P-PR-02", "github_update_pull_request", json!({"repository_full_name":"eunsoogi/codexy","pr_number":17,"body":"note","maintainer_can_modify":false})),
+        ("P-PR-01", "github_create_pull_request", json!({"repository_full_name":"eunsoogi/codexy","title":"fix(hooks): create safe PR","head_branch":"topic","base_branch":"main","body":VALID_PR_BODY})),
+        ("P-PR-02", "github_update_pull_request", json!({"repository_full_name":"eunsoogi/codexy","pr_number":17,"body":VALID_PR_BODY,"maintainer_can_modify":false})),
         ("P-PR-03", "github_update_pull_request", json!({"repository_full_name":"eunsoogi/codexy","pr_number":17,"state":"closed"})),
         ("P-PR-04", "github_add_comment_to_issue", json!({"repo_full_name":"eunsoogi/codexy","pr_number":17,"comment":"note"})),
         ("P-PR-05", "github_add_review_to_pr", json!({"repo_full_name":"eunsoogi/codexy","pr_number":17,"action":"APPROVE","file_comments":null})),
@@ -203,7 +207,7 @@ fn cases() -> [(&'static str, Value, bool); 4] {
                 "title": "fix(hooks): require connector ownership",
                 "head_branch": "topic",
                 "base_branch": "main",
-                "body": "## Summary\n\n## Rationale\n\n## Changed Areas\n\n## Verification\n\n## Evidence\n\n## Not Run\n\n## Follow-ups"
+                "body": VALID_PR_BODY
             }),
             false,
         ),

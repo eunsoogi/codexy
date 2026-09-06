@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 
+from .body import valid_pull_request_body, valid_pull_request_update
 from .github_target import UnsafeQueryFile, parse_api_args
 from .graphql import admitted as graphql_admitted, input_query
 from .repository import (
@@ -146,7 +147,7 @@ def _pr_patch(method: str, fields: dict[str, str]) -> bool:
         return False
     if set(fields) == {"state"}:
         return fields["state"] in {"open", "closed"}
-    return set(fields) <= {"title", "body", "base", "maintainer_can_modify"}
+    return valid_pull_request_update(fields)
 
 
 def _issue_create(fields: dict[str, str]) -> bool:
@@ -180,6 +181,7 @@ def _pr_create(fields: dict[str, str]) -> bool:
         set(fields) <= allowed
         and required <= set(fields)
         and all(bool(fields[key]) for key in required)
+        and valid_pull_request_body(fields.get("body"))
         and all(
             _boolean(fields[key])
             for key in ("draft", "maintainer_can_modify")

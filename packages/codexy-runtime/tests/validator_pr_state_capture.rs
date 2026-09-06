@@ -1,13 +1,16 @@
 use std::{fs, path::Path};
 
-use serde_json::{Value, json};
 use crate::support::{FixtureCommand, TestResult};
+use serde_json::{Value, json};
 
 #[path = "support/review_control_direct_state.rs"]
 mod direct_state;
+#[path = "validator_pr_state_capture/connector.rs"]
+mod connector;
 
 const BASE_OID: &str = "0000000000000000000000000000000000000001";
 const HEAD_OID: &str = "0000000000000000000000000000000000000002";
+
 #[test]
 fn direct_review_control_accepts_state_without_ceremony() -> TestResult {
     let state = capture(direct_state::strict_control(725, HEAD_OID))?;
@@ -55,7 +58,7 @@ fn direct_review_control_rejects_the_closed_negative_cases() -> TestResult {
                 });
             },
         ] {
-            let mut control = direct_state::strict_control(725, "head");
+            let mut control = direct_state::strict_control(725, HEAD_OID);
             mutate(&mut control);
             control[legacy] = json!({});
             assert!(
@@ -68,7 +71,7 @@ fn direct_review_control_rejects_the_closed_negative_cases() -> TestResult {
 }
 #[test]
 fn direct_review_control_requires_explicit_delta_count() -> TestResult {
-    let mut control = direct_state::strict_control(725, "head");
+    let mut control = direct_state::strict_control(725, HEAD_OID);
     control
         .as_object_mut()
         .expect("direct review control object")
@@ -90,7 +93,7 @@ fn direct_review_control_keeps_completion_safety_gates() -> TestResult {
         "comments": {"nodes": [{"url": "https://example.test/thread-1"}]}
     });
     let unresolved = validate_readiness_with(
-        direct_state::strict_control(725, "head"),
+        direct_state::strict_control(725, HEAD_OID),
         "Review response: addressed.",
         json!({
             "reviewThreads": {
@@ -105,7 +108,7 @@ fn direct_review_control_keeps_completion_safety_gates() -> TestResult {
     );
 
     let cosmetic = validate_readiness_with(
-        direct_state::strict_control(725, "head"),
+        direct_state::strict_control(725, HEAD_OID),
         "LOC remediation: blank-line deletion only. --check-touched-loc passed.",
         json!({}),
     )?;
@@ -123,7 +126,7 @@ fn direct_review_control_blocks_terminal_failures_and_findings() -> TestResult {
         ("SUCCESS", json!([])),
         ("PASS", json!(["f-1"])),
     ] {
-        let mut control = direct_state::strict_control(725, "head");
+        let mut control = direct_state::strict_control(725, HEAD_OID);
         control["terminal_result"] = json!(result);
         control["unresolved_findings"] = findings;
         let output = validate_readiness(control)?;
@@ -136,7 +139,7 @@ fn direct_review_control_blocks_terminal_failures_and_findings() -> TestResult {
 }
 #[test]
 fn direct_review_control_ignores_legacy_fields_and_prose_shape() -> TestResult {
-    let mut control = direct_state::strict_control(725, "head");
+    let mut control = direct_state::strict_control(725, HEAD_OID);
     control["legacy_state"] = json!({"schema":"ignored","events":[{"state":"invalid"}]});
     let output = validate_readiness(control)?;
     assert!(
@@ -157,6 +160,7 @@ fn capture(control: Value) -> TestResult<Value> {
     );
     Ok(serde_json::from_slice(&fs::read(output)?)?)
 }
+
 fn validate_readiness(control: Value) -> TestResult<std::process::Output> {
     validate_readiness_with(control, "임의의 prose와 순서입니다.\n", json!({}))
 }
@@ -169,15 +173,11 @@ fn validate_readiness_with(
     let handoff = temp.path().join("handoff.md");
     let state = temp.path().join("state.json");
     fs::write(&handoff, handoff_text)?;
-    let mut state_value = json!({
-        "number": 725,
-        "state": "OPEN",
-        "isDraft": true,
-        "mergeStateStatus": "CLEAN",
-        "headRefOid": "head",
-        "reviewProfile": "strict",
-        "reviewControl": control
-    });
+    let mut state_value = direct_state::pr_snapshot(725, BASE_OID, HEAD_OID, Some(control));
+    state_value["state"] = json!("OPEN");
+    state_value["isDraft"] = json!(true);
+    state_value["mergeStateStatus"] = json!("CLEAN");
+    state_value["reviewProfile"] = json!("strict");
     if let Some(fields) = extra_state.as_object() {
         for (key, value) in fields {
             state_value[key] = value.clone();
@@ -219,6 +219,7 @@ fn state_files(
     )?;
     Ok((base, control_path, previous_path, output))
 }
+
 fn run_capture(
     base: &Path,
     control: &Path,

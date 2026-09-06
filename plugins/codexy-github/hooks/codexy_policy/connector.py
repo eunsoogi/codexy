@@ -2,6 +2,8 @@ from pathlib import Path
 import re
 from typing import Any
 
+from .body import valid_pull_request_body, valid_pull_request_update
+from .connector_operation import operation
 from .merge import positive_int
 from .repository import github_identity, repository_identity, repository_policy_status
 from .titles import issue_title, pr_title
@@ -14,11 +16,10 @@ READ_OPERATIONS = frozenset(
 def connector_admitted(tool: str, data: dict[str, Any], cwd: object) -> bool:
     if not isinstance(cwd, str) or not Path(cwd).is_absolute():
         return False
-    operation = tool.rsplit("github_", 1)[-1]
-    return operation in READ_OPERATIONS or (
+    return operation(tool) in READ_OPERATIONS or (
         repository_policy_status(cwd) is not None
         and _owned(data, cwd)
-        and _eligible(operation, data)
+        and _eligible(operation(tool), data)
     )
 
 
@@ -116,6 +117,7 @@ def _pr_create(payload: dict[str, Any]) -> bool:
         and pr_title(payload.get("title"))
         and _nonempty(payload.get("base"))
         and _nonempty(payload.get("head"))
+        and valid_pull_request_body(payload.get("body"))
         and _optional(payload)
     )
 
@@ -123,9 +125,7 @@ def _pr_create(payload: dict[str, Any]) -> bool:
 def _pr_update(payload: dict[str, Any]) -> bool:
     if set(payload) == {"state"}:
         return payload["state"] in {"open", "closed"}
-    if set(payload) <= {"title", "body", "base", "maintainer_can_modify"}:
-        return bool(payload) and _metadata(payload, pr_title)
-    return False
+    return _metadata(payload, pr_title) and valid_pull_request_update(payload)
 
 
 def _metadata(payload: dict[str, Any], title: Any) -> bool:

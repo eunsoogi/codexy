@@ -1,0 +1,30 @@
+query($owner:String!, $name:String!, $pullRequest:Int!, $owningIssue:Int!) {
+  repository(owner:$owner, name:$name) {
+    pullRequest(number:$pullRequest) {
+      number
+      url
+      baseRefOid
+      headRefOid
+      repository { nameWithOwner }
+      comments(first:100) {
+        nodes {
+          id
+          databaseId
+          url
+          body
+          createdAt
+          updatedAt
+          author { login }
+          authorAssociation
+          isMinimized
+        }
+        pageInfo { hasNextPage }
+      }
+    }
+    issue(number:$owningIssue) {
+      number
+      url
+      repository { nameWithOwner }
+    }
+  }
+}

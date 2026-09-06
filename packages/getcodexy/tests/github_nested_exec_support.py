@@ -3,6 +3,36 @@
 import json
 from pathlib import Path
 
+VALID_PR_BODY = """## Summary
+
+Validate pull request bodies before mutation.
+
+## Rationale
+
+Keep nested calls on one contract.
+
+## Changed Areas
+
+Nested connector adapter.
+
+## Verification
+
+Run the actual nested launcher.
+
+## Evidence
+
+The launcher result is captured.
+
+## Not Run
+
+No remote mutation is used for this case.
+
+## Follow-ups
+
+Parent owns the next gate.
+
+Fixes #949"""
+
 
 def assert_nested_exec_cases(
     test_case: object,
@@ -12,6 +42,11 @@ def assert_nested_exec_cases(
     root: Path,
 ) -> None:
     nested_hook = installed / "hooks/codexy-repository-github-exec.sh"
+    valid_pr = (
+        'await tools.mcp__codex_apps__github_create_pull_request({repository_full_name:"eunsoogi/codexy", title:"fix(hooks): admit nested GitHub calls", head_branch:"topic", base_branch:"main", body:'
+        + json.dumps(VALID_PR_BODY)
+        + "});"
+    )
     nested_cases = (
         (
             "PermissionRequest",
@@ -25,8 +60,13 @@ def assert_nested_exec_cases(
         ),
         (
             "PreToolUse",
-            'await tools.mcp__codex_apps__github_create_pull_request({repository_full_name:"eunsoogi/codexy", title:"fix(hooks): admit nested GitHub calls", head_branch:"topic", base_branch:"main"});',
+            valid_pr,
             False,
+        ),
+        (
+            "PreToolUse",
+            'await tools.mcp__codex_apps__github_create_pull_request({repository_full_name:"eunsoogi/codexy", title:"fix(hooks): reject nested body", head_branch:"topic", base_branch:"main", body:"note"});',
+            True,
         ),
         (
             "PreToolUse",

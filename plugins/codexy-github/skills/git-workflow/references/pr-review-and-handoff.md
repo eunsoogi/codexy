@@ -4,10 +4,45 @@
 
 MUST confirm the issue, exact branch/base relationship, local verification, and
 repository taxonomy before opening a PR. Use a Conventional Commit title and a
-body that explains the change, rationale, affected areas, verification,
-evidence, omissions, follow-ups, and issue linkage without prescribing a
-repository-independent heading order. Keep a PR draft while proof or known risk
-is incomplete.
+body with visible `## Summary`, `## Rationale`, `## Changed Areas`,
+`## Verification`, `## Evidence`, `## Not Run`, and `## Follow-ups` sections;
+the only closing reference MUST be the final line `Fixes #<issue>`. Keep a PR
+draft while proof or known risk is incomplete.
+
+The PR title MUST use `type(scope): description`, with a nonempty valid scope
+and a nonempty description. An optional breaking marker goes after the scope:
+`feat(task)!: change behavior`. The PR title MUST NOT include an issue or PR
+number. The squash subject MUST be the validated PR title followed by one ASCII
+space and `(#<actual PR number>)`. It MUST be added only after the captured PR
+title has passed validation.
+
+If selected review occurred before PR creation, the owning child MUST locally
+verify one complete pre-PR import envelope and publish the Draft PR before the
+first selected review for this lifecycle. The envelope MUST preserve the real
+host thread, turn, final-message identity, order, reviewer facts, verdicts, and
+findings; it MUST keep the current PR snapshot authoritative and MUST state that
+an older imported PASS is not current-head readiness. Missing host items remain
+unavailable unless the exact original host record supplies them; prose or a
+synthetic historical PR snapshot is not a substitute.
+
+If selected review events completed after PR creation, the owning child MUST
+capture the supported native host records before recovery: the complete owner
+page chain containing the single reviewer `spawnAgent` or `spawn_agent`, the
+matching reviewer page chain, continuation cursors, completed final messages,
+source-local order, actual model/effort, reviewed heads, terminal results,
+findings, timestamps, and unchanged raw UTF-8 text. The child MUST run the
+existing `codexy-review-control --recover-native-review-history` mode with the
+fresh authenticated current PR snapshot and keep the input capture outside
+tracked files. The mode produces a non-admitted top-level
+`nativeHistoryRecovery` receipt; it does not authenticate caller fields, invent
+a historical snapshot, or establish current-head readiness. The next build MUST
+carry that receipt forward and consume the recovered predecessor through the
+ordinary transition validator. It MAY remove `native_history_recovery` only
+while appending a real current-head verdict; it MUST retain and revalidate
+`native_history_provenance`, the full/delta event prefix, actual source reviewer
+facts, findings, and event counts. Direct recovery output MUST NOT be described
+as PR-ready, complete, merge-authorized, or evidence that another review is
+needed.
 
 Immediately read back the remote PR number, URL, title, body, state, draft
 state, base, head branch, exact head SHA, labels, and linked issue. Repository

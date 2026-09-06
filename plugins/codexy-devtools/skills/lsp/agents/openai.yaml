@@ -1,0 +1,6 @@
+interface:
+  display_name: "LSP"
+  short_description: "Language-server diagnostics and bounded requests."
+  default_prompt: "Use $lsp for language-aware diagnostics, symbols, definitions, references, and bounded batches."
+policy:
+  allow_implicit_invocation: true

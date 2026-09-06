@@ -6,20 +6,31 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[test]
 fn direct_devtools_check_rejects_malformed_skill_frontmatter() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let devtools = temp.path().join("plugins/codexy-devtools");
-    copy_devtools(&devtools)?;
-    let skill = devtools.join("skills/developer-tools/SKILL.md");
-    fs::write(&skill, fs::read_to_string(&skill)?.replacen("name: developer-tools", "name: 'developer-tools", 1))?;
+    for skill_name in ["codegraph", "lsp"] {
+        let temp = tempfile::tempdir()?;
+        let devtools = temp.path().join("plugins/codexy-devtools");
+        copy_devtools(&devtools)?;
+        let skill = devtools.join(format!("skills/{skill_name}/SKILL.md"));
+        fs::write(
+            &skill,
+            fs::read_to_string(&skill)?.replacen(
+                &format!("name: {skill_name}"),
+                &format!("name: '{skill_name}"),
+                1,
+            ),
+        )?;
 
-    assert_rejected(&devtools, "frontmatter must be valid YAML")
+        assert_rejected(&devtools, "frontmatter must be valid YAML")?;
+    }
+    Ok(())
 }
 
 #[test]
 fn direct_devtools_check_rejects_invalid_agent_metadata() -> TestResult {
     for relative in [
         "agents/openai.yaml",
-        "skills/developer-tools/agents/openai.yaml",
+        "skills/codegraph/agents/openai.yaml",
+        "skills/lsp/agents/openai.yaml",
     ] {
         let temp = tempfile::tempdir()?;
         let devtools = temp.path().join("plugins/codexy-devtools");
@@ -114,14 +125,22 @@ fn github_check_rejects_explicit_only_skill_metadata() -> TestResult {
 
 #[test]
 fn aggregate_core_check_rejects_devtools_skill_and_agent_metadata() -> TestResult {
-    for (relative, replacement, expected) in [
+    for (relative, needle, replacement, expected) in [
         (
-            "skills/developer-tools/SKILL.md",
-            "name: 'developer-tools",
+            "skills/codegraph/SKILL.md",
+            "name: codegraph",
+            "name: 'codegraph",
+            "frontmatter must be valid YAML",
+        ),
+        (
+            "skills/lsp/SKILL.md",
+            "name: lsp",
+            "name: 'lsp",
             "frontmatter must be valid YAML",
         ),
         (
             "agents/openai.yaml",
+            "",
             "\tdisplay_name:",
             "must not contain tab indentation",
         ),
@@ -134,7 +153,7 @@ fn aggregate_core_check_rejects_devtools_skill_and_agent_metadata() -> TestResul
         let target = devtools.join(relative);
         let source = fs::read_to_string(&target)?;
         let mutated = if relative.ends_with("SKILL.md") {
-            source.replacen("name: developer-tools", replacement, 1)
+            source.replacen(needle, replacement, 1)
         } else {
             source.replacen("  display_name:", replacement, 1)
         };

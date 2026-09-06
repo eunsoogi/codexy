@@ -18,12 +18,12 @@ fn issue_735_read_only_github_and_git_corpus_is_admitted_for_both_events() -> Te
         "gh api repos/eunsoogi/codexy/assignees/eunsoogi --jq '.login'",
         "gh api repos/eunsoogi/codexy/branches/main/protection --jq '.required_pull_request_reviews'",
         "gh api repos/eunsoogi/codexy/milestones/23 --jq '.title'",
-        "gh issue list --repo eunsoogi/codexy --limit 100",
+        "gh issue list || printf safe",
         "gh label list --repo eunsoogi/codexy --limit 100",
         "gh pr list --repo eunsoogi/codexy --state all --limit 100",
         "gh release list --repo eunsoogi/codexy --limit 100",
         "git fetch origin main",
-        "git rev-parse HEAD",
+        "git push -u origin fixture/request-local-parse\ngit rev-parse HEAD\ngit rev-parse @{u}",
         "git worktree list",
         "git branch --list",
         "git ls-remote --heads origin",
@@ -52,8 +52,6 @@ fn issue_735_closed_cli_and_rest_mutation_matrix_has_one_eligible_operation() ->
         "gh issue edit 17 --repo eunsoogi/codexy --add-label bug --remove-label old",
         "gh issue edit 17 --repo eunsoogi/codexy --add-assignee eunsoogi --remove-assignee old",
         "gh issue edit 17 --repo eunsoogi/codexy --milestone 23",
-        "gh pr create --repo eunsoogi/codexy --title 'fix(hooks): admit safe mutations' --head topic --base main --body note --draft --no-maintainer-edit",
-        "gh pr edit 17 --repo eunsoogi/codexy --title 'fix(hooks): update metadata' --body note --base main --no-maintainer-edit",
         "gh pr close 17 --repo eunsoogi/codexy",
         "gh pr reopen 17 --repo eunsoogi/codexy",
         "gh pr comment 17 --repo eunsoogi/codexy --body note",
@@ -76,7 +74,6 @@ fn issue_735_closed_cli_and_rest_mutation_matrix_has_one_eligible_operation() ->
         "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -F 'labels=[]'",
         "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -F 'assignees=[]'",
         "gh api --method PATCH repos/eunsoogi/codexy/issues/17 -F milestone=23",
-        "gh api --method POST repos/eunsoogi/codexy/pulls -f title='fix(hooks): create safe PR' -f head=topic -f base=main",
         "gh api --method PATCH repos/eunsoogi/codexy/pulls/17 -f title='fix(hooks): update metadata'",
         "gh api --method PATCH repos/eunsoogi/codexy/pulls/17 -f state=closed",
         "gh api --method POST repos/eunsoogi/codexy/pulls/17/requested_reviewers -F 'reviewers=[\"eunsoogi\"]'",
@@ -95,6 +92,9 @@ fn issue_735_closed_cli_and_rest_mutation_matrix_has_one_eligible_operation() ->
         "gh workflow run deploy.yml --repo eunsoogi/codexy",
         "gh release create v9 --repo eunsoogi/codexy",
         "gh api --method PATCH repos/eunsoogi/codexy/security-advisories/GHSA-fixture -f state=closed",
+        "gh issue list || GH_TOKEN=fixture gh issue list",
+        "! true || GH_TOKEN=fixture gh issue list",
+        "! false && GH_TOKEN=fixture gh issue list",
         "gh pr merge 42 --repo eunsoogi/codexy --squash",
         "gh api --method POST repos/eunsoogi/codexy/import -f source=fixture",
         "gh api graphql -f owner=eunsoogi -f name=codexy -f query='mutation { deleteProjectV2(input:{projectV2Id:\"fixture\"}) { clientMutationId } }'",
@@ -102,11 +102,11 @@ fn issue_735_closed_cli_and_rest_mutation_matrix_has_one_eligible_operation() ->
         "gh api -H 'Authorization: Bearer fixture-secret' repos/eunsoogi/codexy/labels",
         "rm -rf /",
         "gh pr edit 42 --repo eunsoogi/codexy --expected-head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "gh api --method POST repos/eunsoogi/codexy/issues",
+        "gh pr view 17 --repo eunsoogi/codexy --json state,isDraft,mergeStateStatus,statusCheckRollup > new-output.json",
         "gh api --method POST repos/eunsoogi/codexy/pulls/17/reviews -f event=COMMENT",
-        "gh api --method POST repos/eunsoogi/codexy/issues > /dev/null",
+        "gh api --method POST repos/eunsoogi/codexy/issues",
         "cat <(gh issue create --repo eunsoogi/codexy --title invalid)",
-        "cat >(git push --force origin main)",
+        "cat >(git push --force origin main; git rev-parse @{u})",
     ];
     let cases = eligible.iter()
         .map(|command| ((*command).to_owned(), false))
@@ -127,16 +127,12 @@ fn git_aliases_keep_the_normalized_repository_context() -> TestResult {
     for (cwd, target, denied) in [(&foreign, &owned, true), (&owned, &foreign, false)] {
         let git_dir = shell_path(&target.join(".git"))?;
         let target = shell_path(target)?;
-        assert_case(
-            &root, cwd,
-            &format!("git -C {target} -c alias.wipe='!git reset --hard' wipe"),
-            denied, &[],
-        )?;
-        assert_case(
-            &root, cwd,
-            &format!("git --git-dir={git_dir} -c alias.wipe='!git reset --hard' wipe"),
-            denied, &[],
-        )?;
+        for command in [
+            format!("git -C {target} -c alias.wipe='!git reset --hard' wipe"),
+            format!("git --git-dir={git_dir} -c alias.wipe='!git reset --hard' wipe"),
+        ] {
+            assert_case(&root, cwd, &command, denied, &[])?;
+        }
     }
     Ok(())
 }

@@ -20,8 +20,12 @@ mod github_authorization_pagination;
 mod filesystem_aliases;
 #[path = "validator_hooks/graphql_admission.rs"]
 mod graphql_admission;
+#[path = "validator_hooks/pr_body_admission.rs"]
+mod pr_body_admission;
 #[path = "validator_hooks/shell_context_regressions.rs"]
 mod shell_context_regressions;
+#[path = "validator_hooks/shell_negation_regressions.rs"]
+mod shell_negation_regressions;
 #[path = "validator_hooks/thread_delivery_parent_route.rs"]
 mod thread_delivery_parent_route;
 #[path = "validator_hooks/thread_delivery_support.rs"]

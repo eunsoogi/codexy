@@ -3,11 +3,13 @@
 
 import argparse
 import json
-import re
+import os
 import sys
 
 MAX_INPUT = 64 * 1024
-CONVENTIONAL = re.compile(r"^[a-z0-9-]+(?:\([a-z0-9_/-]+\))?!?:\s+\S")
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+
+from codexy_policy.titles import issue_title, pr_title
 
 
 def reject_duplicates(pairs):
@@ -52,11 +54,8 @@ def main():
         return 0
     invalid = (
         not title
-        or (
-            selected == "issue"
-            and (not title[0].isupper() or CONVENTIONAL.match(title))
-        )
-        or (selected == "pr" and not CONVENTIONAL.match(title))
+        or (selected == "issue" and not issue_title(title))
+        or (selected == "pr" and not pr_title(title))
     )
     if invalid:
         reason = (

@@ -2,9 +2,24 @@ use std::path::Path;
 
 use serde_json::{Map, Value};
 
-use super::{migration, policy, snapshot, state};
+use super::{migration, policy, pre_pr, snapshot, state};
 
 mod evidence;
+
+pub(super) struct PreVerdictContext<'a> {
+    pub(super) repository_root: &'a Path,
+    pub(super) previous_base: &'a str,
+    pub(super) current_base: &'a str,
+    pub(super) current: &'a Map<String, Value>,
+    pub(super) prior_delta: &'a Map<String, Value>,
+    pub(super) from: &'a str,
+    pub(super) to: &'a str,
+    pub(super) source: &'a Value,
+}
+
+pub(super) fn check_pre_verdict(context: &PreVerdictContext<'_>) -> Result<(), String> {
+    evidence::pre_verdict::check(context)
+}
 
 pub(super) fn check_with_repository(
     plugin_root: &Path,
@@ -16,6 +31,8 @@ pub(super) fn check_with_repository(
     snapshot::check(previous, "previous")?;
     snapshot::check(current, "current")?;
     snapshot::same_pr(previous, current)?;
+    snapshot::same_issue(previous, current)?;
+    pre_pr::check_ancestry(repository_root, previous, current)?;
     if current.get("reviewControl").is_some() {
         return Err(
             "review control current PR snapshot must not carry a caller-supplied predecessor"
@@ -41,13 +58,19 @@ pub(super) fn check_with_repository(
     let legacy_reviewer = policy::legacy_reviewer(current_profile);
     let previous_is_current = previous_reviewer == Some(&current_reviewer);
     let previous_is_legacy = legacy_reviewer.as_ref() == previous_reviewer;
+    let previous_is_native_history = previous_control.contains_key("native_history_recovery");
     if previous_count == 0 {
         check_genesis(plugin_root, previous_control)?;
         check_genesis_snapshot(previous, previous_control)?;
+    } else if previous_is_current && previous_is_native_history {
+        state::check_native_history_predecessor(plugin_root, previous)?;
+        if current.get("nativeHistoryRecovery") != previous.get("nativeHistoryRecovery") {
+            return Err("review control transition must preserve native history recovery".into());
+        }
     } else if previous_is_current {
-        state::check(plugin_root, previous, false)?;
+        state::check_pr_state(plugin_root, previous, false)?;
     } else if previous_is_legacy {
-        state::check_predecessor(plugin_root, previous)?;
+        state::check_pr_state_predecessor(plugin_root, previous)?;
     } else {
         return Err(
             "review control transition previous state does not bind an approved reviewer".into(),
@@ -55,6 +78,13 @@ pub(super) fn check_with_repository(
     }
 
     let mut normalized_control = current_control.clone();
+    if current_control
+        .get("reviewed_head")
+        .or_else(|| current_control.get("head_oid"))
+        != current.get("headRefOid")
+    {
+        return Err("review control transition current state must bind the current head".into());
+    }
     let migration = if previous_is_legacy {
         Some(migration::marker(
             current_profile,
@@ -65,9 +95,10 @@ pub(super) fn check_with_repository(
         previous_control.get("reviewer_migration").cloned()
     };
     migration::reconcile(&mut normalized_control, migration)?;
+    pre_pr::reconcile(&normalized_control, previous_control.get("pre_pr_import"))?;
 
     let current_state = with_control(current, &normalized_control)?;
-    state::check(plugin_root, &current_state, false)?;
+    state::check_pr_state(plugin_root, &current_state, false)?;
 
     let previous_history = history(previous_control, "previous")?;
     let current_history = history(&normalized_control, "current")?;
@@ -139,8 +170,8 @@ fn check_genesis_snapshot(snapshot: &Value, control: &Map<String, Value>) -> Res
     let object = snapshot
         .as_object()
         .ok_or_else(|| "previous PR snapshot must be an object".to_owned())?;
-    let issue = count(control, "issue_number")?;
-    if object.get("number").and_then(Value::as_u64) != Some(issue) {
+    let issue = snapshot::owning_issue_number(snapshot, "previous")?;
+    if issue != count(control, "issue_number")? {
         return Err("genesis PR snapshot issue identity disagrees with review control".into());
     }
     if let Some(profile) = object.get("reviewProfile").and_then(Value::as_str) {

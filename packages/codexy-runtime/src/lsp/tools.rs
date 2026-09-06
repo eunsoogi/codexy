@@ -1,6 +1,7 @@
 use anyhow::{Context as _, Result, bail};
 use serde_json::{Value, json};
 
+use crate::lsp::batch;
 use crate::lsp::config::{matching_servers, read_config, select_server};
 use crate::lsp::pathing::{
     language_for_path, match_path_from_args, normalize_ext, path_resolution_root_from_args,
@@ -61,6 +62,7 @@ pub fn tools() -> Vec<ToolDef> {
             "Open a file through the matching LSP server and request diagnostics.",
             &timeout,
         ),
+        batch::tool(),
     ]
 }
 
@@ -85,6 +87,7 @@ pub fn call_tool(name: &str, args: &Value) -> Result<Value> {
         "lsp_definition" => operation_result(args, LspMethod::Definition),
         "lsp_references" => operation_result(args, LspMethod::References),
         "lsp_diagnostics" => operation_result(args, LspMethod::Diagnostics),
+        "lsp_batch" => batch::call(args),
         _ => bail!("Unknown tool: {name}"),
     }
 }
@@ -213,7 +216,7 @@ fn numeric_position(value: Option<&Value>, name: &str) -> Result<Option<u64>> {
     numeric_integer(value, name)
 }
 
-fn numeric_integer(value: Option<&Value>, name: &str) -> Result<Option<u64>> {
+pub(super) fn numeric_integer(value: Option<&Value>, name: &str) -> Result<Option<u64>> {
     let Some(value) = value else {
         return Ok(None);
     };
@@ -234,6 +237,6 @@ fn timeout_ms(args: &Value) -> Result<u64> {
     Ok(timeout.clamp(100, 60000))
 }
 
-fn text_json<T: serde::Serialize>(value: &T) -> Result<Value> {
+pub(super) fn text_json<T: serde::Serialize>(value: &T) -> Result<Value> {
     Ok(text_result(&serde_json::to_string_pretty(value)?))
 }
