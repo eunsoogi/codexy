@@ -22,7 +22,7 @@ pub(crate) fn validate_readiness(
     let root_repair = control["post_cap_re_review"]["reason"].as_str()
         == Some("in_scope_contract_root_repair");
     let head = repository.resolve(head, root_repair)?;
-    let (control, _, _) = repository.prepare(
+    let (control, _, current_base) = repository.prepare(
         &control,
         direct_state::SYNTHETIC_BASE,
         direct_state::SYNTHETIC_BASE,
@@ -31,7 +31,22 @@ pub(crate) fn validate_readiness(
     fs::write(
         &state,
         serde_json::to_vec(&json!({
+            "repository": "eunsoogi/codexy",
             "number": issue_number,
+            "url": format!("https://github.com/eunsoogi/codexy/pull/{issue_number}"),
+            "baseRefName": "main",
+            "baseRefOid": current_base,
+            "capture": {
+                "provider": "github",
+                "method": "graphql",
+                "authenticated": true,
+                "owningIssue": {
+                    "repository": "eunsoogi/codexy",
+                    "number": issue_number,
+                    "url": format!("https://github.com/eunsoogi/codexy/issues/{issue_number}"),
+                    "association": "owner-assignment"
+                }
+            },
             "state": "OPEN",
             "isDraft": true,
             "mergeStateStatus": "CLEAN",

@@ -202,20 +202,21 @@ fn validate_hooks(
 }
 
 fn copy_plugin(plugin_root: &std::path::Path) -> std::io::Result<()> {
-    support::copy_dir(
+    support::plugin_fixture::copy_plugin_hook_fixture(
         &codexy_runtime::paths::repository_root().join("plugins/codexy"),
         plugin_root,
-    )?;
-    support::materialize_admission_runtime_suite(plugin_root)
+        &[std::path::Path::new("hooks/hooks.json")],
+    )
 }
 
 fn github_plugin_fixture(
     base: &std::path::Path,
 ) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let plugin_root = base.join("codexy-github");
-    support::copy_dir(
-        codexy_runtime::paths::repository_root().join("plugins/codexy-github"),
+    support::plugin_fixture::copy_plugin_hook_fixture(
+        &codexy_runtime::paths::repository_root().join("plugins/codexy-github"),
         &plugin_root,
+        &[],
     )?;
     Ok(plugin_root)
 }

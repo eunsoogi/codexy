@@ -1,8 +1,11 @@
 """Canonical hook dependencies exercised by component inspection tests."""
 
 CORE_HOOK_DEPENDENCIES = (
+    "hooks/codexy-hook-runtime.sh",
     "hooks/codexy-thread-delivery.sh",
     "hooks/codexy-thread-delivery.cmd",
+    "hooks/codexy-thread-delivery.py",
+    "hooks/codexy_policy/thread_delivery.py",
     "hooks/codexy-child-thread-creation.sh",
     "hooks/codexy-child-thread-creation.cmd",
     "hooks/codexy-child-thread-creation.py",

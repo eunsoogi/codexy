@@ -2,6 +2,12 @@ use std::collections::HashSet;
 
 use serde_json::{Map, Value};
 
+const ISSUE_ASSOCIATIONS: [&str; 3] = [
+    "owner-assignment",
+    "closing-issue-reference",
+    "linked-issue-reference",
+];
+
 pub(super) fn check(value: &Value, label: &str) -> Result<(), String> {
     let object = value
         .as_object()
@@ -32,7 +38,11 @@ pub(super) fn check(value: &Value, label: &str) -> Result<(), String> {
         .ok_or_else(|| {
             format!("review control {label} PR snapshot must carry capture provenance")
         })?;
-    reject_unknown(capture, &["provider", "method", "authenticated"], "capture")?;
+    reject_unknown(
+        capture,
+        &["provider", "method", "authenticated", "owningIssue"],
+        "capture",
+    )?;
     if required_text(capture, "provider", "capture")? != "github"
         || required_text(capture, "method", "capture")? != "graphql"
         || capture.get("authenticated") != Some(&Value::Bool(true))
@@ -41,6 +51,13 @@ pub(super) fn check(value: &Value, label: &str) -> Result<(), String> {
             "review control {label} PR snapshot capture is not authenticated GitHub GraphQL"
         ));
     }
+    let owning_issue = capture
+        .get("owningIssue")
+        .and_then(Value::as_object)
+        .ok_or_else(|| {
+            format!("review control {label} PR snapshot capture must carry owning issue identity")
+        })?;
+    check_owning_issue(owning_issue, repository, label)?;
     Ok(())
 }
 
@@ -53,6 +70,29 @@ pub(super) fn same_pr(previous: &Value, current: &Value) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+pub(super) fn same_issue(previous: &Value, current: &Value) -> Result<(), String> {
+    let previous_issue = owning_issue(previous, "previous")?;
+    let current_issue = owning_issue(current, "current")?;
+    for field in ["repository", "number", "url"] {
+        if previous_issue.get(field) != current_issue.get(field) {
+            return Err(format!(
+                "review control snapshots change authenticated owning issue {field}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn owning_issue_number(snapshot: &Value, label: &str) -> Result<u64, String> {
+    owning_issue(snapshot, label)?
+        .get("number")
+        .and_then(Value::as_u64)
+        .filter(|number| *number > 0)
+        .ok_or_else(|| {
+            format!("review control {label} PR snapshot owning issue must contain number")
+        })
 }
 
 pub(super) fn required_oid<'a>(
@@ -93,4 +133,71 @@ fn reject_unknown(
         ));
     }
     Ok(())
+}
+
+fn owning_issue<'a>(snapshot: &'a Value, label: &str) -> Result<&'a Map<String, Value>, String> {
+    snapshot
+        .get("capture")
+        .and_then(Value::as_object)
+        .and_then(|capture| capture.get("owningIssue"))
+        .and_then(Value::as_object)
+        .ok_or_else(|| {
+            format!("review control {label} PR snapshot capture must carry owning issue identity")
+        })
+}
+
+fn check_owning_issue(
+    issue: &Map<String, Value>,
+    pr_repository: &str,
+    label: &str,
+) -> Result<(), String> {
+    reject_unknown(
+        issue,
+        &["repository", "number", "url", "association"],
+        "owning issue",
+    )?;
+    let repository = issue_text(issue, "repository", label)?;
+    if repository != pr_repository
+        || repository.split('/').count() != 2
+        || repository.split('/').any(str::is_empty)
+    {
+        return Err(format!(
+            "review control {label} owning issue repository identity is invalid"
+        ));
+    }
+    let number = issue
+        .get("number")
+        .and_then(Value::as_u64)
+        .filter(|number| *number > 0)
+        .ok_or_else(|| {
+            format!("review control {label} PR snapshot owning issue must contain number")
+        })?;
+    if issue_text(issue, "url", label)?
+        != format!("https://github.com/{repository}/issues/{number}")
+    {
+        return Err(format!(
+            "review control {label} owning issue URL does not bind the issue identity"
+        ));
+    }
+    let association = issue_text(issue, "association", label)?;
+    if !ISSUE_ASSOCIATIONS.contains(&association) {
+        return Err(format!(
+            "review control {label} owning issue association is not authenticated"
+        ));
+    }
+    Ok(())
+}
+
+fn issue_text<'a>(
+    object: &'a Map<String, Value>,
+    key: &str,
+    label: &str,
+) -> Result<&'a str, String> {
+    object
+        .get(key)
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            format!("review control {label} PR snapshot owning issue must contain {key}")
+        })
 }

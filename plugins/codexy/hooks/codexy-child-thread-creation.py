@@ -1,19 +1,27 @@
 #!/usr/bin/python3
+# pyright: reportImplicitRelativeImport=false
 """Child-thread creation native pair admission hook."""
 
 import argparse
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+if os.environ.get("CODEXY_HOOK_SILENT") == "1":
+    sys.stderr = open(os.devnull, "w", encoding="utf-8")
 
-from codexy_policy.child_thread_creation import forbidden
-from codexy_policy.envelope import evaluate
+UNSUPPORTED_INTERPRETER_EXIT = 125
+if sys.version_info < (3, 10):
+    raise SystemExit(UNSUPPORTED_INTERPRETER_EXIT)
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
 TOOLS = frozenset({"codex_app__create_thread", "mcp__codex_app__create_thread"})
 
 
 def main() -> int:
+    from codexy_policy.child_thread_creation import forbidden
+    from codexy_policy.envelope import evaluate
+
     parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument(
         "--event", required=True, choices=("PreToolUse", "PermissionRequest")
@@ -32,4 +40,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except SystemExit as error:
+        if error.code == UNSUPPORTED_INTERPRETER_EXIT:
+            raise SystemExit(1) from error
+        raise
