@@ -106,6 +106,7 @@ def _run_windows(argv, cwd, input_text, env, deadline):
         abort_pipes = True
         cleanup_deadline = perf_counter() + _WINDOWS_CLEANUP_TIMEOUT
         _terminate_process_tree(process, cleanup_deadline)
+        _cancel_windows_pipe_threads(process, cleanup_deadline)
         remaining = max(0.0, cleanup_deadline - perf_counter())
         if remaining:
             try:
