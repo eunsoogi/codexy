@@ -15,6 +15,7 @@ from .github_target import (
     graph_nullable,
     graph_object,
 )
+from .body import valid_pull_request_body
 from .merge import positive_int
 from .titles import pr_title
 
@@ -43,6 +44,7 @@ def create(payload: dict[str, Any]) -> bool:
         and _nonempty(payload.get("base"))
         and _nonempty(payload.get("head"))
         and pr_title(payload["title"])
+        and valid_pull_request_body(payload.get("body"))
         and _optional(payload, CREATE_FIELDS)
     )
 
@@ -56,11 +58,7 @@ def metadata(payload: dict[str, Any]) -> bool:
         and not pr_title(payload["title"])
     ):
         return False
-    if (
-        "body" in payload
-        and payload["body"] is not None
-        and not isinstance(payload["body"], str)
-    ):
+    if "body" in payload and not valid_pull_request_body(payload["body"]):
         return False
     return (
         "base" not in payload or payload["base"] is None or _nonempty(payload["base"])

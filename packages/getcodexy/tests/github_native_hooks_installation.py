@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from github_nested_exec_support import assert_nested_exec_cases
+from github_nested_exec_support import VALID_PR_BODY, assert_nested_exec_cases
 from github_native_hook_support import ROOT
 
 
@@ -161,7 +161,7 @@ class GithubNativeHooksInstallationMixin:
                     "github.update_pull_request",
                     {
                         "title": "#951 · PR #953 · Windows 원인 진단",
-                        "body": "diagnostic",
+                        "body": VALID_PR_BODY,
                     },
                     True,
                 ),
@@ -172,10 +172,18 @@ class GithubNativeHooksInstallationMixin:
                 ),
                 (
                     "github.update_pull_request",
-                    {"title": "fix(hooks): update title and body", "body": "details"},
+                    {
+                        "title": "fix(hooks): update title and body",
+                        "body": VALID_PR_BODY,
+                    },
                     False,
                 ),
-                ("github.update_pull_request", {"body": "metadata only"}, False),
+                (
+                    "github.update_pull_request",
+                    {"title": "fix(hooks): reject invalid body", "body": "note"},
+                    True,
+                ),
+                ("github.update_pull_request", {"body": VALID_PR_BODY}, False),
             )
             for event in ("PermissionRequest", "PreToolUse"):
                 for tool, fields, denied in repository_pr_cases:

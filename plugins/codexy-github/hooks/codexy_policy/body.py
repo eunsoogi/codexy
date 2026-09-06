@@ -4,6 +4,22 @@ from __future__ import annotations
 
 import re
 
+PR_REQUIRED_SECTIONS = frozenset(
+    {
+        "## Summary",
+        "## Rationale",
+        "## Changed Areas",
+        "## Verification",
+        "## Evidence",
+        "## Not Run",
+        "## Follow-ups",
+    }
+)
+PR_CLOSING = re.compile(
+    r"\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#([1-9][0-9]*)\b",
+    re.IGNORECASE,
+)
+
 
 def has_sections(value: object, required: set[str]) -> bool:
     return isinstance(value, str) and required.issubset(visible_headings(value))
@@ -46,3 +62,24 @@ def visible_headings(value: str) -> set[str]:
         elif trimmed.startswith("## "):
             headings.add(trimmed.strip())
     return headings
+
+
+def valid_pull_request_body(value: object, issue: int | None = None) -> bool:
+    if not has_sections(value, PR_REQUIRED_SECTIONS):
+        return False
+    assert isinstance(value, str)
+    references = [int(number) for number in PR_CLOSING.findall(value)]
+    final = next((line for line in reversed(value.splitlines()) if line.strip()), "")
+    return (
+        len(references) == 1
+        and final == f"Fixes #{references[0]}"
+        and (issue is None or references[0] == issue)
+    )
+
+
+def valid_pull_request_update(fields: dict[str, object]) -> bool:
+    return (
+        bool(fields)
+        and set(fields) <= {"title", "body", "base", "maintainer_can_modify"}
+        and ("body" not in fields or valid_pull_request_body(fields["body"]))
+    )
