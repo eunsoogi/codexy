@@ -17,11 +17,10 @@ pub(super) fn scoped_log(
     step: &Map<String, Value>,
     repository: &str,
     ambiguous_step_boundary: bool,
+    log_group_index: usize,
 ) -> Result<String, String> {
     if ambiguous_step_boundary {
-        return Err(
-            "Actions selected step shares a timestamp boundary with an adjacent step".into(),
-        );
+        return project_log(select_step_log_group(log, log_group_index)?, repository);
     }
     let start = timestamp(text(step, "started_at", "Actions failed step")?)?;
     let end = timestamp(text(step, "completed_at", "Actions failed step")?)?;
@@ -38,7 +37,11 @@ pub(super) fn scoped_log(
     if lines.is_empty() {
         return Err("Actions job log has no lines inside the selected step".into());
     }
-    let normalized = normalize_log(&lines.join("\n"));
+    project_log(&lines.join("\n"), repository)
+}
+
+fn project_log(log: &str, repository: &str) -> Result<String, String> {
+    let normalized = normalize_log(log);
     parse_log(&normalized, repository)?;
     let lines = normalized.lines().collect::<Vec<_>>();
     let first = lines
@@ -59,6 +62,79 @@ pub(super) fn scoped_log(
         return Err("Actions selected-step excerpt is too large".into());
     }
     Ok(excerpt)
+}
+
+fn select_step_log_group(log: &str, expected: usize) -> Result<&str, String> {
+    if expected == 0 {
+        return Err("Actions selected step log group is invalid".into());
+    }
+    let mut group = 0;
+    let mut start = None;
+    let mut end = log.len();
+    let mut offset = 0;
+    for line in log.split_inclusive('\n') {
+        if line.contains("##[group]Run ") {
+            group += 1;
+            if start.is_some() {
+                end = offset;
+                break;
+            }
+            if group == expected {
+                start = Some(offset + line.len());
+            }
+        } else if start.is_some()
+            && (line.contains("##[group]Post Run ")
+                || line.contains("##[group]Complete job")
+                || line.contains(" Post job cleanup."))
+        {
+            end = offset;
+            break;
+        }
+        offset += line.len();
+    }
+    let start = start.ok_or("Actions job log does not expose the selected step group")?;
+    let selected = &log[start..end];
+    if selected.trim().is_empty() {
+        return Err("Actions selected step log group is empty".into());
+    }
+    Ok(selected)
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::scoped_log;
+
+    #[test]
+    fn uses_the_authenticated_log_group_for_same_second_steps() {
+        let step = json!({
+            "started_at": "2026-01-01T00:01:00Z",
+            "completed_at": "2026-01-01T00:02:00Z"
+        });
+        let log = concat!(
+            "##[group]Run previous step\n",
+            "2026-01-01T00:01:00.100Z ERROR: unrelated (unrelated)\n",
+            "##[endgroup]\n",
+            "##[group]Run selected step\n",
+            "2026-01-01T00:02:00.100Z ERROR: packages.getcodexy.tests.test_component_capability_probe.CapabilityProcessTests.test_process_result_captures_bounded_diagnostics (packages.getcodexy.tests.test_component_capability_probe.CapabilityProcessTests)\n",
+            "2026-01-01T00:02:00.200Z Traceback (most recent call last):\n",
+            "2026-01-01T00:02:00.300Z   File \"D:\\a\\codexy\\codexy\\packages\\getcodexy\\tests\\test_component_capability_probe.py\", line 57\n",
+            "2026-01-01T00:02:00.400Z NotImplementedError: outside\n",
+            "##[endgroup]\n",
+            "##[group]Post Run actions/checkout@v7\n",
+        );
+        let excerpt = scoped_log(
+            log,
+            step.as_object().expect("step"),
+            "eunsoogi/codexy",
+            true,
+            2,
+        )
+        .expect("selected step log");
+        assert!(excerpt.contains("NotImplementedError"));
+        assert!(!excerpt.contains("unrelated"));
+    }
 }
 
 fn timestamped(line: &str) -> Option<(Timestamp, &str)> {

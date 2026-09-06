@@ -7,7 +7,7 @@ pub(super) fn select_job(
     response: &Value,
     locator: &Locator,
     observed: &str,
-) -> Result<(Value, Value, bool), String> {
+) -> Result<(Value, Value, bool, usize), String> {
     let jobs = response
         .as_array()
         .or_else(|| response.get("jobs").and_then(Value::as_array))
@@ -37,6 +37,7 @@ pub(super) fn select_job(
     let (step_index, step_value) = matching_steps[0];
     let step = object(Some(step_value), "Actions failed step")?;
     let ambiguous_step_boundary = adjacent_step_boundary_is_ambiguous(steps, step_index, step)?;
+    let log_group_index = log_group_index(steps, step_index)?;
     if text(job, "name", "Actions job")? != locator.job_name
         || text(job, "head_sha", "Actions job")? != observed
         || number(job, "run_attempt", "Actions job")? != locator.run_attempt
@@ -79,7 +80,30 @@ pub(super) fn select_job(
         Value::Object(selected),
         Value::Object(selected_step),
         ambiguous_step_boundary,
+        log_group_index,
     ))
+}
+
+fn log_group_index(steps: &[Value], selected_index: usize) -> Result<usize, String> {
+    let mut group_index = 0;
+    for step_value in steps.iter().take(selected_index + 1) {
+        let step = object(Some(step_value), "Actions job step")?;
+        let status = text(step, "status", "Actions job step")?;
+        let conclusion = text(step, "conclusion", "Actions job step")?;
+        let name = text(step, "name", "Actions job step")?;
+        if status == "completed"
+            && conclusion != "skipped"
+            && name != "Set up job"
+            && name != "Complete job"
+            && !name.starts_with("Post Run ")
+        {
+            group_index += 1;
+        }
+    }
+    if group_index == 0 {
+        return Err("Actions failed step has no supported job-log group".into());
+    }
+    Ok(group_index)
 }
 
 fn adjacent_step_boundary_is_ambiguous(

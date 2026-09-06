@@ -28,8 +28,15 @@ pub(super) fn scoped_log(
     step: &Map<String, Value>,
     repository: &str,
     ambiguous_step_boundary: bool,
+    log_group_index: usize,
 ) -> Result<String, String> {
-    parser::scoped_log(log, step, repository, ambiguous_step_boundary)
+    parser::scoped_log(
+        log,
+        step,
+        repository,
+        ambiguous_step_boundary,
+        log_group_index,
+    )
 }
 
 pub(super) fn check(
