@@ -82,7 +82,12 @@ fn reviewed_head(raw: &str) -> Result<Option<Located>, String> {
     let mut matches = Vec::new();
     for (start, _, line) in operative_lines(raw) {
         let lower = line.to_ascii_lowercase();
-        for marker in ["exact reviewed pr head", "at exact pr head"] {
+        for marker in [
+            "exact reviewed pr head",
+            "exact current pr head",
+            "exact current head",
+            "at exact pr head",
+        ] {
             if let Some(index) = lower.find(marker) {
                 let Some((head, offset)) = find_sha(&line[index + marker.len()..]) else {
                     return Err("markdown reviewed head label lacks a SHA".into());
@@ -110,9 +115,13 @@ fn reviewed_head(raw: &str) -> Result<Option<Located>, String> {
 fn terminal_result(raw: &str) -> Result<Option<Located>, String> {
     let mut matches = Vec::new();
     let lines = operative_lines(raw);
+    let mut in_terminal_handoff = false;
     for (index, (start, _, line)) in lines.iter().enumerate() {
         let lower = line.trim().to_ascii_lowercase();
-        let has_terminal_label = terminal_label(&lower);
+        if lower.starts_with("## ") {
+            in_terminal_handoff = lower.trim() == "## terminal handoff";
+        }
+        let has_terminal_label = terminal_label(&lower, in_terminal_handoff);
         let value = if lower.starts_with("##") && lower.contains("blocking findings") {
             result_value(line).map(|(result, offset)| (result, *start + offset))
         } else if has_terminal_label {
@@ -144,12 +153,13 @@ fn terminal_result(raw: &str) -> Result<Option<Located>, String> {
     unique(matches, "markdown terminal result")
 }
 
-fn terminal_label(line: &str) -> bool {
+fn terminal_label(line: &str, in_terminal_handoff: bool) -> bool {
     let line = line.trim();
     let line = line.strip_prefix('-').map_or(line, str::trim_start);
     let line = line.trim_start_matches('#').trim_start();
     let label = line.split_once(':').map_or(line, |(label, _)| label);
     matches!(label.trim(), "terminal result" | "terminal verdict")
+        || (in_terminal_handoff && label.trim() == "result")
 }
 
 fn labelled_sha(line: &str) -> Option<(String, usize)> {
@@ -158,7 +168,11 @@ fn labelled_sha(line: &str) -> Option<(String, usize)> {
     let label = label.to_ascii_lowercase().replace(['-', '_'], " ");
     if !matches!(
         label.trim(),
-        "exact head" | "exact reviewed pr head" | "reviewed head"
+        "exact head"
+            | "exact reviewed pr head"
+            | "exact current pr head"
+            | "exact current head"
+            | "reviewed head"
     ) {
         return None;
     }

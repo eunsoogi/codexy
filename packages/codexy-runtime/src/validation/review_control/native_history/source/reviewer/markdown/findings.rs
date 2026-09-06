@@ -121,6 +121,7 @@ fn finding_header(line: &str) -> Option<(String, String)> {
 }
 
 fn strip_number(line: &str) -> &str {
+    let line = line.strip_prefix("- ").unwrap_or(line);
     let Some(dot) = line.find('.') else {
         return line;
     };

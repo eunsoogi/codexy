@@ -84,6 +84,13 @@ fn explicit_kind(first: &str) -> Option<String> {
     {
         return Some("delta".into());
     }
+    if normalized.starts_with("authorized strict delta recheck")
+        && normalized.contains("frozen final head")
+        && normalized.contains("only")
+        && !negated(&normalized, "delta")
+    {
+        return Some("delta".into());
+    }
     if (normalized.contains("strict-profile") || normalized.contains("strict profile"))
         && normalized.contains("review")
         && !normalized.contains("delta")

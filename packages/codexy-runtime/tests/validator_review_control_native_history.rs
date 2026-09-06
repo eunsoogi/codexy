@@ -13,6 +13,8 @@ mod live;
 mod markdown;
 #[path = "validator_review_control_native_history/native.rs"]
 mod native;
+#[path = "validator_review_control_native_history/native_forms.rs"]
+mod native_forms;
 
 type TestResult = Result<(), String>;
 
