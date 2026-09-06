@@ -120,3 +120,7 @@ path = "tests/suites/sync_version_suite.rs"
 [[test]]
 name = "suite_archive"
 path = "tests/suites/archive.rs"
+
+[[test]]
+name = "validator_review_control_native_history"
+path = "tests/validator_review_control_native_history.rs"
