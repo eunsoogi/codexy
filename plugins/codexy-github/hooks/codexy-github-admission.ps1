@@ -9,12 +9,8 @@ function Test-InvalidCharacter([string]$value) {
   return $false
 }
 
-function Test-TerminalReference([string]$value) {
-  $candidate = $value.Trim()
-  while ($candidate.EndsWith('.') -or $candidate.EndsWith(',')) {
-    $candidate = $candidate.Substring(0, $candidate.Length - 1).TrimEnd()
-  }
-  return $candidate -match '(?:^|\s)(?:#[0-9]+|\(#[0-9]+\)|\[#[0-9]+\]|\((?:pr|issue)\s+#[0-9]+\)|(?:pr|issue)\s+#[0-9]+)$'
+function Test-MarkedReference([string]$value) {
+  return $value -match '(?:^|\s)(?:#[0-9]+|\(\s*#[0-9]+\s*\)|\[#[0-9]+\]|\(\s*(?:pr|issue)\s+#[0-9]+\s*\)|(?:pr|issue)\s+#[0-9]+)(?=$|[\s.,])'
 }
 
 function Test-ConventionalPrefix([string]$value) {
@@ -29,7 +25,7 @@ function Test-LabelSeparator([string]$value) {
 function Test-PrTitle([string]$value) {
   if ([string]::IsNullOrEmpty($value) -or (Test-InvalidCharacter $value) -or $value -notmatch ': ') { return $false }
   $parts = $value -split ': ', 2
-  return ($parts[1].Trim().Length -gt 0 -and (Test-ConventionalPrefix $parts[0]) -and -not (Test-TerminalReference $parts[1]))
+  return ($parts[1].Trim().Length -gt 0 -and (Test-ConventionalPrefix $parts[0]) -and -not (Test-MarkedReference $parts[1]))
 }
 
 function Test-Category([string]$value) {

@@ -8,7 +8,7 @@ import re
 _TYPE = re.compile(r"^[a-z0-9-]+$")
 _SCOPE = re.compile(r"^[a-z0-9_/-]+$")
 _REFERENCE = re.compile(
-    r"(?:^|\s)(?:#[0-9]+|\(#[0-9]+\)|\[#[0-9]+\]|\((?:pr|issue)\s+#[0-9]+\)|(?:pr|issue)\s+#[0-9]+)$",
+    r"(?:^|\s)(?:#[0-9]+|\(\s*#[0-9]+\s*\)|\[#[0-9]+\]|\(\s*(?:pr|issue)\s+#[0-9]+\s*\)|(?:pr|issue)\s+#[0-9]+)(?=$|[\s.,])",
     re.IGNORECASE,
 )
 
@@ -35,7 +35,7 @@ def _invalid_character(value: str) -> bool:
     )
 
 
-def _terminal_reference(value: str) -> bool:
+def _marked_reference(value: str) -> bool:
     value = value.strip()
     while value.endswith((".", ",")):
         value = value[:-1].rstrip()
@@ -47,7 +47,7 @@ def pr_title(value: object) -> bool:
         return False
     prefix, summary = value.split(": ", 1)
     return (
-        bool(summary.strip()) and _prefix(prefix) and not _terminal_reference(summary)
+        bool(summary.strip()) and _prefix(prefix) and not _marked_reference(summary)
     )
 
 

@@ -45,7 +45,7 @@ fn is_conventional_subject(subject: &str, reject_terminal_reference: bool) -> bo
     };
     !summary.trim().is_empty()
         && is_conventional_prefix(prefix)
-        && (!reject_terminal_reference || !has_terminal_reference(summary))
+        && (!reject_terminal_reference || !has_marked_reference(summary))
 }
 
 fn is_conventional_prefix(prefix: &str) -> bool {
@@ -59,59 +59,11 @@ fn is_conventional_prefix(prefix: &str) -> bool {
     !scope.contains('(') && is_commit_type(commit_type) && is_scope(scope)
 }
 
-fn has_terminal_reference(summary: &str) -> bool {
-    let mut candidate = summary.trim();
-    while candidate.ends_with(['.', ',']) {
-        candidate = candidate[..candidate.len() - 1].trim_end();
-    }
-    let tokens = candidate.split_ascii_whitespace().collect::<Vec<_>>();
-    let Some(last) = tokens.last().copied() else {
-        return false;
-    };
-    let last = last.trim_end_matches(['.', ',']);
-    if is_hash_reference(last) {
-        return true;
-    }
-    if let Some(inner) = last
-        .strip_prefix('[')
-        .and_then(|value| value.strip_suffix(']'))
-    {
-        return is_hash_reference(inner);
-    }
-    if tokens.len() > 1
-        && matches!(
-            tokens[tokens.len() - 2].to_ascii_lowercase().as_str(),
-            "pr" | "issue"
-        )
-        && is_hash_reference(last)
-    {
-        return true;
-    }
-    if let Some((before, inner)) = candidate.rsplit_once('(') {
-        if let Some(inner) = inner.strip_suffix(')') {
-            let parts = inner.split_ascii_whitespace().collect::<Vec<_>>();
-            let separated = before.is_empty()
-                || before
-                    .chars()
-                    .last()
-                    .is_some_and(|character| character.is_ascii_whitespace());
-            if separated
-                && ((parts.len() == 1 && is_hash_reference(parts[0]))
-                    || (parts.len() == 2
-                        && matches!(parts[0].to_ascii_lowercase().as_str(), "pr" | "issue")
-                        && is_hash_reference(parts[1])))
-            {
-                return true;
-            }
-        }
-    }
-    false
-}
-
-fn is_hash_reference(value: &str) -> bool {
-    value.strip_prefix('#').is_some_and(|number| {
-        !number.is_empty() && number.bytes().all(|byte| byte.is_ascii_digit())
-    })
+fn has_marked_reference(summary: &str) -> bool {
+    regex::Regex::new(
+        r"(?i)(?:^|[ \t])(?:#[0-9]+|\([ \t]*#[0-9]+[ \t]*\)|\[#[0-9]+\]|\([ \t]*(?:pr|issue)[ \t]+#[0-9]+[ \t]*\)|(?:pr|issue)[ \t]+#[0-9]+)(?:[.,]|[ \t]|$)",
+    )
+    .is_ok_and(|reference| reference.is_match(summary))
 }
 
 fn is_issue_category(value: &str) -> bool {

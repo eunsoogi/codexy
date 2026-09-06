@@ -51,6 +51,7 @@ fn validator_cli_enforces_scoped_pr_titles_and_reference_boundaries()
         "feat(): desc",
         "feat(task): desc (#900)",
         "feat(task): desc (#900) ",
+        "feat(task): resolve #900 before release",
         "feat(task): desc #900",
         "feat(task): desc (PR #926)",
         "feat(task): desc PR #926",

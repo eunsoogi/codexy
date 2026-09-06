@@ -19,29 +19,12 @@ has_invalid_title_character() {
 	esac
 }
 
-has_terminal_reference() {
+has_marked_reference() {
 	printf '%s\n' "$1" | awk '
-function trim_terminal_whitespace(value) {
-	sub(/[ \t]+$/, "", value)
-	return value
-}
-function strip_punctuation(value) {
-	value = trim_terminal_whitespace(value)
-	while (value ~ /[.,]$/) {
-		sub(/[.,]$/, "", value)
-		value = trim_terminal_whitespace(value)
-	}
-	return value
-}
 {
-	value = strip_punctuation($0)
-	lower = tolower(value)
-	if (lower ~ /(^|[ \t])#[0-9]+$/ ||
-	    lower ~ /(^|[ \t])\(#[0-9]+\)$/ ||
-	    lower ~ /(^|[ \t])\[#[0-9]+\]$/ ||
-	    lower ~ /(^|[ \t])\((pr|issue)[ \t]+#[0-9]+\)$/ ||
-	    lower ~ /(^|[ \t])(pr|issue)[ \t]+#[0-9]+$/) exit 0
-	exit 1
+ lower = tolower($0)
+ if (lower ~ /(^|[ \t])((#[0-9]+)|\([ \t]*#[0-9]+[ \t]*\)|\[#[0-9]+\]|\([ \t]*(pr|issue)[ \t]+#[0-9]+[ \t]*\)|(pr|issue)[ \t]+#[0-9]+)([.,]|[ \t]|$)/) exit 0
+ exit 1
 }'
 }
 
@@ -70,7 +53,7 @@ check_conventional_subject() {
 	scope=${prefix#*(}
 	scope=${scope%)}
 	is_ident "$commit_type" && is_scope "$scope" || return 1
-	has_terminal_reference "$summary" && return 1
+	has_marked_reference "$summary" && return 1
 	return 0
 }
 

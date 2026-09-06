@@ -44,11 +44,11 @@ fn readiness_guard_checks_pr_titles() -> Result<(), Box<dyn std::error::Error>> 
     );
 
     let bad_reference = Command::new(&script)
-        .args(["--check-pr-title", "--pr-title", "feat(task): desc (#900) . ,"])
+        .args(["--check-pr-title", "--pr-title", "fix(task): resolve #123 before release"])
         .output()?;
     assert!(
         !bad_reference.status.success(),
-        "guard should reject terminal references followed by separated punctuation"
+        "guard should reject marked references before trailing summary text"
     );
 
     let good = Command::new(&script)

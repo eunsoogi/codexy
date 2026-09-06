@@ -65,6 +65,7 @@ class GithubNativeHooksInstallationMixin:
                 ("pr", "feat: desc", True),
                 ("pr", "feat(task): desc (#900)", True),
                 ("pr", "feat(task): desc (#900) ", True),
+                ("pr", "fix(task): resolve #123 before release", True),
                 ("pr", "feat(task): desc (#900)  (#926)", True),
                 ("pr", "feat(task): desc PR #900", True),
                 ("pr", "Feat(Task): desc", True),

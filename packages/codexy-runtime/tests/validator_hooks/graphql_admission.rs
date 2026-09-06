@@ -36,6 +36,7 @@ fn issue_735_graphql_queries_and_exact_mutations_are_classified_structurally() -
         ("N-ISS-update-title-category", "mutation { updateIssue(input:{issueId:\"ISS_owned\",title:\"Fix (task) : reject invalid titles\"}) { issue { number } } }"),
         ("N-PR-title-scope-less", "mutation { createPullRequest(input:{repositoryId:\"REPO_owned\",title:\"feat: desc\",headRefName:\"topic\",baseRefName:\"main\"}) { pullRequest { number } } }"),
         ("N-PR-title-reference", "mutation { createPullRequest(input:{repositoryId:\"REPO_owned\",title:\"feat(task): desc (#900)\",headRefName:\"topic\",baseRefName:\"main\"}) { pullRequest { number } } }"),
+        ("N-PR-title-middle-reference", "mutation { createPullRequest(input:{repositoryId:\"REPO_owned\",title:\"fix(task): resolve #123 before release\",headRefName:\"topic\",baseRefName:\"main\"}) { pullRequest { number } } }"),
         ("N-PR-update-title-reference", "mutation { updatePullRequest(input:{pullRequestId:\"PR_owned\",title:\"feat(task): desc (PR #926)\"}) { pullRequest { number } } }"),
     ] {
         let query = bind_query(query);

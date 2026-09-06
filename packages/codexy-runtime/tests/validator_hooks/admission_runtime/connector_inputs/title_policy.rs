@@ -66,6 +66,11 @@ fn connector_title_admission_shares_issue_pr_and_metadata_boundaries() -> TestRe
             json!({"repository_full_name":"eunsoogi/codexy","pr_number":17,"title":"feat(task): desc (#900)"}),
         ),
         (
+            "N-PR-middle-reference",
+            "github_update_pull_request",
+            json!({"repository_full_name":"eunsoogi/codexy","pr_number":17,"title":"fix(task): resolve #123 before release"}),
+        ),
+        (
             "N-PR-normalized-update-title-only-thread-title",
             "github.update_pull_request",
             json!({"repository_full_name":"eunsoogi/codexy","pr_number":953,"title":"#951 · PR #953 · Windows 원인 진단"}),
