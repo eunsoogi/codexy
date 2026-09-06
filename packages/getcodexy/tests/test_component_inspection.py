@@ -236,5 +236,6 @@ class ComponentInspectionTests(
                 result = doctor(state.home, codex=state.codex, runner=state.run)
                 self.assertEqual(result["component_health"][0]["state"], "incompatible")
 
+
 if __name__ == "__main__":
     unittest.main()

@@ -89,9 +89,7 @@ class CapabilityObservationCases:
             materialize(state, "core")
             result = doctor(state.home, codex=state.codex, runner=state.run)
         health = result["component_health"][0]
-        capability = health["observed"]["capabilities"][
-            "hook:codexy-thread-delivery"
-        ]
+        capability = health["observed"]["capabilities"]["hook:codexy-thread-delivery"]
         self.assertEqual(health["state"], "healthy")
         self.assertEqual(
             capability["states"],
@@ -112,9 +110,7 @@ class CapabilityObservationCases:
             ):
                 result = doctor(state.home, codex=state.codex, runner=state.run)
         health = result["component_health"][0]
-        capability = health["observed"]["capabilities"][
-            "hook:codexy-thread-delivery"
-        ]
+        capability = health["observed"]["capabilities"]["hook:codexy-thread-delivery"]
         self.assertEqual(health["first_failure_stage"], "callable")
         self.assertEqual(capability["states"]["loaded"], "loaded")
         self.assertEqual(capability["states"]["callable"], "unknown")
