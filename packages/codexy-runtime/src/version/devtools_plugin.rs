@@ -70,7 +70,8 @@ fn validated_versions() -> Result<Option<(String, String)>> {
         .parent()
         .context("Devtools plugin root")?;
     for required in [
-        "skills/developer-tools/SKILL.md",
+        "skills/codegraph/SKILL.md",
+        "skills/lsp/SKILL.md",
         ".mcp.json",
         ".codex/lsp-client.json",
         "lsp/server-catalog.toml",

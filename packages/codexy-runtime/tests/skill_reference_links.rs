@@ -19,7 +19,8 @@ fn all_packaged_skill_markdown_is_collected() -> TestResult {
         root.join(".agents/skills/plugin-marketplace-prep/SKILL.md"),
         root.join("plugins/codexy/skills/engineering/SKILL.md"),
         root.join("plugins/codexy-github/skills/git-workflow/references/local-git-and-branches.md"),
-        root.join("plugins/codexy-devtools/skills/developer-tools/SKILL.md"),
+        root.join("plugins/codexy-devtools/skills/codegraph/SKILL.md"),
+        root.join("plugins/codexy-devtools/skills/lsp/SKILL.md"),
     ] {
         assert!(markdown.contains(&expected), "missing {}", expected.display());
     }
