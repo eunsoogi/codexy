@@ -1,0 +1,6 @@
+interface:
+  display_name: "Codegraph"
+  short_description: "Bounded repository search and dependency navigation."
+  default_prompt: "Use $codegraph for bounded repository structure, search, imports, and dependency navigation."
+policy:
+  allow_implicit_invocation: true

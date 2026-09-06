@@ -254,7 +254,8 @@ runtime 경계는 [아키텍처 안내서](docs/architecture.md)에서 확인할
 
 | 호출              | 설명                                                                                               |
 | ----------------- | -------------------------------------------------------------------------------------------------- |
-| `developer-tools` | Codexy Devtools가 설치되어 있고 로컬 Codegraph 탐색이나 LSP diagnostic이 필요한 작업에 사용합니다. |
+| `codegraph` | Codexy Devtools가 설치되어 있고 저장소 구조, 검색, import 또는 dependency 탐색을 위한 bounded Codegraph 작업이 필요한 경우 사용합니다. |
+| `lsp` | Codexy Devtools가 설치되어 있고 language-server diagnostic, symbol, definition, reference 또는 bounded LSP batch가 필요한 경우 사용합니다. |
 
 이 저장소에는 Codexy maintainer를 위한 `plugin-marketplace-prep`과
 `release-engineering`도 `.agents/skills/` 아래에 있습니다. 둘은 저장소에서만
