@@ -9,6 +9,9 @@ use identity::{
     relative_path,
 };
 
+#[cfg(test)]
+mod tests;
+
 const RAW_FIELDS: [&str; 8] = [
     "repository",
     "owningIssue",
@@ -113,7 +116,7 @@ pub(super) fn project_response(
     if !nodes
         .iter()
         .filter_map(Value::as_object)
-        .any(|node| node.get("number").and_then(Value::as_u64) == Some(locator.owning_issue))
+        .any(|node| check_issue_identity(node, locator).is_ok())
     {
         return Err("authenticated GitHub owning issue is not a closing PR reference".into());
     }

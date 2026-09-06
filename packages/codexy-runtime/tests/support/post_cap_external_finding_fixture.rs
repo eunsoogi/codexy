@@ -38,7 +38,7 @@ pub(crate) fn pr938_response(observed_commit: &str) -> Value {
         "repository":{
             "pullRequest":{
                 "number":938,"url":pull_url,"repository":{"nameWithOwner":repository},
-                "closingIssuesReferences":{"nodes":[{"number":937,"url":issue_url}],"pageInfo":{"hasNextPage":false}}
+                "closingIssuesReferences":{"nodes":[{"number":937,"url":issue_url,"repository":{"nameWithOwner":repository}}],"pageInfo":{"hasNextPage":false}}
             },
             "issue":{"number":937,"url":issue_url,"repository":{"nameWithOwner":repository}}
         },
