@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use serde_json::Value;
 
 use super::{reject_unknown, required_text};
+use crate::validation::review_control::external_finding;
 
 pub(super) fn check(
     value: &Value,
@@ -20,7 +21,7 @@ pub(super) fn check(
     let reason = required_text(object, "reason", "post_cap_re_review")?;
     if !matches!(
         reason,
-        "mandatory_base_integration" | "in_scope_contract_root_repair"
+        "mandatory_base_integration" | "in_scope_contract_root_repair" | external_finding::REASON
     ) {
         return Err("review control state post-cap reason is not eligible".into());
     }
@@ -42,7 +43,13 @@ pub(super) fn check(
         })?;
     reject_unknown(
         change,
-        &["from_head", "to_head", "evidence_commit", "finding_ids"],
+        &[
+            "from_head",
+            "to_head",
+            "evidence_commit",
+            "finding_ids",
+            "external_finding",
+        ],
         "post_cap_re_review.qualifying_change",
     )?;
     if required_text(change, "from_head", "qualifying_change")? != prior
@@ -79,11 +86,50 @@ pub(super) fn check(
                 "mandatory base integration must not claim contract/root finding ids".into(),
             );
         }
-        if reason == "in_scope_contract_root_repair" && ids.is_empty() {
+        if matches!(
+            reason,
+            "in_scope_contract_root_repair" | external_finding::REASON
+        ) && ids.is_empty()
+        {
             return Err("contract/root repair must bind at least one finding id".into());
         }
-    } else if reason == "in_scope_contract_root_repair" {
+    } else if matches!(
+        reason,
+        "in_scope_contract_root_repair" | external_finding::REASON
+    ) {
         return Err("contract/root repair must bind finding ids".into());
     }
+    if reason == external_finding::REASON {
+        let source = change.get("external_finding").ok_or_else(|| {
+            "authenticated external finding repair must bind its source".to_owned()
+        })?;
+        let facts = external_finding::check(source)?;
+        if string_ids(
+            finding_ids.ok_or("missing finding ids")?,
+            "qualifying change finding ids",
+        )? != facts.finding_ids.iter().cloned().collect()
+        {
+            return Err("qualifying change finding ids do not bind the external source".into());
+        }
+    } else if change.contains_key("external_finding") {
+        return Err("external finding source requires its typed post-cap reason".into());
+    }
     Ok(())
+}
+
+fn string_ids(value: &Value, label: &str) -> Result<HashSet<String>, String> {
+    let ids = value
+        .as_array()
+        .ok_or_else(|| format!("{label} must be an array"))?;
+    let mut unique = HashSet::new();
+    for id in ids {
+        let id = id
+            .as_str()
+            .filter(|id| !id.is_empty())
+            .ok_or_else(|| format!("{label} must contain non-empty strings"))?;
+        if !unique.insert(id.to_owned()) {
+            return Err(format!("{label} must be unique"));
+        }
+    }
+    Ok(unique)
 }

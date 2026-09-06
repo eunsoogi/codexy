@@ -7,6 +7,7 @@ pub(crate) const SYNTHETIC_DELTA_HEAD: &str = "synthetic-delta-head";
 pub(crate) const SYNTHETIC_CURRENT_HEAD: &str = "synthetic-current-head";
 pub(crate) const SYNTHETIC_INTEGRATION_EVIDENCE: &str = "synthetic-integration-evidence";
 pub(crate) const SYNTHETIC_REPAIR_EVIDENCE: &str = "synthetic-repair-evidence";
+pub(crate) const SYNTHETIC_EXTERNAL_EVIDENCE: &str = "synthetic-external-evidence";
 
 pub(crate) fn strict_control(issue_number: u64, head: &str) -> Value {
     json!({
