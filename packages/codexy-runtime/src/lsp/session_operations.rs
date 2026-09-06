@@ -9,7 +9,7 @@ use crate::lsp::pathing::{language_for_path, to_file_uri};
 use crate::lsp::protocol::{
     LspMethod, LspRequest, error_result, failure_result, supports_pull_diagnostics,
 };
-use crate::lsp::session::LspSession;
+use crate::lsp::session::{LspSession, RunRequestError};
 use crate::lsp::session_diagnostics::{has_publish_diagnostics, target_diagnostics};
 use crate::lsp::session_io::{ensure_workspace_ready, stderr_text};
 
@@ -31,6 +31,9 @@ impl LspSession {
             Some(&text),
             true,
         )
+        .map_err(|error| match error {
+            RunRequestError::PerFile(error) | RunRequestError::Session(error) => error,
+        })
     }
 
     pub(super) fn run_batch(&mut self, requests: &[LspRequest], deadline: Instant) -> Vec<Value> {
@@ -73,7 +76,14 @@ impl LspSession {
                     }
                     results.push(result);
                 }
-                Err(error) => {
+                Err(RunRequestError::PerFile(error)) => {
+                    results.push(failure_result(
+                        request,
+                        &error.to_string(),
+                        &stderr_text(&self.stderr),
+                    ));
+                }
+                Err(RunRequestError::Session(error)) => {
                     let reason = error.to_string();
                     results.push(failure_result(request, &reason, &stderr_text(&self.stderr)));
                     append_unstarted(
@@ -122,15 +132,17 @@ impl LspSession {
         initialize: &Value,
         file_text: Option<&str>,
         allow_incomplete_diagnostics: bool,
-    ) -> Result<Value> {
-        let uri = to_file_uri(&request.file_path)?;
+    ) -> std::result::Result<Value, RunRequestError> {
+        let uri = to_file_uri(&request.file_path).map_err(RunRequestError::Session)?;
         let text = match file_text {
             Some(text) => text.to_owned(),
             None => fs::read_to_string(&request.file_path)
-                .with_context(|| format!("reading {}", request.file_path))?,
+                .with_context(|| format!("reading {}", request.file_path))
+                .map_err(RunRequestError::PerFile)?,
         };
         let notification_start = self.notifications.len();
-        self.open_document(request, &uri, &text)?;
+        self.open_document(request, &uri, &text)
+            .map_err(RunRequestError::Session)?;
         let mut result = Value::Null;
         if matches!(request.method, LspMethod::Diagnostics)
             && !supports_pull_diagnostics(initialize)
@@ -140,13 +152,16 @@ impl LspSession {
                 notification_start,
                 deadline,
                 allow_incomplete_diagnostics,
-            )?;
+            )
+            .map_err(RunRequestError::Session)?;
         } else {
-            let response = self.request_until(
-                request.method.method_name(),
-                &request.method.params(&uri, request),
-                deadline,
-            )?;
+            let response = self
+                .request_until(
+                    request.method.method_name(),
+                    &request.method.params(&uri, request),
+                    deadline,
+                )
+                .map_err(RunRequestError::Session)?;
             if let Some(error) = response.get("error") {
                 return Ok(error_result(request, error, &stderr_text(&self.stderr)));
             }

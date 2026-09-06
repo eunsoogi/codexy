@@ -21,6 +21,12 @@ pub(super) struct LspSession {
     pub(super) opened_documents: std::collections::BTreeMap<String, i32>,
 }
 
+#[derive(Debug)]
+pub(super) enum RunRequestError {
+    PerFile(anyhow::Error),
+    Session(anyhow::Error),
+}
+
 impl LspSession {
     pub(super) fn spawn(request: &LspRequest) -> Result<Self> {
         let command = request

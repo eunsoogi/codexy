@@ -96,6 +96,48 @@ fn lsp_single_request_reads_the_file_before_server_initialization() -> Result<()
 }
 
 #[test]
+fn lsp_batch_continues_after_an_intermediate_missing_file() -> Result<(), Box<dyn std::error::Error>> {
+    let root = tempfile::tempdir()?;
+    let root_path = root.path().canonicalize()?;
+    std::fs::write(root_path.join("first.toml"), "value = 1\n")?;
+    std::fs::write(root_path.join("third.toml"), "value = 3\n")?;
+    let fake_lsp = env!("CARGO_BIN_EXE_codexy-fake-lsp");
+    let capture = root_path.join("capture.json");
+    let mut client = start_client(&[], Some(&capture))?;
+    initialize(&mut client)?;
+
+    let response = batch_response(
+        &mut client,
+        2,
+        batch_arguments(
+            &root_path,
+            fake_lsp,
+            json!([
+                {"method":"lsp_document_symbols","path":"first.toml"},
+                {"method":"lsp_document_symbols","path":"missing.toml"},
+                {"method":"lsp_document_symbols","path":"third.toml"}
+            ]),
+        ),
+    )?;
+    let payload = text_payload(&response)?;
+    assert_eq!(payload["status"], "error");
+    assert_eq!(payload["results"][0]["status"], "ok");
+    assert_eq!(payload["results"][1]["status"], "error");
+    let reason = payload["results"][1]["reason"]
+        .as_str()
+        .ok_or("missing-file reason")?;
+    assert!(reason.contains("reading"));
+    assert!(reason.contains("missing.toml"));
+    assert_eq!(payload["results"][2]["status"], "ok");
+
+    let capture_payload: Value = serde_json::from_str(&std::fs::read_to_string(capture)?)?;
+    assert_eq!(capture_payload["initializeCount"], 1);
+    assert_eq!(capture_payload["requestCount"], 2);
+    assert_eq!(capture_payload["requestIds"], json!([2, 3]));
+    Ok(())
+}
+
+#[test]
 fn lsp_single_request_preserves_push_diagnostics_timeout_behavior() -> Result<(), Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
     std::fs::write(root.path().join("sample.toml"), "value = 1\n")?;
