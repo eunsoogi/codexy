@@ -100,13 +100,46 @@ fn windows_static_python_fixture_requires_the_supported_paired_dispatch_contract
     assert_eq!(windows_static_python_fixture(&shell), None);
     std::fs::write(&python, "print('fixture')\n")?;
     assert_eq!(windows_static_python_fixture(&shell), Some(python));
+
+    let production = codexy_runtime::paths::repository_root()
+        .join("plugins/codexy/hooks/codexy-thread-delivery.cmd");
+    std::fs::copy(production, &command)?;
+    assert_eq!(
+        windows_static_python_fixture(&shell),
+        Some(shell.with_file_name("codexy-thread-delivery.py"))
+    );
     for source in [
         "python -I -B \"%~dp0codexy-thread-delivery.py\" --event \"%event%\"\n",
         "py -3 fixture.py\n",
+        "@echo off\nset \"runtime=%SystemRoot%\\py.exe\"\n\"%runtime%\" -3 -I -B \"%~dp0codexy-thread-delivery.py\" --event \"%event%\"\n",
     ] {
         std::fs::write(&command, source)?;
         assert_eq!(windows_static_python_fixture(&shell), None);
     }
+    Ok(())
+}
+
+#[cfg(windows)]
+#[test]
+fn absolute_paired_dispatch_uses_the_python_fixture_not_a_posix_shell() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let shell = temp.path().join("codexy-thread-delivery.sh");
+    let command = temp.path().join("codexy-thread-delivery.cmd");
+    let python = temp.path().join("codexy-thread-delivery.py");
+    std::fs::write(&shell, "#!/bin/sh\n")?;
+    std::fs::copy(
+        codexy_runtime::paths::repository_root()
+            .join("plugins/codexy/hooks/codexy-thread-delivery.cmd"),
+        &command,
+    )?;
+    std::fs::write(&python, "print('absolute-dispatch')\n")?;
+
+    let mut fixture = FixtureCommand::new(&shell);
+    let program = fixture.get_program().to_string_lossy().to_ascii_lowercase();
+    assert!(!program.ends_with("sh") && !program.ends_with("sh.exe"));
+    let output = fixture.output()?;
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8(output.stdout)?, "absolute-dispatch\r\n");
     Ok(())
 }
 
