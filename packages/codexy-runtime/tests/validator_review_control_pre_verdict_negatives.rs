@@ -2,7 +2,7 @@ use std::{fs, process::Output};
 
 use serde_json::{Value, json};
 
-use crate::support::{FixtureCommand, TestResult, make_executable};
+use crate::support::{FixtureCommand, TestResult};
 
 #[path = "support/review_control_direct_state.rs"]
 mod direct_state;
@@ -60,37 +60,20 @@ fn run_eligibility(
             }
         }))?,
     )?;
-    let bin = temporary.path().join("bin");
-    fs::create_dir(&bin)?;
-    let ci_path = temporary.path().join("ci-response.json");
-    let maintainer_path = temporary.path().join("maintainer-response.json");
-    fs::write(
-        &ci_path,
-        serde_json::to_vec(&disposition_fixture::ci_response(
+    let fixture = disposition_fixture::write_gh_fixture(
+        temporary.path(),
+        &disposition_fixture::ci_sources(
             947,
             current["baseRefOid"].as_str().expect("base"),
             source_head,
-        ))?,
-    )?;
-    fs::write(
-        &maintainer_path,
-        serde_json::to_vec(&disposition_fixture::maintainer_response(
+        ),
+        &disposition_fixture::maintainer_response(
             947,
             947,
             current["baseRefOid"].as_str().expect("base"),
             source_head,
-        ))?,
+        ),
     )?;
-    let gh = bin.join("gh");
-    fs::write(
-        &gh,
-        "#!/bin/sh\nif [ \"$1\" = \"pr\" ]; then cat \"$CODEXY_TEST_CI_RESPONSE\"; else cat \"$CODEXY_TEST_MAINTAINER_RESPONSE\"; fi\n",
-    )?;
-    make_executable(&gh)?;
-    let mut paths = vec![bin];
-    if let Some(existing) = std::env::var_os("PATH") {
-        paths.extend(std::env::split_paths(&existing));
-    }
     let mut command = FixtureCommand::new(env!("CARGO_BIN_EXE_codexy-review-control"));
     command
         .args(["--check-next-review-eligibility", "--input"])
@@ -103,9 +86,12 @@ fn run_eligibility(
         .arg_path(&output_path)
         .args(["--repository-root"])
         .arg_path(&repository.path)
-        .env_path_list("PATH", paths)
-        .env_path("CODEXY_TEST_CI_RESPONSE", ci_path)
-        .env_path("CODEXY_TEST_MAINTAINER_RESPONSE", maintainer_path);
+        .env_path_list("PATH", fixture.path)
+        .env_path("CODEXY_TEST_CI_RESPONSE", fixture.ci)
+        .env_path("CODEXY_TEST_REQUIRED_STATUS_RESPONSE", fixture.required)
+        .env_path("CODEXY_TEST_EXPECTED_CHECKS_RESPONSE", fixture.expected)
+        .env_path("CODEXY_TEST_CHECK_SUITES_RESPONSE", fixture.suites)
+        .env_path("CODEXY_TEST_MAINTAINER_RESPONSE", fixture.maintainer);
     let result = command.output()?;
     let receipt = result
         .status

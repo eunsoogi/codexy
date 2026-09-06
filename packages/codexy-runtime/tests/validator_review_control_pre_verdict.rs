@@ -2,7 +2,7 @@ use std::fs;
 
 use serde_json::{Value, json};
 
-use crate::support::{FixtureCommand, TestResult, make_executable};
+use crate::support::{FixtureCommand, TestResult};
 
 #[path = "support/review_control_direct_state.rs"]
 mod direct_state;
@@ -53,9 +53,9 @@ fn next_review_eligibility_accepts_an_authentic_two_event_predecessor() -> TestR
             }
         }))?,
     )?;
-    let (path, ci_response, maintainer_response) = fake_gh(
+    let fixture = fake_gh(
         temporary.path(),
-        disposition_fixture::ci_response(947, &current_base, current_head),
+        disposition_fixture::ci_sources(947, &current_base, current_head),
         disposition_fixture::maintainer_response(947, 947, &current_base, current_head),
     )?;
     let mut command = FixtureCommand::new(env!("CARGO_BIN_EXE_codexy-review-control"));
@@ -70,9 +70,12 @@ fn next_review_eligibility_accepts_an_authentic_two_event_predecessor() -> TestR
         .arg_path(&output_path)
         .args(["--repository-root"])
         .arg_path(&repository.path)
-        .env_path_list("PATH", path)
-        .env_path("CODEXY_TEST_CI_RESPONSE", ci_response)
-        .env_path("CODEXY_TEST_MAINTAINER_RESPONSE", maintainer_response);
+        .env_path_list("PATH", fixture.path)
+        .env_path("CODEXY_TEST_CI_RESPONSE", fixture.ci)
+        .env_path("CODEXY_TEST_REQUIRED_STATUS_RESPONSE", fixture.required)
+        .env_path("CODEXY_TEST_EXPECTED_CHECKS_RESPONSE", fixture.expected)
+        .env_path("CODEXY_TEST_CHECK_SUITES_RESPONSE", fixture.suites)
+        .env_path("CODEXY_TEST_MAINTAINER_RESPONSE", fixture.maintainer);
     let result = command.output()?;
     assert!(
         result.status.success(),
@@ -140,9 +143,9 @@ fn next_review_eligibility_rejects_caller_classification_and_existing_event() ->
             }
         }))?,
     )?;
-    let (path, ci_response, maintainer_response) = fake_gh(
+    let fixture = fake_gh(
         temporary.path(),
-        disposition_fixture::ci_response(947, &current_base, current_head),
+        disposition_fixture::ci_sources(947, &current_base, current_head),
         disposition_fixture::maintainer_response(947, 947, &current_base, current_head),
     )?;
     let mut command = FixtureCommand::new(env!("CARGO_BIN_EXE_codexy-review-control"));
@@ -157,9 +160,12 @@ fn next_review_eligibility_rejects_caller_classification_and_existing_event() ->
         .arg_path(&output_path)
         .args(["--repository-root"])
         .arg_path(&repository.path)
-        .env_path_list("PATH", path)
-        .env_path("CODEXY_TEST_CI_RESPONSE", ci_response)
-        .env_path("CODEXY_TEST_MAINTAINER_RESPONSE", maintainer_response);
+        .env_path_list("PATH", fixture.path)
+        .env_path("CODEXY_TEST_CI_RESPONSE", fixture.ci)
+        .env_path("CODEXY_TEST_REQUIRED_STATUS_RESPONSE", fixture.required)
+        .env_path("CODEXY_TEST_EXPECTED_CHECKS_RESPONSE", fixture.expected)
+        .env_path("CODEXY_TEST_CHECK_SUITES_RESPONSE", fixture.suites)
+        .env_path("CODEXY_TEST_MAINTAINER_RESPONSE", fixture.maintainer);
     let result = command.output()?;
     assert!(!result.status.success());
     assert!(String::from_utf8_lossy(&result.stderr).contains("unknown field"));
@@ -198,24 +204,8 @@ fn next_review_eligibility_rejects_caller_classification_and_existing_event() ->
 
 fn fake_gh(
     root: &std::path::Path,
-    ci: Value,
+    ci: disposition_fixture::CiSources,
     maintainer: Value,
-) -> TestResult<(Vec<std::path::PathBuf>, std::path::PathBuf, std::path::PathBuf)> {
-    let bin = root.join("bin");
-    fs::create_dir(&bin)?;
-    let ci_response = root.join("ci-response.json");
-    let maintainer_response = root.join("maintainer-response.json");
-    fs::write(&ci_response, serde_json::to_vec(&ci)?)?;
-    fs::write(&maintainer_response, serde_json::to_vec(&maintainer)?)?;
-    let gh = bin.join("gh");
-    fs::write(
-        &gh,
-        "#!/bin/sh\nif [ \"$1\" = \"pr\" ]; then cat \"$CODEXY_TEST_CI_RESPONSE\"; else cat \"$CODEXY_TEST_MAINTAINER_RESPONSE\"; fi\n",
-    )?;
-    make_executable(&gh)?;
-    let mut path = vec![bin];
-    if let Some(existing) = std::env::var_os("PATH") {
-        path.extend(std::env::split_paths(&existing));
-    }
-    Ok((path, ci_response, maintainer_response))
+) -> TestResult<disposition_fixture::GhFixture> {
+    disposition_fixture::write_gh_fixture(root, &ci, &maintainer)
 }

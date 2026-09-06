@@ -2,7 +2,7 @@ use std::fs;
 
 use serde_json::{Value, json};
 
-use crate::support::{FixtureCommand, TestResult, make_executable};
+use crate::support::{FixtureCommand, TestResult};
 
 use super::{
     direct_state, disposition_fixture, graph, invoke_build, write_review_inputs,
@@ -88,37 +88,14 @@ pub(crate) fn produce_disposition(mut control: Value) -> TestResult<Value> {
     let previous = direct_state::pr_snapshot(issue, &previous_base, &previous_head, Some(previous));
     let input = temporary.path().join("producer-input.json");
     let output = temporary.path().join("producer-output.json");
-    let ci_response = temporary.path().join("ci-response.json");
-    let maintainer_response = temporary.path().join("maintainer-response.json");
-    fs::write(
-        &ci_response,
-        serde_json::to_vec(&disposition_fixture::ci_response(
-            issue,
-            &current_base,
-            current_head,
-        ))?,
-    )?;
-    fs::write(
-        &maintainer_response,
-        serde_json::to_vec(&disposition_fixture::maintainer_response(
-            issue,
-            issue,
-            &current_base,
-            current_head,
-        ))?,
-    )?;
-    let bin = temporary.path().join("bin");
-    fs::create_dir(&bin)?;
-    let gh = bin.join("gh");
-    fs::write(
-        &gh,
-        "#!/bin/sh\nif [ \"$1\" = \"pr\" ]; then cat \"$CODEXY_TEST_CI_RESPONSE\"; else cat \"$CODEXY_TEST_MAINTAINER_RESPONSE\"; fi\n",
-    )?;
-    make_executable(&gh)?;
-    let mut paths = vec![bin];
-    if let Some(path) = std::env::var_os("PATH") {
-        paths.extend(std::env::split_paths(&path));
-    }
+    let sources = disposition_fixture::ci_sources(issue, &current_base, current_head);
+    let maintainer = disposition_fixture::maintainer_response(
+        issue,
+        issue,
+        &current_base,
+        current_head,
+    );
+    let fixture = disposition_fixture::write_gh_fixture(temporary.path(), &sources, &maintainer)?;
     fs::write(
         &input,
         serde_json::to_vec(&json!({
@@ -141,9 +118,12 @@ pub(crate) fn produce_disposition(mut control: Value) -> TestResult<Value> {
         .arg_path(&output)
         .args(["--repository-root"])
         .arg_path(&repository.path)
-        .env_path_list("PATH", paths)
-        .env_path("CODEXY_TEST_CI_RESPONSE", ci_response)
-        .env_path("CODEXY_TEST_MAINTAINER_RESPONSE", maintainer_response);
+        .env_path_list("PATH", fixture.path)
+        .env_path("CODEXY_TEST_CI_RESPONSE", fixture.ci)
+        .env_path("CODEXY_TEST_REQUIRED_STATUS_RESPONSE", fixture.required)
+        .env_path("CODEXY_TEST_EXPECTED_CHECKS_RESPONSE", fixture.expected)
+        .env_path("CODEXY_TEST_CHECK_SUITES_RESPONSE", fixture.suites)
+        .env_path("CODEXY_TEST_MAINTAINER_RESPONSE", fixture.maintainer);
     let result = command.output()?;
     assert!(
         result.status.success(),
@@ -177,7 +157,7 @@ where
     let pull = state["number"].as_u64().ok_or("disposition pull")?;
     let head = state["headRefOid"].as_str().ok_or("disposition head")?;
     let maintainer_response = make_maintainer_response(pull, &current_base, head);
-    let ci_response = disposition_fixture::ci_response(pull, &current_base, head);
+    let ci_sources = disposition_fixture::ci_sources(pull, &current_base, head);
     Ok(invoke_build(
         &repository.path,
         &current,
@@ -185,7 +165,7 @@ where
         &previous,
         &output,
         &control,
-        Some((ci_response, maintainer_response)),
+        Some((ci_sources, maintainer_response)),
     )?)
 }
 
@@ -196,7 +176,7 @@ pub(crate) fn run_build_with_disposition_ci<F>(
     make_ci_response: F,
 ) -> TestResult<std::process::Output>
 where
-    F: FnOnce(u64, &str, &str) -> Value,
+    F: FnOnce(u64, &str, &str, &mut disposition_fixture::CiSources),
 {
     let temporary = tempfile::tempdir()?;
     let repository = graph::SyntheticRepository::create(temporary.path())?;
@@ -213,7 +193,8 @@ where
     let pull = state["number"].as_u64().ok_or("disposition pull")?;
     let head = state["headRefOid"].as_str().ok_or("disposition head")?;
     let issue = control["issue_number"].as_u64().ok_or("disposition issue")?;
-    let ci_response = make_ci_response(pull, &current_base, head);
+    let mut ci_sources = disposition_fixture::ci_sources(pull, &current_base, head);
+    make_ci_response(pull, &current_base, head, &mut ci_sources);
     let maintainer_response = disposition_fixture::maintainer_response(
         pull,
         issue,
@@ -227,6 +208,6 @@ where
         &previous,
         &output,
         &control,
-        Some((ci_response, maintainer_response)),
+        Some((ci_sources, maintainer_response)),
     )
 }

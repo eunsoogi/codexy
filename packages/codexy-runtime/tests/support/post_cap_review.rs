@@ -128,7 +128,7 @@ fn invoke_build(
     previous: &std::path::Path,
     output: &std::path::Path,
     review_control: &Value,
-    disposition_sources: Option<(Value, Value)>,
+    disposition_sources: Option<(disposition_fixture::CiSources, Value)>,
 ) -> TestResult<std::process::Output> {
     let mut command = FixtureCommand::new(
         codexy_runtime::paths::repository_root().join("scripts/build-pr-state"),
@@ -174,34 +174,29 @@ fn invoke_build(
     } else if review_control["post_cap_re_review"]["reason"].as_str()
         == Some("authenticated_finding_disposition")
     {
-        let bin = output.parent().ok_or("build output parent")?.join("bin");
-        fs::create_dir(&bin)?;
         let state: Value = serde_json::from_slice(&fs::read(current)?)?;
         let base = state["baseRefOid"].as_str().ok_or("disposition base")?;
         let head = state["headRefOid"].as_str().ok_or("disposition head")?;
         let issue = review_control["issue_number"].as_u64().ok_or("disposition issue")?;
         let pull = state["number"].as_u64().ok_or("disposition pull")?;
-        let ci_response = output.parent().ok_or("build output parent")?.join("ci-response.json");
-        let maintainer_response = output.parent().ok_or("build output parent")?.join("maintainer-response.json");
-        let (ci_value, maintainer_value) = disposition_sources.unwrap_or_else(|| {
+        let (ci_sources, maintainer_value) = disposition_sources.unwrap_or_else(|| {
             (
-                disposition_fixture::ci_response(pull, base, head),
+                disposition_fixture::ci_sources(pull, base, head),
                 disposition_fixture::maintainer_response(pull, issue, base, head),
             )
         });
-        fs::write(&ci_response, serde_json::to_vec(&ci_value)?)?;
-        fs::write(&maintainer_response, serde_json::to_vec(&maintainer_value)?)?;
-        let gh = bin.join("gh");
-        fs::write(&gh, "#!/bin/sh\nif [ \"$1\" = \"pr\" ]; then cat \"$CODEXY_TEST_CI_RESPONSE\"; else cat \"$CODEXY_TEST_MAINTAINER_RESPONSE\"; fi\n")?;
-        make_executable(&gh)?;
-        let mut paths = vec![bin];
-        if let Some(path) = std::env::var_os("PATH") {
-            paths.extend(std::env::split_paths(&path));
-        }
+        let fixture = disposition_fixture::write_gh_fixture(
+            output.parent().ok_or("build output parent")?,
+            &ci_sources,
+            &maintainer_value,
+        )?;
         command
-            .env_path_list("PATH", paths)
-            .env_path("CODEXY_TEST_CI_RESPONSE", ci_response)
-            .env_path("CODEXY_TEST_MAINTAINER_RESPONSE", maintainer_response);
+            .env_path_list("PATH", fixture.path)
+            .env_path("CODEXY_TEST_CI_RESPONSE", fixture.ci)
+            .env_path("CODEXY_TEST_REQUIRED_STATUS_RESPONSE", fixture.required)
+            .env_path("CODEXY_TEST_EXPECTED_CHECKS_RESPONSE", fixture.expected)
+            .env_path("CODEXY_TEST_CHECK_SUITES_RESPONSE", fixture.suites)
+            .env_path("CODEXY_TEST_MAINTAINER_RESPONSE", fixture.maintainer);
     }
     Ok(command.output()?)
 }

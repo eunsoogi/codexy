@@ -98,7 +98,7 @@ pub(super) fn read_live(locator: Locator, expected_head: Option<&str>) -> Result
         },
         "capture": {
             "provider": "github",
-            "method": "graphql+gh-pr-view",
+            "method": "graphql+gh-pr-view+github-api",
             "authenticated": true,
             "raw": {"currentHeadCi": ci_raw, "maintainerDecision": maintainer_raw},
             "projection": {
@@ -124,7 +124,8 @@ pub(super) fn check(source: &Map<String, Value>) -> Result<(), String> {
         "finding disposition capture",
     )?;
     if text(capture, "provider", "finding disposition capture")? != "github"
-        || text(capture, "method", "finding disposition capture")? != "graphql+gh-pr-view"
+        || text(capture, "method", "finding disposition capture")?
+            != "graphql+gh-pr-view+github-api"
         || capture.get("authenticated") != Some(&Value::Bool(true))
     {
         return Err("finding disposition source is not authenticated GitHub".into());

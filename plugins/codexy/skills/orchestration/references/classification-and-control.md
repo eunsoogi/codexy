@@ -224,14 +224,12 @@ is provenance and MUST NOT replace the target `reviewControl.issue_number`. For
 `authenticated_finding_disposition`, the base OID MUST remain unchanged, the
 prior delta MUST be `BLOCK` with non-empty findings, and the producer MUST cover
 every prior finding exactly once through a locator-only
-`authenticated_finding_disposition_locator` request. Its source MUST combine a
-fixed exact-head `gh pr view` `statusCheckRollup` read with a fixed GraphQL
-PR-comment lookup bound to the exact repository, owning issue, PR, base, head,
-finding ID/path, immutable unminimized OWNER/MEMBER comment, narrow non-waiver
-body, and accepted model tuple. The rollup MUST be non-empty and every CheckRun
-MUST be `COMPLETED`/`SUCCESS`. The producer MUST derive IDs, paths, and kinds
-from the prior authenticated delta, reject caller-supplied source, capture,
-classification, or IDs, and reread both sources at producer, build, and handoff.
+`authenticated_finding_disposition_locator` request. Its exact authenticated
+CI and maintainer-source contract is defined in [authenticated
+finding-disposition CI](finding-disposition-ci.md). The producer MUST derive
+IDs, paths, and kinds from the prior authenticated delta, reject caller-supplied
+source, capture, classification, or IDs, and reread both sources at producer,
+build, and handoff.
 Disposition classification MUST come from each retained finding's semantic kind,
 not its path: a `ci_incomplete_observation` resolves through CI, the policy
 finding through the maintainer decision, and a source defect—including one under

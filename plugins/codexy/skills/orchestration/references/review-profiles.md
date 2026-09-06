@@ -57,12 +57,11 @@ is provenance and does not replace the target `reviewControl.issue_number`.
 
 The mixed-finding disposition reason MUST preserve the base OID and cover every
 finding from the blocked delta exactly once. It MUST be produced only from a
-locator-only `authenticated_finding_disposition_locator` request. The source
-envelope MUST combine a fixed exact-head `gh pr view` `statusCheckRollup` read
-with a fixed GraphQL lookup of the exact maintainer PR comment, binding the
-repository, owning issue, PR, base, head, finding ID/path, immutable unminimized
-OWNER/MEMBER authority, and the exact accepted model tuple from the body. The CI
-rollup MUST be non-empty with only terminal-success CheckRuns. Finding
+locator-only `authenticated_finding_disposition_locator` request. Its exact
+authenticated CI and maintainer-source contract is defined in [authenticated
+finding-disposition CI](finding-disposition-ci.md). `known_empty` required
+checks are an authenticated state, not a future-job inventory; unavailable or
+incomplete sources remain unproved. Finding
 classification MUST follow the retained semantic kind, not a workflow path: CI
 observations resolve only through CI, a source defect still requires actual
 evidence-diff path coverage, and the exact policy finding only through the
