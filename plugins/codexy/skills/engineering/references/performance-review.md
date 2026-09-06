@@ -8,12 +8,12 @@ reduction target.
 
 1. MUST choose one representative workload and MUST record the baseline and
    candidate repository revisions separately, along with the environment, input
-   shape, and cold or warm state. MUST reuse existing metrics and instrumentation
-   before adding measurement code.
+   shape, and cold or warm state. MUST reuse existing metrics and
+   instrumentation before adding measurement code.
 2. MUST keep the workload, invocation, environment, and cache state constant for
    the comparison. MUST record elapsed time, CPU, peak RSS, disk usage,
-   child-process count and time, and fixture bytes. MUST include setup or compile
-   cost when it is part of the requested path.
+   child-process count and time, and fixture bytes. MUST include setup or
+   compile cost when it is part of the requested path.
 3. MUST record the unit, sample or aggregation, source, and comparison baseline
    for every metric. MUST record an uncollected metric as "not measured". MUST
    NOT turn its absence into zero, savings, or success.
@@ -48,8 +48,8 @@ removing tests or lowering the bar.
 MUST NOT assume a particular test runner. MUST name the authentic command and
 MUST record the workload, baseline and candidate revisions, invocation,
 environment, cache state, measurements, unavailable metrics, and cleanup. MUST
-NOT treat a timeout, skipped measurement, cache change, retry,
-sleep, or sharding change alone as a measured improvement.
+NOT treat a timeout, skipped measurement, cache change, retry, sleep, or
+sharding change alone as a measured improvement.
 
 MUST end the review with these four items, in order:
 
