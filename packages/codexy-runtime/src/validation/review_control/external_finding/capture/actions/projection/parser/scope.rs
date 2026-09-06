@@ -67,7 +67,7 @@ fn select_step_log_group<'a>(
                     .map(|(timestamp, _)| timestamp)
                     .ok_or("Actions log group has no timestamped boundary")?;
                 if let Some((timestamp, group_start)) = current.take() {
-                    groups.push((timestamp, group_start, offset, boundary.clone()));
+                    groups.push((timestamp, group_start, Some((offset, boundary.clone()))));
                 }
                 if is_cleanup {
                     break;
@@ -82,22 +82,29 @@ fn select_step_log_group<'a>(
                 .map(|(timestamp, _)| timestamp)
                 .ok_or("Actions cleanup boundary has no timestamp")?;
             if let Some((timestamp, group_start)) = current.take() {
-                groups.push((timestamp, group_start, offset, boundary));
+                groups.push((timestamp, group_start, Some((offset, boundary))));
             }
             break;
         }
         offset += line.len();
     }
+    if let Some((timestamp, group_start)) = current {
+        groups.push((timestamp, group_start, None));
+    }
     let candidates = groups
         .iter()
-        .filter(|(timestamp, _, _, boundary)| {
-            timestamp.second == start.second && timestamp >= start && boundary >= end
-        })
+        .filter(|(timestamp, _, _)| timestamp.second == start.second && timestamp >= start)
         .collect::<Vec<_>>();
     if candidates.len() != 1 {
         return Err("Actions log does not expose one selected step group".into());
     }
-    let (_, group_start, group_end, boundary) = candidates[0];
+    let (_, group_start, closure) = candidates[0];
+    let Some((group_end, boundary)) = closure else {
+        return Err("Actions selected step group has no authenticated closure".into());
+    };
+    if boundary.second != end.second || boundary < end {
+        return Err("Actions selected step group closure is inconsistent".into());
+    }
     Ok((&log[*group_start..*group_end], boundary.clone()))
 }
 
@@ -182,9 +189,14 @@ mod tests {
     fn rejects_duplicate_step_groups_with_the_same_start_second() {
         let log = concat!(
             "2026-01-01T00:01:00.100Z ##[group]Run earlier step\n",
-            "2026-01-01T00:01:10Z output\n",
-            "2026-01-01T00:01:20Z ##[group]Run selected step\n",
-            "2026-01-01T00:01:30Z output\n",
+            "2026-01-01T00:01:10Z earlier output\n",
+            "##[endgroup]\n",
+            "2026-01-01T00:01:00.200Z ##[group]Run selected step\n",
+            "2026-01-01T00:01:30Z ERROR: selected.unittest (selected)\n",
+            "2026-01-01T00:01:31Z Traceback (most recent call last):\n",
+            "2026-01-01T00:01:32Z   File \"D:\\a\\codexy\\codexy\\packages\\getcodexy\\tests\\selected.py\", line 1\n",
+            "2026-01-01T00:01:33Z NotImplementedError: selected\n",
+            "##[endgroup]\n",
             "2026-01-01T00:02:00.050Z Post job cleanup.\n",
         );
         assert!(ambiguous(log).is_err());
