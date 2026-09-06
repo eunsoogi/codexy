@@ -39,7 +39,7 @@ fn read_locator(locator: Locator, expected_commit: Option<&str>) -> Result<Value
             locator.workflow_run, locator.run_attempt
         ),
     )?;
-    let (job, step) = select_job(&jobs, &locator, &observed)?;
+    let (job, step, ambiguous_step_boundary) = select_job(&jobs, &locator, &observed)?;
     let pulls = api_json(&locator, &format!("commits/{observed}/pulls?per_page=100"))?;
     let relation = select_pull(&pulls, &locator)?;
     let timeline = api_json(
@@ -52,6 +52,7 @@ fn read_locator(locator: Locator, expected_commit: Option<&str>) -> Result<Value
         &api_log(&locator, &format!("actions/jobs/{}/logs", locator.job))?,
         step_object,
         &locator.repository,
+        ambiguous_step_boundary,
     )?;
     let raw = json!({
         "repository": locator.repository,

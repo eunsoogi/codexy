@@ -143,6 +143,24 @@ fn rejects_failure_outside_selected_step_window() -> TestResult {
 }
 
 #[test]
+fn rejects_same_second_adjacent_step_failure() -> TestResult {
+    run_case("adjacent step boundary", |_, jobs, _, _, log| {
+        jobs[0]["steps"]
+            .as_array_mut()
+            .expect("steps")
+            .push(json!({
+                "number": 6,
+                "name": "following step",
+                "status": "completed",
+                "conclusion": "failure",
+                "started_at": "2026-01-01T00:02:00Z",
+                "completed_at": "2026-01-01T00:03:00Z"
+            }));
+        *log = "2026-01-01T00:02:00.500Z ERROR: outside.step (outside)\n2026-01-01T00:02:00.600Z Traceback (most recent call last):\n2026-01-01T00:02:00.700Z   File \"D:\\a\\codexy-fixture\\codexy-fixture\\packages\\getcodexy\\tests\\test_component_capability_probe.py\", line 57\n2026-01-01T00:02:00.800Z NotImplementedError: outside\n".into();
+    })
+}
+
+#[test]
 fn legacy_locator_rejects_actions_fields() -> TestResult {
     let temporary = tempfile::tempdir()?;
     let input = temporary.path().join("input.json");

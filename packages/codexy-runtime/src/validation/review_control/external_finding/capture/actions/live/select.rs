@@ -7,7 +7,7 @@ pub(super) fn select_job(
     response: &Value,
     locator: &Locator,
     observed: &str,
-) -> Result<(Value, Value), String> {
+) -> Result<(Value, Value, bool), String> {
     let jobs = response
         .as_array()
         .or_else(|| response.get("jobs").and_then(Value::as_array))
@@ -24,14 +24,19 @@ pub(super) fn select_job(
         .get("steps")
         .and_then(Value::as_array)
         .ok_or_else(|| "Actions job steps are unavailable".to_owned())?;
-    let steps = steps
+    let matching_steps = steps
         .iter()
-        .filter(|step| step.get("name").and_then(Value::as_str) == Some(locator.step_name.as_str()))
+        .enumerate()
+        .filter(|(_, step)| {
+            step.get("name").and_then(Value::as_str) == Some(locator.step_name.as_str())
+        })
         .collect::<Vec<_>>();
-    if steps.len() != 1 {
+    if matching_steps.len() != 1 {
         return Err("Actions job does not identify one failed step".into());
     }
-    let step = object(Some(steps[0]), "Actions failed step")?;
+    let (step_index, step_value) = matching_steps[0];
+    let step = object(Some(step_value), "Actions failed step")?;
+    let ambiguous_step_boundary = adjacent_step_boundary_is_ambiguous(&steps, step_index, step)?;
     if text(job, "name", "Actions job")? != locator.job_name
         || text(job, "head_sha", "Actions job")? != observed
         || number(job, "run_attempt", "Actions job")? != locator.run_attempt
@@ -70,7 +75,44 @@ pub(super) fn select_job(
                 .ok_or_else(|| format!("Actions step is missing {field}"))?,
         );
     }
-    Ok((Value::Object(selected), Value::Object(selected_step)))
+    Ok((
+        Value::Object(selected),
+        Value::Object(selected_step),
+        ambiguous_step_boundary,
+    ))
+}
+
+fn adjacent_step_boundary_is_ambiguous(
+    steps: &[Value],
+    selected_index: usize,
+    selected: &Map<String, Value>,
+) -> Result<bool, String> {
+    let started_at = timestamp_second(text(selected, "started_at", "Actions failed step")?)?;
+    let completed_at = timestamp_second(text(selected, "completed_at", "Actions failed step")?)?;
+    if selected_index > 0 {
+        let previous = object(Some(&steps[selected_index - 1]), "Actions previous step")?;
+        if timestamp_second(text(previous, "completed_at", "Actions previous step")?)? == started_at
+        {
+            return Ok(true);
+        }
+    }
+    if selected_index + 1 < steps.len() {
+        let next = object(Some(&steps[selected_index + 1]), "Actions next step")?;
+        if timestamp_second(text(next, "started_at", "Actions next step")?)? == completed_at {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn timestamp_second(value: &str) -> Result<&str, String> {
+    if !value.ends_with('Z') || !value.contains('T') {
+        return Err("Actions step timestamps must be UTC ISO-8601 values".into());
+    }
+    Ok(value
+        .split_once('.')
+        .map_or(value, |(second, _)| second)
+        .trim_end_matches('Z'))
 }
 
 pub(super) fn select_pull(response: &Value, locator: &Locator) -> Result<Value, String> {
