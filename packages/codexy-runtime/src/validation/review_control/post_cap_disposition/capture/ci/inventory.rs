@@ -200,9 +200,11 @@ pub(super) fn project_required_status_checks(
         }
         projected_checks.push(Value::Object(projected));
     }
-    let state = (contexts.is_empty() && projected_checks.is_empty())
-        .then_some("known_empty")
-        .unwrap_or("configured");
+    let state = if contexts.is_empty() && projected_checks.is_empty() {
+        "known_empty"
+    } else {
+        "configured"
+    };
     Ok(json!({
         "baseRefName": base_name,
         "state": state,
