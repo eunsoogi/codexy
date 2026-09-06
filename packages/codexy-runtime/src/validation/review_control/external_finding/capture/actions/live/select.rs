@@ -154,35 +154,37 @@ pub(super) fn select_issue(response: &Value, locator: &Locator) -> Result<Value,
     let matches = events
         .iter()
         .filter(|event| {
+            let Some(source) = event.get("source").and_then(Value::as_object) else {
+                return false;
+            };
+            let Some(issue) = source.get("issue").and_then(Value::as_object) else {
+                return false;
+            };
             event.get("event").and_then(Value::as_str) == Some("cross-referenced")
-                && (event.get("source_number").and_then(Value::as_u64)
-                    == Some(locator.owning_issue)
-                    || event
-                        .get("source")
-                        .and_then(Value::as_object)
-                        .and_then(|source| source.get("issue"))
-                        .and_then(Value::as_object)
-                        .and_then(|issue| issue.get("number"))
-                        .and_then(Value::as_u64)
-                        == Some(locator.owning_issue))
+                && source.get("type").and_then(Value::as_str) == Some("issue")
+                && issue.get("number").and_then(Value::as_u64) == Some(locator.owning_issue)
+                && !issue
+                    .get("pull_request")
+                    .is_some_and(|pull_request| !pull_request.is_null())
         })
         .collect::<Vec<_>>();
     if matches.len() != 1 {
         return Err("Actions pull request timeline does not identify the owning issue".into());
     }
     let event = object(Some(matches[0]), "Actions issue relation")?;
-    let repository = event
-        .get("source_repository")
+    let source = event
+        .get("source")
+        .and_then(Value::as_object)
+        .ok_or("Actions owning issue relation is missing source identity")?;
+    let issue = source
+        .get("issue")
+        .and_then(Value::as_object)
+        .ok_or("Actions owning issue relation is missing issue identity")?;
+    let repository = issue
+        .get("repository")
+        .and_then(Value::as_object)
+        .and_then(|repo| repo.get("full_name"))
         .and_then(Value::as_str)
-        .or(event
-            .get("source")
-            .and_then(Value::as_object)
-            .and_then(|source| source.get("issue"))
-            .and_then(Value::as_object)
-            .and_then(|issue| issue.get("repository"))
-            .and_then(Value::as_object)
-            .and_then(|repo| repo.get("full_name"))
-            .and_then(Value::as_str))
         .ok_or("Actions owning issue relation is missing repository identity")?;
     if repository != locator.repository {
         return Err("Actions owning issue relation changes repository identity".into());

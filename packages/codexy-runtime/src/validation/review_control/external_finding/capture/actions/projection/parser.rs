@@ -20,11 +20,25 @@ pub(super) struct Failure {
 
 pub(super) fn parse_log(log: &str, repository: &str) -> Result<Failure, String> {
     let log = normalize_log(log);
+    let lines = log.lines().collect::<Vec<_>>();
     let error = Regex::new(r"(?m)^ERROR:\s*([^\s(]+)(?:\s+\(([^)]+)\))?\s*$")
         .map_err(|error| error.to_string())?;
     let errors = error.captures_iter(&log).collect::<Vec<_>>();
     if errors.len() != 1 {
         return Err("Actions log must contain exactly one supported unittest ERROR".into());
+    }
+    let error_line = lines
+        .iter()
+        .position(|line| error.is_match(line))
+        .ok_or("Actions log ERROR disappeared during projection")?;
+    let traceback = lines
+        .iter()
+        .enumerate()
+        .filter(|(_, line)| line.trim() == "Traceback (most recent call last):")
+        .map(|(index, _)| index)
+        .collect::<Vec<_>>();
+    if traceback.len() != 1 || traceback[0] <= error_line {
+        return Err("Actions log must contain one ordered traceback header".into());
     }
     let token = &errors[0][1];
     let test = errors[0].get(2).map_or_else(
@@ -41,14 +55,16 @@ pub(super) fn parse_log(log: &str, repository: &str) -> Result<Failure, String> 
         },
     );
     let file =
-        Regex::new(r#"(?m)^\s*File "([^"]+)", line ([0-9]+)(?:, in [A-Za-z_][A-Za-z0-9_]*)?\s*$"#)
+        Regex::new(r#"^\s*File "([^"]+)", line ([0-9]+)(?:, in [A-Za-z_][A-Za-z0-9_]*)?\s*$"#)
             .map_err(|error| error.to_string())?;
-    let files = file.captures_iter(&log).collect::<Vec<_>>();
-    let paths = files
+    let paths = lines
         .iter()
-        .filter(|file| is_repository_path(&file[1], repository))
-        .map(|file| {
+        .enumerate()
+        .filter_map(|(index, line)| file.captures(line).map(|file| (index, file)))
+        .filter(|(_, file)| is_repository_path(&file[1], repository))
+        .map(|(index, file)| {
             Ok((
+                index,
                 repository_path(&file[1], repository)?,
                 file[2]
                     .parse()
@@ -59,19 +75,30 @@ pub(super) fn parse_log(log: &str, repository: &str) -> Result<Failure, String> 
     if paths.len() != 1 {
         return Err("Actions log must contain exactly one supported repository traceback".into());
     }
-    let exception = Regex::new(r"(?m)^([A-Za-z_][A-Za-z0-9_]*(?:Error|Exception)):\s*.+$")
+    let (file_line, path, line) = paths
+        .into_iter()
+        .next()
+        .ok_or("Actions repository traceback disappeared during projection")?;
+    if file_line <= traceback[0] {
+        return Err("Actions repository traceback must follow the traceback header".into());
+    }
+    let exception = Regex::new(r"^\s*([A-Za-z_][A-Za-z0-9_]*(?:Error|Exception)):\s*.+$")
         .map_err(|error| error.to_string())?;
-    let exceptions = exception.captures_iter(&log).collect::<Vec<_>>();
+    let exceptions = lines
+        .iter()
+        .enumerate()
+        .filter_map(|(index, line)| exception.captures(line).map(|capture| (index, capture)))
+        .collect::<Vec<_>>();
     if exceptions.len() != 1 {
         return Err("Actions log must contain exactly one supported exception".into());
     }
-    let Some((path, line)) = paths.into_iter().next() else {
-        return Err("Actions traceback path disappeared during projection".into());
-    };
+    if exceptions[0].0 <= file_line {
+        return Err("Actions exception must follow the repository traceback".into());
+    }
     Ok(Failure {
         test,
         path,
-        exception: exceptions[0][1].to_owned(),
+        exception: exceptions[0].1[1].to_owned(),
         line,
     })
 }
@@ -85,23 +112,7 @@ fn is_repository_path(raw: &str, repository: &str) -> bool {
 }
 
 pub(super) fn normalize_log(log: &str) -> String {
-    log.lines()
-        .map(|line| {
-            let line = strip_ansi(line);
-            for marker in ["ERROR:", "Traceback (most recent call last):", "File \""] {
-                if let Some(index) = line.find(marker) {
-                    return line[index..].to_owned();
-                }
-            }
-            if let Ok(exception) = Regex::new(r"[A-Za-z_][A-Za-z0-9_]*(?:Error|Exception):") {
-                if let Some(found) = exception.find(&line) {
-                    return line[found.start()..].to_owned();
-                }
-            }
-            line.to_string()
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
+    log.lines().map(strip_ansi).collect::<Vec<_>>().join("\n")
 }
 
 fn strip_ansi(line: &str) -> String {
@@ -177,6 +188,26 @@ mod tests {
         assert!(
             parse_log(
                 "FAIL: test_process_result_captures_bounded_diagnostics",
+                REPOSITORY
+            )
+            .is_err()
+        );
+        assert!(parse_log(&log(PATH).replacen("ERROR:", "NOTERROR:", 1), REPOSITORY).is_err());
+        assert!(
+            parse_log(
+                &log(PATH).replacen("Traceback (most recent call last):\n", "", 1),
+                REPOSITORY
+            )
+            .is_err()
+        );
+        assert!(
+            parse_log(
+                &log(PATH)
+                    .replace("Traceback (most recent call last):\n", "",)
+                    .replace(
+                        "\nNotImplementedError:",
+                        "\nTraceback (most recent call last):\nNotImplementedError:",
+                    ),
                 REPOSITORY
             )
             .is_err()

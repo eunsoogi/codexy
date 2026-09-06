@@ -120,7 +120,12 @@ fn rejects_exact_identity_and_terminal_state_mutations() -> TestResult {
         pulls[0]["base"]["repo"]["full_name"] = json!("other/repository");
     })?;
     run_case("wrong issue", |_, _, _, timeline, _| {
-        timeline[0]["source_number"] = json!(99);
+        timeline[0]["source"]["issue"]["number"] = json!(99);
+    })?;
+    run_case("pull request source", |_, _, _, timeline, _| {
+        timeline[0]["source"]["issue"]["pull_request"] = json!({
+            "url": "https://api.github.com/repos/example/codexy-fixture/pulls/99"
+        });
     })?;
     run_case("stale head", |run, _, _, _, _| {
         run["head_sha"] = json!("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");

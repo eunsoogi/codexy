@@ -104,8 +104,15 @@ impl ActionsGhFixture {
         fs::write(
             &timeline,
             serde_json::to_vec(&json!([{
-                "event": "cross-referenced", "source_number": OWNING_ISSUE,
-                "source_repository": REPOSITORY
+                "event": "cross-referenced",
+                "source": {
+                    "type": "issue",
+                    "issue": {
+                        "number": OWNING_ISSUE,
+                        "repository": {"full_name": REPOSITORY},
+                        "pull_request": null
+                    }
+                }
             }]))?,
         )?;
         fs::write(
