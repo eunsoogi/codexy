@@ -43,6 +43,28 @@ pub(crate) fn actual_request() -> Value {
     request
 }
 
+pub(crate) fn negated_terminal_label_request() -> Value {
+    let mut request = actual_request();
+    let Some(original) = request["reviewer"]["pages"][0]["turns"][0]["items"][1]["text"].as_str()
+    else {
+        return request;
+    };
+    let text = original.replace(
+        "## Terminal verdict\n\n`BLOCK`",
+        "No terminal verdict was issued.\n\nThe prior review remained BLOCK.",
+    );
+    request["reviewer"]["pages"][0]["turns"][0]["items"][1]["text"] = json!(text);
+    request
+}
+
+#[test]
+fn negated_terminal_prose_is_not_a_label() {
+    let error = super::rejected(super::native_history::normalize_native_history(
+        &negated_terminal_label_request(),
+    ));
+    assert!(error.contains("terminal result"));
+}
+
 pub(crate) fn request(crlf: bool) -> Value {
     let mut request = super::fixtures::request();
     let delta_prompt = json!({

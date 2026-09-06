@@ -146,9 +146,11 @@ fn terminal_result(raw: &str) -> Result<Option<Located>, String> {
 }
 
 fn terminal_label(line: &str) -> bool {
-    ["terminal result", "terminal verdict"]
-        .iter()
-        .any(|label| line.contains(label))
+    let line = line.trim();
+    let line = line.strip_prefix('-').map_or(line, str::trim_start);
+    let line = line.trim_start_matches('#').trim_start();
+    let label = line.split_once(':').map_or(line, |(label, _)| label);
+    matches!(label.trim(), "terminal result" | "terminal verdict")
 }
 
 fn labelled_sha(line: &str) -> Option<(String, usize)> {
