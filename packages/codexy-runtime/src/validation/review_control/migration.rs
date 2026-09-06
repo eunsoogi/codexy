@@ -40,7 +40,7 @@ pub(super) fn boundary(
         })?;
     let boundary = usize::try_from(boundary)
         .map_err(|_| "review control state reviewer_migration boundary is too large".to_owned())?;
-    if boundary == 0 || boundary >= history_len {
+    if boundary == 0 || boundary > history_len {
         return Err("review control state reviewer_migration boundary is invalid".into());
     }
     Ok(Some(boundary))

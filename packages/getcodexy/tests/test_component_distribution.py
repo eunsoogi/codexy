@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import stat
 import subprocess
 import sys
@@ -18,35 +19,6 @@ from packages.getcodexy.tests import component_distribution_support as support
 
 EXECUTABLE_ENV = "GETCODEXY_DISTRIBUTION_EXECUTABLE"
 REPOSITORY = Path(__file__).parents[3]
-
-
-class CapabilityProcessTests(unittest.TestCase):
-    def test_windows_batch_hooks_use_explicit_clean_command_processor(self) -> None:
-        from codexy_runtime_tools import component_capability_probe as probe
-
-        with tempfile.TemporaryDirectory() as directory:
-            paths, batch, raw, py, ran = support.windows_argv(probe, Path(directory))
-        for launcher, command in zip(paths, batch, strict=True):
-            self.assertIn(" /d /s /c ", command)
-            self.assertTrue(command.endswith(f'""{launcher}" PermissionRequest"'))
-        self.assertEqual(raw[0], "powershell.exe -NoProfile -File hook.ps1".split())
-        self.assertEqual(raw[1], [str(py), "hook.py"])
-        self.assertEqual(ran, (0, 0, 0) if os.name == "nt" else ())
-
-    def test_process_failures_keep_timeout_exit_and_missing_distinct(self) -> None:
-        from codexy_runtime_tools import component_capability_probe as probe
-
-        cases = (
-            (subprocess.TimeoutExpired(["hook"], 5), "timeout"),
-            (subprocess.CompletedProcess(["hook"], 9, stdout=""), "nonzero-exit"),
-            (OSError("missing"), "missing-launcher"),
-        )
-        self.assertNotIn("creationflags", probe._RUN_OPTIONS)
-        for outcome, category in cases:
-            with self.subTest(category=category):
-                with patch.object(probe.subprocess, "run", side_effect=[outcome]):
-                    result = probe._run(["hook"], Path.cwd(), "{}")
-                self.assertEqual(result.category, category)
 
 
 class ComponentDistributionTests(unittest.TestCase):
@@ -180,6 +152,31 @@ class ComponentDistributionTests(unittest.TestCase):
             self._run("bootstrap")["selection_after"], ["core", "github", "devtools"]
         )
         doctor = self._run("doctor", expected=2)
+        doctor_probes = {
+            entry["component"]: entry.get("observed", {}).get("capability_probe")
+            for entry in doctor["component_health"]
+        }
+        if os.name == "nt":
+            print(
+                json.dumps(
+                    {
+                        "windows_doctor_process_context": {
+                            "comspec": os.environ.get("COMSPEC") or "cmd.exe",
+                            "py_launcher": shutil.which("py"),
+                        },
+                        "windows_doctor_capability_probes": doctor_probes,
+                    },
+                    sort_keys=True,
+                ),
+                flush=True,
+            )
+        for component in ("core", "github"):
+            with self.subTest(component=component):
+                probe = doctor_probes[component]
+                self.assertEqual(probe["category"], "success", probe)
+                self.assertEqual(probe["returncode"], 0, probe)
+                self.assertLess(probe["elapsed_seconds"], 5, probe)
+                self.assertIsNone(probe["detail"], probe)
         if os.name == "nt":
             measurements = support.measure_hook_probes(self.marketplace, self.version)
             print(json.dumps({"windows_capability_probes": measurements}), flush=True)

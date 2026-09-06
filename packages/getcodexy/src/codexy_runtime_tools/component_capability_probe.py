@@ -2,11 +2,17 @@
 
 import json
 import os
-from collections import namedtuple
 import shlex
 import subprocess
 
 from .component_hook_activation import ACTIVATION_REPAIRS
+from .component_capability_probe_process import (
+    _RUN_OPTIONS,
+    _RunResult,
+    _probe_diagnostics,
+    _rpc,
+    _run,
+)
 from .version_lock import default_package_version
 
 
@@ -17,8 +23,6 @@ _START_REPAIR = f"repair the installed launcher/runtime, then {_RERUN}"
 _CALL_REPAIR = f"use the reported safe component fallback and {_RERUN}"
 _EXPOSED_REPAIR = "repair the Codexy registration, then restart Codex"
 _IDENTITY_REPAIR = "reinstall the selected release, then restart Codex"
-_RUN_OPTIONS = {"capture_output": True, "text": True, "timeout": 5}
-_RunResult = namedtuple("_RunResult", "returncode stdout category")
 FAILURES = {
     "trusted-inventory-unavailable": (_INVENTORY_REPAIR, False),
     "component-not-installed": ("getcodexy bootstrap", True),
@@ -73,6 +77,7 @@ def _probe_hook(component, plugin, base):
         json.dumps(payload),
         os.environ | {"PLUGIN_ROOT": str(plugin)},
     )
+    base["_capability_probe"] = _probe_diagnostics(result)
     base["_category"] = result.category
     if result.category == "missing-launcher":
         return _failure(base, "component-start-failed", started=False)
@@ -89,6 +94,7 @@ def _probe_hook(component, plugin, base):
         valid = False
     if not valid:
         base["_category"] = "malformed-output"
+        base["_capability_probe"]["category"] = "malformed-output"
     reason = None if valid else "capability-not-exposed"
     return _outcome(base, callable=valid, reason_code=reason)
 
@@ -143,11 +149,12 @@ def probe_server(server, plugin, config):
         _request("tools/list", 2),
         _request("tools/call", 3, {"name": target, "arguments": arguments}),
     )
-    returncode, responses, timed = _rpc(
+    run, responses = _rpc(
         _argv(config["command"], plugin, config.get("args", ())), plugin, requests
     )
+    base["_capability_probe"] = _probe_diagnostics(run)
     if 1 not in responses:
-        failed = bool(returncode or timed)
+        failed = run.category in {"missing-launcher", "nonzero-exit", "timeout"}
         reason = "component-start-failed" if failed else "capability-not-exposed"
         return _failure(base, reason, started=not failed)
     initialized = responses[1].get("result", {})
@@ -190,33 +197,6 @@ def _failure(base, reason, *, started=True):
 
 def _outcome(base, **fields):
     return {**base, "started": True, "callable": True, **fields}
-
-
-def _run(argv, cwd, input_text, env=None):
-    try:
-        result = subprocess.run(
-            argv, input=input_text, cwd=cwd, env=env, **_RUN_OPTIONS
-        )
-    except subprocess.TimeoutExpired as error:
-        return _RunResult(-1, error.stdout or "", "timeout")
-    except OSError:
-        return _RunResult(-1, "", "missing-launcher")
-    category = "success" if result.returncode == 0 else "nonzero-exit"
-    category = "missing-launcher" if result.returncode == 127 else category
-    return _RunResult(result.returncode, result.stdout, category)
-
-
-def _rpc(argv, cwd, requests):
-    run = _run(argv, cwd, "\n".join(json.dumps(request) for request in requests) + "\n")
-    values = {}
-    for line in (run.stdout or "").splitlines():
-        try:
-            value = json.loads(line)
-        except (ValueError, json.JSONDecodeError):
-            continue
-        if isinstance(value, dict) and isinstance(value.get("id"), int):
-            values[value["id"]] = value
-    return run.returncode, values, run.category == "timeout"
 
 
 def _argv(command, plugin, args=()):
