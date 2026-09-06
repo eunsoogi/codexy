@@ -5,6 +5,7 @@ use std::io::Write as _;
 use std::process::Stdio;
 const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
 type TestResult = Result<(), Box<dyn std::error::Error>>;
+type LauncherResult = Result<Option<Value>, Box<dyn std::error::Error>>;
 
 struct Concern {
     id: &'static str,
@@ -152,38 +153,45 @@ fn bash_concern_adapters_observe_safe_and_dangerous_results() -> TestResult {
 fn each_concern_rejects_wrong_events_with_its_diagnostic_family() -> TestResult {
     for event in EVENTS {
         for concern in CONCERNS {
-            let payload = json!({
-                "hook_event_name": event,
-                "tool_name": concern.tool,
-                "tool_input": null,
-                "cwd": "/tmp",
-                "session_id": "child",
-                "codexy_thread_delivery": {"authenticated":true},
-            });
-            let denial = run_launcher(concern, event, payload.clone())?
-                .ok_or("invalid input must be denied")?;
-            assert_denial(&denial, event, concern)?;
-            let other_event = if *event == "PermissionRequest" {
-                "PreToolUse"
+            let payload = admitted_payload(concern, event);
+            let admitted = run_launcher(concern, event, payload.clone())?;
+            if concern.id == "repository-merge" {
+                assert_denial(&admitted.ok_or("merge policy denial")?, event, concern)?;
             } else {
-                "PermissionRequest"
-            };
+                assert!(admitted.is_none(), "{} valid input denied", concern.id);
+            }
+            let other_event = EVENTS
+                .iter()
+                .copied()
+                .find(|candidate| *candidate != *event)
+                .ok_or("other event")?;
             let mut wrong_event = payload;
             wrong_event["hook_event_name"] = json!(other_event);
             let denial = run_launcher(concern, event, wrong_event)?
                 .ok_or("wrong event must be denied")?;
             assert_denial(&denial, event, concern)?;
+            assert!(denial.to_string().contains(&format!("{}ENVELOPE", concern.diagnostic)));
         }
     }
     Ok(())
 }
 
+fn admitted_payload(concern: &Concern, event: &str) -> Value {
+    let tool_input = match concern.id {
+        "thread-delivery" | "child-thread-creation" => json!({"model":"gpt-5.6-luna","thinking":"max"}),
+        "subagent-ownership" => json!({"agent_type":"explorer","message":"Bounded read-only inspection."}),
+        "repository-issue" => json!({"repository_full_name":"eunsoogi/codexy","issue_number":912,"body":"note"}),
+        "repository-pull-request" => json!({"repository_full_name":"eunsoogi/codexy","title":"fix(hooks): preserve safe test path","head_branch":"topic","base_branch":"main"}),
+        "repository-merge" => json!({"repository_full_name":"eunsoogi/codexy","pr_number":912,"merge_method":"squash","expected_head_sha":"592e4a79749b8aba37bfbdbcb4b1c277b22f54e9","commit_title":"fix(hooks): preserve safe test path (#912)","commit_message":"Fixes #912"}),
+        "repository-github-command" | "destructive-command" => json!({"command":"git status --short"}),
+        _ => unreachable!(),
+    };
+    json!({"hook_event_name": event, "tool_name": concern.tool, "tool_input": tool_input,
+        "cwd": codexy_runtime::paths::repository_root().display().to_string()})
+}
+
 fn expected_group(group: &Value, event: &str) -> Option<&'static Concern> {
-    let handlers = group["hooks"].as_array()?;
-    if handlers.len() != 1 {
-        return None;
-    }
-    let handler = handlers.first()?;
+    let [handler] = group["hooks"].as_array()?.as_slice() else { return None };
     CONCERNS.iter().find(|concern| {
         INSTALLED_IDS.contains(&concern.id)
             && group["matcher"] == concern.matcher
@@ -196,11 +204,7 @@ fn expected_group(group: &Value, event: &str) -> Option<&'static Concern> {
     })
 }
 
-fn run_launcher(
-    concern: &Concern,
-    event: &str,
-    payload: Value,
-) -> Result<Option<Value>, Box<dyn std::error::Error>> {
+fn run_launcher(concern: &Concern, event: &str, payload: Value) -> LauncherResult {
     let root = codexy_runtime::paths::repository_root();
     let hooks = if INSTALLED_IDS.contains(&concern.id) {
         root.join("plugins/codexy/hooks")
@@ -228,11 +232,7 @@ fn run_launcher(
     Ok(Some(serde_json::from_slice(&output.stdout)?))
 }
 
-fn assert_denial(
-    output: &Value,
-    event: &str,
-    concern: &Concern,
-) -> TestResult {
+fn assert_denial(output: &Value, event: &str, concern: &Concern) -> TestResult {
     let specific = &output["hookSpecificOutput"];
     assert_eq!(specific["hookEventName"], event);
     let reason = if event == "PermissionRequest" {
