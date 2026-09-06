@@ -7,6 +7,7 @@ mod classification;
 mod external_finding;
 mod history;
 mod migration;
+mod native_history;
 mod policy;
 mod post_cap_disposition;
 mod pre_pr;
@@ -24,6 +25,14 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
 
 pub(super) fn resolve_profile(plugin_root: &Path, request: &str) -> Result<Value> {
     policy::resolve(plugin_root, request)
+}
+
+pub(super) fn recover_native_history(
+    plugin_root: &Path,
+    current_text: &str,
+    input_text: &str,
+) -> Result<Value> {
+    native_history::recover_text(plugin_root, current_text, input_text).map_err(anyhow::Error::msg)
 }
 
 pub(super) fn check_packet(

@@ -46,6 +46,7 @@ pub(super) fn check(
     if history.len() as u64 != context.terminal_count {
         return Err("review control state terminal review history is truncated".into());
     }
+    let native_provenance = control.contains_key("native_history_provenance");
     if context.legacy_reviewer.is_some()
         != (context.legacy_history_boundary.is_some() || context.legacy_history_event.is_some())
     {
@@ -79,6 +80,8 @@ pub(super) fn check(
                 "id",
                 "kind",
                 "reviewer",
+                "policy_reviewer",
+                "source_reviewer",
                 "reviewed_head",
                 "terminal_result",
                 "unresolved_findings",
@@ -118,8 +121,26 @@ pub(super) fn check(
                 _ => context.expected_reviewer,
             }
         };
-        if event.get("reviewer") != Some(expected_reviewer) {
+        let policy_reviewer = event
+            .get("policy_reviewer")
+            .or_else(|| event.get("reviewer"));
+        if event.contains_key("policy_reviewer") != event.contains_key("source_reviewer") {
+            return Err(
+                "review control state recovered history reviewer provenance is incomplete".into(),
+            );
+        }
+        if event.contains_key("policy_reviewer") && !native_provenance {
+            return Err("review control state recovered history lacks native provenance".into());
+        }
+        if policy_reviewer != Some(expected_reviewer) {
             return Err("review control state terminal review history changes reviewer".into());
+        }
+        if event.contains_key("policy_reviewer")
+            && event.get("source_reviewer") != event.get("reviewer")
+        {
+            return Err(
+                "review control state recovered history changes source reviewer identity".into(),
+            );
         }
         let event_head = required_text(event, "reviewed_head", "terminal review history entry")?;
         if !heads.insert(event_head) {
