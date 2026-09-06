@@ -1,3 +1,4 @@
+mod cache;
 mod candidates;
 mod errors;
 mod files;
@@ -9,16 +10,19 @@ mod path_ops;
 mod python;
 mod resolve;
 mod search;
+mod snapshot;
 pub mod tools;
+
+#[cfg(test)]
+mod cache_tests;
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
-use self::errors::{begin_operation, take_errors};
-use self::files::{result_limit, walk_code_files};
-use self::parse::parse_file;
+use self::errors::begin_operation;
+use self::files::{discover_code_files, result_limit};
 use self::resolve::{graph_path, resolve_import};
 
 pub use self::errors::{CodegraphError, CodegraphErrorKind};
@@ -101,17 +105,15 @@ pub struct Neighborhood {
 pub fn build_graph(root: &Path, limit: Option<usize>) -> Graph {
     begin_operation();
     let bounded_limit = result_limit(limit);
-    let all_files = walk_code_files(root);
+    let snapshot = discover_code_files(root);
+    let all_files = &snapshot.files;
     let selected_files = all_files
         .iter()
         .take(bounded_limit)
         .cloned()
         .collect::<Vec<_>>();
     let indexed_files = all_files.iter().cloned().collect::<BTreeSet<_>>();
-    let files = selected_files
-        .iter()
-        .map(|file| parse_file(root, file, &indexed_files))
-        .collect::<Vec<_>>();
+    let (files, errors) = cache::parse_files(root, &snapshot, &selected_files, &indexed_files);
     let edges = files
         .iter()
         .flat_map(|file| {
@@ -127,7 +129,6 @@ pub fn build_graph(root: &Path, limit: Option<usize>) -> Graph {
         })
         .collect::<Vec<_>>();
     let truncated = all_files.len() > selected_files.len();
-    let errors = take_errors();
     Graph {
         root: root.to_path_buf(),
         files,
