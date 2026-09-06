@@ -69,24 +69,34 @@ fn select_step_log_group(log: &str, expected: usize) -> Result<&str, String> {
         return Err("Actions selected step log group is invalid".into());
     }
     let mut group = 0;
+    let mut depth = 0usize;
     let mut start = None;
     let mut end = log.len();
     let mut offset = 0;
     for line in log.split_inclusive('\n') {
-        if line.contains("##[group]Run ") {
-            group += 1;
-            if start.is_some() {
+        if line.contains("##[group]") {
+            let top_level = depth == 0;
+            let is_step = line.contains("##[group]Run ");
+            let is_cleanup =
+                line.contains("##[group]Post Run ") || line.contains("##[group]Complete job");
+            if top_level && is_cleanup && start.is_some() {
                 end = offset;
                 break;
             }
-            if group == expected {
-                start = Some(offset + line.len());
+            if top_level && is_step {
+                group += 1;
+                if start.is_some() {
+                    end = offset;
+                    break;
+                }
+                if group == expected {
+                    start = Some(offset + line.len());
+                }
             }
-        } else if start.is_some()
-            && (line.contains("##[group]Post Run ")
-                || line.contains("##[group]Complete job")
-                || line.contains(" Post job cleanup."))
-        {
+            depth += 1;
+        } else if line.contains("##[endgroup]") {
+            depth = depth.saturating_sub(1);
+        } else if start.is_some() && (line.contains(" Post job cleanup.")) {
             end = offset;
             break;
         }
@@ -114,7 +124,12 @@ mod tests {
         });
         let log = concat!(
             "##[group]Run previous step\n",
-            "2026-01-01T00:01:00.100Z ERROR: unrelated (unrelated)\n",
+            "##[group]Run nested previous command\n",
+            "2026-01-01T00:01:00.100Z ERROR: unrelated.unittest (unrelated)\n",
+            "2026-01-01T00:01:00.200Z Traceback (most recent call last):\n",
+            "2026-01-01T00:01:00.300Z   File \"D:\\a\\codexy\\codexy\\packages\\getcodexy\\tests\\unrelated.py\", line 1\n",
+            "2026-01-01T00:01:00.400Z NotImplementedError: unrelated\n",
+            "##[endgroup]\n",
             "##[endgroup]\n",
             "##[group]Run selected step\n",
             "2026-01-01T00:02:00.100Z ERROR: packages.getcodexy.tests.test_component_capability_probe.CapabilityProcessTests.test_process_result_captures_bounded_diagnostics (packages.getcodexy.tests.test_component_capability_probe.CapabilityProcessTests)\n",
