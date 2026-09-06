@@ -13,6 +13,9 @@ LAUNCHERS = tuple(
     for extension in ("sh", "cmd")
 )
 DEPENDENCIES = (
+    "hooks/codexy-hook-runtime.sh",
+    "hooks/codexy-thread-delivery.py",
+    "hooks/codexy_policy/thread_delivery.py",
     "hooks/codexy-child-thread-creation.py",
     "hooks/codexy_policy/child_thread_creation.py",
     "hooks/codexy-subagent-ownership.py",

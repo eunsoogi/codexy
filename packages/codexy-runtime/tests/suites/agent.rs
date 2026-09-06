@@ -52,6 +52,18 @@ mod validator_portable_governed_code;
 #[path = "../validator_review_control.rs"]
 mod validator_review_control;
 
+#[path = "../validator_review_control_import.rs"]
+mod validator_review_control_import;
+
+#[path = "../validator_review_control_import_contract.rs"]
+mod validator_review_control_import_contract;
+
+#[path = "../validator_review_control_identity.rs"]
+mod validator_review_control_identity;
+
+#[path = "../validator_completion_handoff_review_identity.rs"]
+mod validator_completion_handoff_review_identity;
+
 #[path = "../validator_review_control_migration.rs"]
 mod validator_review_control_migration;
 

@@ -1,14 +1,19 @@
 #!/usr/bin/python3
+# pyright: reportImplicitRelativeImport=false
 """Thread-delivery hook entrypoint."""
 
 import argparse
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+if os.environ.get("CODEXY_HOOK_SILENT") == "1":
+    sys.stderr = open(os.devnull, "w", encoding="utf-8")
 
-from codexy_policy.envelope import evaluate
-from codexy_policy.thread_delivery import forbidden
+UNSUPPORTED_INTERPRETER_EXIT = 125
+if sys.version_info < (3, 10):
+    raise SystemExit(UNSUPPORTED_INTERPRETER_EXIT)
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
 TOOLS = frozenset(
     {"codex_app__send_message_to_thread", "mcp__codex_app__send_message_to_thread"}
@@ -16,6 +21,9 @@ TOOLS = frozenset(
 
 
 def main() -> int:
+    from codexy_policy.envelope import evaluate
+    from codexy_policy.thread_delivery import forbidden
+
     parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument(
         "--event", required=True, choices=("PreToolUse", "PermissionRequest")
@@ -34,4 +42,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except SystemExit as error:
+        if error.code == UNSUPPORTED_INTERPRETER_EXIT:
+            raise SystemExit(1) from error
+        raise
