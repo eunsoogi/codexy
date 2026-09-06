@@ -56,12 +56,7 @@ pub(super) fn check(context: &Context<'_>) -> Result<(), String> {
     let disposition = disposition
         .as_object()
         .ok_or_else(|| "finding disposition source must be an object".to_owned())?;
-    bind_target_identity(
-        disposition,
-        current,
-        current_base,
-        required_text(current, "repository", "current")?,
-    )?;
+    post_cap_disposition::check_live_binding(disposition, current, current_base, prior_delta)?;
     let ci = disposition
         .get("sources")
         .and_then(Value::as_object)
@@ -84,7 +79,6 @@ pub(super) fn check(context: &Context<'_>) -> Result<(), String> {
     if records.len() != prior_findings.len() {
         return Err("finding disposition must cover every prior delta finding exactly once".into());
     }
-    maintainer_kind(disposition, prior_delta)?;
     let classified =
         post_cap_disposition::derive(&Value::Object(disposition.clone()), prior_delta)?;
     let classified_source = classified.0;
@@ -145,93 +139,6 @@ pub(super) fn check(context: &Context<'_>) -> Result<(), String> {
         return Err(
             "authenticated finding disposition must retain actual code-repair evidence".into(),
         );
-    }
-    Ok(())
-}
-
-fn bind_target_identity(
-    disposition: &Map<String, Value>,
-    current: &Map<String, Value>,
-    current_base: &str,
-    current_repository: &str,
-) -> Result<(), String> {
-    if disposition.get("repository").and_then(Value::as_str) != Some(current_repository) {
-        return Err("finding disposition changes repository identity".into());
-    }
-    let issue = disposition
-        .get("owningIssue")
-        .and_then(Value::as_object)
-        .ok_or_else(|| "finding disposition must bind owning issue".to_owned())?;
-    let current_issue = current
-        .get("capture")
-        .and_then(Value::as_object)
-        .and_then(|capture| capture.get("owningIssue"))
-        .and_then(Value::as_object)
-        .ok_or_else(|| "current PR snapshot must bind owning issue".to_owned())?;
-    if issue.get("repository") != current_issue.get("repository")
-        || issue.get("number") != current_issue.get("number")
-        || issue.get("url") != current_issue.get("url")
-    {
-        return Err("finding disposition changes owning issue identity".into());
-    }
-    let pull = disposition
-        .get("pullRequest")
-        .and_then(Value::as_object)
-        .ok_or_else(|| "finding disposition must bind pull request".to_owned())?;
-    if pull.get("repository").and_then(Value::as_str) != Some(current_repository)
-        || pull.get("number") != current.get("number")
-        || pull.get("baseRefOid").and_then(Value::as_str) != Some(current_base)
-        || pull.get("headRefOid") != current.get("headRefOid")
-    {
-        return Err("finding disposition changes pull request, base, or head identity".into());
-    }
-    Ok(())
-}
-
-fn maintainer_kind(
-    disposition: &Map<String, Value>,
-    prior_delta: &Map<String, Value>,
-) -> Result<(), String> {
-    let decision = disposition
-        .get("sources")
-        .and_then(Value::as_object)
-        .and_then(|sources| sources.get("maintainerDecision"))
-        .and_then(Value::as_object)
-        .and_then(|source| source.get("decision"))
-        .and_then(Value::as_object)
-        .ok_or_else(|| "finding disposition must bind maintainer decision facts".to_owned())?;
-    if decision.get("accepted") != Some(&Value::Bool(true)) {
-        return Err("maintainer policy disposition must be explicitly accepted".into());
-    }
-    let prior_reviewer = prior_delta
-        .get("reviewer")
-        .and_then(Value::as_object)
-        .ok_or_else(|| "prior delta event must bind reviewer facts".to_owned())?;
-    for (decision_key, reviewer_key) in [
-        ("reviewer", "name"),
-        ("actualModel", "model"),
-        ("actualReasoningEffort", "reasoning_effort"),
-    ] {
-        if required_text(decision, decision_key, "maintainer decision")?
-            != required_text(prior_reviewer, reviewer_key, "prior delta reviewer")?
-        {
-            return Err("maintainer decision does not bind the prior delta reviewer tuple".into());
-        }
-    }
-    let finding_id = required_text(decision, "findingId", "maintainer decision")?;
-    let finding_path = required_text(decision, "path", "maintainer decision")?;
-    if !prior_delta
-        .get("unresolved_findings")
-        .and_then(Value::as_array)
-        .is_some_and(|findings| {
-            findings.iter().any(|finding| {
-                finding.get("id").and_then(Value::as_str) == Some(finding_id)
-                    && finding.get("path").and_then(Value::as_str) == Some(finding_path)
-                    && finding.get("kind").and_then(Value::as_str) == Some("policy_difference")
-            })
-        })
-    {
-        return Err("maintainer decision does not bind a policy-difference finding".into());
     }
     Ok(())
 }

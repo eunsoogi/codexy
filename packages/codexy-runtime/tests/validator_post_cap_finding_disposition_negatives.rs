@@ -76,6 +76,62 @@ fn disposition_rejects_fenced_or_negated_maintainer_copies() -> TestResult {
 }
 
 #[test]
+fn disposition_rejects_a_contradictory_accepted_difference_suffix() -> TestResult {
+    let result = post_cap::run_build_with_disposition_maintainer(
+        &control(),
+        BASE,
+        BASE,
+        |pull, base, head| {
+            let mut response = disposition_fixture::maintainer_response(pull, pull, base, head);
+            let original = response["data"]["repository"]["pullRequest"]["comments"]["nodes"][0]
+                ["body"]
+                .as_str()
+                .expect("maintainer fixture body");
+            let body = original.replace(
+                "execution may stand despite the planned newer model routing.",
+                "execution may stand despite the planned newer model routing. This is not accepted.",
+            );
+            response["data"]["repository"]["pullRequest"]["comments"]["nodes"][0]["body"] =
+                Value::String(body);
+            response
+        },
+    )?;
+    assert!(
+        !result.status.success(),
+        "contradictory accepted-difference suffix must be rejected"
+    );
+    Ok(())
+}
+
+#[test]
+fn disposition_rejects_an_unexpected_operative_bullet() -> TestResult {
+    let result = post_cap::run_build_with_disposition_maintainer(
+        &control(),
+        BASE,
+        BASE,
+        |pull, base, head| {
+            let mut response = disposition_fixture::maintainer_response(pull, pull, base, head);
+            let original = response["data"]["repository"]["pullRequest"]["comments"]["nodes"][0]
+                ["body"]
+                .as_str()
+                .expect("maintainer fixture body");
+            let body = original.replace(
+                "Scope of this disposition:\n",
+                "Scope of this disposition:\n- Additional note: this is an operative statement.\n",
+            );
+            response["data"]["repository"]["pullRequest"]["comments"]["nodes"][0]["body"] =
+                Value::String(body);
+            response
+        },
+    )?;
+    assert!(
+        !result.status.success(),
+        "unexpected operative bullet must be rejected"
+    );
+    Ok(())
+}
+
+#[test]
 fn disposition_rejects_empty_incomplete_unsupported_and_non_success_ci_rollups() -> TestResult {
     for case in ["empty", "incomplete", "unsupported", "pending", "failed", "cancelled"] {
         let result = post_cap::run_build_with_disposition_ci(

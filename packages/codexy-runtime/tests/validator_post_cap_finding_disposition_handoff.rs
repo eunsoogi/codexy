@@ -102,6 +102,67 @@ fn completion_handoff_refreshes_current_and_changed_live_disposition_sources() -
         "changed source diagnostic must be explicit: {}",
         String::from_utf8_lossy(&changed.stderr)
     );
+
+    fs::write(
+        &ci_path,
+        serde_json::to_vec(&disposition_fixture::ci_response(
+            issue,
+            &current_base,
+            &current_head,
+        ))?,
+    )?;
+    let mut rewritten_reviewer = state.clone();
+    rewritten_reviewer["reviewControl"]["terminal_review_history"][1]["reviewer"]["model"] =
+        serde_json::json!("gpt-6-astra");
+    rewritten_reviewer["reviewControl"]
+        .as_object_mut()
+        .ok_or("review control object")?
+        .remove("reviewer_migration");
+    fs::write(&state_path, serde_json::to_vec(&rewritten_reviewer)?)?;
+    let rewritten = run_completion_handoff(
+        &temporary,
+        &handoff_path,
+        &state_path,
+        &ci_path,
+        &maintainer_path,
+    )?;
+    assert!(
+        !rewritten.status.success(),
+        "rewritten retained reviewer tuple must be rejected"
+    );
+    assert!(
+        String::from_utf8_lossy(&rewritten.stderr).contains("maintainer decision")
+            || String::from_utf8_lossy(&rewritten.stderr).contains("reviewer tuple"),
+        "rewritten reviewer diagnostic must identify the binding: {}",
+        String::from_utf8_lossy(&rewritten.stderr)
+    );
+
+    let updated_base = repository.resolve(
+        direct_state::SYNTHETIC_UPDATED_BASE,
+        false,
+        false,
+        false,
+    )?;
+    let mut wrong_base = state.clone();
+    wrong_base["baseRefOid"] = serde_json::json!(updated_base);
+    fs::write(&state_path, serde_json::to_vec(&wrong_base)?)?;
+    let wrong_base_result = run_completion_handoff(
+        &temporary,
+        &handoff_path,
+        &state_path,
+        &ci_path,
+        &maintainer_path,
+    )?;
+    assert!(
+        !wrong_base_result.status.success(),
+        "current snapshot base mismatch must be rejected"
+    );
+    assert!(
+        String::from_utf8_lossy(&wrong_base_result.stderr).contains("base, or head identity")
+            || String::from_utf8_lossy(&wrong_base_result.stderr).contains("baseRefOid"),
+        "wrong-base diagnostic must identify the binding: {}",
+        String::from_utf8_lossy(&wrong_base_result.stderr)
+    );
     Ok(())
 }
 

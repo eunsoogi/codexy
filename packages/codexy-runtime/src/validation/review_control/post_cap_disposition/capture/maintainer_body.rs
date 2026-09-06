@@ -5,6 +5,20 @@ pub(super) struct Projection {
     pub(super) actual_reasoning_effort: String,
 }
 
+const OPERATIVE_PREFIXES: [&str; 8] = [
+    "Repository: ",
+    "Owning issue: #",
+    "Pull request: #",
+    "Base: ",
+    "Head: ",
+    "Finding: ",
+    "Finding path: ",
+    "Accepted difference: ",
+];
+const ACCEPTED_PREFIX: &str = "the retained Sentinel's actual ";
+const ACCEPTED_SUFFIX: &str = " execution may stand despite the planned newer model routing. Preserve the actual native reviewer identity, runtime model, verdicts and review count; do not relabel execution or repeat review solely for the model difference.";
+const NON_WAIVER: &str = "This disposition accepts only that model-policy difference for the bound review history. It does not accept code defects, waive CI or review findings, authorize merge, reset review counters, or authorize a fourth review. Future source validation must reread this comment and verify its identity, repository authority and exact scope.";
+
 pub(super) fn parse(
     body: &str,
     repository: &str,
@@ -38,19 +52,40 @@ pub(super) fn parse(
     if end == heading + 1 {
         return Err("maintainer decision disposition section is empty".into());
     }
-    let non_waiver = lines
-        .get(end..)
-        .and_then(|tail| tail.iter().find(|line| !line.is_empty()))
-        .copied()
-        .ok_or("maintainer decision body is missing its non-waiver statement")?;
-    if !non_waiver.starts_with("This disposition accepts only that model-policy difference")
-        || !non_waiver.contains(
-            "It does not accept code defects, waive CI or review findings, authorize merge, reset review counters, or authorize a fourth review",
-        )
-    {
-        return Err("maintainer decision body is not the narrow non-waiver disposition contract".into());
-    }
     let scoped = &lines[heading + 1..end];
+    if scoped.len() != OPERATIVE_PREFIXES.len()
+        || scoped.iter().any(|line| {
+            line.strip_prefix("- ").is_none_or(|line| {
+                !OPERATIVE_PREFIXES
+                    .iter()
+                    .any(|prefix| line.starts_with(prefix))
+            })
+        })
+    {
+        return Err(
+            "maintainer decision disposition section contains an unsupported operative field"
+                .into(),
+        );
+    }
+    let non_waiver_lines = lines
+        .get(end..)
+        .map(|tail| {
+            tail.iter()
+                .filter(|line| !line.is_empty())
+                .copied()
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    match non_waiver_lines.as_slice() {
+        [line] if *line == NON_WAIVER => {}
+        [] => return Err("maintainer decision body is missing its non-waiver statement".into()),
+        _ => {
+            return Err(
+                "maintainer decision body must contain exactly one authoritative non-waiver statement"
+                    .into(),
+            );
+        }
+    }
     let repository_line = line(scoped, "Repository: ")?;
     let issue_line = line(scoped, "Owning issue: #")?;
     let pr_line = line(scoped, "Pull request: #")?;
@@ -77,17 +112,16 @@ pub(super) fn parse(
         );
     }
     let accepted = line(scoped, "Accepted difference: ")?;
-    let prefix = "the retained Sentinel's actual ";
-    let marker = " execution may stand despite the planned newer model routing.";
     let tuple = accepted
-        .strip_prefix(prefix)
-        .and_then(|value| value.split_once(marker).map(|(tuple, _)| tuple))
+        .strip_prefix(ACCEPTED_PREFIX)
+        .and_then(|value| value.strip_suffix(ACCEPTED_SUFFIX))
         .ok_or("maintainer decision body must use the operative accepted-difference sentence")?;
     let (actual_model, actual_reasoning_effort) = tuple
         .split_once('/')
         .filter(|(model, effort)| {
             model.starts_with("gpt-")
                 && !model.is_empty()
+                && !model.chars().any(char::is_whitespace)
                 && !effort.is_empty()
                 && !effort.contains('/')
                 && !effort.chars().any(char::is_whitespace)

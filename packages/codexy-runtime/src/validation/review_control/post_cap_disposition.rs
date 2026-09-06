@@ -4,8 +4,18 @@ use serde_json::Value;
 
 use super::pre_pr::{object, reject_unknown, text};
 
+mod binding;
 mod capture;
 mod classification;
+
+pub(super) fn check_live_binding(
+    disposition: &serde_json::Map<String, Value>,
+    current: &serde_json::Map<String, Value>,
+    current_base: &str,
+    prior_delta: &serde_json::Map<String, Value>,
+) -> Result<(), String> {
+    binding::check(disposition, current, current_base, prior_delta)
+}
 
 pub(super) fn derive(
     source: &Value,
@@ -117,6 +127,11 @@ pub(super) fn refresh_live(control: &mut Value, current: Option<&Value>) -> Resu
         .as_object()
         .ok_or_else(|| "live finding disposition must be an object".to_owned())?
         .clone();
+    if let Some(current) = current {
+        let current = object(Some(current), "current PR snapshot")?;
+        let current_base = text(current, "baseRefOid", "current PR snapshot")?;
+        check_live_binding(&live, current, current_base, &prior_delta)?;
+    }
     check(&Value::Object(live.clone()))?;
     let post_cap = control
         .get_mut("post_cap_re_review")
