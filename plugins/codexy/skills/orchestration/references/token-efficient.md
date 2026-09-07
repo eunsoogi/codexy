@@ -70,15 +70,16 @@ MUST use this flow after compaction and before handoff:
    pre/post/continuation receipts, liveness-only goal-status messages, normal
    progress, intermediate successful tests, resolved command mistakes, commits,
    and queued CI MUST remain internal and MUST NOT wake the Orchestrator.
-   Workers MUST send compact deltas for terminal child state, fatal/gate/final
-   callbacks, Watcher failure or actionable drift, Sentinel verdict, PR
-   creation, a required external check-state change, actionable review feedback,
-   or review-thread resolution. A Watcher drift event is qualifying only when
-   its report is grounded in a changed artifact, diff, or relevant actual tool
-   call, identifies the conflicting current scope, ownership, or user constraint
-   without a repair directive, and requires an Orchestrator decision; relayed
-   Worker or Orchestrator findings MUST remain distinct from Watcher-first
-   detection.
+   Workers MUST send compact deltas for terminal child state, their
+   fatal/gate/final callbacks, PR creation, a required external check-state
+   change, actionable review feedback, or review-thread resolution. Watchers
+   MUST send their own compact deltas for Watcher-owned observation-channel
+   failure or actionable drift, and selected reviewers MUST send their verdicts.
+   A Watcher drift event is qualifying only when its report is grounded in a
+   changed artifact, diff, or relevant actual tool call, identifies the
+   conflicting current scope, ownership, or user constraint without a repair
+   directive, and requires an Orchestrator decision; relayed Worker or
+   Orchestrator findings MUST remain distinct from Watcher-first detection.
 3. **Validate stable event identity**: every event MUST use a deterministic
    `<kind>|<lane>|<subject>` identity. The ledger MUST reject a repeated
    identity before it changes counters or next actions.
