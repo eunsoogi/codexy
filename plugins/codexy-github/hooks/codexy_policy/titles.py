@@ -135,3 +135,11 @@ def graphql_title(value: object, predicate: Callable[[str], bool]) -> bool:
         and value.startswith("<string>:")
         and predicate(value[9:])
     )
+
+
+def squash_subject(value: object, number: object) -> bool:
+    """Validate the existing Conventional Commit squash subject contract."""
+    if type(number) is not int or number < 1 or not isinstance(value, str):
+        return False
+    suffix = f" (#{number})"
+    return value.endswith(suffix) and pr_title(value[: -len(suffix)])

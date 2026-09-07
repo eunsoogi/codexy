@@ -13,7 +13,12 @@ use sources::{LAUNCHERS, POLICY_SOURCES, Source};
 pub(super) fn is_launcher(path: &Path) -> bool {
     matches!(
         path.file_name().and_then(|name| name.to_str()),
-        Some("codexy-destructive-command.sh" | "codexy-destructive-command.cmd")
+        Some(
+            "codexy-destructive-command.sh"
+                | "codexy-destructive-command.cmd"
+                | "codexy-title-check.sh"
+                | "codexy-title-check.cmd"
+        )
     )
 }
 
@@ -47,6 +52,7 @@ fn runtime_closure(hooks: &Path, sources: &BTreeMap<&str, &Source>) -> Result<BT
         hooks,
         sources,
     )?);
+    closure.extend(closure_from("codexy-title-check.py", hooks, sources)?);
     Ok(closure)
 }
 

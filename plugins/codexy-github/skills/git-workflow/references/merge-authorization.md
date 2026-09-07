@@ -1,10 +1,10 @@
 # Optional Repository Merge Authorization
 
-Codexy does not provide a merge wrapper or a mutation admission route. The
-host, connector authentication, and GitHub permissions/branch protections are
-the only authorities that can authorize a merge. The checks below are optional
-evidence guidance for a repository or maintainer that explicitly selects this
-merge contract, not a plugin-owned veto.
+Codexy does not provide a merge wrapper or a mutation admission route. The host,
+connector authentication, and GitHub permissions/branch protections are the only
+authorities that can authorize a merge. The checks below are optional evidence
+guidance for a repository or maintainer that explicitly selects this merge
+contract, not a plugin-owned veto.
 
 When this contract is selected, passing gates make a PR eligible; they do not
 authorize merge. The chosen authorized route MUST fresh-read the exact

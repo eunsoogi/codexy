@@ -44,8 +44,8 @@ read-only connector sequence:
 
 If that selected cleanup contract requires branch deletion and the branch
 remains without an authenticated branch-delete surface, return
-`BLOCKED_MISSING_BRANCH_DELETE_SURFACE`; do not claim post-merge completion.
-Any failed readback blocks only the corresponding post-merge claim.
+`BLOCKED_MISSING_BRANCH_DELETE_SURFACE`; do not claim post-merge completion. Any
+failed readback blocks only the corresponding post-merge claim.
 
 Finally synchronize the configured default-branch worktree by fast-forward and
 verify the merge commit again. Keep transient evidence outside the repository.

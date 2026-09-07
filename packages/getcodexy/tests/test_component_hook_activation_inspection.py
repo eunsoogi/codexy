@@ -184,19 +184,22 @@ class ComponentHookActivationInspectionTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[3]
         source = root / "plugins/codexy-github/hooks/hooks.json"
         hooks = json.loads(source.read_text(encoding="utf-8"))["hooks"]
-        actual = {
-            group.get("matcher") for groups in hooks.values() for group in groups
-        }
-        self.assertEqual(actual, {None, "^Bash$"})
-        self.assertFalse(
-            any(
-                isinstance(matcher, str)
-                and matcher.startswith("^mcp__codex_apps__github_")
-                for matcher in actual
-            )
+        actual = {group.get("matcher") for groups in hooks.values() for group in groups}
+        self.assertEqual(
+            actual,
+            {
+                None,
+                "^Bash$",
+                "^functions\\.exec$",
+                "^(?:mcp__codex_apps__github_(?:create|update)_issue|github\\.(?:create|update)_issue)$",
+                "^(?:mcp__codex_apps__github_(?:create|update)_pull_request|github\\.(?:create|update)_pull_request)$",
+                "^(?:mcp__codex_apps__github_(?:merge_pull_request|enable_auto_merge)|github\\.(?:merge_pull_request|enable_auto_merge))$",
+            },
         )
         self.assertEqual(
-            json.loads((root / ".codex/hooks.json").read_text(encoding="utf-8"))["hooks"],
+            json.loads((root / ".codex/hooks.json").read_text(encoding="utf-8"))[
+                "hooks"
+            ],
             {},
         )
         with fixture({"github"}) as state:

@@ -14,6 +14,61 @@
     ],
     "PermissionRequest": [
       {
+        "matcher": "^(?:mcp__codex_apps__github_(?:create|update)_issue|github\\.(?:create|update)_issue)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.sh\" PermissionRequest issue",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.cmd\" PermissionRequest issue",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "^(?:mcp__codex_apps__github_(?:create|update)_pull_request|github\\.(?:create|update)_pull_request)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.sh\" PermissionRequest pr",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.cmd\" PermissionRequest pr",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "^(?:mcp__codex_apps__github_(?:merge_pull_request|enable_auto_merge)|github\\.(?:merge_pull_request|enable_auto_merge))$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.sh\" PermissionRequest merge",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.cmd\" PermissionRequest merge",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "^functions\\.exec$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.sh\" PermissionRequest nested",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.cmd\" PermissionRequest nested",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.sh\" PermissionRequest shell",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.cmd\" PermissionRequest shell",
+            "timeout": 5
+          }
+        ]
+      },
+      {
         "matcher": "^Bash$",
         "hooks": [
           {
@@ -26,6 +81,61 @@
       }
     ],
     "PreToolUse": [
+      {
+        "matcher": "^(?:mcp__codex_apps__github_(?:create|update)_issue|github\\.(?:create|update)_issue)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.sh\" PreToolUse issue",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.cmd\" PreToolUse issue",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "^(?:mcp__codex_apps__github_(?:create|update)_pull_request|github\\.(?:create|update)_pull_request)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.sh\" PreToolUse pr",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.cmd\" PreToolUse pr",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "^(?:mcp__codex_apps__github_(?:merge_pull_request|enable_auto_merge)|github\\.(?:merge_pull_request|enable_auto_merge))$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.sh\" PreToolUse merge",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.cmd\" PreToolUse merge",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "^functions\\.exec$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.sh\" PreToolUse nested",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.cmd\" PreToolUse nested",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.sh\" PreToolUse shell",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-title-check.cmd\" PreToolUse shell",
+            "timeout": 5
+          }
+        ]
+      },
       {
         "matcher": "^Bash$",
         "hooks": [

@@ -69,8 +69,10 @@ class GithubNativeHooksTests(
                     self._run_process(command, payload, environment), expected
                 )
 
-    def test_plugin_registers_only_context_and_independent_bash_safety(self) -> None:
-        hooks = json.loads((PLUGIN / "hooks/hooks.json").read_text(encoding="utf-8"))["hooks"]
+    def test_plugin_registers_title_checks_and_independent_bash_safety(self) -> None:
+        hooks = json.loads((PLUGIN / "hooks/hooks.json").read_text(encoding="utf-8"))[
+            "hooks"
+        ]
         self.assertEqual(
             set(hooks), {"UserPromptSubmit", "PermissionRequest", "PreToolUse"}
         )
@@ -79,16 +81,16 @@ class GithubNativeHooksTests(
         self.assertIn("codexy-github-workflow-context.sh", json.dumps(context))
         for event in ("PermissionRequest", "PreToolUse"):
             groups = hooks[event]
-            self.assertEqual(len(groups), 1, event)
-            self.assertEqual(groups[0]["matcher"], "^Bash$")
-            handler = groups[0]["hooks"]
-            self.assertEqual(len(handler), 1)
-            self.assertEqual(handler[0]["timeout"], 5)
-            self.assertIn("codexy-destructive-command", json.dumps(handler[0]))
+            self.assertEqual(len(groups), 6, event)
+            for group in groups[:5]:
+                self.assertIn("codexy-title-check", json.dumps(group))
+                self.assertEqual(group["hooks"][0]["timeout"], 5)
+            self.assertEqual(groups[5]["matcher"], "^Bash$")
+            self.assertIn("codexy-destructive-command", json.dumps(groups[5]))
 
         serialized = json.dumps(hooks)
         self.assertNotIn("plugin-version-bump", serialized)
-        self.assertNotIn("functions.exec", serialized)
+        self.assertNotIn("codexy-repository-", serialized)
         expected_hook_files = {
             "codexy-destructive-command.cmd",
             "codexy-destructive-command.py",
@@ -97,6 +99,9 @@ class GithubNativeHooksTests(
             "codexy-github-workflow-context.ps1",
             "codexy-github-workflow-context.sh",
             "codexy-hook-runtime.sh",
+            "codexy-title-check.cmd",
+            "codexy-title-check.py",
+            "codexy-title-check.sh",
             "codexy-issue-title-check.sh",
             "codexy-merge-message-check.sh",
             "codexy-pr-label-check.sh",

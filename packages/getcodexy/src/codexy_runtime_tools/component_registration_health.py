@@ -70,6 +70,42 @@ def _bash_hooks(event: str) -> list[dict[str, object]]:
     return [_command_hook("^Bash$", "codexy-destructive-command", event)]
 
 
+def _title_hooks(event: str) -> list[dict[str, object]]:
+    return [
+        _title_hook(
+            "^(?:mcp__codex_apps__github_(?:create|update)_issue|github\\.(?:create|update)_issue)$",
+            "issue",
+            event,
+        ),
+        _title_hook(
+            "^(?:mcp__codex_apps__github_(?:create|update)_pull_request|github\\.(?:create|update)_pull_request)$",
+            "pr",
+            event,
+        ),
+        _title_hook(
+            "^(?:mcp__codex_apps__github_(?:merge_pull_request|enable_auto_merge)|github\\.(?:merge_pull_request|enable_auto_merge))$",
+            "merge",
+            event,
+        ),
+        _title_hook("^functions\\.exec$", "nested", event),
+        _title_hook("^Bash$", "shell", event),
+    ]
+
+
+def _title_hook(matcher: str, kind: str, event: str) -> dict[str, object]:
+    return {
+        "matcher": matcher,
+        "hooks": [
+            {
+                "type": "command",
+                "command": f'"${{PLUGIN_ROOT}}/hooks/codexy-title-check.sh" {event} {kind}',
+                "commandWindows": f'"${{PLUGIN_ROOT}}/hooks/codexy-title-check.cmd" {event} {kind}',
+                "timeout": 5,
+            }
+        ],
+    }
+
+
 HOOKS = {
     "core": {
         "hooks": {
@@ -95,9 +131,11 @@ HOOKS = {
                 }
             ],
             "PermissionRequest": [
+                *_title_hooks("PermissionRequest"),
                 *_bash_hooks("PermissionRequest"),
             ],
             "PreToolUse": [
+                *_title_hooks("PreToolUse"),
                 *_bash_hooks("PreToolUse"),
             ],
         }
@@ -120,6 +158,8 @@ LAUNCHERS = {
     "github": (
         "hooks/codexy-github-workflow-context.sh",
         "hooks/codexy-github-workflow-context.cmd",
+        "hooks/codexy-title-check.sh",
+        "hooks/codexy-title-check.cmd",
         "hooks/codexy-destructive-command.sh",
         "hooks/codexy-destructive-command.cmd",
     ),

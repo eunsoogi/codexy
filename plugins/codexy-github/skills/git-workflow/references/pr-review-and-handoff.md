@@ -58,11 +58,10 @@ receipt; it does not authenticate caller fields, invent a historical snapshot,
 or establish current-head readiness. The next build MUST carry that receipt
 forward and consume the recovered predecessor through the ordinary transition
 validator. It MAY remove `native_history_recovery` only while appending a real
-current-head verdict; it MUST retain and revalidate
-`native_history_provenance`, the full/delta event prefix, actual source reviewer
-facts, findings, and event counts. Direct recovery output MUST NOT be described
-as PR-ready, complete, merge-authorized, or evidence that another review is
-needed.
+current-head verdict; it MUST retain and revalidate `native_history_provenance`,
+the full/delta event prefix, actual source reviewer facts, findings, and event
+counts. Direct recovery output MUST NOT be described as PR-ready, complete,
+merge-authorized, or evidence that another review is needed.
 
 After opening a PR, read back the remote PR number, URL, title, body, state,
 draft state, base, head branch, exact head SHA, labels, and linked issue when
@@ -102,10 +101,10 @@ child-owned branch or resolve a thread from prose alone.
 ## Handoff
 
 For a child-owned implementation or an explicitly selected completion-handoff
-contract, the handoff MUST bind the issue, branch/worktree, base, local/remote/PR
-head, changed paths, verification, checks, reviews, comments, labels, issue
-linkage, and unresolved threads. Ask `$orchestration` to apply its public
-**completion-handoff** contract to this captured state. An intentionally open PR
-MUST state the explicit parent-owned next gate; it is not merged completion.
-An ordinary authorized remote metadata operation does not require this handoff
-shape solely because the plugin is installed.
+contract, the handoff MUST bind the issue, branch/worktree, base,
+local/remote/PR head, changed paths, verification, checks, reviews, comments,
+labels, issue linkage, and unresolved threads. Ask `$orchestration` to apply its
+public **completion-handoff** contract to this captured state. An intentionally
+open PR MUST state the explicit parent-owned next gate; it is not merged
+completion. An ordinary authorized remote metadata operation does not require
+this handoff shape solely because the plugin is installed.

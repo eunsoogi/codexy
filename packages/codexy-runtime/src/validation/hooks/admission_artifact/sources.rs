@@ -20,15 +20,23 @@ pub(super) const LAUNCHERS: &[Source] = &[
     source!("codexy-hook-runtime.sh"),
     source!("codexy-destructive-command.sh"),
     source!("codexy-destructive-command.cmd"),
+    source!("codexy-title-check.sh"),
+    source!("codexy-title-check.cmd"),
 ];
 
 // This is the one compile-time source map. The runtime closure derives which
 // pinned files the shipped entrypoint actually imports.
 pub(super) const POLICY_SOURCES: &[Source] = &[
     source!("codexy-destructive-command.py"),
+    source!("codexy-title-check.py"),
     source!("codexy_policy/__init__.py"),
     source!("codexy_policy/envelope.py"),
     source!("codexy_policy/destructive_command.py"),
+    source!("codexy_policy/title_check.py"),
+    source!("codexy_policy/title_nested.py"),
+    source!("codexy_policy/title_nested_parser.py"),
+    source!("codexy_policy/title_shell.py"),
+    source!("codexy_policy/titles.py"),
     source!("codexy_policy/execution_context.py"),
     source!("codexy_policy/execution_context_types.py"),
     source!("codexy_policy/execution_filesystem.py"),

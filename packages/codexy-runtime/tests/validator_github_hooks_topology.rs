@@ -28,9 +28,41 @@ fn github_hooks_bind_only_context_and_local_bash_safety() -> TestResult {
 
     for event in ["PermissionRequest", "PreToolUse"] {
         let groups = events[event].as_array().ok_or("preventive hooks")?;
-        assert_eq!(groups.len(), 1, "{event}");
-        assert_eq!(groups[0]["matcher"], "^Bash$");
-        let handler = &groups[0]["hooks"][0];
+        assert_eq!(groups.len(), 6, "{event}");
+        for (index, (matcher, kind)) in [
+            (
+                "^(?:mcp__codex_apps__github_(?:create|update)_issue|github\\.(?:create|update)_issue)$",
+                "issue",
+            ),
+            (
+                "^(?:mcp__codex_apps__github_(?:create|update)_pull_request|github\\.(?:create|update)_pull_request)$",
+                "pr",
+            ),
+            (
+                "^(?:mcp__codex_apps__github_(?:merge_pull_request|enable_auto_merge)|github\\.(?:merge_pull_request|enable_auto_merge))$",
+                "merge",
+            ),
+            ("^functions\\.exec$", "nested"),
+            ("^Bash$", "shell"),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            assert_eq!(groups[index]["matcher"], matcher);
+            let handler = &groups[index]["hooks"][0];
+            assert_eq!(handler["type"], "command");
+            assert_eq!(handler["timeout"], 5);
+            assert!(handler["command"]
+                .as_str()
+                .unwrap_or_default()
+                .contains(&format!("codexy-title-check.sh\" {event} {kind}")));
+            assert!(handler["commandWindows"]
+                .as_str()
+                .unwrap_or_default()
+                .contains(&format!("codexy-title-check.cmd\" {event} {kind}")));
+        }
+        let handler = &groups[5]["hooks"][0];
+        assert_eq!(groups[5]["matcher"], "^Bash$");
         assert_eq!(handler["type"], "command");
         assert_eq!(handler["timeout"], 5);
         assert!(handler["command"]
@@ -45,8 +77,7 @@ fn github_hooks_bind_only_context_and_local_bash_safety() -> TestResult {
 
     let serialized = hooks.to_string();
     assert!(!serialized.contains("plugin-version-bump"));
-    assert!(!serialized.contains("functions.exec"));
-    assert!(!serialized.contains("github_create_"));
+    assert!(!serialized.contains("codexy-repository-"));
     assert!(!serialized.contains("UNAVAILABLE"));
     let expected_hook_files = [
         "codexy-destructive-command.cmd",
@@ -56,6 +87,9 @@ fn github_hooks_bind_only_context_and_local_bash_safety() -> TestResult {
         "codexy-github-workflow-context.ps1",
         "codexy-github-workflow-context.sh",
         "codexy-hook-runtime.sh",
+        "codexy-title-check.cmd",
+        "codexy-title-check.py",
+        "codexy-title-check.sh",
         "codexy-issue-title-check.sh",
         "codexy-merge-message-check.sh",
         "codexy-pr-label-check.sh",

@@ -42,14 +42,21 @@ class GithubNativeHooksInstallationMixin:
             hook_root = installed / "hooks"
             self.assertTrue((installed / "skills/git-workflow/SKILL.md").is_file())
             self.assertTrue((installed / "agents/codexy-weaver.toml").is_file())
-            hooks = json.loads((hook_root / "hooks.json").read_text(encoding="utf-8"))["hooks"]
+            hooks = json.loads((hook_root / "hooks.json").read_text(encoding="utf-8"))[
+                "hooks"
+            ]
             self.assertEqual(
                 set(hooks), {"UserPromptSubmit", "PermissionRequest", "PreToolUse"}
             )
-            self.assertEqual(len(hooks["PermissionRequest"]), 1)
-            self.assertEqual(len(hooks["PreToolUse"]), 1)
-            self.assertEqual(hooks["PermissionRequest"][0]["matcher"], "^Bash$")
-            self.assertEqual(hooks["PreToolUse"][0]["matcher"], "^Bash$")
+            for event in ("PermissionRequest", "PreToolUse"):
+                self.assertEqual(len(hooks[event]), 6)
+                self.assertTrue(
+                    all(
+                        "codexy-title-check" in json.dumps(group)
+                        for group in hooks[event][:5]
+                    )
+                )
+                self.assertEqual(hooks[event][5]["matcher"], "^Bash$")
             self.assertIn("codexy-destructive-command", json.dumps(hooks))
             self.assertIn(
                 "$git-workflow",
@@ -61,6 +68,64 @@ class GithubNativeHooksInstallationMixin:
             )
 
             for event in ("PermissionRequest", "PreToolUse"):
+                for kind, tool, field, value, denied in (
+                    (
+                        "issue",
+                        "mcp__codex_apps__github_create_issue",
+                        "title",
+                        "Valid issue",
+                        False,
+                    ),
+                    (
+                        "issue",
+                        "mcp__codex_apps__github_create_issue",
+                        "title",
+                        "fix: invalid",
+                        True,
+                    ),
+                    ("pr", "github.update_pull_request", "body", "free form", False),
+                    ("pr", "github.update_pull_request", "title", "plain title", True),
+                    (
+                        "shell",
+                        "Bash",
+                        "command",
+                        "gh pr create --title 'fix(hooks): installed'",
+                        False,
+                    ),
+                    (
+                        "shell",
+                        "Bash",
+                        "command",
+                        "gh pr create --title 'plain title'",
+                        True,
+                    ),
+                    (
+                        "nested",
+                        "functions.exec",
+                        "code",
+                        "tools.mcp__codex_apps__github_create_issue({title: 'Valid issue'})",
+                        False,
+                    ),
+                    (
+                        "nested",
+                        "functions.exec",
+                        "code",
+                        "tools.mcp__codex_apps__github_create_issue({title: 'fix: invalid'})",
+                        True,
+                    ),
+                ):
+                    output = self._run_process(
+                        [str(hook_root / "codexy-title-check.sh"), event, kind],
+                        json.dumps(
+                            {
+                                "hook_event_name": event,
+                                "tool_name": tool,
+                                "tool_input": {field: value},
+                            }
+                        ),
+                        {**environment, "PLUGIN_ROOT": str(installed)},
+                    )
+                    self.assertEqual(bool(output), denied, f"{event} {kind}: {value}")
                 for command in (
                     "gh issue create --title arbitrary",
                     "gh workflow run unrelated.yml --ref topic",
@@ -106,6 +171,9 @@ class GithubNativeHooksInstallationMixin:
                 "codexy-github-workflow-context.ps1",
                 "codexy-github-workflow-context.sh",
                 "codexy-hook-runtime.sh",
+                "codexy-title-check.cmd",
+                "codexy-title-check.py",
+                "codexy-title-check.sh",
                 "codexy-issue-title-check.sh",
                 "codexy-merge-message-check.sh",
                 "codexy-pr-label-check.sh",
