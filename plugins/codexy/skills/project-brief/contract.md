@@ -25,9 +25,11 @@ These fields apply to machine receipt mode only.
 - The projection copies recorded values only. It keeps proof, merge,
   publication, public verification, and milestone closure as distinct phases.
 - When `result` or `uncertainty` is recorded, the existing `verified_phase`
-  string carries `result=<...>; phase=<...>; uncertainty=<...>`, omitting
-  unrecorded segments. Values are copied, never inferred; without either
-  segment, a recorded `verified_phase` remains unchanged.
+  scalar includes those exact values verbatim alongside any recorded phase. It
+  remains one opaque nonempty string, not a nested object or parser contract; no
+  delimiter or escaping rule is defined, and consumers MUST NOT infer, split, or
+  decode result, phase, or uncertainty fields from it. Without either separate
+  value, a recorded `verified_phase` remains unchanged.
 
 ## Mode selection
 
@@ -35,9 +37,10 @@ These fields apply to machine receipt mode only.
 - An explicit machine/receipt request or an existing machine consumer uses the
   eight fields above, in the stated order, without a prose wrapper.
 - Both modes use the same current recorded facts and uncertainty; human mode
-  renders the `result` and `uncertainty` values carried by the machine envelope.
-  It does not require hashes, fixed fields, or parser success. Neither mode
-  changes repository, GitHub, task, release, or proof state.
+  renders the same `result` and `uncertainty` values that the machine scalar
+  carries as text. The scalar is opaque and does not require a parser. It does
+  not require hashes or fixed fields. Neither mode changes repository, GitHub,
+  task, release, or proof state.
 
 ## Boundary responses
 
