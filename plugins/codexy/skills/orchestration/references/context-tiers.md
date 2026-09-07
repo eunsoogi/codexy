@@ -15,10 +15,10 @@ When producing a `StableHandoff`, set `selected_references` to the exact ordered
 list produced by this contract. These are route identifiers, not file paths, and
 the validator compares the complete list including its order.
 
-The selected list is the canonical handoff set, not a prohibition on conditionally
-required guidance. When an independent condition requires a reference, load it
-for that condition without adding its identifier to an unrelated route or
-changing the exact selected list.
+The selected list is the canonical handoff set, not a prohibition on
+conditionally required guidance. When an independent condition requires a
+reference, load it for that condition without adding its identifier to an
+unrelated route or changing the exact selected list.
 
 For a valid structured classification, use this procedure:
 
