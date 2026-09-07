@@ -75,6 +75,48 @@ fn post_negated_affirmative_request_kind_is_rejected() {
 }
 
 #[test]
+fn inline_code_in_affirmative_request_kind_is_operative() -> super::TestResult {
+    let (mut request, _, _) = super::native_forms::request();
+    request["reviewer"]["pages"][1]["turns"][0]["items"][0]["content"][0]["text"] =
+        json!("Perform the selected strict-profile review of `request.rs`.");
+    let receipt = super::native_history::normalize_native_history(&request)?;
+    assert!(
+        receipt["events"]
+            .as_array()
+            .is_some_and(|events| { events.iter().any(|event| event["kind"] == "full") })
+    );
+    Ok(())
+}
+
+#[test]
+fn no_edits_clause_in_affirmative_request_kind_is_operative() -> super::TestResult {
+    let (mut request, _, _) = super::native_forms::request();
+    request["reviewer"]["pages"][1]["turns"][0]["items"][0]["content"][0]["text"] =
+        json!("Perform the selected strict-profile review with no edits.");
+    let receipt = super::native_history::normalize_native_history(&request)?;
+    assert!(
+        receipt["events"]
+            .as_array()
+            .is_some_and(|events| { events.iter().any(|event| event["kind"] == "full") })
+    );
+    Ok(())
+}
+
+#[test]
+fn independent_no_edit_sentence_in_affirmative_request_kind_is_operative() -> super::TestResult {
+    let (mut request, _, _) = super::native_forms::request();
+    request["reviewer"]["pages"][1]["turns"][0]["items"][0]["content"][0]["text"] =
+        json!("Perform the selected strict-profile review. Do not edit files.");
+    let receipt = super::native_history::normalize_native_history(&request)?;
+    assert!(
+        receipt["events"]
+            .as_array()
+            .is_some_and(|events| { events.iter().any(|event| event["kind"] == "full") })
+    );
+    Ok(())
+}
+
+#[test]
 fn same_marker_content_is_not_a_fence_closer() -> super::TestResult {
     let (mut request, full_text, _) = super::native_forms::request();
     let text = format!(

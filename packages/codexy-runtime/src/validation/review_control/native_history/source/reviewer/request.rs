@@ -106,10 +106,7 @@ fn explicit_kind(first: &str) -> Option<String> {
 }
 
 fn affirmative_strict_review(text: &str) -> bool {
-    if text
-        .chars()
-        .any(|character| matches!(character, '`' | '\'' | '"' | '“' | '”' | '‘' | '’'))
-    {
+    if starts_with_example_wrapper(text) {
         return false;
     }
     let words = text
@@ -143,11 +140,21 @@ fn affirmative_strict_review(text: &str) -> bool {
         )
     });
     let prefix = &words[..=review_index];
-    let negated = contains_negation(prefix) || contains_negation(&words[review_index + 1..]);
+    let negated = contains_prefix_negation(prefix)
+        || contains_post_review_negation(&words[review_index + 1..]);
     strict_profile && affirmative_start && !negated
 }
 
-fn contains_negation(words: &[&str]) -> bool {
+fn starts_with_example_wrapper(text: &str) -> bool {
+    let text = text.trim_start();
+    let text = text.strip_prefix("- ").unwrap_or(text).trim_start();
+    matches!(
+        text.chars().next(),
+        Some('`' | '\'' | '"' | '“' | '”' | '‘' | '’' | '>')
+    )
+}
+
+fn contains_prefix_negation(words: &[&str]) -> bool {
     words.iter().any(|word| {
         matches!(
             *word,
@@ -164,6 +171,25 @@ fn contains_negation(words: &[&str]) -> bool {
                 | ["will", "not"]
         )
     })
+}
+
+fn contains_post_review_negation(words: &[&str]) -> bool {
+    matches!(
+        words,
+        ["not"]
+            | ["never"]
+            | ["no"]
+            | ["do", "not"]
+            | ["does", "not"]
+            | ["did", "not"]
+            | ["must", "not"]
+            | ["should", "not"]
+            | ["will", "not"]
+            | ["don", "t"]
+            | ["doesn", "t"]
+            | ["didn", "t"]
+            | ["won", "t"]
+    )
 }
 
 fn negated(text: &str, subject: &str) -> bool {
