@@ -4,6 +4,25 @@ use std::path::Path;
 use super::model::{Product, SurfaceRecord};
 use crate::support::TestResult;
 
+pub(super) const SURFACE_SIDECARS: [(&str, &str); 4] = [
+    (
+        "docs/plugin-product-boundary-core.json",
+        "codexy",
+    ),
+    (
+        "docs/plugin-product-boundary-github.json",
+        "codexy-github",
+    ),
+    (
+        "docs/plugin-product-boundary-devtools.json",
+        "codexy-devtools",
+    ),
+    (
+        "docs/plugin-product-boundary-repository.json",
+        "repository-only",
+    ),
+];
+
 pub(super) fn unique_products(
     products: &[Product],
 ) -> Result<BTreeMap<&str, &Product>, Box<dyn std::error::Error>> {
@@ -16,9 +35,34 @@ pub(super) fn unique_products(
     Ok(unique)
 }
 pub(super) fn contract(root: &Path) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-    Ok(serde_json::from_str(&std::fs::read_to_string(
+    let mut contract: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
         root.join("docs/plugin-product-boundary.json"),
-    )?)?)
+    )?)?;
+    let mut records = Vec::new();
+    for (path, expected_target) in SURFACE_SIDECARS {
+        let sidecar: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+            root.join(path),
+        )?)?;
+        if sidecar["schema"].as_str() != Some("codexy-plugin-product-boundary-surfaces/v1")
+            || sidecar["target"].as_str() != Some(expected_target)
+        {
+            return Err(format!("invalid product-boundary sidecar: {path}").into());
+        }
+        let sidecar_records = sidecar["surfaceRecords"]
+            .as_array()
+            .ok_or("sidecar surfaceRecords must be an array")?;
+        if sidecar_records.is_empty() {
+            return Err(format!("empty product-boundary sidecar: {path}").into());
+        }
+        for record in sidecar_records {
+            if record["target"].as_str() != Some(expected_target) {
+                return Err(format!("sidecar target mismatch: {path}").into());
+            }
+            records.push(record.clone());
+        }
+    }
+    contract["surfaceRecords"] = serde_json::Value::Array(records);
+    Ok(contract)
 }
 pub(super) fn product<'a>(value: &'a mut serde_json::Value, id: &str) -> &'a mut serde_json::Value {
     value["products"]

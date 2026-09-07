@@ -1,0 +1,110 @@
+{
+  "schema": "codexy-plugin-product-boundary-surfaces/v1",
+  "target": "codexy-devtools",
+  "surfaceRecords": [
+    {
+      "id": "skills.devtools",
+      "category": "skills",
+      "sources": [
+        "plugins/codexy-devtools/skills"
+      ],
+      "target": "codexy-devtools",
+      "disposition": "retain"
+    },
+    {
+      "id": "agents.devtools",
+      "category": "agents",
+      "sources": [
+        "plugins/codexy-devtools/agents/openai.yaml"
+      ],
+      "target": "codexy-devtools",
+      "disposition": "retain"
+    },
+    {
+      "id": "mcp.codegraph",
+      "category": "mcp",
+      "sources": [
+        "plugins/codexy-devtools/.mcp.json#codegraph"
+      ],
+      "target": "codexy-devtools",
+      "disposition": "move"
+    },
+    {
+      "id": "mcp.lsp",
+      "category": "mcp",
+      "sources": [
+        "plugins/codexy-devtools/.mcp.json#lsp"
+      ],
+      "target": "codexy-devtools",
+      "disposition": "move"
+    },
+    {
+      "id": "mcp.runtimes",
+      "category": "mcp",
+      "sources": [
+        "plugins/codexy-devtools/mcp"
+      ],
+      "target": "codexy-devtools",
+      "disposition": "move"
+    },
+    {
+      "id": "lsp.integration",
+      "category": "lsp",
+      "sources": [
+        "plugins/codexy-devtools/.codex/lsp-client.json",
+        "plugins/codexy-devtools/lsp"
+      ],
+      "target": "codexy-devtools",
+      "disposition": "move"
+    },
+    {
+      "id": "runtime.codegraph",
+      "category": "mcp",
+      "sources": [
+        "packages/codexy-runtime/src/codegraph"
+      ],
+      "target": "codexy-devtools",
+      "disposition": "move"
+    },
+    {
+      "id": "runtime.lsp",
+      "category": "lsp",
+      "sources": [
+        "packages/codexy-runtime/src/lsp"
+      ],
+      "target": "codexy-devtools",
+      "disposition": "move"
+    },
+    {
+      "id": "runtime.entrypoints",
+      "category": "mcp",
+      "sources": [
+        "packages/codexy-runtime/src/mcp.rs",
+        "packages/codexy-runtime/src/bin/codexy-handoff-validate.rs",
+        "packages/codexy-runtime/src/bin/codexy-mcp-codegraph.rs",
+        "packages/codexy-runtime/src/bin/codexy-mcp-devtools.rs",
+        "packages/codexy-runtime/src/bin/codexy-mcp-lsp.rs"
+      ],
+      "target": "codexy-devtools",
+      "disposition": "move"
+    },
+    {
+      "id": "runtime.release",
+      "category": "packaging",
+      "sources": [
+        "plugins/codexy-devtools/runtime-release.json"
+      ],
+      "target": "codexy-devtools",
+      "disposition": "retain"
+    },
+    {
+      "id": "public.devtools",
+      "category": "public-entrypoints",
+      "sources": [
+        "plugins/codexy-devtools/.codex-plugin/plugin.json"
+      ],
+      "target": "codexy-devtools",
+      "disposition": "retain"
+    }
+  ]
+}
