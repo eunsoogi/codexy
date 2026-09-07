@@ -15,6 +15,11 @@ When producing a `StableHandoff`, set `selected_references` to the exact ordered
 list produced by this contract. These are route identifiers, not file paths, and
 the validator compares the complete list including its order.
 
+The selected list is the canonical handoff set, not a prohibition on
+conditionally required guidance. When an independent condition requires a
+reference, the agent MUST load it for that condition and MUST NOT add its
+identifier to an unrelated route or change the exact selected list.
+
 For a valid structured classification, use this procedure:
 
 1. If the workflow is fail-closed, a surface list is empty, a workflow or
@@ -64,8 +69,7 @@ The routes are:
 ### Surface routes
 
 - `repository engineering`: `proof_completion`
-- `GitHub`: `review_profiles` → `review_lifecycle` → `proof_completion` →
-  `public_extension_contracts`
+- `GitHub`: `proof_completion` → `public_extension_contracts`
 - `browser/desktop`: `workflow_profiles` → `task_classification` →
   `proof_completion`
 - `documents/artifacts`: `workflow_profiles` → `task_classification` →
@@ -74,6 +78,10 @@ The routes are:
   `proof_completion`
 - `research/wiki`: `dreaming`
 - `read-only/local`: `task_classification`
+
+The GitHub surface alone selects general completion and public-extension
+guidance. Review-specific references are selected by the review workflow routes
+above, including an explicitly chosen review procedure.
 
 ### Risk routes
 
