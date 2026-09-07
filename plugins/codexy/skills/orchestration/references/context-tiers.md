@@ -64,8 +64,7 @@ The routes are:
 ### Surface routes
 
 - `repository engineering`: `proof_completion`
-- `GitHub`: `review_profiles` → `review_lifecycle` → `proof_completion` →
-  `public_extension_contracts`
+- `GitHub`: `proof_completion` → `public_extension_contracts`
 - `browser/desktop`: `workflow_profiles` → `task_classification` →
   `proof_completion`
 - `documents/artifacts`: `workflow_profiles` → `task_classification` →
@@ -74,6 +73,10 @@ The routes are:
   `proof_completion`
 - `research/wiki`: `dreaming`
 - `read-only/local`: `task_classification`
+
+The GitHub surface alone selects general completion and public-extension
+guidance. Review-specific references are selected by the review workflow routes
+above, including an explicitly chosen review procedure.
 
 ### Risk routes
 

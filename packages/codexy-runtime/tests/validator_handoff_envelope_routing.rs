@@ -35,6 +35,56 @@ fn stable_handoff_accepts_structured_task_surface_risk_classification() -> TestR
 }
 
 #[test]
+fn ordinary_github_surface_does_not_select_review_guidance() -> TestResult {
+    let stable = StableHandoff {
+        policy_digest: String::new(),
+        workflow_profile: "standard".into(),
+        task_classification: StableClassification::Structured(StructuredClassification {
+            workflow: "other".into(),
+            surfaces: vec!["GitHub".into()],
+            risks: vec![],
+        }),
+        selected_references: vec![
+            "workflow_profiles".into(),
+            "tdd_classification_policy".into(),
+            "child_routing".into(),
+            "proof_completion".into(),
+            "public_extension_contracts".into(),
+        ],
+    };
+    let envelope = HandoffEnvelope::new(stable.clone(), volatile("ordinary-github"));
+    let canonical = envelope.canonical_json()?;
+    assert!(validate_handoff(&canonical, &authority(stable)).is_ok());
+    Ok(())
+}
+
+#[test]
+fn explicit_github_merge_workflow_retains_review_guidance() -> TestResult {
+    let stable = StableHandoff {
+        policy_digest: String::new(),
+        workflow_profile: "strict".into(),
+        task_classification: StableClassification::Structured(StructuredClassification {
+            workflow: "GitHub/merge".into(),
+            surfaces: vec!["GitHub".into()],
+            risks: vec![],
+        }),
+        selected_references: vec![
+            "workflow_profiles".into(),
+            "task_classification".into(),
+            "tdd_classification_policy".into(),
+            "review_profiles".into(),
+            "review_lifecycle".into(),
+            "proof_completion".into(),
+            "public_extension_contracts".into(),
+        ],
+    };
+    let envelope = HandoffEnvelope::new(stable.clone(), volatile("explicit-review"));
+    let canonical = envelope.canonical_json()?;
+    assert!(validate_handoff(&canonical, &authority(stable)).is_ok());
+    Ok(())
+}
+
+#[test]
 fn stable_handoff_validates_task_surface_union_and_fallback_risk_route() -> TestResult {
     let ordinary = ordinary_stable();
     let ordinary_json =
