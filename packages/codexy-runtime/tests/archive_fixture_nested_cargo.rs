@@ -33,7 +33,6 @@ fn validator_wrapper_keeps_its_default_production_cargo_route() {
     assert!(wrapper.contains(
         "cargo run --quiet --manifest-path \"$REPO_ROOT/packages/codexy-runtime/Cargo.toml\" --bin codexy-validate -- \"$@\""
     ));
-    assert!(wrapper.contains("validate-repository-github-policy"));
 }
 
 #[cfg(unix)]

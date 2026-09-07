@@ -7,6 +7,7 @@ from .policy_diagnostics import describe
 from .shell_entry import context as shell_context
 from .shell_destructive import forbidden as shell_forbidden
 from .shell_destructive_policy import POLICY
+from .shell_evaluator import credential_exposure
 from .shell_opaque import unresolved_alias_transition, unresolved_protected_effect
 
 
@@ -35,6 +36,8 @@ def forbidden(request: Request) -> bool | str:
         git_config_environment,
         runtime_environment,
     )
+    if credential_exposure(command, context):
+        return describe("CREDENTIAL_EXPOSURE", command, context)
     if unresolved_protected_effect(command, context) or unresolved_alias_transition(
         command, context
     ):

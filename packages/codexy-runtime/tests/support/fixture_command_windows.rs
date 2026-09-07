@@ -44,10 +44,7 @@ pub(crate) fn fixture_native_launcher(is_windows: bool, program: &Path) -> Optio
 pub(crate) fn windows_static_python_fixture(program: &Path) -> Option<PathBuf> {
     let companion = windows_fixture_companion(program)?;
     let stem = program.file_stem()?.to_string_lossy();
-    let python_stem = match stem.as_ref() {
-        "codexy-repository-github-exec" => "codexy_repository_github_exec",
-        _ => stem.as_ref(),
-    };
+    let python_stem = stem.as_ref();
     let python = program.with_file_name(format!("{python_stem}.py"));
     let expected = format!("py -3 -I -B \"%~dp0{python_stem}.py\" --event \"%event%\"");
     let command = std::fs::read_to_string(companion)
@@ -115,10 +112,6 @@ fn is_dynamic_python_fixture(stem: &str, command: &str) -> bool {
 
 fn is_fail_closed_policy_fixture(stem: &str, command: &str) -> bool {
     let diagnostic = match stem {
-        "codexy-repository-issue" => "CODEXY_REPOSITORY_ISSUE_RUNTIME",
-        "codexy-repository-pull-request" => "CODEXY_REPOSITORY_PULL_REQUEST_RUNTIME",
-        "codexy-repository-merge" => "CODEXY_REPOSITORY_MERGE_RUNTIME",
-        "codexy-repository-github-command" => "CODEXY_REPOSITORY_GITHUB_COMMAND_RUNTIME",
         "codexy-destructive-command" => "CODEXY_DESTRUCTIVE_COMMAND_RUNTIME",
         _ => return false,
     };
