@@ -9,10 +9,9 @@ runtime handoff/route contract, then load the references selected by that route;
 these are the canonical handoff references. When a separate condition requires
 additional guidance (for example, app-thread workers, a watcher, or delegated
 goal ownership), the agent MUST load that reference when the condition applies
-and MUST NOT add it to unrelated routes. Progressive disclosure does not
-require loading every reference. A GitHub surface alone does not select
-review-specific references.
-Compaction: current wins; missing proof MUST NOT permit action.
+and MUST NOT add it to unrelated routes. Progressive disclosure does not require
+loading every reference. A GitHub surface alone does not select review-specific
+references. Compaction: current wins; missing proof MUST NOT permit action.
 
 ### Classify and route
 
