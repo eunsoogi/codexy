@@ -28,7 +28,7 @@ fn issue_735_read_only_github_and_git_corpus_is_admitted_for_both_events() -> Te
         "git branch --list",
         "git ls-remote --heads origin",
         "git check-ref-format --branch topic",
-        "for f in plugins/codexy/hooks/codexy_policy/child_thread_creation.py plugins/codexy/hooks/codexy_policy/thread_delivery.py plugins/codexy-github/hooks/codexy_policy/destructive_command.py plugins/codexy-github/hooks/codexy_policy/repository_github_command.py plugins/codexy-github/hooks/codexy_policy/repository_issue.py plugins/codexy-github/hooks/codexy_policy/repository_pull_request.py plugins/codexy-github/hooks/codexy_policy/repository_merge.py plugins/codexy-github/hooks/codexy_policy/titles.py plugins/codexy-github/hooks/codexy_policy/merge.py plugins/codexy-github/hooks/codexy_policy/pull_request.py; do echo \"### $f\"; git show eb34ef4f0292701b544bb73381d3c10a6b72d522:$f; done",
+        "for f in plugins/codexy/hooks/codexy_policy/child_thread_creation.py plugins/codexy/hooks/codexy_policy/thread_delivery.py plugins/codexy-github/hooks/codexy_policy/destructive_command.py plugins/codexy-github/hooks/codexy_policy/execution_context_types.py plugins/codexy-github/hooks/codexy_policy/repository.py plugins/codexy-github/hooks/codexy_policy/shell_entry.py plugins/codexy-github/hooks/codexy_policy/shell_git.py; do echo \"### $f\"; git show eb34ef4f0292701b544bb73381d3c10a6b72d522:$f; done",
     ];
     for event in ["PermissionRequest", "PreToolUse"] {
         for command in commands {
@@ -39,7 +39,7 @@ fn issue_735_read_only_github_and_git_corpus_is_admitted_for_both_events() -> Te
 }
 
 #[test]
-fn issue_735_closed_cli_and_rest_mutation_matrix_has_one_eligible_operation() -> TestResult {
+fn issue_735_github_mutation_matrix_is_admitted_without_plugin_policy() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
@@ -82,7 +82,7 @@ fn issue_735_closed_cli_and_rest_mutation_matrix_has_one_eligible_operation() ->
         "gh api --method DELETE repos/eunsoogi/codexy/pulls/17/requested_reviewers -F 'reviewers=[\"old\"]'",
         "gh api --method POST repos/eunsoogi/codexy/pulls/17/reviews -f event=APPROVE -f body=LGTM",
     ];
-    let denied = [
+    let additional_github_mutations = [
         "gh api --method DELETE repos/eunsoogi/codexy",
         "gh api --method DELETE repos/eunsoogi/codexy/git/refs/heads/topic",
         "gh api --method PUT repos/eunsoogi/codexy/branches/main/protection -f required_status_checks='{}'",
@@ -92,25 +92,17 @@ fn issue_735_closed_cli_and_rest_mutation_matrix_has_one_eligible_operation() ->
         "gh workflow run deploy.yml --repo eunsoogi/codexy",
         "gh release create v9 --repo eunsoogi/codexy",
         "gh api --method PATCH repos/eunsoogi/codexy/security-advisories/GHSA-fixture -f state=closed",
-        "gh issue list || GH_TOKEN=fixture gh issue list",
-        "! true || GH_TOKEN=fixture gh issue list",
-        "! false && GH_TOKEN=fixture gh issue list",
         "gh pr merge 42 --repo eunsoogi/codexy --squash",
         "gh api --method POST repos/eunsoogi/codexy/import -f source=fixture",
         "gh api graphql -f owner=eunsoogi -f name=codexy -f query='mutation { deleteProjectV2(input:{projectV2Id:\"fixture\"}) { clientMutationId } }'",
         "gh api --method POST repos/other-org/other-repo/issues -f title='Wrong repository'",
-        "gh api -H 'Authorization: Bearer fixture-secret' repos/eunsoogi/codexy/labels",
-        "rm -rf /",
         "gh pr edit 42 --repo eunsoogi/codexy --expected-head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "gh pr view 17 --repo eunsoogi/codexy --json state,isDraft,mergeStateStatus,statusCheckRollup > new-output.json",
         "gh api --method POST repos/eunsoogi/codexy/pulls/17/reviews -f event=COMMENT",
         "gh api --method POST repos/eunsoogi/codexy/issues",
-        "cat <(gh issue create --repo eunsoogi/codexy --title invalid)",
-        "cat >(git push --force origin main; git rev-parse @{u})",
     ];
     let cases = eligible.iter()
         .map(|command| ((*command).to_owned(), false))
-        .chain(denied.iter().map(|command| ((*command).to_owned(), true)))
+        .chain(additional_github_mutations.iter().map(|command| ((*command).to_owned(), false)))
         .collect::<Vec<_>>();
     for event in ["PermissionRequest", "PreToolUse"] {
         assert_event_cases(&root, event, &owned, cases.clone(), &[])?;
@@ -124,31 +116,29 @@ fn git_aliases_keep_the_normalized_repository_context() -> TestResult {
     let workspace = tempfile::tempdir()?;
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
     let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
-    for (cwd, target, denied) in [(&foreign, &owned, true), (&owned, &foreign, false)] {
+    for (cwd, target) in [(&foreign, &owned), (&owned, &foreign)] {
         let git_dir = shell_path(&target.join(".git"))?;
         let target = shell_path(target)?;
         for command in [
             format!("git -C {target} -c alias.wipe='!git reset --hard' wipe"),
             format!("git --git-dir={git_dir} -c alias.wipe='!git reset --hard' wipe"),
         ] {
-            assert_case(&root, cwd, &command, denied, &[])?;
+            assert_case(&root, cwd, &command, true, &[])?;
         }
     }
     Ok(())
 }
 
 #[test]
-fn opaque_path_qualified_policy_executables_are_claimed() -> TestResult {
+fn opaque_path_qualified_git_executables_remain_protected() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
     let git = executable("git")?;
-    let gh = executable("gh")?;
     let printf = executable("printf")?;
     let renamed = workspace.path().join("renamed-tools");
     std::fs::create_dir(&renamed)?;
     copy_tool(&git, &renamed, "git-copy")?;
-    copy_tool(&gh, &renamed, "gh-copy")?;
     let copied_printf = copy_tool(&printf, &renamed, "printf-copy")?;
     let wrappers = [
         ("command", ""),
@@ -163,34 +153,25 @@ fn opaque_path_qualified_policy_executables_are_claimed() -> TestResult {
     let beyond = "command ".repeat(9);
     let mut cases = vec![
         (format!("if true; then '{}' reset --hard; fi", git.display()), true),
-        (format!("if true; then '{}' pr merge 551; fi", gh.display()), true),
         (format!("if true; then PATH='{}' git-copy reset --hard; fi", renamed.display()), true),
-        (format!("if true; then PATH='{}' gh-copy pr merge 551; fi", renamed.display()), true),
         (format!("if true; then ! PATH='{}' git-copy reset --hard; fi", renamed.display()), true),
-        (format!("if true; then ! PATH='{}' gh-copy pr merge 551; fi", renamed.display()), true),
         ("if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" git-copy reset --hard; fi".to_owned(), true),
-        ("if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" gh-copy pr merge 551; fi".to_owned(), true),
         ("if true; then ! PATH=\"$UNKNOWN_RUNTIME_VALUE\" printf '%s\\n' safe; fi".to_owned(), true),
         (format!("if true; then sudo -i '{}' reset --hard; fi", git.display()), true),
-        (format!("if true; then sudo -i '{}' pr merge 551; fi", gh.display()), true),
         (format!("if true; then builtin command '{}' reset --hard; fi", git.display()), true),
-        (format!("if true; then builtin command '{}' pr merge 551; fi", gh.display()), true),
         ("if true; then command -v printf; fi".to_owned(), false),
         ("if true; then builtin command -v printf; fi".to_owned(), false),
         (format!("if true; then {supported}'{}' '%s\\n' safe; fi", copied_printf.display()), false),
     ];
     for nested in [&exhausted, &beyond] {
         cases.push((format!("if true; then {nested}'{}' reset --hard; fi", git.display()), true));
-        cases.push((format!("if true; then {nested}'{}' pr merge 551; fi", gh.display()), true));
     }
     for (wrapper, option) in wrappers {
         cases.push((format!("if true; then {wrapper} {option} '{}' reset --hard; fi", git.display()), true));
-        cases.push((format!("if true; then {wrapper} {option} '{}' pr merge 551; fi", gh.display()), true));
         cases.push((format!("if true; then PATH=\"$UNKNOWN_RUNTIME_VALUE\" {wrapper} {option} '{}' '%s\\n' safe; fi", copied_printf.display()), true));
     }
     cases.extend([
         (format!("if true; then printf '%s\\n' '{}'; fi", git.display()), false),
-        (format!("if true; then printf '%s\\n' '{}'; fi", gh.display()), false),
         (format!("if true; then '{}' reset --hard; fi", printf.display()), false),
     ]);
     for event in ["PermissionRequest", "PreToolUse"] {
@@ -200,13 +181,13 @@ fn opaque_path_qualified_policy_executables_are_claimed() -> TestResult {
 }
 
 #[test]
-fn opaque_protected_arguments_and_unreachable_controls_preserve_policy() -> TestResult {
+fn opaque_arguments_do_not_restore_a_github_veto() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;
     let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
     let foreign = repository(workspace.path(), "foreign", "https://github.com/openai/codex.git")?;
     for event in ["PermissionRequest", "PreToolUse"] {
-        assert_event_case(&root, event, &owned, "gh issue \"$ACTION\"", true, &[])?;
+        assert_event_case(&root, event, &owned, "gh issue \"$ACTION\"", false, &[])?;
         assert_event_case(&root, event, &owned, "printf \"$ACTION\"", false, &[])?;
         assert_event_case(
             &root,
@@ -216,7 +197,7 @@ fn opaque_protected_arguments_and_unreachable_controls_preserve_policy() -> Test
                 "if false; then cd {}; fi; gh issue create --title invalid",
                 foreign.display()
             ),
-            true,
+            false,
             &[],
         )?;
         assert_event_case(

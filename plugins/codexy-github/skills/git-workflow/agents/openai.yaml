@@ -1,6 +1,6 @@
 interface:
   display_name: "Git Workflow"
   short_description: "Use GitHub workflow rules in any repository."
-  default_prompt: "You MUST use $git-workflow for GitHub work in any repository, following the applicable issue, worktree, PR, review-thread, squash-merge, and main-sync lifecycle."
+  default_prompt: "You MUST use $git-workflow for GitHub work in any repository. Apply its issue, branch/worktree, PR, review-thread, squash-merge, and main-sync guidance only when the operation is issue-sized implementation work or the user or repository selects that lifecycle; ordinary authorized metadata and remote operations MUST follow the actual host, connector, and GitHub authority without plugin-owned preparation."
 policy:
   allow_implicit_invocation: true

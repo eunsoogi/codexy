@@ -5,7 +5,7 @@ fn imports_reject_dynamic_import_module_aliases() {
     assert!(
         imports(
             "codexy_policy/shell_destructive.py",
-            "from importlib import import_module as load\nload('codexy_policy.shell_github_policy')\n"
+            "from importlib import import_module as load\nload('codexy_policy.shell_destructive_policy')\n"
         )
         .is_err()
     );
@@ -14,9 +14,9 @@ fn imports_reject_dynamic_import_module_aliases() {
 #[test]
 fn imports_reject_importlib_module_aliases_and_parenthesized_loaders() {
     for source in [
-        "import importlib as il\nil.import_module('codexy_policy.shell_github_policy')\n",
-        "import json, importlib as il\nil.import_module('codexy_policy.shell_github_policy')\n",
-        "from importlib import (\n    import_module as load,\n)\nload('codexy_policy.shell_github_policy')\n",
+        "import importlib as il\nil.import_module('codexy_policy.shell_destructive_policy')\n",
+        "import json, importlib as il\nil.import_module('codexy_policy.shell_destructive_policy')\n",
+        "from importlib import (\n    import_module as load,\n)\nload('codexy_policy.shell_destructive_policy')\n",
     ] {
         assert!(
             imports("codexy_policy/shell_destructive.py", source).is_err(),

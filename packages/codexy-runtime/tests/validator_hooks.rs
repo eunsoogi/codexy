@@ -9,19 +9,8 @@ mod admission_artifact;
 mod admission_runtime;
 #[path = "validator_hooks/capability_contract.rs"]
 mod capability_contract;
-#[path = "validator_hooks/merge_admission.rs"]
-mod merge_admission;
-#[cfg(unix)]
-#[path = "validator_hooks/merge_admission_line_endings.rs"]
-mod merge_admission_line_endings;
-#[path = "validator_hooks/github_authorization_pagination.rs"]
-mod github_authorization_pagination;
 #[path = "validator_hooks/filesystem_aliases.rs"]
 mod filesystem_aliases;
-#[path = "validator_hooks/graphql_admission.rs"]
-mod graphql_admission;
-#[path = "validator_hooks/pr_body_admission.rs"]
-mod pr_body_admission;
 #[path = "validator_hooks/shell_context_regressions.rs"]
 mod shell_context_regressions;
 #[path = "validator_hooks/shell_negation_regressions.rs"]
@@ -34,8 +23,6 @@ mod thread_delivery_support;
 mod thread_delivery_diagnostics;
 #[path = "validator_hooks/thread_delivery_missing_fields.rs"]
 mod thread_delivery_missing_fields;
-#[path = "validator_hooks/repository_github_policy_config.rs"]
-mod repository_github_policy_config;
 #[path = "structured_contract_artifacts.rs"]
 mod structured_contract_artifacts;
 
