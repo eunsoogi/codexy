@@ -20,13 +20,13 @@
    - MUST carry classification evidence into the plan before branch, worktree,
      child-thread, implementation, PR, or review-response actions.
    - For delegated outcomes, MUST record one Worker owner, the saved project
-     identity, the Watcher identity when authorized, the callback
-     channels, and one current next action. MUST NOT require a fixed checkpoint
-     count or unchanged-progress receipt.
+     identity, the Watcher identity when authorized, the callback channels, and
+     one current next action. MUST NOT require a fixed checkpoint count or
+     unchanged-progress receipt.
    - In [the canonical role mapping](parent-supervision.md), MUST read back the
      Orchestrator's `get_goal=null` state and the Watcher's exact active goal
-     separately. The Orchestrator MUST NOT call `create_goal` or recreate a goal for
-     setup, callbacks, correction, review or merge decisions, or
+     separately. The Orchestrator MUST NOT call `create_goal` or recreate a goal
+     for setup, callbacks, correction, review or merge decisions, or
      external-event resume; the Orchestrator returns control after authorized
      work.
    - MUST split independent outcomes into separate issues and lanes unless a
@@ -48,13 +48,13 @@
    - For issue-sized implementation lanes, the root orchestrator MUST start or
      fork a separate Codex thread in a worktree when the tool is available.
    - An authorized Watcher MUST be an independent Codex app task in the same
-     saved project as its assigned Workers. It observes and reports; it MUST
-     NOT edit Worker files, correct Workers, decide acceptance, or recruit a
-     second watcher.
+     saved project as its assigned Workers. It observes and reports; it MUST NOT
+     edit Worker files, correct Workers, decide acceptance, or recruit a second
+     watcher.
    - MUST complete lane assignment before implementation edits begin. An
      Orchestrator may prepare issue text, branch name, worktree path, and
-     handoff text, but
-     MUST NOT patch implementation files for the child-owned lane.
+     handoff text, but MUST NOT patch implementation files for the child-owned
+     lane.
    - MUST give each lane an assignment, issue, branch, worktree path, allowed
      paths, read-first files, deliverable, required evidence, verification
      command or surface, stop condition, and return format.

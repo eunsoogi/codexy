@@ -11,13 +11,14 @@ This skill is not a shortcut around `$proof-driven-completion`. It changes how
 evidence is summarized and refreshed, not which gates are required.
 
 Live Sentinel observation MUST be read-only and event-driven. Generic child and
-ledger polling remains permitted. Both the Worker owner and the root Orchestrator
-MUST NOT message, interrupt, replace, duplicate, follow up with, or poll a live
-Sentinel. A bounded wait with no event is a non-terminal `PENDING` observation,
-and an independently observed live reviewer is `RUNNING`; neither observation is
-a reviewer verdict or fallback-eligible. The owning lane MUST retain the same
-reviewer and wait for its natural terminal result. A live Sentinel MUST report
-its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
+ledger polling remains permitted. Both the Worker owner and the root
+Orchestrator MUST NOT message, interrupt, replace, duplicate, follow up with, or
+poll a live Sentinel. A bounded wait with no event is a non-terminal `PENDING`
+observation, and an independently observed live reviewer is `RUNNING`; neither
+observation is a reviewer verdict or fallback-eligible. The owning lane MUST
+retain the same reviewer and wait for its natural terminal result. A live
+Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result
+naturally.
 
 ## Required Proof Gates
 
@@ -46,39 +47,38 @@ MUST use this flow after compaction and before handoff:
 
 1. **Inventory once**: MUST keep one compact ledger line per active lane with
    `issue`, `PR`, `branch`, `head`, `owner`, and `state`.
-2. **Accept qualifying events only**: the root Orchestrator MUST NOT continuously
-   poll. Use event-driven `wait_threads` with each target's latest cursor and
-   batched targets for ordinary child completion or attention waits. Unchanged
-   cursors, bounded timeouts, and legitimate long commands are nonterminal;
-   they MUST NOT produce repeated status messages, full-transcript reads, test
-   reruns, or interruptions. Reserve heartbeat scheduling for genuinely
-   scheduled monitoring or when `wait_threads` is unavailable.
-   After a host transition or `No handler registered` failure, treat the
-   mismatch as exposure evidence, perform one fresh thread-tool discovery and
-   one host-aware `wait_threads` retry before any fallback, and MUST NOT use
-   unbounded `read_thread`. If a supported same-project Watcher owns the exact
-   long-lived goal, the Orchestrator MAY return control instead of holding a
-   model turn open solely for unchanged waiting. In the canonical role mapping
-   in [parent-supervision.md](parent-supervision.md), the Orchestrator's
-   `get_goal` state MUST remain `null`; it MUST NOT call `create_goal` or
-   recreate any goal for setup, callbacks, correction, review or merge
-   decisions, or external-event resume. This Orchestrator-only exception
-   overrides the generic fresh-goal-on-wake rule and does not prove issue
-   completion.
-   A Watcher callback or observation is a material signal only when its event
-   identity is new and Orchestrator action is required. Unchanged active-goal
-   reads, routine pre/post/continuation receipts, liveness-only goal-status
-   messages, normal progress, intermediate successful tests, resolved command
-   mistakes, commits, and queued CI MUST remain internal and MUST NOT wake the
-   Orchestrator. Workers MUST send compact deltas for terminal child state,
-   fatal/gate/final callbacks, Watcher failure or actionable drift, Sentinel
-   verdict, PR creation, a required external check-state change, actionable
-   review feedback, or review-thread resolution. A Watcher drift event is
-   qualifying only when its report is grounded in a changed artifact, diff, or
-   relevant actual tool call, identifies the conflicting current scope,
-   ownership, or user constraint without a repair directive, and requires an
-   Orchestrator decision; relayed Worker or Orchestrator findings MUST remain
-   distinct from Watcher-first detection.
+2. **Accept qualifying events only**: the root Orchestrator MUST NOT
+   continuously poll. Use event-driven `wait_threads` with each target's latest
+   cursor and batched targets for ordinary child completion or attention waits.
+   Unchanged cursors, bounded timeouts, and legitimate long commands are
+   nonterminal; they MUST NOT produce repeated status messages, full-transcript
+   reads, test reruns, or interruptions. Reserve heartbeat scheduling for
+   genuinely scheduled monitoring or when `wait_threads` is unavailable. After a
+   host transition or `No handler registered` failure, treat the mismatch as
+   exposure evidence, perform one fresh thread-tool discovery and one host-aware
+   `wait_threads` retry before any fallback, and MUST NOT use unbounded
+   `read_thread`. If a supported same-project Watcher owns the exact long-lived
+   goal, the Orchestrator MAY return control instead of holding a model turn
+   open solely for unchanged waiting. In the canonical role mapping in
+   [parent-supervision.md](parent-supervision.md), the Orchestrator's `get_goal`
+   state MUST remain `null`; it MUST NOT call `create_goal` or recreate any goal
+   for setup, callbacks, correction, review or merge decisions, or
+   external-event resume. This Orchestrator-only exception overrides the generic
+   fresh-goal-on-wake rule and does not prove issue completion. A Watcher
+   callback or observation is a material signal only when its event identity is
+   new and Orchestrator action is required. Unchanged active-goal reads, routine
+   pre/post/continuation receipts, liveness-only goal-status messages, normal
+   progress, intermediate successful tests, resolved command mistakes, commits,
+   and queued CI MUST remain internal and MUST NOT wake the Orchestrator.
+   Workers MUST send compact deltas for terminal child state, fatal/gate/final
+   callbacks, Watcher failure or actionable drift, Sentinel verdict, PR
+   creation, a required external check-state change, actionable review feedback,
+   or review-thread resolution. A Watcher drift event is qualifying only when
+   its report is grounded in a changed artifact, diff, or relevant actual tool
+   call, identifies the conflicting current scope, ownership, or user constraint
+   without a repair directive, and requires an Orchestrator decision; relayed
+   Worker or Orchestrator findings MUST remain distinct from Watcher-first
+   detection.
 3. **Validate stable event identity**: every event MUST use a deterministic
    `<kind>|<lane>|<subject>` identity. The ledger MUST reject a repeated
    identity before it changes counters or next actions.
@@ -109,19 +109,19 @@ MUST use this flow after compaction and before handoff:
    scheduled but MUST NOT emit a status message or start another model turn. The
    next scheduled read-only observation MAY run at its bounded interval. A new
    model turn may start only when that monitor observes a qualifying event, or
-   when an explicit Orchestrator/user message arrives. This rule MUST NOT terminate or
-   cancel the underlying wait/monitor session.
+   when an explicit Orchestrator/user message arrives. This rule MUST NOT
+   terminate or cancel the underlying wait/monitor session.
 
 Before a child stops, archives, yields ownership, or calls
 `update_goal(complete)` or `update_goal(blocked)`, it MUST send exactly one
-terminal handoff delta to the source Orchestrator. `update_goal(blocked)` additionally
-requires the typed unanswered user-decision gate; token pressure, repeated
-continuations, unchanged fingerprints, external producers, and coordination
-waits MUST NOT authorize a blocked goal. That delta MUST include the stable
-event identity, issue/PR, child task id, branch/worktree, exact HEAD and
-dirty/index state, last completed proof, current external gate, preserved
-artifacts or reservation, and one Orchestrator-owned next action. The Worker MUST
-confirm task-surface delivery before the stop/archive or goal transition. A
+terminal handoff delta to the source Orchestrator. `update_goal(blocked)`
+additionally requires the typed unanswered user-decision gate; token pressure,
+repeated continuations, unchanged fingerprints, external producers, and
+coordination waits MUST NOT authorize a blocked goal. That delta MUST include
+the stable event identity, issue/PR, child task id, branch/worktree, exact HEAD
+and dirty/index state, last completed proof, current external gate, preserved
+artifacts or reservation, and one Orchestrator-owned next action. The Worker
+MUST confirm task-surface delivery before the stop/archive or goal transition. A
 failed delivery MUST emit one unavailable receipt and MUST NOT retry or
 transition.
 
@@ -147,17 +147,16 @@ Orchestrator MAY retain its compact ledger without re-reading old details.
 
 ## Runtime Heartbeats
 
-For an eligible external gate that outlives the current turn, Orchestrators
-and Worker owners MUST follow `$orchestration`'s runtime-heartbeat
-contract. The compact lane ledger MUST retain the heartbeat automation id,
-target thread, bounded schedule, state fingerprint, material-event set, and
-delete/disable state. Heartbeat prompts MUST suppress unchanged observations and
-MUST wake the owner only for a material gate change or an explicit
-user/Orchestrator message. A stable event identity MUST deduplicate repeated
-wakeups before the
-owner changes its plan. The awakened owner MUST consume a material event in the
-same turn and MUST delete or disable its heartbeat when no further observation
-is required. A successfully registered heartbeat is runtime-owned waiting. The
+For an eligible external gate that outlives the current turn, Orchestrators and
+Worker owners MUST follow `$orchestration`'s runtime-heartbeat contract. The
+compact lane ledger MUST retain the heartbeat automation id, target thread,
+bounded schedule, state fingerprint, material-event set, and delete/disable
+state. Heartbeat prompts MUST suppress unchanged observations and MUST wake the
+owner only for a material gate change or an explicit user/Orchestrator message.
+A stable event identity MUST deduplicate repeated wakeups before the owner
+changes its plan. The awakened owner MUST consume a material event in the same
+turn and MUST delete or disable its heartbeat when no further observation is
+required. A successfully registered heartbeat is runtime-owned waiting. The
 heartbeat route is not the ordinary app-thread Watcher: do not create or
 recreate a heartbeat as a substitute for an explicitly authorized same-project
 Watcher. When the Watcher carries the exact release goal in the canonical role
@@ -167,18 +166,17 @@ nor a Watcher goal proves transfer or completion. Record Orchestrator and
 Watcher goal readbacks separately. This exemption does not remove ordinary
 Worker finite-goal closure or `blocked` recovery.
 
-For ordinary owners outside the canonical role mapping, the Worker MUST
-retain its active goal and plan only while an immediately executable in-scope
+For ordinary owners outside the canonical role mapping, the Worker MUST retain
+its active goal and plan only while an immediately executable in-scope
 obligation remains, record `goal state=active` and `goal transition=none`, and
 return control without completing or blocking the goal. When only an external
 event or explicit Orchestrator wake remains, the Worker MUST use the idle-wait
-handoff,
-complete the finite goal, and leave the task idle without claiming the issue
-complete. A qualifying event MUST create a fresh short-lived execution goal and
-current plan before any edit, proof, review response, publication, or merge
-work. The Orchestrator exemption above overrides this rule for that role. A
-live packaged Sentinel remains outside heartbeat observation
-and retains its no-poll/no-message boundary.
+handoff, complete the finite goal, and leave the task idle without claiming the
+issue complete. A qualifying event MUST create a fresh short-lived execution
+goal and current plan before any edit, proof, review response, publication, or
+merge work. The Orchestrator exemption above overrides this rule for that role.
+A live packaged Sentinel remains outside heartbeat observation and retains its
+no-poll/no-message boundary.
 
 For repeat handoffs, copy [the delta-poll template](../templates/delta-poll.md)
 and fill only the current slots. MUST keep the template output in the thread or
