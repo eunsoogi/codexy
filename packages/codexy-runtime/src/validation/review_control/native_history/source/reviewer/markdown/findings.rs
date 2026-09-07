@@ -7,6 +7,10 @@ mod paths;
 
 pub(super) fn values(raw: &str) -> Result<Vec<Value>, String> {
     let lines = super::line_ranges(raw);
+    let mut operative = vec![false; lines.len()];
+    for index in super::operative_line_indices(&lines) {
+        operative[index] = true;
+    }
     let starts = operative_headers(&lines);
     let mut result = Vec::new();
     for (position, line_index) in starts.iter().enumerate() {
@@ -15,8 +19,9 @@ pub(super) fn values(raw: &str) -> Result<Vec<Value>, String> {
             .get(position + 1)
             .map(|next| lines[*next].0)
             .unwrap_or(raw.len());
-        for (line_start, _, next_line) in &lines[*line_index + 1..] {
-            if *line_start < end && super::heading(next_line).is_some() {
+        for (offset, (line_start, _, next_line)) in lines[*line_index + 1..].iter().enumerate() {
+            let next_index = *line_index + 1 + offset;
+            if *line_start < end && operative[next_index] && super::heading(next_line).is_some() {
                 end = *line_start;
                 break;
             }

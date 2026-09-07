@@ -28,10 +28,10 @@ pub(super) fn operative_line_indices(lines: &[(usize, usize, &str)]) -> Vec<usiz
     let mut result = Vec::new();
     for (index, (_, _, line)) in lines.iter().enumerate() {
         let trimmed = line.trim_start();
-        if let Some(marker) = fence_info(trimmed) {
+        if let Some((marker, length, closes)) = fence_info(trimmed) {
             match fence {
-                None => fence = Some(marker),
-                Some(open) if marker.0 == open.0 && marker.1 >= open.1 => fence = None,
+                None => fence = Some((marker, length)),
+                Some(open) if closes && marker == open.0 && length >= open.1 => fence = None,
                 Some(_) => {}
             }
             continue;
@@ -43,13 +43,13 @@ pub(super) fn operative_line_indices(lines: &[(usize, usize, &str)]) -> Vec<usiz
     result
 }
 
-fn fence_info(line: &str) -> Option<(u8, usize)> {
+fn fence_info(line: &str) -> Option<(u8, usize, bool)> {
     let marker = *line.as_bytes().first()?;
     if !matches!(marker, b'`' | b'~') {
         return None;
     }
     let length = line.bytes().take_while(|byte| *byte == marker).count();
-    (length >= 3).then_some((marker, length))
+    (length >= 3).then_some((marker, length, line[length..].trim().is_empty()))
 }
 
 pub(super) fn heading(line: &str) -> Option<(usize, &str)> {

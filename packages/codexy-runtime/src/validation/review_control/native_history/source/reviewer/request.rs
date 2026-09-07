@@ -106,6 +106,12 @@ fn explicit_kind(first: &str) -> Option<String> {
 }
 
 fn affirmative_strict_review(text: &str) -> bool {
+    if text
+        .chars()
+        .any(|character| matches!(character, '`' | '\'' | '"' | '“' | '”' | '‘' | '’'))
+    {
+        return false;
+    }
     let words = text
         .split(|character: char| !character.is_ascii_alphanumeric())
         .filter(|word| !word.is_empty())
@@ -137,12 +143,17 @@ fn affirmative_strict_review(text: &str) -> bool {
         )
     });
     let prefix = &words[..=review_index];
-    let negated = prefix.iter().any(|word| {
+    let negated = contains_negation(prefix) || contains_negation(&words[review_index + 1..]);
+    strict_profile && affirmative_start && !negated
+}
+
+fn contains_negation(words: &[&str]) -> bool {
+    words.iter().any(|word| {
         matches!(
             *word,
             "not" | "without" | "never" | "cannot" | "no" | "neither"
         )
-    }) || prefix.windows(2).any(|pair| {
+    }) || words.windows(2).any(|pair| {
         matches!(
             pair,
             ["do", "not"]
@@ -152,8 +163,7 @@ fn affirmative_strict_review(text: &str) -> bool {
                 | ["should", "not"]
                 | ["will", "not"]
         )
-    });
-    strict_profile && affirmative_start && !negated
+    })
 }
 
 fn negated(text: &str, subject: &str) -> bool {
