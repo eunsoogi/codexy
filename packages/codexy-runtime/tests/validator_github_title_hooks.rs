@@ -75,7 +75,16 @@ fn title_hook_preserves_only_the_three_title_contracts() -> TestResult {
 
 fn assert_title(event: &str, kind: &str, payload: Value, denied: bool) -> TestResult {
     let plugin = codexy_runtime::paths::repository_root().join("plugins/codexy-github");
-    let mut child = Command::new(plugin.join("hooks/codexy-title-check.sh"))
+    let mut command = if cfg!(windows) {
+        let mut command = Command::new("cmd.exe");
+        command
+            .args(["/d", "/c"])
+            .arg(plugin.join("hooks/codexy-title-check.cmd"));
+        command
+    } else {
+        Command::new(plugin.join("hooks/codexy-title-check.sh"))
+    };
+    let mut child = command
         .args([event, kind])
         .env("PLUGIN_ROOT", &plugin)
         .stdin(Stdio::piped())

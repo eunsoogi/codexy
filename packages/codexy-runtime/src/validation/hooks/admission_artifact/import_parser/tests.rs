@@ -50,7 +50,7 @@ fn imports_track_static_policy_forms_across_logical_statements() {
         "codexy_policy/shell_destructive.py",
         "marker = 1; import codexy_policy.shell_destructive_policy\n\
          if marker:\timport codexy_policy.shell_opaque as opaque\n\
-             from codexy_policy \\\n+             import shell_destructive_policy\n",
+             from codexy_policy \\\n             import shell_destructive_policy\n",
     )
     .expect("logical statements");
     assert_eq!(

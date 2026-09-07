@@ -64,6 +64,10 @@ fn issue_title_hook_rejects_lifecycle_event_invocation_without_model_context()
 }
 
 fn reject_issue_title(title: &str) -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(windows)]
+    if title.contains('\n') {
+        return reject_issue_title_through_native_title_hook(title);
+    }
     let output = Command::new(hook_script("codexy-issue-title-check.sh"))
         .args(["--issue-title", title])
         .output()?;
@@ -76,6 +80,44 @@ fn reject_issue_title(title: &str) -> Result<(), Box<dyn std::error::Error>> {
         "unexpected output: {}",
         output_text(&output)
     );
+    Ok(())
+}
+
+#[cfg(windows)]
+fn reject_issue_title_through_native_title_hook(
+    title: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use std::io::Write as _;
+    use std::process::Stdio;
+
+    let plugin = codexy_runtime::paths::repository_root().join("plugins/codexy-github");
+    let mut child = std::process::Command::new("cmd.exe")
+        .args(["/d", "/c"])
+        .arg(plugin.join("hooks/codexy-title-check.cmd"))
+        .args(["PreToolUse", "issue"])
+        .env("PLUGIN_ROOT", &plugin)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    child
+        .stdin
+        .take()
+        .ok_or("native title hook stdin")?
+        .write_all(&serde_json::to_vec(&serde_json::json!({
+            "hook_event_name": "PreToolUse",
+            "tool_name": "mcp__codex_apps__github_create_issue",
+            "tool_input": {"title": title, "body": "free form"},
+        }))?)?;
+    let output = child.wait_with_output()?;
+    assert!(output.status.success(), "native title hook failed");
+    assert!(output.stderr.is_empty(), "native title hook leaked stderr");
+    assert!(
+        output_text(&output).contains("\"permissionDecision\":\"deny\""),
+        "native title hook did not reject {title:?}: {}",
+        output_text(&output)
+    );
+    assert!(output_text(&output).contains("CODEXY_TITLE_CHECK_"));
     Ok(())
 }
 
