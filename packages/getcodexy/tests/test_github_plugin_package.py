@@ -41,15 +41,15 @@ class GithubPluginPackageTests(unittest.TestCase):
 
     def test_workflow_guidance_respects_user_and_repository_choice(self) -> None:
         skill = (GITHUB / "skills/git-workflow/SKILL.md").read_text(encoding="utf-8")
-        issue = (
-            GITHUB / "skills/git-workflow/references/issue-intake.md"
-        ).read_text(encoding="utf-8")
+        issue = (GITHUB / "skills/git-workflow/references/issue-intake.md").read_text(
+            encoding="utf-8"
+        )
         pull_request = (
             GITHUB / "skills/git-workflow/references/pr-review-and-handoff.md"
         ).read_text(encoding="utf-8")
-        agent = (
-            GITHUB / "skills/git-workflow/agents/openai.yaml"
-        ).read_text(encoding="utf-8")
+        agent = (GITHUB / "skills/git-workflow/agents/openai.yaml").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn("Ordinary authorized GitHub metadata", skill)
         self.assertIn(

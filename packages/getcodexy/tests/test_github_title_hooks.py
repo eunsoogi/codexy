@@ -5,7 +5,7 @@ import os
 import subprocess
 import unittest
 
-from github_native_hook_support import PLUGIN
+from github_native_hook_support import PLUGIN, native_command
 
 
 class GithubTitleHooksTests(unittest.TestCase):
@@ -16,7 +16,7 @@ class GithubTitleHooksTests(unittest.TestCase):
         environment: dict[str, str],
     ) -> str:
         result = subprocess.run(
-            command,
+            native_command(command),
             input=payload,
             text=True,
             capture_output=True,

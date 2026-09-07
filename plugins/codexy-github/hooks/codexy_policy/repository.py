@@ -45,7 +45,11 @@ def worktree_root(cwd: Path) -> Path | None:
         if stat.S_ISDIR(info.st_mode):
             return root
         marker = read_text_file(dot_git)
-        if marker is None or len(marker.splitlines()) != 1 or not marker.startswith("gitdir: "):
+        if (
+            marker is None
+            or len(marker.splitlines()) != 1
+            or not marker.startswith("gitdir: ")
+        ):
             return None
         return root
     return None
@@ -78,7 +82,11 @@ def repository_owned_with_rewrites(
 ) -> bool | None:
     """Keep Git destructive protection independent of remote or repository policy."""
     del rewrites, push, remote_urls
-    return git_directory_owned(cwd, git_dir) if git_dir is not None else repository_owned(cwd)
+    return (
+        git_directory_owned(cwd, git_dir)
+        if git_dir is not None
+        else repository_owned(cwd)
+    )
 
 
 def git_directory_owned(cwd: str, target: str) -> bool | None:

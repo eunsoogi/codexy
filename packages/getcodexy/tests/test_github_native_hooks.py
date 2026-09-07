@@ -6,7 +6,7 @@ import subprocess
 import unittest
 
 from github_native_hooks_installation import GithubNativeHooksInstallationMixin
-from github_native_hook_support import PLUGIN, GithubNativeHookSupport
+from github_native_hook_support import PLUGIN, GithubNativeHookSupport, native_command
 
 WINDOWS_KEYWORDS = tuple(
     "GitHub|issue|pull request|pull-request|pullrequest|review|merge".split("|")
@@ -28,7 +28,7 @@ class GithubNativeHooksTests(
         environment: dict[str, str] | None = None,
     ) -> str:
         result = subprocess.run(
-            command,
+            native_command(command),
             input=payload,
             text=True,
             capture_output=True,

@@ -3,12 +3,25 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[3]
 PLUGIN = ROOT / "plugins" / "codexy-github"
+
+
+def native_command(command: list[str]) -> list[str]:
+    if os.name != "nt" or not command or not command[0].lower().endswith(".sh"):
+        return command
+    return [
+        "cmd.exe",
+        "/d",
+        "/c",
+        str(Path(command[0]).with_suffix(".cmd")),
+        *command[1:],
+    ]
 
 
 class GithubNativeHookSupport:
