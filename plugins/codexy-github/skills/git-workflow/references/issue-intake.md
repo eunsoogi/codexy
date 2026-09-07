@@ -26,15 +26,17 @@ handoff with the canonical issue or pull request when one exists.
 
 ## Issue title
 
-When this repository or maintainer selects the following title convention, the
-title MUST be written in English using descriptive, sentence-style wording and
-begin with an ASCII uppercase letter. It MUST state the problem or requested
-change in plain prose and MUST NOT begin with a category, type, scope, bracket,
-colon, or dash. For example, use `Reduce CI build time`, not a category label
-such as `CI: reduce CI build time` or `[CI] Reduce CI build time`. Otherwise,
-follow the user or repository's title convention; installing this plugin alone
-does not make the title rule a mutation gate. A syntax check does not replace
-human review for meaning.
+The installed component retains this existing issue-title check on supported
+issue creation and title-edit paths. The title MUST be written in English using
+descriptive, sentence-style wording and begin with an ASCII uppercase letter.
+It MUST state the problem or requested change in plain prose and MUST NOT begin
+with a category, type, scope, bracket, colon, or dash. For example, use `Reduce
+CI build time`, not a category label such as `CI: reduce CI build time` or `[CI]
+Reduce CI build time`. This is a narrow title contract, not a general mutation
+allowlist or body gate. A repository or maintainer may choose additional
+repository-owned conventions; installing this plugin alone does not create
+those additional rules. A syntax check does not replace human review for
+meaning.
 
 ## Optional issue body template
 

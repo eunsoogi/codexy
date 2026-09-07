@@ -20,10 +20,13 @@ KNOWN_PREFIX = "github_"
 
 
 def forbidden(code: object) -> bool:
-    if not isinstance(code, str) or len(code) > MAX_CODE:
+    if not isinstance(code, str):
         return _mentions_supported_call(code if isinstance(code, str) else "")
+    bounded_code = code.strip()
+    if len(bounded_code) > MAX_CODE:
+        return _mentions_supported_call(code)
     try:
-        return _inspect(tokenize(code), 0)
+        return _inspect(tokenize(bounded_code), 0)
     except ParseError:
         return _mentions_supported_call(code)
 
@@ -226,13 +229,8 @@ def _mentions_supported_call(source: str) -> bool:
 
 
 def _supported_token(tokens: list[Token], index: int) -> bool:
-    token = tokens[index]
-    return (
-        token.kind == "identifier"
-        and token.value in _SUPPORTED
-        and index + 1 < len(tokens)
-        and tokens[index + 1].value == "("
-    )
+    call = _call_at(tokens, index)
+    return call is not None and call[0].removeprefix("mcp__codex_apps__") in _SUPPORTED
 
 
 _SUPPORTED = frozenset(

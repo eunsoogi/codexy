@@ -20,9 +20,13 @@ and GitHub response.
 
 Prefer an existing repository template when one is selected. If none is
 selected, offer a concise `Summary` and `Verification` example and expand it
-only as needed. An adequate free-form description, renamed/omitted/reordered
-sections, or another language or title style MUST NOT be blocked, rewritten, or
-sent for extra approval by the distributed default.
+only as needed. The installed component separately retains its existing PR-title
+check on supported creation and edit paths and its squash-subject check on
+squash merges. Those checks are limited to the existing title contracts and do
+not impose a body template, review quota, or fixed approval phrase. An adequate
+free-form description, renamed/omitted/reordered sections, or another language
+MUST NOT be blocked, rewritten, or sent for extra approval by the distributed
+default.
 
 When the PR contract above is selected, the PR title MUST use
 `type(scope): description`, with a nonempty valid scope and a nonempty

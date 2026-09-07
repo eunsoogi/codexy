@@ -30,8 +30,6 @@ def evaluate(
     environment_config = git_config(context)
     if environment_config is None:
         return True, None, None
-    if not context.repository_status:
-        return False, None, None
     invocation = normalize_git(
         args,
         context.cwd,
@@ -93,7 +91,12 @@ def evaluate(
             return True, None, None
         return False, (invocation.arguments[1], "url", invocation.arguments[2]), None
     push_like = invocation.operation in {"push", "send-pack"}
-    applies = context.repository_status and (
+    effective_repository_status = (
+        context.repository_status
+        or invocation.git_dir is not None
+        or worktree_root(Path(invocation.cwd)) is not None
+    )
+    applies = effective_repository_status and (
         context.opaque_repository_state or invocation.cwd_owned is not False
     )
     arguments = normalize_git_options(invocation.operation, invocation.arguments)

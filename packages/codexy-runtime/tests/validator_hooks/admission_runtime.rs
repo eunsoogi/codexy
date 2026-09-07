@@ -69,6 +69,32 @@ fn local_filesystem_and_git_destructive_effects_remain_protected() -> TestResult
 }
 
 #[test]
+fn command_directed_git_context_remains_protected_outside_repository() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let cwd = workspace.path();
+    repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    for event in ["PermissionRequest", "PreToolUse"] {
+        for command in [
+            "git -C owned reset --hard HEAD",
+            "git -C owned push --force origin topic",
+            "git --git-dir owned/.git reset --hard HEAD",
+            "GIT_DIR=owned/.git git reset --hard HEAD",
+            "GIT_DIR=owned/.git git push --force origin topic",
+        ] {
+            assert_event_case(&root, event, cwd, command, true, &[])?;
+        }
+        for command in [
+            "git -C owned status --short",
+            "GIT_DIR=owned/.git git status --short",
+        ] {
+            assert_event_case(&root, event, cwd, command, false, &[])?;
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn opaque_or_unknown_local_effects_fail_closed_without_reintroducing_github_veto() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;

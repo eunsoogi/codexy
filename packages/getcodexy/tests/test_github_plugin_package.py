@@ -52,6 +52,10 @@ class GithubPluginPackageTests(unittest.TestCase):
         )
 
         self.assertIn("Ordinary authorized GitHub metadata", skill)
+        self.assertIn("retains the existing issue-title", " ".join(skill.split()))
+        self.assertIn("retains this existing issue-title check", issue)
+        self.assertIn("retains its existing PR-title", pull_request)
+        self.assertIn("squash-subject check", pull_request)
         self.assertIn(
             "no heading or footer is required by this plugin",
             " ".join(issue.split()),

@@ -47,9 +47,12 @@ MUST read only the references matching the requested operation before acting.
   when labels are part of the requested operation.
 
 The installed plugin adds workflow context and narrowly scoped local safety
-checks. It does not admit, deny, or rewrite GitHub mutations. Commands MUST use
-the host, connector, and GitHub authorization that applies to the current
-session; repository-local instructions remain repository-owned.
+checks. It does not admit, deny, or rewrite general GitHub mutations. It retains
+the existing issue-title, PR-title, and squash-subject checks on their supported
+paths; those narrow checks are separate from operation admission and body or
+review formatting. Commands MUST use the host, connector, and GitHub
+authorization that applies to the current session; repository-local
+instructions remain repository-owned.
 
 ## Merge Boundary
 

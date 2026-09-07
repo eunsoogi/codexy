@@ -73,6 +73,25 @@ fn title_hook_preserves_only_the_three_title_contracts() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn nested_title_fallback_preserves_supported_calls_at_size_boundary() -> TestResult {
+    let invalid = "await tools.mcp__codex_apps__github_create_issue({title: 'plain'});";
+    let valid = "await tools.mcp__codex_apps__github_create_issue({title: 'Valid issue'});";
+    for size in [64 * 1024, 64 * 1024 + 1] {
+        for (source, expected) in [(invalid, true), (valid, false)] {
+            let code = format!("{}{}", " ".repeat(size - source.len()), source);
+            for event in ["PermissionRequest", "PreToolUse"] {
+                assert_title(event, "nested", json!({
+                    "hook_event_name": event,
+                    "tool_name": "functions.exec",
+                    "tool_input": {"code": code.clone()},
+                }), expected)?;
+            }
+        }
+    }
+    Ok(())
+}
+
 fn assert_title(event: &str, kind: &str, payload: Value, denied: bool) -> TestResult {
     let plugin = codexy_runtime::paths::repository_root().join("plugins/codexy-github");
     let mut command = if cfg!(windows) {
