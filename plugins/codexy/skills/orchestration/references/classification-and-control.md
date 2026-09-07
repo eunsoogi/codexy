@@ -195,6 +195,9 @@ including completion handoff, MUST use the PR-snapshot validation path; bare
 control and lifecycle checks use an explicit control-only path and MUST NOT
 interpret `issue_number` as a PR number.
 
+The supported connector capture MUST follow the
+[authenticated GitHub connector](connector-capture.md) contract.
+
 For `mandatory_base_integration`, the previous and current `baseRefOid` values
 MUST differ, the current base MUST descend from the previous base, and the
 integration evidence MUST descend from the current base. For
