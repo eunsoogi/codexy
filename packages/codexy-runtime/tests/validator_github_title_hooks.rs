@@ -193,7 +193,13 @@ fn windows_title_runtime_fallback_is_valid_json() -> TestResult {
             &serde_json::to_vec(&payload)?,
         )?;
         let output = child.wait_with_output()?;
-        assert!(output.status.success());
+        assert!(
+            output.status.success(),
+            "title fallback exited with {:?}; stdout={:?}; stderr={:?}",
+            output.status,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
         assert!(output.stderr.is_empty());
         let denial: Value = serde_json::from_slice(&output.stdout)?;
         assert_eq!(denial["hookSpecificOutput"]["hookEventName"], event);
