@@ -124,7 +124,7 @@ fn read_source_ownership(locator: &Locator) -> Result<Value, String> {
     }
     let response: Value = serde_json::from_slice(&output.stdout)
         .map_err(|error| format!("authenticated Actions source response is invalid: {error}"))?;
-    let projection = projection::project_source_ownership(&response, &locator)?;
+    let projection = projection::project_source_ownership(&response, locator)?;
     Ok(json!({"response": response, "projection": projection}))
 }
 
