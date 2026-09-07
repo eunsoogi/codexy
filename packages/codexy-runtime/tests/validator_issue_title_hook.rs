@@ -66,7 +66,7 @@ fn issue_title_hook_rejects_lifecycle_event_invocation_without_model_context()
 fn reject_issue_title(title: &str) -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(windows)]
     if title.contains('\n') {
-        return reject_issue_title_through_native_admission(title);
+        return reject_issue_title_through_native_title_hook(title);
     }
     let output = Command::new(hook_script("codexy-issue-title-check.sh"))
         .args(["--issue-title", title])
@@ -84,15 +84,18 @@ fn reject_issue_title(title: &str) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[cfg(windows)]
-fn reject_issue_title_through_native_admission(
+fn reject_issue_title_through_native_title_hook(
     title: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use std::io::Write as _;
     use std::process::Stdio;
 
-    let mut child = std::process::Command::new("cmd")
+    let plugin = codexy_runtime::paths::repository_root().join("plugins/codexy-github");
+    let mut child = std::process::Command::new("cmd.exe")
         .args(["/d", "/c"])
-        .arg(hook_script("codexy-github-admission-issue.cmd"))
+        .arg(plugin.join("hooks/codexy-title-check.cmd"))
+        .args(["PreToolUse", "issue"])
+        .env("PLUGIN_ROOT", &plugin)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -100,21 +103,21 @@ fn reject_issue_title_through_native_admission(
     child
         .stdin
         .take()
-        .ok_or("native issue admission stdin")?
+        .ok_or("native title hook stdin")?
         .write_all(&serde_json::to_vec(&serde_json::json!({
-            "tool_input": {"title": title},
+            "hook_event_name": "PreToolUse",
+            "tool_name": "mcp__codex_apps__github_create_issue",
+            "tool_input": {"title": title, "body": "free form"},
         }))?)?;
     let output = child.wait_with_output()?;
-    assert!(
-        output.status.success(),
-        "native issue admission should reject {title:?}: {}",
-        output_text(&output)
-    );
+    assert!(output.status.success(), "native title hook failed");
+    assert!(output.stderr.is_empty(), "native title hook leaked stderr");
     assert!(
         output_text(&output).contains("\"permissionDecision\":\"deny\""),
-        "native issue admission did not emit a denial for {title:?}: {}",
+        "native title hook did not reject {title:?}: {}",
         output_text(&output)
     );
+    assert!(output_text(&output).contains("CODEXY_TITLE_CHECK_"));
     Ok(())
 }
 

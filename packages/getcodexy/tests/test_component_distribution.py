@@ -137,7 +137,8 @@ class ComponentDistributionTests(unittest.TestCase):
         )
         self.assertEqual(_health(self._run("doctor"))["core"], "incompatible")
         (
-            self.marketplace / "plugins/codexy-github/hooks/codexy-github-admission.sh"
+            self.marketplace
+            / "plugins/codexy-github/hooks/codexy-destructive-command.sh"
         ).write_text("x")
         self.assertEqual(_health(self._run("doctor"))["github"], "incompatible")
 

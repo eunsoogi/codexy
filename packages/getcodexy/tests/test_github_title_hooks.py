@@ -1,0 +1,249 @@
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import unittest
+
+from github_native_hook_support import PLUGIN, native_command
+
+
+class GithubTitleHooksTests(unittest.TestCase):
+    def _run_process(
+        self,
+        command: list[str],
+        payload: str,
+        environment: dict[str, str],
+    ) -> str:
+        result = subprocess.run(
+            native_command(command),
+            input=payload,
+            text=True,
+            capture_output=True,
+            env=environment,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout
+
+    def test_title_checks_cover_direct_shell_and_nested_paths_only(self) -> None:
+        hook = str(PLUGIN / "hooks/codexy-title-check.sh")
+        environment = {**os.environ, "PLUGIN_ROOT": str(PLUGIN)}
+        cases = (
+            (
+                "issue",
+                "mcp__codex_apps__github_create_issue",
+                {"title": "Valid issue", "body": "free form"},
+                False,
+            ),
+            (
+                "issue",
+                "mcp__codex_apps__github_create_issue",
+                {"title": "fix: invalid issue", "body": "free form"},
+                True,
+            ),
+            ("pr", "github.update_pull_request", {"body": "free form"}, False),
+            (
+                "pr",
+                "github.update_pull_request",
+                {"title": "plain title", "body": "free form"},
+                True,
+            ),
+            (
+                "shell",
+                "Bash",
+                {"command": "gh pr create --title 'fix(hooks): free body' --body note"},
+                False,
+            ),
+            (
+                "shell",
+                "Bash",
+                {"command": "gh pr create --title 'plain title' --body note"},
+                True,
+            ),
+            (
+                "shell",
+                "Bash",
+                {"command": "gh issue new --title 'fix: invalid issue' --body note"},
+                True,
+            ),
+            (
+                "shell",
+                "Bash",
+                {"command": "gh issue new --title 'Valid issue' --body note"},
+                False,
+            ),
+            (
+                "shell",
+                "Bash",
+                {"command": "gh pr new --title 'plain title' --body note"},
+                True,
+            ),
+            (
+                "shell",
+                "Bash",
+                {"command": "gh pr new --title 'fix(hooks): valid title' --body note"},
+                False,
+            ),
+            (
+                "nested",
+                "functions.exec",
+                {
+                    "code": "await tools.mcp__codex_apps__github_create_issue({title: 'Valid issue', body: 'free form'});"
+                },
+                False,
+            ),
+            (
+                "nested",
+                "functions.exec",
+                {
+                    "code": "await tools.mcp__codex_apps__github_create_issue({title: 'fix: invalid', body: 'free form'});"
+                },
+                True,
+            ),
+            ("shell", "Bash", {"command": "gh release create v1"}, False),
+        )
+        for kind, tool, tool_input, denied in cases:
+            with self.subTest(kind=kind, denied=denied):
+                payload = json.dumps(
+                    {
+                        "hook_event_name": "PreToolUse",
+                        "tool_name": tool,
+                        "tool_input": tool_input,
+                    }
+                )
+                output = self._run_process(
+                    [hook, "PreToolUse", kind], payload, environment
+                )
+                self.assertEqual(bool(output), denied, output)
+
+    def test_title_parser_ignores_data_literals_and_checks_graphql(self) -> None:
+        hook = str(PLUGIN / "hooks/codexy-title-check.sh")
+        environment = {**os.environ, "PLUGIN_ROOT": str(PLUGIN)}
+        cases = (
+            ("nested", "// github_create_issue({title: 'plain'})", False),
+            ("nested", "const re = /github_create_issue\\({title: 'plain'}/;", False),
+            ("nested", "eval(\"github_create_issue({title: 'plain'})\")", True),
+            (
+                "shell",
+                "gh api graphql -f query='mutation { createIssue(input: {title: \"plain\"}) { issue { id } } }'",
+                True,
+            ),
+            (
+                "shell",
+                "gh api graphql -f query='mutation { createIssue(input: {title: \"Valid issue\"}) { issue { id } } }'",
+                False,
+            ),
+            (
+                "shell",
+                "gh api --method POST graphql -f query='mutation { createIssue(input: {title: \"plain\"}) { issue { id } } }'",
+                True,
+            ),
+            (
+                "shell",
+                "gh api --method POST graphql -f query='mutation { createIssue(input: {title: \"Valid issue\"}) { issue { id } } }'",
+                False,
+            ),
+            (
+                "shell",
+                "gh api repos/eunsoogi/codexy/issues -f title='plain title'",
+                True,
+            ),
+            (
+                "shell",
+                "gh api repos/eunsoogi/codexy/issues -f title='Valid issue'",
+                False,
+            ),
+            (
+                "shell",
+                "gh api repos/eunsoogi/codexy/issues -f body='free form'",
+                True,
+            ),
+            (
+                "shell",
+                "gh api repos/eunsoogi/codexy/issues -F title='plain title'",
+                True,
+            ),
+            (
+                "shell",
+                "gh api --method GET repos/eunsoogi/codexy/issues -f title='plain title'",
+                False,
+            ),
+            (
+                "shell",
+                "gh api --hostname ghe.example repos/o/r/issues -f title='plain title'",
+                True,
+            ),
+            (
+                "shell",
+                "gh api --header 'Accept: application/json' repos/o/r/issues -f title='plain title'",
+                True,
+            ),
+            (
+                "shell",
+                "gh api -H 'Accept: application/json' repos/o/r/issues -f title='Valid issue'",
+                False,
+            ),
+            (
+                "shell",
+                'gh api --method POST graphql -f query=\'mutation { first: createIssue(input: {title: "Valid issue"}) { issue { id } } second: createIssue(input: {title: "plain title"}) { issue { id } } }\'',
+                True,
+            ),
+            (
+                "shell",
+                'gh api --method POST graphql -f query=\'mutation { first: createIssue(input: {title: "Valid issue"}) { issue { id } } second: createPullRequest(input: {title: "fix(hooks): valid title"}) { pullRequest { id } } }\'',
+                False,
+            ),
+            (
+                "shell",
+                "gh pr merge --body 17 42 --squash --subject 'fix(hooks): valid title (#42)'",
+                False,
+            ),
+            (
+                "shell",
+                "gh pr merge https://github.com/o/r/pull/42 --squash --subject 'fix(hooks): valid title (#42)'",
+                False,
+            ),
+            (
+                "shell",
+                "gh pr merge --body 17 42 --squash --subject 'fix(hooks): valid title (#17)'",
+                True,
+            ),
+        )
+        for kind, value, denied in cases:
+            tool = "functions.exec" if kind == "nested" else "Bash"
+            field = "code" if kind == "nested" else "command"
+            payload = json.dumps(
+                {
+                    "hook_event_name": "PreToolUse",
+                    "tool_name": tool,
+                    "tool_input": {field: value},
+                }
+            )
+            with self.subTest(kind=kind, value=value):
+                output = self._run_process(
+                    [hook, "PreToolUse", kind], payload, environment
+                )
+                self.assertEqual(bool(output), denied, output)
+
+    def test_windows_permission_fallback_is_valid_json(self) -> None:
+        launcher = (PLUGIN / "hooks/codexy-title-check.cmd").read_text(encoding="utf-8")
+        lines = [
+            line.strip()
+            for line in launcher.splitlines()
+            if line.strip().startswith("echo {")
+        ]
+        self.assertEqual(len(lines), 2)
+        for line in lines:
+            denial = json.loads(line.removeprefix("echo "))
+            specific = denial["hookSpecificOutput"]
+            event = specific["hookEventName"]
+            with self.subTest(event=event):
+                if event == "PermissionRequest":
+                    self.assertEqual(specific["decision"]["behavior"], "deny")
+                else:
+                    self.assertEqual(specific["permissionDecision"], "deny")
+
+
+if __name__ == "__main__":
+    unittest.main()

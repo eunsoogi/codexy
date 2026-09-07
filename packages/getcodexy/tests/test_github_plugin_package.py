@@ -18,9 +18,6 @@ class GithubPluginPackageTests(unittest.TestCase):
         self.assertFalse((CORE / "skills" / "git-workflow").exists())
         self.assertFalse((CORE / "agents" / "codexy-weaver.toml").exists())
         self.assertFalse((CORE / "hooks" / "codexy-issue-title-check.sh").exists())
-        self.assertFalse((CORE / "hooks" / "codexy-repository-issue.sh").exists())
-        self.assertFalse((CORE / "hooks/codexy_policy/github.py").exists())
-        self.assertFalse((CORE / "hooks/codexy_policy/repository_issue.py").exists())
         self.assertTrue((CORE / "hooks/codexy_policy/envelope.py").is_file())
 
     def test_github_plugin_declares_the_public_core_dependency(self) -> None:
@@ -41,6 +38,31 @@ class GithubPluginPackageTests(unittest.TestCase):
             )["dependencies"]["github"],
             ["core"],
         )
+
+    def test_workflow_guidance_respects_user_and_repository_choice(self) -> None:
+        skill = (GITHUB / "skills/git-workflow/SKILL.md").read_text(encoding="utf-8")
+        issue = (GITHUB / "skills/git-workflow/references/issue-intake.md").read_text(
+            encoding="utf-8"
+        )
+        pull_request = (
+            GITHUB / "skills/git-workflow/references/pr-review-and-handoff.md"
+        ).read_text(encoding="utf-8")
+        agent = (GITHUB / "skills/git-workflow/agents/openai.yaml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("Ordinary authorized GitHub metadata", skill)
+        self.assertIn("retains the existing issue-title", " ".join(skill.split()))
+        self.assertIn("retains this existing issue-title check", issue)
+        self.assertIn("retains its existing PR-title", pull_request)
+        self.assertIn("squash-subject check", pull_request)
+        self.assertIn(
+            "no heading or footer is required by this plugin",
+            " ".join(issue.split()),
+        )
+        self.assertIn("ordinary authorized GitHub metadata", pull_request)
+        self.assertIn("MUST NOT be blocked, rewritten", pull_request)
+        self.assertIn("only when the operation is issue-sized", agent)
 
     def test_copied_package_preserves_generic_hook_and_specialist_artifacts(
         self,
@@ -81,51 +103,6 @@ class GithubPluginPackageTests(unittest.TestCase):
                 "554",
                 "--merge-message",
                 "refactor(github): extract workflow (#554)\n\nFixes #553\n",
-            )
-            authorization = installed / "authorization.json"
-            authorization.write_text(
-                json.dumps(
-                    {
-                        "intent": "merge",
-                        "mergeClass": "squash",
-                        "prNumber": 554,
-                        "baseRefName": "main",
-                        "headRefOid": "abc",
-                        "negated": False,
-                        "revoked": False,
-                        "kind": "explicit-maintainer-intent",
-                        "commentId": "MDU6",
-                        "commentUrl": "https://github.com/owner/repo/pull/554#issuecomment-1",
-                    }
-                ),
-                encoding="utf-8",
-            )
-            review = installed / "review.json"
-            review.write_text(
-                json.dumps(
-                    {
-                        "number": 554,
-                        "baseRefName": "main",
-                        "headRefOid": "abc",
-                        "comments": [
-                            {
-                                "id": "MDU6",
-                                "url": "https://github.com/owner/repo/pull/554#issuecomment-1",
-                                "authorAssociation": "OWNER",
-                                "author": {"login": "owner"},
-                                "body": "AUTHORIZE SQUASH MERGE: PR #554 BASE main HEAD abc",
-                            }
-                        ],
-                    }
-                ),
-                encoding="utf-8",
-            )
-            self._run(
-                hooks / "codexy-merge-authorization-check.py",
-                "--authorization-file",
-                str(authorization),
-                "--pr-state-file",
-                str(review),
             )
             home = installed / "codex-home"
             sentinel = home / "agents/codexy/codexy-sentinel.toml"
