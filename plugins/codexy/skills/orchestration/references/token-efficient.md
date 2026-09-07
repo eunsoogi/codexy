@@ -11,9 +11,15 @@ This skill is not a shortcut around `$proof-driven-completion`. It changes how
 evidence is summarized and refreshed, not which gates are required.
 
 Live Sentinel observation MUST be read-only and event-driven. Generic child and
-ledger polling remains permitted. Both the Worker owner and the root
-Orchestrator MUST NOT message, interrupt, replace, duplicate, follow up with, or
-poll a live Sentinel. A bounded wait with no event is a non-terminal `PENDING`
+ledger polling remains permitted. The Watcher MUST NOT directly observe, read,
+wait on, or poll a native Sentinel; its observation targets MUST remain limited
+to its assigned Workers and their scoped artifact or tool-call channel. Both the
+Worker owner and the root Orchestrator MUST NOT message, interrupt, replace,
+duplicate, follow up with, or poll a live Sentinel. When only a native-reviewer
+event remains pending, the Worker MUST use the existing finite idle-wait handoff
+and MUST NOT start unchanged model-continuation turns or poll the reviewer. The
+Worker MUST NOT force-complete an unmet goal or edit goal-lifecycle state to
+escape that wait. A bounded wait with no event is a non-terminal `PENDING`
 observation, and an independently observed live reviewer is `RUNNING`; neither
 observation is a reviewer verdict or fallback-eligible. The owning lane MUST
 retain the same reviewer and wait for its natural terminal result. A live
