@@ -46,28 +46,29 @@ MUST use this flow after compaction and before handoff:
 
 1. **Inventory once**: MUST keep one compact ledger line per active lane with
    `issue`, `PR`, `branch`, `head`, `owner`, and `state`.
-2. **Accept qualifying events only**: root/orchestrator MUST NOT autonomously
-   poll. The owner MUST use event-driven `wait_threads` with each target's
-   latest cursor as the default for ordinary child completion or attention
-   waits. The owner MUST reserve heartbeat scheduling for genuinely scheduled
-   monitoring or when `wait_threads` is unavailable. After a host transition or
-   `No handler registered` failure, the owner MUST treat the mismatch as
-   host-transition exposure evidence, perform one fresh thread-tool discovery
-   and one host-aware `wait_threads` retry before any fallback, MUST NOT use
-   unbounded `read_thread`, and any bounded metadata fallback MUST consume the
-   current parent-stage budget and record only returned size/token metadata.
-   While a desktop-origin root turn has a callable `wait_threads` handler, the
-   owner MUST keep ordinary child waits in a cursor-based `wait_threads` loop
-   without finalizing that root turn between unchanged waits; mobile input that
-   interrupts the active local wait MUST be consumed in that same local turn
-   before the cursor-based wait continues. If a slingshot-host turn still
-   returns `No handler registered` after the one fresh discovery and one
-   host-aware retry, the owner MUST emit exactly one unavailable evidence
-   receipt and require desktop-origin root re-entry; it MUST NOT repeat the wait
-   call, schedule a heartbeat relay, use `read_thread`, or use `handoff_thread`
-   for recovery. Children MUST send a compact delta only for terminal child
-   state, Sentinel verdict, PR creation, new HEAD, GitHub check-state change,
-   actionable review-feedback change, or review-thread resolution.
+2. **Accept qualifying events only**: root/orchestrator MUST NOT continuously
+   poll. Use event-driven `wait_threads` with each target's latest cursor and
+   batched targets for ordinary child completion or attention waits. Unchanged
+   cursors, bounded timeouts, and legitimate long commands are nonterminal;
+   they MUST NOT produce repeated status messages, full-transcript reads, test
+   reruns, or interruptions. Reserve heartbeat scheduling for genuinely
+   scheduled monitoring or when `wait_threads` is unavailable.
+   After a host transition or `No handler registered` failure, treat the
+   mismatch as exposure evidence, perform one fresh thread-tool discovery and
+   one host-aware `wait_threads` retry before any fallback, and MUST NOT use
+   unbounded `read_thread`. If a supported same-project watcher owns the exact
+   long-lived goal, the parent MAY return control instead of holding a model
+   turn open solely for unchanged waiting. In watcher-supervised Astra-parent
+   mode, the parent `get_goal` state MUST remain `null`; it MUST NOT call
+   `create_goal` or recreate any goal for setup, callbacks, correction, review
+   or merge decisions, or external-event resume. This parent-only exception
+   overrides the generic fresh-goal-on-wake rule and does not prove issue
+   completion.
+   A watcher callback or observation is a material signal only when its event
+   identity is new. Children MUST send compact deltas for terminal child state,
+   fatal/gate/final callbacks, watcher failure or drift, Sentinel verdict, PR
+   creation, new HEAD, GitHub check-state change, actionable review feedback,
+   or review-thread resolution.
 3. **Validate stable event identity**: every event MUST use a deterministic
    `<kind>|<lane>|<subject>` identity. The ledger MUST reject a repeated
    identity before it changes counters or next actions.
@@ -146,15 +147,26 @@ message. A stable event identity MUST deduplicate repeated wakeups before the
 owner changes its plan. The awakened owner MUST consume a material event in the
 same turn and MUST delete or disable its heartbeat when no further observation
 is required. A successfully registered heartbeat is runtime-owned waiting. The
-owner MUST retain its active goal and plan only while an immediately executable
-in-scope obligation remains, record `goal state=active` and
-`goal transition=none`, and return control without completing or blocking the
-goal. When only an external event or explicit parent wake remains, the owner
-MUST use the idle-wait handoff, complete the finite goal, and leave the task
-idle without claiming the issue complete. A qualifying event MUST create a fresh
-short-lived execution goal and current plan before any edit, proof, review
-response, publication, or merge work. A live packaged Sentinel remains outside
-heartbeat observation and retains its no-poll/no-message boundary.
+heartbeat route is not the ordinary app-thread watcher: do not create or
+recreate a heartbeat as a substitute for an explicitly authorized same-project
+watcher. When the watcher carries the exact release goal in
+watcher-supervised Astra-parent mode, the parent `get_goal` state MUST remain
+`null` and the parent MUST NOT create or recreate a goal; neither an idle parent
+nor a watcher goal proves transfer or completion. Record parent and watcher goal
+readbacks separately. This exemption does not remove ordinary worker
+finite-goal closure or `blocked` recovery.
+
+For ordinary owners outside watcher-supervised Astra-parent mode, the owner MUST
+retain its active goal and plan only while an immediately executable in-scope
+obligation remains, record `goal state=active` and `goal transition=none`, and
+return control without completing or blocking the goal. When only an external
+event or explicit parent wake remains, the owner MUST use the idle-wait handoff,
+complete the finite goal, and leave the task idle without claiming the issue
+complete. A qualifying event MUST create a fresh short-lived execution goal and
+current plan before any edit, proof, review response, publication, or merge
+work. The watcher-supervised Astra-parent exemption above overrides this rule
+for that parent. A live packaged Sentinel remains outside heartbeat observation
+and retains its no-poll/no-message boundary.
 
 For repeat handoffs, copy [the delta-poll template](../templates/delta-poll.md)
 and fill only the current slots. MUST keep the template output in the thread or
