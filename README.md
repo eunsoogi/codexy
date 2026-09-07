@@ -139,8 +139,10 @@ Its shipped capabilities are:
   below. Standard review uses Inspector, while strict review uses Sentinel.
 - **Instruction hooks.** Author scoped `AGENTS.md` files with explicit
   precedence and readback. Core validates task-thread delivery metadata; the
-  GitHub component adds admission checks for GitHub operations, repository
-  commands, and destructive shell actions.
+  GitHub component adds workflow context plus independent credential,
+  filesystem, and Git destructive-effect checks for shell commands. GitHub
+  mutations continue through the normal host, connector, and GitHub
+  authorization paths.
 - **Proof and engineering.** Apply TDD only to executable engineering
   boundaries, run source-aligned validators and real-surface checks, and bind
   completion and review evidence to the current file state or commit.

@@ -1,90 +1,43 @@
 use super::{copy_github as copy, text, validate};
 use crate::support::{FixtureCommand as Command, fixture_native_launcher};
+use serde_json::json;
 use std::io::Write as _;
 use std::process::Stdio;
 
-const LAUNCHERS: &[&str] = &[
-    "codexy-repository-issue",
-    "codexy-repository-pull-request",
-    "codexy-repository-merge",
-    "codexy-repository-github-exec",
-    "codexy-repository-github-command",
-    "codexy-destructive-command",
-];
-
-#[path = "admission_artifact/runtime_failures.rs"]
-mod runtime_failures;
-#[path = "admission_artifact/activation.rs"]
-mod activation;
+const LAUNCHERS: &[&str] = &["codexy-destructive-command"];
 
 #[test]
-fn validator_rejects_static_cross_concern_policy_imports() -> Result<(), Box<dyn std::error::Error>> {
-    for injection in [
-        "import codexy_policy.shell_github_policy\n",
-        "marker = 1; import codexy_policy.shell_github_policy\n",
-        "from codexy_policy \\\n         import shell_github_policy\n",
-    ] {
-        let temp = tempfile::tempdir()?;
-        let root = copy(temp.path())?;
-        let policy = root.join("hooks/codexy_policy/shell_destructive.py");
-        let source = std::fs::read_to_string(&policy)?;
-        std::fs::write(&policy, format!("{injection}{source}"))?;
-        let output = validate(&root)?;
-        assert!(!output.status.success());
-        assert!(
-            text(&output).contains("import closure crosses concern boundary"),
-            "{injection}: {}",
-            text(&output)
-        );
-    }
+fn validator_rejects_unpinned_policy_imports() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let root = copy(temp.path())?;
+    let policy = root.join("hooks/codexy_policy/shell_destructive.py");
+    let source = std::fs::read_to_string(&policy)?;
+    std::fs::write(
+        &policy,
+        format!("import codexy_policy.not_packaged\n{source}"),
+    )?;
+    let output = validate(&root)?;
+    assert!(!output.status.success());
+    assert!(text(&output).contains("import is unpinned"), "{}", text(&output));
     Ok(())
 }
 
 #[test]
-fn validator_rejects_dynamic_cross_concern_policy_imports() -> Result<(), Box<dyn std::error::Error>> {
-    for injection in [
-        "import importlib as il\nil.import_module('codexy_policy.shell_github_policy')\n",
-        "from importlib import (import_module as load,)\nload('codexy_policy.shell_github_policy')\n",
-    ] {
-        let temp = tempfile::tempdir()?;
-        let root = copy(temp.path())?;
-        let policy = root.join("hooks/codexy_policy/shell_destructive.py");
-        let source = std::fs::read_to_string(&policy)?;
-        std::fs::write(&policy, format!("{injection}{source}"))?;
-        let output = validate(&root)?;
-        assert!(!output.status.success());
-        assert!(
-            text(&output).contains("rejects dynamic imports"),
-            "{injection}: {}",
-            text(&output)
-        );
-    }
-    Ok(())
-}
-
-#[test]
-fn materialized_plugin_executes_every_concern_hook_for_both_events()
+fn materialized_plugin_executes_the_retained_safety_hook_for_both_events()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    let install_base = temp.path().join("installed plugin with spaces");
-    let root = copy(&install_base)?;
-    let tools = [
-        "mcp__codex_apps__github_create_issue",
-        "mcp__codex_apps__github_create_pull_request",
-        "mcp__codex_apps__github_merge_pull_request",
-        "functions.exec",
-        "Bash",
-        "Bash",
-    ];
+    let root = copy(temp.path())?;
     for event in ["PermissionRequest", "PreToolUse"] {
-        for (launcher, tool) in LAUNCHERS.iter().zip(tools) {
-            let input = serde_json::json!({
+        for launcher in LAUNCHERS {
+            let input = json!({
                 "hook_event_name": event,
-                "tool_name": tool,
+                "tool_name": "Bash",
                 "tool_input": null,
                 "cwd": temp.path(),
             });
-            let mut child = Command::new(root.join(format!("hooks/{launcher}.sh")))
+            let shell = root.join(format!("hooks/{launcher}.sh"));
+            let native = fixture_native_launcher(cfg!(windows), &shell).ok_or("native launcher")?;
+            let mut child = Command::new(native)
                 .arg(event)
                 .env("PLUGIN_ROOT", &root)
                 .stdin(Stdio::piped())
@@ -101,20 +54,21 @@ fn materialized_plugin_executes_every_concern_hook_for_both_events()
             assert!(output.stderr.is_empty(), "{event} {launcher}");
             let denial: serde_json::Value = serde_json::from_slice(&output.stdout)?;
             assert_eq!(denial["hookSpecificOutput"]["hookEventName"], event);
+            assert!(output.stdout.windows(10).any(|window| window == b"UNRESOLVED"));
         }
     }
     Ok(())
 }
 
-#[test]
 #[cfg(unix)]
-fn materialized_launchers_fail_closed_when_shared_runtime_is_unavailable()
+#[test]
+fn materialized_launcher_fails_closed_when_shared_runtime_is_unavailable()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let root = copy(temp.path())?;
     std::fs::write(root.join("hooks/codexy-hook-runtime.sh"), "#!/bin/sh\nexit 1\n")?;
     for event in ["PermissionRequest", "PreToolUse"] {
-        let output = Command::new(root.join("hooks/codexy-repository-issue.sh"))
+        let output = Command::new(root.join("hooks/codexy-destructive-command.sh"))
             .arg(event)
             .env("PLUGIN_ROOT", &root)
             .stdin(Stdio::null())
@@ -123,26 +77,26 @@ fn materialized_launchers_fail_closed_when_shared_runtime_is_unavailable()
         assert!(output.stderr.is_empty());
         let denial: serde_json::Value = serde_json::from_slice(&output.stdout)?;
         assert_eq!(denial["hookSpecificOutput"]["hookEventName"], event);
-        assert!(String::from_utf8(output.stdout)?.contains("CODEXY_REPOSITORY_ISSUE_RUNTIME"));
+        assert!(String::from_utf8(output.stdout)?.contains("CODEXY_DESTRUCTIVE_COMMAND_RUNTIME"));
     }
     Ok(())
 }
 
 #[test]
-fn real_launchers_hide_interpreter_failures_behind_one_denial()
+fn real_launcher_hides_interpreter_failures_behind_one_denial()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let root = copy(temp.path())?;
     std::fs::write(
-        root.join("hooks/codexy-repository-issue.py"),
+        root.join("hooks/codexy-destructive-command.py"),
         "raise RuntimeError('must not leak')\n",
     )?;
     for event in ["PermissionRequest", "PreToolUse"] {
         let launcher = fixture_native_launcher(
             cfg!(windows),
-            &root.join("hooks/codexy-repository-issue.sh"),
+            &root.join("hooks/codexy-destructive-command.sh"),
         )
-        .ok_or("native repository issue launcher")?;
+        .ok_or("native launcher")?;
         let output = Command::new(launcher)
             .arg(event)
             .env("PLUGIN_ROOT", &root)
@@ -152,13 +106,13 @@ fn real_launchers_hide_interpreter_failures_behind_one_denial()
         assert!(output.stderr.is_empty(), "interpreter stderr leaked");
         let denial: serde_json::Value = serde_json::from_slice(&output.stdout)?;
         assert_eq!(denial["hookSpecificOutput"]["hookEventName"], event);
-        assert!(String::from_utf8(output.stdout)?.contains("CODEXY_REPOSITORY_ISSUE_RUNTIME"));
+        assert!(String::from_utf8(output.stdout)?.contains("CODEXY_DESTRUCTIVE_COMMAND_RUNTIME"));
     }
     Ok(())
 }
 
 #[test]
-fn shared_envelope_fails_closed_at_every_input_boundary()
+fn shared_envelope_fails_closed_at_the_core_input_boundary()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy");
     let cases = [
@@ -175,7 +129,7 @@ fn shared_envelope_fails_closed_at_every_input_boundary()
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
-        child.stdin.take().ok_or("stdin")?.write_all(&payload)?;
+        child.stdin.take().ok_or("launcher stdin")?.write_all(&payload)?;
         let output = child.wait_with_output()?;
         assert!(output.status.success());
         assert!(output.stderr.is_empty());

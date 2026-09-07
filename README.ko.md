@@ -137,7 +137,9 @@ Codexy는 계획, 구현, 검증, 리뷰, 인수인계까지 이어지는 저장
   담당합니다.
 - **Instruction hook.** 적용 범위와 우선순위가 분명한 `AGENTS.md`를 작성하고
   다시 읽어 확인합니다. Core는 task-thread 전달 metadata를 검사하고, GitHub
-  컴포넌트는 GitHub 작업·저장소 명령·파괴적 shell 작업의 admission을 검사합니다.
+  컴포넌트는 workflow context와 shell 명령의 인증정보·파일시스템·Git 파괴효과를
+  서로 독립적으로 검사합니다. GitHub 변경은 일반적인 host·connector·GitHub
+  authorization 경로를 사용합니다.
 - **검증과 엔지니어링.** 실행 가능한 엔지니어링 경계에만 TDD를 적용하고 실제
   변경 surface에 맞는 validator와 실제 동작 검사를 실행하며, 완료와 리뷰 근거를
   현재 파일 상태 또는 commit에 묶습니다.

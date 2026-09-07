@@ -4,25 +4,26 @@ use super::{followup_header, paths};
 use paths::{clean_path, explicit_paths};
 
 pub(super) fn values(raw: &str, lines: &[(usize, usize, &str)]) -> Result<Vec<Value>, String> {
-    let mut in_fence = false;
-    let mut in_followup = false;
     let mut result = Vec::new();
+    let mut operative_lines = vec![false; lines.len()];
+    for index in super::super::operative_line_indices(lines) {
+        operative_lines[index] = true;
+    }
+    let followup_section = super::super::context::section_membership(
+        lines,
+        |index| operative_lines[index],
+        |level, title| {
+            level == 2
+                && title
+                    .to_ascii_lowercase()
+                    .contains("non-blocking follow-up")
+        },
+    );
     for (index, (start, _, line)) in lines.iter().enumerate() {
-        let trimmed = line.trim_start();
-        if trimmed.as_bytes().starts_with(&[96, 96, 96]) {
-            in_fence = !in_fence;
+        if !operative_lines[index] {
             continue;
         }
-        if in_fence || trimmed.starts_with('>') {
-            continue;
-        }
-        if let Some(title) = trimmed.strip_prefix("## ") {
-            in_followup = title
-                .to_ascii_lowercase()
-                .contains("non-blocking follow-up");
-            continue;
-        }
-        if !in_followup {
+        if !followup_section[index] {
             continue;
         }
         let Some(disposition) = followup_header(line) else {
@@ -30,11 +31,15 @@ pub(super) fn values(raw: &str, lines: &[(usize, usize, &str)]) -> Result<Vec<Va
         };
         let end = lines[index + 1..]
             .iter()
-            .find(|(_, _, next)| {
-                let next = next.trim_start();
-                next.starts_with("- ") || next.starts_with("## ")
+            .enumerate()
+            .find(|(offset, (_, _, next))| {
+                let next_index = index + 1 + offset;
+                operative_lines[next_index] && {
+                    let next = next.trim_start();
+                    next.starts_with("- ") || super::super::heading(next).is_some()
+                }
             })
-            .map_or(raw.len(), |(start, _, _)| *start);
+            .map_or(raw.len(), |(_, (start, _, _))| *start);
         let block = raw[*start..end].trim_end();
         let mut paths = explicit_paths(block);
         if paths.is_empty() {

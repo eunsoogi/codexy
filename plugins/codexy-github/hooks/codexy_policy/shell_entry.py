@@ -3,12 +3,7 @@
 from __future__ import annotations
 
 from .execution_context import ExecutionContext
-from .repository import (
-    git_directory_owned,
-    repository_identity,
-    repository_owned,
-    repository_policy_status,
-)
+from .repository import git_directory_owned, repository_owned, repository_status
 
 
 def context(
@@ -40,8 +35,7 @@ def context(
     return ExecutionContext(
         cwd,
         owned,
-        repository_policy_status(cwd),
-        repository_identity(cwd),
+        repository_status(cwd),
         git_dir,
         gh_repo,
         environment,

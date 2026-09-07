@@ -1,8 +1,15 @@
 #!/bin/sh
 entrypoint=${1-}
 event=${2-}
+kind=${3-}
 case "$entrypoint" in
-codexy-thread-delivery.py | codexy-repository-issue.py | codexy-repository-pull-request.py | codexy-repository-merge.py | codexy-repository-github-command.py | codexy_repository_github_exec.py | codexy-destructive-command.py) ;;
+codexy-destructive-command.py) [ -z "$kind" ] ;;
+codexy-title-check.py)
+	case "$kind" in
+	issue | pr | merge | shell | nested) ;;
+	*) exit 1 ;;
+	esac
+	;;
 *) exit 1 ;;
 esac
 case "$event" in
@@ -52,5 +59,9 @@ if [ "${GIT_CONFIG_COUNT+x}" = x ]; then
 	esac
 fi
 
-output=$("$@" "$python" -I -B "${plugin_root}/hooks/${entrypoint}" --event "$event" 2>/dev/null) || exit 1
+if [ -n "$kind" ]; then
+	output=$("$@" "$python" -I -B "${plugin_root}/hooks/${entrypoint}" --event "$event" --kind "$kind" 2>/dev/null) || exit 1
+else
+	output=$("$@" "$python" -I -B "${plugin_root}/hooks/${entrypoint}" --event "$event" 2>/dev/null) || exit 1
+fi
 [ -z "$output" ] || printf '%s\n' "$output"

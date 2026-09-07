@@ -29,13 +29,14 @@ review-response ownership is denied at admission. Structured control-plane
 handoffs require their explicit marker and stable key in the orchestration
 validators; ordinary wording never becomes route authority. The upstream
 orchestration resolver selects generic, explicit, fallback, and named-role
-pairs. The installed Codexy GitHub plugin activates generic GitHub-command and
-destructive shell/Git admission through its own `${PLUGIN_ROOT}` hook manifest.
-A trusted repository's `.codex/hooks.json` activates only its
-repository-specific issue, pull-request, merge, and release governance.
-`PreToolUse` and `PermissionRequest` bind the same concern owners; matching
-handlers are independent and any denial is conservative. Malformed governed
-input fails visibly rather than guessing.
+pairs. The installed Codexy GitHub plugin adds workflow context and scoped local
+destructive shell/Git safety through its own `${PLUGIN_ROOT}` hook manifest.
+GitHub mutations use the normal host, connector, and GitHub authorization; the
+plugin does not require a repository admission file or an exclusive write route.
+Repository owners may define their own local hooks independently. `PreToolUse`
+and `PermissionRequest` bind the same concern owners; matching handlers are
+independent and any denial is conservative. Malformed governed input fails
+visibly rather than guessing.
 
 The launchers run Python isolated from user configuration and never install,
 cache, update, or mutate user state by default. A trusted operator may set the

@@ -10,8 +10,7 @@ from pathlib import Path
 from .execution_context import ExecutionContext, git_config
 from .git_command import normalize as normalize_git
 from .git_options import normalize as normalize_git_options
-from .repository import UrlRewrite, identity, rewrite_url
-from .repository_policy import worktree_root
+from .repository import worktree_root
 from .shell_context import flag
 
 REMOTE_URL_CONFIG = re.compile(
@@ -31,16 +30,12 @@ def evaluate(
     environment_config = git_config(context)
     if environment_config is None:
         return True, None, None
-    policy_status = context.policy_status
-    if policy_status is None:
-        return True, None, None
-    owned_identity = context.policy_identity
     invocation = normalize_git(
         args,
         context.cwd,
         context.cwd_owned,
         context.git_dir,
-        lambda config: _config_owned(config, owned_identity),
+        lambda _config: False,
         environment_config,
         context.remote_urls,
     )
@@ -96,12 +91,13 @@ def evaluate(
             return True, None, None
         return False, (invocation.arguments[1], "url", invocation.arguments[2]), None
     push_like = invocation.operation in {"push", "send-pack"}
-    target_owned = explicit_owned(
-        invocation.arguments, owned_identity, list(invocation.rewrites), push_like
+    effective_repository_status = (
+        context.repository_status
+        or invocation.git_dir is not None
+        or worktree_root(Path(invocation.cwd)) is not None
     )
-    applies = target_owned is True or (
-        target_owned is None
-        and (context.opaque_repository_state or invocation.cwd_owned is not False)
+    applies = effective_repository_status and (
+        context.opaque_repository_state or invocation.cwd_owned is not False
     )
     arguments = normalize_git_options(invocation.operation, invocation.arguments)
     if arguments is None:
@@ -228,22 +224,3 @@ def _is_ancestor(candidate: str, current: str) -> bool:
         return os.path.commonpath((candidate, current)) == candidate
     except ValueError:
         return False
-
-
-def explicit_owned(
-    args: list[str],
-    owned: tuple[str, str, str] | None,
-    rewrites: list[UrlRewrite] | None = None,
-    push: bool = False,
-) -> bool | None:
-    rewritten = [identity(rewrite_url(arg, rewrites or [], push)) for arg in args]
-    identities = [item for item in rewritten if item is not None]
-    return None if not identities or owned is None else owned in identities
-
-
-def _config_owned(config: str, owned: tuple[str, str, str] | None) -> bool:
-    return (
-        owned is not None
-        and "=" in config
-        and identity(config.split("=", 1)[1]) == owned
-    )

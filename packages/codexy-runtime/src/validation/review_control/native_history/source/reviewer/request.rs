@@ -2,6 +2,9 @@ use serde_json::{Map, Value, json};
 
 use super::super::fields;
 
+#[path = "request/grammar.rs"]
+mod grammar;
+
 pub(super) fn candidate(
     turn: &Map<String, Value>,
     base: &str,
@@ -21,7 +24,9 @@ pub(super) fn candidate(
         let Some(text) = message_text(map) else {
             continue;
         };
-        let first = text.lines().next().unwrap_or_default().trim();
+        let raw_first = text.lines().next().unwrap_or_default();
+        let leading = raw_first.len() - raw_first.trim_start().len();
+        let first = raw_first.trim();
         if let Some(kind) = explicit_kind(first) {
             merge(
                 &mut result,
@@ -33,8 +38,8 @@ pub(super) fn candidate(
                 "kind".into(),
                 json!({
                     "source": format!("{base}.items[{index}].content"),
-                    "start": 0,
-                    "end": first.len(),
+                    "start": leading,
+                    "end": leading + first.len(),
                     "coordinate": "utf8_bytes"
                 }),
             );
@@ -84,10 +89,14 @@ fn explicit_kind(first: &str) -> Option<String> {
     {
         return Some("delta".into());
     }
-    if (normalized.contains("strict-profile") || normalized.contains("strict profile"))
-        && normalized.contains("review")
-        && !normalized.contains("delta")
+    if normalized.starts_with("authorized strict delta recheck")
+        && normalized.contains("frozen final head")
+        && normalized.contains("only")
+        && !negated(&normalized, "delta")
     {
+        return Some("delta".into());
+    }
+    if affirmative_strict_review(&normalized) && !normalized.contains("delta") {
         return Some("full".into());
     }
     let (label, value) = normalized.split_once(':')?;
@@ -97,6 +106,45 @@ fn explicit_kind(first: &str) -> Option<String> {
         return Some(value.trim().into());
     }
     None
+}
+
+fn affirmative_strict_review(text: &str) -> bool {
+    if grammar::starts_with_example_wrapper(text) {
+        return false;
+    }
+    let words = text
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>();
+    let strict_profile = words.windows(2).any(|pair| pair == ["strict", "profile"]);
+    let Some(review_index) = words.iter().position(|word| *word == "review") else {
+        return false;
+    };
+    let affirmative_start = words.first().is_some_and(|word| {
+        matches!(
+            *word,
+            "strict"
+                | "perform"
+                | "run"
+                | "conduct"
+                | "complete"
+                | "start"
+                | "begin"
+                | "execute"
+                | "authorize"
+                | "authorized"
+                | "please"
+                | "review"
+                | "select"
+                | "selected"
+                | "use"
+                | "we"
+                | "i"
+        )
+    });
+    let negated = grammar::contains_prefix_negation(text)
+        || grammar::contains_post_review_negation(&words[review_index + 1..]);
+    strict_profile && affirmative_start && !negated
 }
 
 fn negated(text: &str, subject: &str) -> bool {
