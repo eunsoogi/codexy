@@ -138,13 +138,14 @@ fn reviewed_head(raw: &str) -> Result<Option<Located>, String> {
 fn terminal_result(raw: &str) -> Result<Option<Located>, String> {
     let mut matches = Vec::new();
     let lines = operative_lines(raw);
-    let mut in_terminal_handoff = false;
+    let terminal_handoff = context::section_membership(
+        &lines,
+        |_| true,
+        |level, title| level == 2 && title.eq_ignore_ascii_case("terminal handoff"),
+    );
     for (index, (start, _, line)) in lines.iter().enumerate() {
         let lower = line.trim().to_ascii_lowercase();
-        if let Some((level, title)) = heading(line) {
-            in_terminal_handoff = level == 2 && title.eq_ignore_ascii_case("terminal handoff");
-        }
-        let has_terminal_label = terminal_label(&lower, in_terminal_handoff);
+        let has_terminal_label = terminal_label(&lower, terminal_handoff[index]);
         let value = if lower.starts_with("##") && lower.contains("blocking findings") {
             result_value(line).map(|(result, offset)| (result, *start + offset))
         } else if has_terminal_label {

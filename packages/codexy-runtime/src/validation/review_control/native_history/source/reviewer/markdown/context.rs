@@ -57,3 +57,26 @@ pub(super) fn heading(line: &str) -> Option<(usize, &str)> {
     let level = line.bytes().take_while(|byte| *byte == b'#').count();
     (level > 0 && line.as_bytes().get(level) == Some(&b' ')).then(|| (level, line[level..].trim()))
 }
+
+pub(super) fn section_membership(
+    lines: &[(usize, usize, &str)],
+    is_operative: impl Fn(usize) -> bool,
+    is_section: impl Fn(usize, &str) -> bool,
+) -> Vec<bool> {
+    let mut section_level = None;
+    let mut result = vec![false; lines.len()];
+    for (index, (_, _, line)) in lines.iter().enumerate() {
+        if is_operative(index) {
+            if let Some((level, title)) = heading(line) {
+                if section_level.is_some_and(|active| level <= active) {
+                    section_level = None;
+                }
+                if is_section(level, title) {
+                    section_level = Some(level);
+                }
+            }
+        }
+        result[index] = section_level.is_some();
+    }
+    result
+}

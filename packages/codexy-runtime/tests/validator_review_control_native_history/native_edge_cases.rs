@@ -12,6 +12,15 @@ fn negated_affirmative_request_kind_is_rejected() {
 }
 
 #[test]
+fn polite_prefix_negation_is_rejected() {
+    let (mut request, _, _) = super::native_forms::request();
+    request["reviewer"]["pages"][1]["turns"][0]["items"][0]["content"][0]["text"] =
+        json!("Please do not perform the selected strict-profile review.");
+    let error = super::rejected(super::native_history::normalize_native_history(&request));
+    assert!(error.contains("review kind"), "{error}");
+}
+
+#[test]
 fn unavailable_reviewed_head_does_not_fall_through_to_a_later_sha() {
     let (mut request, full_text, _) = super::native_forms::request();
     let text = full_text.replace(
@@ -72,6 +81,85 @@ fn post_negated_affirmative_request_kind_is_rejected() {
         json!("Perform the selected strict-profile review? Do not.");
     let error = super::rejected(super::native_history::normalize_native_history(&request));
     assert!(error.contains("review kind"), "{error}");
+}
+
+#[test]
+fn independent_prefix_no_edit_does_not_negate_request_kind() -> super::TestResult {
+    let (mut request, _, _) = super::native_forms::request();
+    request["reviewer"]["pages"][1]["turns"][0]["items"][0]["content"][0]["text"] =
+        json!("Please do not edit files; perform the selected strict-profile review.");
+    let receipt = super::native_history::normalize_native_history(&request)?;
+    assert!(
+        receipt["events"]
+            .as_array()
+            .is_some_and(|events| { events.iter().any(|event| event["kind"] == "full") })
+    );
+    Ok(())
+}
+
+#[test]
+fn independent_prefix_action_does_not_negate_request_kind() -> super::TestResult {
+    let (mut request, _, _) = super::native_forms::request();
+    request["reviewer"]["pages"][1]["turns"][0]["items"][0]["content"][0]["text"] =
+        json!("Please do not run tests; perform the selected strict-profile review.");
+    let receipt = super::native_history::normalize_native_history(&request)?;
+    assert!(
+        receipt["events"]
+            .as_array()
+            .is_some_and(|events| { events.iter().any(|event| event["kind"] == "full") })
+    );
+    Ok(())
+}
+
+#[test]
+fn bold_quoted_request_example_is_rejected() {
+    let (mut request, _, _) = super::native_forms::request();
+    request["reviewer"]["pages"][1]["turns"][0]["items"][0]["content"][0]["text"] = json!(
+        "**\"Perform the selected strict-profile review.\"** This sentence is only an example."
+    );
+    let error = super::rejected(super::native_history::normalize_native_history(&request));
+    assert!(error.contains("review kind"), "{error}");
+}
+
+#[test]
+fn nested_terminal_heading_preserves_parent_result_label() -> super::TestResult {
+    let (mut request, full_text, _) = super::native_forms::request();
+    let text = full_text.replace(
+        "- Result: **UNOBSERVABLE**",
+        "### Documentation\n\nThe terminal handoff documentation.\n\n- Result: **UNOBSERVABLE**",
+    );
+    request["reviewer"]["pages"][1]["turns"][0]["items"][1]["text"] = json!(text);
+    let receipt = super::native_history::normalize_native_history(&request)?;
+    let event = receipt["events"]
+        .as_array()
+        .and_then(|events| events.iter().find(|event| event["kind"] == "full"))
+        .ok_or("full event")?;
+    assert_eq!(event["terminal_result"], "UNOBSERVABLE");
+    Ok(())
+}
+
+#[test]
+fn nested_followup_heading_preserves_parent_observation() -> super::TestResult {
+    let mut request = super::markdown::request(false);
+    let original = request["reviewer"]["pages"][1]["turns"][0]["items"][1]["text"]
+        .as_str()
+        .ok_or("markdown text")?;
+    let text = original.replace(
+        "## Non-blocking follow-up\n",
+        "## Non-blocking follow-up\n\n### Documentation\n\n",
+    );
+    request["reviewer"]["pages"][1]["turns"][0]["items"][1]["text"] = json!(text);
+    let receipt = super::native_history::normalize_native_history(&request)?;
+    let event = receipt["events"]
+        .as_array()
+        .and_then(|events| events.iter().find(|event| event["kind"] == "full"))
+        .ok_or("full event")?;
+    assert!(event["findings"].as_array().is_some_and(|findings| {
+        findings
+            .iter()
+            .any(|finding| finding["disposition"] == "out_of_scope_followup")
+    }));
+    Ok(())
 }
 
 #[test]

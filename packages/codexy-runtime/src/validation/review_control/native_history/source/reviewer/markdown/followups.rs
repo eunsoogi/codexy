@@ -4,24 +4,26 @@ use super::{followup_header, paths};
 use paths::{clean_path, explicit_paths};
 
 pub(super) fn values(raw: &str, lines: &[(usize, usize, &str)]) -> Result<Vec<Value>, String> {
-    let mut in_followup = false;
     let mut result = Vec::new();
     let mut operative_lines = vec![false; lines.len()];
     for index in super::super::operative_line_indices(lines) {
         operative_lines[index] = true;
     }
+    let followup_section = super::super::context::section_membership(
+        lines,
+        |index| operative_lines[index],
+        |level, title| {
+            level == 2
+                && title
+                    .to_ascii_lowercase()
+                    .contains("non-blocking follow-up")
+        },
+    );
     for (index, (start, _, line)) in lines.iter().enumerate() {
         if !operative_lines[index] {
             continue;
         }
-        if let Some((level, title)) = super::super::heading(line) {
-            in_followup = level == 2
-                && title
-                    .to_ascii_lowercase()
-                    .contains("non-blocking follow-up");
-            continue;
-        }
-        if !in_followup {
+        if !followup_section[index] {
             continue;
         }
         let Some(disposition) = followup_header(line) else {
