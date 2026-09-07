@@ -6,9 +6,9 @@ description: Use when classifying workflow, surface, and risk or coordinating ow
 Read request/issue/PR/AGENTS.md and classify task/surface/risk. Read the
 [context retention contract](references/context-tiers.md) for the existing
 runtime handoff/route contract, then load only the references selected by that
-route; progressive disclosure does not require loading every reference. A
-GitHub surface alone does not select review-specific references. Compaction:
-current wins; missing proof MUST NOT permit action.
+route; progressive disclosure does not require loading every reference. A GitHub
+surface alone does not select review-specific references. Compaction: current
+wins; missing proof MUST NOT permit action.
 
 ### Classify and route
 

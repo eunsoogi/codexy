@@ -11,5 +11,5 @@ fanout. Churn and waiting MUST NOT renew those budgets.
   review MUST NOT occur, and the remaining test, validator, CI, ownership,
   safety, LOC, and merge gates still apply.
 - For an external-only task, make one post-idle handoff and finish. Waiting or
-  resource exhaustion MUST NOT create a blocked state when a safe default
-  action exists.
+  resource exhaustion MUST NOT create a blocked state when a safe default action
+  exists.
