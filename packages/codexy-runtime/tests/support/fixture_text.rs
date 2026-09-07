@@ -29,6 +29,7 @@ pub(crate) fn write_fixture_atomically(
     prepare(staged.path())?;
     staged.as_file().sync_all()?;
     staged
+        .into_temp_path()
         .persist(path)
         .map_err(|error| error.error)
         .map(|_| ())
