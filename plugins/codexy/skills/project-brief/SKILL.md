@@ -36,8 +36,10 @@ GitHub state.
 
 ## Human summary (default)
 
-- MUST state the current recorded result, remaining work, blocker reason, and
-  next observation or action in the user's language when each is recorded.
+- MUST state the current recorded result, verified phase, remaining work,
+  blocker reason, and next observation or action in the user's language when
+  each is recorded. It MUST render the same recorded `result` and `uncertainty`
+  represented by the machine `verified_phase` envelope.
 - MUST preserve the same facts and uncertainty as the named current state. An
   unknown status MUST remain unknown and MUST NOT become a completion judgment.
 - MUST NOT require a machine receipt for an ordinary human status request or for
@@ -56,7 +58,7 @@ this order and no other prose:
 {
   "objective": "recorded or unavailable",
   "owner": "recorded or unavailable",
-  "verified_phase": "recorded or unavailable",
+  "verified_phase": "recorded phase or status envelope or unavailable",
   "changes_since_touch": ["recorded change or unavailable"],
   "decision_required": "recorded or unavailable",
   "evidence_handle": ["current reference or unavailable"],
@@ -65,8 +67,12 @@ this order and no other prose:
 }
 ```
 
-In machine mode, MUST copy `verified_phase`, `decision_required`, `next_action`,
-and `done_when` only when each is recorded as that field. MUST report a current
+When `result` or `uncertainty` is recorded, MUST encode each recorded value in
+the existing `verified_phase` string as
+`result=...; phase=...; uncertainty=...`, omitting unrecorded segments and never
+inferring one. If neither is recorded, MUST copy a recorded `verified_phase`
+unchanged. In machine mode, MUST copy `decision_required`, `next_action`, and
+`done_when` only when each is recorded as that field. MUST report a current
 recorded head change in `changes_since_touch`; MUST NOT derive a change from
 stale memory alone. A completed proof MUST NOT become task completion.
 
