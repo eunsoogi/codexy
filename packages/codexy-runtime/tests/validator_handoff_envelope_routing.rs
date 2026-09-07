@@ -54,7 +54,18 @@ fn ordinary_github_surface_does_not_select_review_guidance() -> TestResult {
     };
     let envelope = HandoffEnvelope::new(stable.clone(), volatile("ordinary-github"));
     let canonical = envelope.canonical_json()?;
-    assert!(validate_handoff(&canonical, &authority(stable)).is_ok());
+    assert!(validate_handoff(&canonical, &authority(stable.clone())).is_ok());
+
+    let mut overselected = stable;
+    overselected
+        .selected_references
+        .insert(3, "review_profiles".into());
+    overselected
+        .selected_references
+        .insert(4, "review_lifecycle".into());
+    let overselected_json =
+        HandoffEnvelope::new(overselected.clone(), volatile("overselected")).canonical_json()?;
+    assert!(validate_handoff(&overselected_json, &authority(overselected)).is_err());
     Ok(())
 }
 
@@ -80,7 +91,15 @@ fn explicit_github_merge_workflow_retains_review_guidance() -> TestResult {
     };
     let envelope = HandoffEnvelope::new(stable.clone(), volatile("explicit-review"));
     let canonical = envelope.canonical_json()?;
-    assert!(validate_handoff(&canonical, &authority(stable)).is_ok());
+    assert!(validate_handoff(&canonical, &authority(stable.clone())).is_ok());
+
+    let mut underselected = stable;
+    underselected
+        .selected_references
+        .retain(|reference| !matches!(reference.as_str(), "review_profiles" | "review_lifecycle"));
+    let underselected_json =
+        HandoffEnvelope::new(underselected.clone(), volatile("underselected")).canonical_json()?;
+    assert!(validate_handoff(&underselected_json, &authority(underselected)).is_err());
     Ok(())
 }
 
