@@ -122,12 +122,7 @@ pub(super) fn task_route(workflow: &str) -> Option<Vec<String>> {
 pub(super) fn surface_route(surface: &str) -> Option<Vec<String>> {
     Some(owned(match surface {
         "repository engineering" => &["proof_completion"],
-        "GitHub" => &[
-            "review_profiles",
-            "review_lifecycle",
-            "proof_completion",
-            "public_extension_contracts",
-        ],
+        "GitHub" => &["proof_completion", "public_extension_contracts"],
         "browser/desktop" | "documents/artifacts" | "spreadsheets/data" => &[
             "workflow_profiles",
             "task_classification",
