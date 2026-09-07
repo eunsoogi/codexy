@@ -140,7 +140,9 @@ jobs:
           CODEXY_MEASUREMENT_CACHE_HIT: ${{ inputs.cache_mode == 'normal' && steps.rust-cache.outputs.cache-hit || steps.measurement-cache.outputs.cache-hit }}
           CODEXY_MEASUREMENT_ROOT: ${{ runner.temp }}/codexy-rust-measurement
         run: scripts/verify-rust-measurement-cache.sh
-      - run: sudo apt-get update && sudo apt-get install --yes ripgrep
+      - name: Install archive scanner
+        if: matrix.target.name == 'archive suite'
+        run: sudo apt-get update && sudo apt-get install --yes ripgrep
       - name: Prepare opt-in measurement toolchain
         if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated'
         run: CODEXY_MEASUREMENT_CONDITION='${{ inputs.condition }}' scripts/prepare-rust-measurement-toolchain.sh
