@@ -2,12 +2,30 @@ use serde_json::{Map, Value, json};
 
 use super::super::fields;
 
+#[path = "markdown/context.rs"]
+mod context;
 #[path = "markdown/findings.rs"]
 mod findings;
 #[path = "markdown/result.rs"]
 mod result;
 #[path = "markdown/settings.rs"]
 mod settings;
+
+pub(super) fn line_ranges(raw: &str) -> Vec<(usize, usize, &str)> {
+    context::line_ranges(raw)
+}
+
+pub(super) fn operative_lines(raw: &str) -> Vec<(usize, usize, &str)> {
+    context::operative_lines(raw)
+}
+
+pub(super) fn operative_line_indices(lines: &[(usize, usize, &str)]) -> Vec<usize> {
+    context::operative_line_indices(lines)
+}
+
+pub(super) fn heading(line: &str) -> Option<(usize, &str)> {
+    context::heading(line)
+}
 
 pub(super) fn candidate(raw: &str) -> Result<Option<Map<String, Value>>, String> {
     let mut result = Map::new();
@@ -81,13 +99,23 @@ impl Setting {
 fn reviewed_head(raw: &str) -> Result<Option<Located>, String> {
     let mut matches = Vec::new();
     for (start, _, line) in operative_lines(raw) {
-        let lower = line.to_ascii_lowercase();
-        for marker in ["exact reviewed pr head", "at exact pr head"] {
-            if let Some(index) = lower.find(marker) {
-                let Some((head, offset)) = find_sha(&line[index + marker.len()..]) else {
-                    return Err("markdown reviewed head label lacks a SHA".into());
-                };
-                let start = start + index + marker.len() + offset;
+        let leading = line.len() - line.trim_start().len();
+        let mut content = &line[leading..];
+        let mut content_start = leading;
+        if let Some(rest) = content.strip_prefix("- ") {
+            content = rest;
+            content_start += 2;
+        }
+        let lower = content.to_ascii_lowercase();
+        for marker in [
+            "exact reviewed pr head",
+            "exact current pr head",
+            "exact current head",
+            "at exact pr head",
+        ] {
+            if lower.starts_with(marker) {
+                let (head, offset) = head_value(&content[marker.len()..])?;
+                let start = start + content_start + marker.len() + offset;
                 matches.push(Located {
                     value: head,
                     start,
@@ -95,7 +123,7 @@ fn reviewed_head(raw: &str) -> Result<Option<Located>, String> {
                 });
             }
         }
-        if let Some((head, offset)) = labelled_sha(line) {
+        if let Some((head, offset)) = labelled_head(line)? {
             let start = start + offset;
             matches.push(Located {
                 value: head,
@@ -110,9 +138,14 @@ fn reviewed_head(raw: &str) -> Result<Option<Located>, String> {
 fn terminal_result(raw: &str) -> Result<Option<Located>, String> {
     let mut matches = Vec::new();
     let lines = operative_lines(raw);
+    let terminal_handoff = context::section_membership(
+        &lines,
+        |_| true,
+        |level, title| level == 2 && title.eq_ignore_ascii_case("terminal handoff"),
+    );
     for (index, (start, _, line)) in lines.iter().enumerate() {
         let lower = line.trim().to_ascii_lowercase();
-        let has_terminal_label = terminal_label(&lower);
+        let has_terminal_label = terminal_label(&lower, terminal_handoff[index]);
         let value = if lower.starts_with("##") && lower.contains("blocking findings") {
             result_value(line).map(|(result, offset)| (result, *start + offset))
         } else if has_terminal_label {
@@ -144,27 +177,59 @@ fn terminal_result(raw: &str) -> Result<Option<Located>, String> {
     unique(matches, "markdown terminal result")
 }
 
-fn terminal_label(line: &str) -> bool {
+fn terminal_label(line: &str, in_terminal_handoff: bool) -> bool {
     let line = line.trim();
     let line = line.strip_prefix('-').map_or(line, str::trim_start);
     let line = line.trim_start_matches('#').trim_start();
     let label = line.split_once(':').map_or(line, |(label, _)| label);
     matches!(label.trim(), "terminal result" | "terminal verdict")
+        || (in_terminal_handoff && label.trim() == "result")
 }
 
-fn labelled_sha(line: &str) -> Option<(String, usize)> {
+pub(super) fn labelled_head(line: &str) -> Result<Option<(String, usize)>, String> {
     let trimmed = line.trim().trim_start_matches("- ").trim();
-    let (label, value) = trimmed.split_once(':')?;
+    let Some((label, value)) = trimmed.split_once(':') else {
+        return Ok(None);
+    };
     let label = label.to_ascii_lowercase().replace(['-', '_'], " ");
     if !matches!(
         label.trim(),
-        "exact head" | "exact reviewed pr head" | "reviewed head"
+        "exact head"
+            | "exact reviewed pr head"
+            | "exact current pr head"
+            | "exact current head"
+            | "reviewed head"
     ) {
-        return None;
+        return Ok(None);
     }
-    let (head, offset) = find_sha(value)?;
-    let line_offset = line.find(value)?;
-    Some((head, line_offset + offset))
+    let (head, offset) = exact_sha_value(value)
+        .ok_or_else(|| "markdown reviewed head label lacks a SHA".to_owned())?;
+    let line_offset = line.find(value).unwrap_or_default();
+    Ok(Some((head, line_offset + offset)))
+}
+
+fn head_value(value: &str) -> Result<(String, usize), String> {
+    let leading = value.len() - value.trim_start().len();
+    let mut start = leading;
+    if value[start..].starts_with(':') {
+        start += 1;
+        start += value[start..].len() - value[start..].trim_start().len();
+    }
+    let (head, offset) = exact_sha_value(&value[start..])
+        .ok_or_else(|| "markdown reviewed head label lacks a SHA".to_owned())?;
+    Ok((head, start + offset))
+}
+
+pub(super) fn exact_sha_value(value: &str) -> Option<(String, usize)> {
+    let leading = value.len() - value.trim_start().len();
+    let value = &value[leading..];
+    let head = value.trim_matches(|character: char| "`.,;:)]".contains(character));
+    fields::is_sha(head).then(|| {
+        (
+            head.to_owned(),
+            leading + value.find(head).unwrap_or_default(),
+        )
+    })
 }
 
 fn unique(matches: Vec<Located>, label: &str) -> Result<Option<Located>, String> {
@@ -178,52 +243,6 @@ fn unique(matches: Vec<Located>, label: &str) -> Result<Option<Located>, String>
     Ok(Some(first))
 }
 
-pub(super) fn operative_lines(raw: &str) -> Vec<(usize, usize, &str)> {
-    let mut in_fence = false;
-    let mut start = 0;
-    let mut result = Vec::new();
-    for part in raw.split_inclusive('\n') {
-        let without_newline = part.strip_suffix('\n').unwrap_or(part);
-        let line = without_newline
-            .strip_suffix('\r')
-            .unwrap_or(without_newline);
-        let trimmed = line.trim_start();
-        let end = start + line.len();
-        if trimmed.starts_with("```") {
-            in_fence = !in_fence;
-        } else if !in_fence && !trimmed.starts_with('>') {
-            result.push((start, end, line));
-        }
-        start += part.len();
-    }
-    result
-}
-
 pub(super) fn result_value(value: &str) -> Option<(String, usize)> {
     result::parse(value)
-}
-
-fn find_sha(value: &str) -> Option<(String, usize)> {
-    let mut start = None;
-    for (index, character) in value
-        .char_indices()
-        .chain(std::iter::once((value.len(), '\0')))
-    {
-        if character.is_ascii_hexdigit() {
-            start.get_or_insert(index);
-        } else if let Some(start) = start.take() {
-            let part = &value[start..index];
-            if fields::is_sha(part) {
-                return Some((part.to_owned(), start));
-            }
-        }
-    }
-    None
-}
-
-fn clean(value: &str) -> String {
-    value
-        .trim()
-        .trim_matches(|character: char| character == '`' || ",.;()[]".contains(character))
-        .to_owned()
 }
