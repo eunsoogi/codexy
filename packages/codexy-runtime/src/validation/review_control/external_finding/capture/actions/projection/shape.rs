@@ -1,6 +1,6 @@
 use serde_json::{Map, Value};
 
-use super::{FIELDS, normalize_log};
+use super::{FIELDS, normalize_log, ownership};
 use crate::validation::review_control::external_finding::capture::actions::MAX_LOG_BYTES;
 use crate::validation::review_control::pre_pr::{object, reject_unknown, text};
 
@@ -26,6 +26,7 @@ pub(super) fn check_shape(capture: &Map<String, Value>) -> Result<(), String> {
             "step",
             "relation",
             "issueRelation",
+            "sourceOwnership",
             "log",
             "projection",
         ],
@@ -76,6 +77,7 @@ pub(super) fn check_shape(capture: &Map<String, Value>) -> Result<(), String> {
         "issueRelation",
         &["repository", "number", "url", "association"],
     )?;
+    ownership::check_shape(raw.get("sourceOwnership"))?;
     reject_unknown(
         object(raw.get("projection"), "Actions raw projection")?,
         &FIELDS,

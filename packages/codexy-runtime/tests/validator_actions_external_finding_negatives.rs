@@ -15,7 +15,7 @@ const CURRENT: &str = "dddddddddddddddddddddddddddddddddddddddd";
 
 fn control() -> Value {
     let mut control = direct_state::post_cap_control_with_findings(
-        actions_fixture::OWNING_ISSUE,
+        actions_fixture::TARGET_ISSUE,
         FULL,
         DELTA,
         CURRENT,
@@ -74,6 +74,7 @@ where
         .env_path("ACTIONS_JOBS", &fixture.jobs)
         .env_path("ACTIONS_PULLS", &fixture.pulls)
         .env_path("ACTIONS_TIMELINE", &fixture.timeline)
+        .env_path("ACTIONS_SOURCE_OWNERSHIP", &fixture.source_ownership)
         .env_path("ACTIONS_LOG", &fixture.log);
     let result = producer.output()?;
     assert!(!result.status.success(), "negative case unexpectedly passed: {name}");

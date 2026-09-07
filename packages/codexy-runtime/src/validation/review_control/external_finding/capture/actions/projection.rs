@@ -6,6 +6,7 @@ use super::Locator;
 
 mod parser;
 use parser::parse_log;
+mod ownership;
 mod shape;
 use shape::check_shape;
 
@@ -75,7 +76,8 @@ pub(super) fn check(
     let raw = object(capture.get("raw"), "Actions raw capture")?;
     let projection = object(raw.get("projection"), "Actions raw projection")?;
     reject_unknown(projection, &FIELDS, "Actions raw projection")?;
-    let expected = build(raw, None, None)?;
+    let locator = Locator::from_source(source)?;
+    let expected = build(raw, &locator, None)?;
     if FIELDS.iter().any(|field| {
         source.get(*field) != projection.get(*field) || source.get(*field) != expected.get(*field)
     }) {
@@ -102,12 +104,12 @@ pub(super) fn project(
     locator: &Locator,
     expected_commit: Option<&str>,
 ) -> Result<Map<String, Value>, String> {
-    build(raw, Some(locator), expected_commit)
+    build(raw, locator, expected_commit)
 }
 
 fn build(
     raw: &Map<String, Value>,
-    locator: Option<&Locator>,
+    locator: &Locator,
     expected_commit: Option<&str>,
 ) -> Result<Map<String, Value>, String> {
     let repository = text(raw, "repository", "Actions raw capture")?;
@@ -165,32 +167,43 @@ fn build(
     {
         return Err("Actions issue relation is not authenticated".into());
     }
-    if let Some(locator) = locator {
-        if locator.repository != repository
-            || locator.owning_issue != issue_number
-            || locator.pull_request != pull_number
-            || locator.workflow_run != run_id
-            || locator.run_attempt != attempt
-            || locator.job != job_id
-            || locator.workflow_path != workflow_path
-            || locator.job_name != text(job, "name", "Actions job")?
-            || locator.step_name != text(step, "name", "Actions failed step")?
-        {
-            return Err("authenticated GitHub Actions response does not match locator".into());
-        }
+    if locator.repository != repository
+        || locator.owning_issue != issue_number
+        || locator.pull_request != pull_number
+        || locator.workflow_run != run_id
+        || locator.run_attempt != attempt
+        || locator.job != job_id
+        || locator.workflow_path != workflow_path
+        || locator.job_name != text(job, "name", "Actions job")?
+        || locator.step_name != text(step, "name", "Actions failed step")?
+    {
+        return Err("authenticated GitHub Actions response does not match locator".into());
+    }
+    let source_ownership =
+        ownership::authenticated_projection(raw.get("sourceOwnership"), locator)?;
+    let source_pull = object(
+        source_ownership.get("pullRequest"),
+        "Actions source ownership pull request projection",
+    )?;
+    let source_issue = object(
+        source_ownership.get("owningIssue"),
+        "Actions source ownership issue projection",
+    )?;
+    if source_pull.get("number") != Some(&Value::from(pull_number))
+        || source_issue.get("number") != Some(&Value::from(issue_number))
+        || source_pull.get("repository") != Some(&Value::String(repository.to_owned()))
+        || source_issue.get("repository") != Some(&Value::String(repository.to_owned()))
+    {
+        return Err(
+            "Actions timeline relation does not match authenticated source ownership".into(),
+        );
     }
     let failure = parse_log(text(raw, "log", "Actions raw capture")?, repository)?;
     let finding_id = finding_id(run_id, attempt, job_id, step_number, &failure.test);
     Ok(Map::from_iter([
         ("repository".into(), Value::String(repository.to_owned())),
-        (
-            "owningIssue".into(),
-            json!({"repository":repository,"number":issue_number,"url":format!("https://github.com/{repository}/issues/{issue_number}"),"association":issue["association"]}),
-        ),
-        (
-            "pullRequest".into(),
-            json!({"repository":repository,"number":pull_number,"url":relation["url"]}),
-        ),
+        ("owningIssue".into(), Value::Object(source_issue.clone())),
+        ("pullRequest".into(), Value::Object(source_pull.clone())),
         (
             "source".into(),
             json!({"kind":"github-actions","event":event,"workflowRun":run_id,"runAttempt":attempt,"workflowId":workflow_id,"workflowPath":workflow_path,"job":job_id,"jobName":job["name"],"jobAttempt":job_attempt,"jobHeadSha":job["head_sha"],"stepNumber":step_number,"stepName":step["name"],"stepConclusion":step["conclusion"]}),
@@ -202,6 +215,13 @@ fn build(
             json!([{"id":finding_id,"path":failure.path,"test":failure.test,"exception":failure.exception,"line":failure.line}]),
         ),
     ]))
+}
+
+pub(super) fn project_source_ownership(
+    response: &Value,
+    locator: &Locator,
+) -> Result<Map<String, Value>, String> {
+    ownership::project(response, locator)
 }
 
 fn finding_id(run: u64, attempt: u64, job: u64, step: u64, test: &str) -> String {

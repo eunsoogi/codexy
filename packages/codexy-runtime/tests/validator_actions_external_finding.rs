@@ -11,7 +11,9 @@ mod graph;
 #[path = "support/actions_external_finding_fixture.rs"]
 mod actions_fixture;
 
-use actions_fixture::{ActionsGhFixture, FINDING_PATH, OWNING_ISSUE, RUN_ID, locator};
+use actions_fixture::{
+    ActionsGhFixture, FINDING_PATH, OWNING_ISSUE, RUN_ID, TARGET_ISSUE, locator,
+};
 
 #[test]
 fn actions_source_reaches_producer_build_and_handoff() -> TestResult {
@@ -21,7 +23,7 @@ fn actions_source_reaches_producer_build_and_handoff() -> TestResult {
         FINDING_PATH,
     )?;
     let raw_control = direct_state::post_cap_control_with_findings(
-        OWNING_ISSUE,
+        TARGET_ISSUE,
         direct_state::SYNTHETIC_FULL_HEAD,
         direct_state::SYNTHETIC_DELTA_HEAD,
         direct_state::SYNTHETIC_CURRENT_HEAD,
@@ -77,6 +79,7 @@ fn actions_source_reaches_producer_build_and_handoff() -> TestResult {
         .env_path("ACTIONS_JOBS", &fixture.jobs)
         .env_path("ACTIONS_PULLS", &fixture.pulls)
         .env_path("ACTIONS_TIMELINE", &fixture.timeline)
+        .env_path("ACTIONS_SOURCE_OWNERSHIP", &fixture.source_ownership)
         .env_path("ACTIONS_LOG", &fixture.log);
     let result = producer.output()?;
     assert!(
@@ -99,6 +102,15 @@ fn actions_source_reaches_producer_build_and_handoff() -> TestResult {
         produced_control["post_cap_re_review"]["qualifying_change"]["external_finding"]
             ["findings"][0]["path"],
         FINDING_PATH
+    );
+    assert_eq!(
+        produced_control["post_cap_re_review"]["qualifying_change"]["external_finding"]
+            ["owningIssue"]["number"],
+        OWNING_ISSUE
+    );
+    assert_eq!(
+        current["capture"]["owningIssue"]["number"],
+        TARGET_ISSUE
     );
 
     let current_path = temporary.path().join("current-pr-state.json");
@@ -133,6 +145,7 @@ fn actions_source_reaches_producer_build_and_handoff() -> TestResult {
         .env_path("ACTIONS_JOBS", &fixture.jobs)
         .env_path("ACTIONS_PULLS", &fixture.pulls)
         .env_path("ACTIONS_TIMELINE", &fixture.timeline)
+        .env_path("ACTIONS_SOURCE_OWNERSHIP", &fixture.source_ownership)
         .env_path("ACTIONS_LOG", &fixture.log);
     let built = build.output()?;
     assert!(
@@ -161,6 +174,7 @@ fn actions_source_reaches_producer_build_and_handoff() -> TestResult {
         .env_path("ACTIONS_JOBS", &fixture.jobs)
         .env_path("ACTIONS_PULLS", &fixture.pulls)
         .env_path("ACTIONS_TIMELINE", &fixture.timeline)
+        .env_path("ACTIONS_SOURCE_OWNERSHIP", &fixture.source_ownership)
         .env_path("ACTIONS_LOG", &fixture.log);
     let handed_off = handoff.output()?;
     assert!(

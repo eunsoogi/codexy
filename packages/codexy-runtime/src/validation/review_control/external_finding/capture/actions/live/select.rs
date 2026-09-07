@@ -147,7 +147,11 @@ pub(super) fn select_pull(response: &Value, locator: &Locator) -> Result<Value, 
     }))
 }
 
-pub(super) fn select_issue(response: &Value, locator: &Locator) -> Result<Value, String> {
+pub(super) fn select_issue(
+    response: &Value,
+    locator: &Locator,
+    source_ownership: &Value,
+) -> Result<Value, String> {
     let events = response
         .as_array()
         .ok_or_else(|| "Actions issue timeline response is invalid".to_owned())?;
@@ -178,6 +182,17 @@ pub(super) fn select_issue(response: &Value, locator: &Locator) -> Result<Value,
         .get("issue")
         .and_then(Value::as_object)
         .ok_or("Actions owning issue relation is missing issue identity")?;
+    let ownership = object(
+        source_ownership.get("projection"),
+        "Actions source ownership projection",
+    )?;
+    let owning_issue = object(
+        ownership.get("owningIssue"),
+        "Actions source ownership issue projection",
+    )?;
+    if issue.get("number") != owning_issue.get("number") {
+        return Err("Actions timeline issue does not match authenticated source ownership".into());
+    }
     let repository = issue
         .get("repository")
         .and_then(Value::as_object)

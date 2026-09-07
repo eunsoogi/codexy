@@ -11,6 +11,7 @@ pub(crate) const JOB_ID: u64 = 8001;
 pub(crate) const WORKFLOW_ID: u64 = 9001;
 pub(crate) const PULL_REQUEST: u64 = 12;
 pub(crate) const OWNING_ISSUE: u64 = 11;
+pub(crate) const TARGET_ISSUE: u64 = 13;
 pub(crate) const FINDING_PATH: &str = "packages/getcodexy/tests/test_component_capability_probe.py";
 const STEP_STARTED: &str = "2026-01-01T00:01:00Z";
 const STEP_COMPLETED: &str = "2026-01-01T00:02:00Z";
@@ -43,8 +44,8 @@ pub(crate) fn snapshot(base: &str, head: &str, control: Option<Value>) -> Value 
             "authenticated": true,
             "owningIssue": {
                 "repository": REPOSITORY,
-                "number": OWNING_ISSUE,
-                "url": format!("https://github.com/{REPOSITORY}/issues/{OWNING_ISSUE}"),
+                "number": TARGET_ISSUE,
+                "url": format!("https://github.com/{REPOSITORY}/issues/{TARGET_ISSUE}"),
                 "association": "linked-issue-reference"
             }
         }
@@ -61,6 +62,7 @@ pub(crate) struct ActionsGhFixture {
     pub(crate) jobs: PathBuf,
     pub(crate) pulls: PathBuf,
     pub(crate) timeline: PathBuf,
+    pub(crate) source_ownership: PathBuf,
     pub(crate) log: PathBuf,
 }
 
@@ -72,6 +74,7 @@ impl ActionsGhFixture {
         let jobs = root.join("jobs.json");
         let pulls = root.join("pulls.json");
         let timeline = root.join("timeline.json");
+        let source_ownership = root.join("source-ownership.json");
         let log = root.join("job.log");
         fs::write(
             &run,
@@ -116,6 +119,28 @@ impl ActionsGhFixture {
             }]))?,
         )?;
         fs::write(
+            &source_ownership,
+            serde_json::to_vec(&json!({
+                "data": {
+                    "repository": {
+                        "pullRequest": {
+                            "number": PULL_REQUEST,
+                            "url": format!("https://github.com/{REPOSITORY}/pull/{PULL_REQUEST}"),
+                            "repository": {"nameWithOwner": REPOSITORY},
+                            "closingIssuesReferences": {
+                                "nodes": [{
+                                    "number": OWNING_ISSUE,
+                                    "url": format!("https://github.com/{REPOSITORY}/issues/{OWNING_ISSUE}"),
+                                    "repository": {"nameWithOwner": REPOSITORY}
+                                }],
+                                "pageInfo": {"hasNextPage": false}
+                            }
+                        }
+                    }
+                }
+            }))?,
+        )?;
+        fs::write(
             &log,
             "2026-01-01T00:01:01Z ERROR: packages.getcodexy.tests.test_component_capability_probe.CapabilityProcessTests.test_process_result_captures_bounded_diagnostics (packages.getcodexy.tests.test_component_capability_probe.CapabilityProcessTests)\n2026-01-01T00:01:02Z Traceback (most recent call last):\n2026-01-01T00:01:03Z   File \"D:\\a\\codexy-fixture\\codexy-fixture\\packages\\getcodexy\\tests\\test_component_capability_probe.py\", line 57, in test_process_result_captures_bounded_diagnostics\n2026-01-01T00:01:04Z   File \"C:\\python\\lib\\pathlib.py\", line 1195, in cwd\n2026-01-01T00:01:05Z   File \"C:\\python\\lib\\pathlib.py\", line 1223, in absolute\n2026-01-01T00:01:06Z NotImplementedError: cannot instantiate 'PosixPath' on your system\n",
         )?;
@@ -129,6 +154,7 @@ case "$*" in
   *"/actions/runs/"*"/attempts/1"*) cat "$ACTIONS_RUN" ;;
   *"/commits/"*"/pulls?per_page=100"*) cat "$ACTIONS_PULLS" ;;
   *"/issues/"*"/timeline?per_page=100"*) cat "$ACTIONS_TIMELINE" ;;
+  *"graphql"*) cat "$ACTIONS_SOURCE_OWNERSHIP" ;;
   *"/actions/jobs/"*"/logs"*) cat "$ACTIONS_LOG" ;;
   *) echo "unexpected gh request: $*" >&2; exit 1 ;;
 esac
@@ -141,6 +167,7 @@ esac
             jobs,
             pulls,
             timeline,
+            source_ownership,
             log,
         })
     }
