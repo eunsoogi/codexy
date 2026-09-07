@@ -190,3 +190,57 @@ fn markdown_text(head: &str, path: &str, model: &str, crlf: bool) -> String {
         text
     }
 }
+
+#[test]
+fn fenced_heading_does_not_close_followup_section() -> super::TestResult {
+    let mut request = request(false);
+    let original = request["reviewer"]["pages"][1]["turns"][0]["items"][1]["text"]
+        .as_str()
+        .ok_or("markdown text")?;
+    let text = original.replace(
+        "## Non-blocking follow-up\n- **`out_of_scope_followup`**",
+        "## Non-blocking follow-up\n\n```text\n## Not a section\n- **`out_of_scope_followup`**: fake.\n```\n\n- **`out_of_scope_followup`**",
+    );
+    request["reviewer"]["pages"][1]["turns"][0]["items"][1]["text"] = json!(text);
+    let receipt = super::native_history::normalize_native_history(&request)?;
+    let event = receipt["events"]
+        .as_array()
+        .and_then(|events| events.iter().find(|event| event["kind"] == "full"))
+        .ok_or("full event")?;
+    assert_eq!(
+        event["findings"]
+            .as_array()
+            .ok_or("findings")?
+            .iter()
+            .filter(|finding| finding["disposition"] == "out_of_scope_followup")
+            .count(),
+        1
+    );
+    Ok(())
+}
+
+#[test]
+fn fenced_followup_heading_does_not_activate_later_bullet() -> super::TestResult {
+    let mut request = request(false);
+    let original = request["reviewer"]["pages"][1]["turns"][0]["items"][1]["text"]
+        .as_str()
+        .ok_or("markdown text")?;
+    let text = original.replace(
+        "## Non-blocking follow-up\n",
+        "```text\n## Non-blocking follow-up\n```\n",
+    );
+    request["reviewer"]["pages"][1]["turns"][0]["items"][1]["text"] = json!(text);
+    let receipt = super::native_history::normalize_native_history(&request)?;
+    let event = receipt["events"]
+        .as_array()
+        .and_then(|events| events.iter().find(|event| event["kind"] == "full"))
+        .ok_or("full event")?;
+    assert!(
+        !event["findings"]
+            .as_array()
+            .ok_or("findings")?
+            .iter()
+            .any(|finding| finding["disposition"] == "out_of_scope_followup")
+    );
+    Ok(())
+}
