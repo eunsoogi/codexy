@@ -1,7 +1,8 @@
 # Project Brief Contract
 
 This file is the readable output contract and deterministic corpus for the
-`project-brief` skill. It replaces the former machine-oriented references.
+`project-brief` skill. Its v1 schema describes the explicit machine receipt; the
+default human response is a natural-language summary.
 
 ## Contract identity
 
@@ -12,6 +13,8 @@ This file is the readable output contract and deterministic corpus for the
 
 ## Output fields
 
+These fields apply to machine receipt mode only.
+
 - `objective`, `owner`, `verified_phase`, `decision_required`, `next_action`,
   and `done_when`: nonempty strings
 - `changes_since_touch` and `evidence_handle`: lists with at least one nonempty
@@ -21,7 +24,15 @@ This file is the readable output contract and deterministic corpus for the
 - The result contains exactly the eight fields above in the stated order.
 - The projection copies recorded values only. It keeps proof, merge,
   publication, public verification, and milestone closure as distinct phases.
-- Repository, GitHub, task, release, and proof state remain unchanged.
+
+## Mode selection
+
+- A natural-language status request uses a concise human summary by default.
+- An explicit machine/receipt request or an existing machine consumer uses the
+  eight fields above, in the stated order, without a prose wrapper.
+- Both modes use the same current recorded facts and uncertainty; human mode
+  does not require hashes, fixed fields, or parser success. Neither mode changes
+  repository, GitHub, task, release, or proof state.
 
 ## Boundary responses
 
