@@ -223,15 +223,5 @@ fn empty_graph_file(file: &str) -> GraphFile {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn reset_releases_oversized_file_index_capacity() {
-        let mut cache = ParseCache::default();
-        cache.files = Vec::with_capacity(MAX_CACHE_BYTES / size_of::<String>() + 1);
-        assert!(cache.files.capacity() * size_of::<String>() > MAX_CACHE_BYTES);
-        cache.reset();
-        assert_eq!(cache.files.capacity(), 0);
-    }
-}
+#[path = "cache_unit_tests.rs"]
+mod tests;
