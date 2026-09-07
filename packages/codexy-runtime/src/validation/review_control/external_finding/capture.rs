@@ -1,5 +1,6 @@
 use serde_json::{Map, Value};
 
+mod actions;
 mod live;
 mod projection;
 
@@ -14,24 +15,63 @@ const RAW_FIELDS: [&str; 8] = [
     "findings",
 ];
 
-pub(super) use live::{read_live, read_live_from_source};
+pub(super) fn read_live(locator: &Value, expected_commit: Option<&str>) -> Result<Value, String> {
+    live::read_graphql_live(locator, expected_commit)
+}
+
+pub(super) fn read_actions_live(
+    locator: &Value,
+    expected_commit: Option<&str>,
+) -> Result<Value, String> {
+    actions::read_live(locator, expected_commit)
+}
+
+pub(super) fn read_live_from_source(
+    source: &Value,
+    expected_commit: Option<&str>,
+) -> Result<Value, String> {
+    let capture = source
+        .get("capture")
+        .and_then(Value::as_object)
+        .ok_or_else(|| "authenticated external finding requires capture".to_owned())?;
+    match capture.get("method").and_then(Value::as_str) {
+        Some("graphql") => live::read_graphql_live_from_source(source, expected_commit),
+        Some("actions") => actions::read_live_from_source(source, expected_commit),
+        _ => Err("authenticated external finding has an unsupported capture method".into()),
+    }
+}
 
 pub(super) fn check(
     capture: &Map<String, Value>,
     source: &Map<String, Value>,
 ) -> Result<(), String> {
-    projection::check(capture, source)
+    match capture.get("method").and_then(Value::as_str) {
+        Some("graphql") => projection::check(capture, source),
+        Some("actions") => actions::check(capture, source),
+        _ => Err("external finding capture has an unsupported method".into()),
+    }
 }
 
 pub(super) fn compare_projection(
     expected: &Map<String, Value>,
     actual: &Map<String, Value>,
 ) -> Result<(), String> {
-    if RAW_FIELDS
-        .iter()
-        .any(|field| expected.get(*field) != actual.get(*field))
+    match expected
+        .get("capture")
+        .and_then(Value::as_object)
+        .and_then(|capture| capture.get("method"))
+        .and_then(Value::as_str)
     {
-        return Err("persisted external finding does not match live GitHub source".into());
+        Some("graphql") => {
+            if RAW_FIELDS
+                .iter()
+                .any(|field| expected.get(*field) != actual.get(*field))
+            {
+                return Err("persisted external finding does not match live GitHub source".into());
+            }
+            Ok(())
+        }
+        Some("actions") => actions::compare_projection(expected, actual),
+        _ => Err("persisted external finding has an unsupported capture method".into()),
     }
-    Ok(())
 }

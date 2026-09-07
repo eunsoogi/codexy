@@ -16,6 +16,20 @@ pub(super) fn qualifying_change_to_head(control: &Value) -> Option<&str> {
     qualifying_change(control, "to_head")
 }
 
+pub(super) fn has_caller_supplied_finding(request: &Value) -> bool {
+    [
+        "authenticated_external_finding",
+        "authenticated_external_finding_capture",
+        "authenticated_actions_finding",
+        "authenticated_actions_finding_capture",
+        "authenticated_finding_disposition",
+        "authenticated_finding_disposition_capture",
+        "finding_disposition",
+    ]
+    .into_iter()
+    .any(|key| request.get(key).is_some())
+}
+
 fn qualifying_change<'a>(control: &'a Value, key: &str) -> Option<&'a str> {
     control
         .get("post_cap_re_review")

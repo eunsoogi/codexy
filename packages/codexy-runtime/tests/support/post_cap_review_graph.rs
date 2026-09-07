@@ -29,6 +29,13 @@ pub(crate) struct SyntheticRepository {
 
 impl SyntheticRepository {
     pub(crate) fn create(root: &Path) -> TestResult<Self> {
+        Self::create_with_external_path(root, EXTERNAL_FINDING_PATH)
+    }
+
+    pub(crate) fn create_with_external_path(
+        root: &Path,
+        external_finding_path: &str,
+    ) -> TestResult<Self> {
         let path = root.join("repository");
         fs::create_dir_all(&path)?;
         git(&path, &["init", "--quiet"])?;
@@ -60,7 +67,7 @@ impl SyntheticRepository {
         let repair_current = commit(&path, "current repair head")?;
 
         git(&path, &["switch", "--create", "external", &delta])?;
-        write(&path, EXTERNAL_FINDING_PATH, "repaired external finding\n")?;
+        write(&path, external_finding_path, "repaired external finding\n")?;
         let external_evidence = commit(&path, "authenticated external finding repair")?;
         write(&path, "external-current.txt", "current\n")?;
         let external_current = commit(&path, "current external finding head")?;

@@ -7,6 +7,13 @@ pub(crate) fn read_live(locator: &Value, expected_commit: Option<&str>) -> Resul
     capture::read_live(locator, expected_commit)
 }
 
+pub(crate) fn read_actions_live(
+    locator: &Value,
+    expected_commit: Option<&str>,
+) -> Result<Value, String> {
+    capture::read_actions_live(locator, expected_commit)
+}
+
 pub(crate) fn refresh_live(control: &mut Value) -> Result<(), String> {
     let (source, from_head) = {
         let control_object = object(Some(control), "review control state")?;
