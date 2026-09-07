@@ -71,7 +71,11 @@ MUST use this flow after compaction and before handoff:
    MUST NOT wake the Orchestrator. Workers MUST send compact deltas for terminal
    child state, fatal/gate/final callbacks, Watcher failure or drift, Sentinel
    verdict, PR creation, new HEAD, GitHub check-state change, actionable review feedback,
-   or review-thread resolution.
+   or review-thread resolution. A Watcher drift event is qualifying only when
+   its report is grounded in a changed artifact, diff, or relevant actual tool
+   call and identifies the conflicting current scope, ownership, or user
+   constraint without a repair directive; relayed Worker or Orchestrator
+   findings MUST remain distinct from Watcher-first detection.
 3. **Validate stable event identity**: every event MUST use a deterministic
    `<kind>|<lane>|<subject>` identity. The ledger MUST reject a repeated
    identity before it changes counters or next actions.

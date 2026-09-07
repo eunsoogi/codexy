@@ -62,9 +62,11 @@
    - MUST re-read files and outputs before trusting child results.
    - MUST preserve user changes and unrelated work.
    - MUST treat Worker callbacks and Watcher observations as signals, not
-     acceptance. Deduplicate the same event, verify any correction at the next
-     actual call, diff, or result, and preserve the creating surface and native
-     review history.
+     acceptance. For a Watcher drift signal, the observed artifact, diff, or
+     actual tool call MUST be compared with current scope, ownership, and user
+     constraints. Only the Orchestrator may judge and instruct; the Worker
+     repairs, and the Orchestrator verifies the next relevant call, diff, or
+     result. Preserve the creating surface and native review history.
    - MUST resolve cross-lane conflicts in the orchestrator thread.
    - MUST route child-owned review feedback back to the owning child thread.
    - If the child owner stops responding, MUST stop and report the PR head,

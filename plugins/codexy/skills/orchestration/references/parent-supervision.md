@@ -40,8 +40,9 @@ thinking effort.
   accepts a UUID is not a substitute for the required app-task surface.
 - The Watcher MUST remain read-only observation. It MAY report a material failure,
   drift, contradiction, scope expansion, missing callback, or unavailable
-  channel. It MUST NOT edit worker files, correct a worker, decide acceptance,
-  replace a worker, or recruit another watcher.
+  channel. It MUST NOT edit worker files, direct or message a Worker to change
+  course, supply a repair directive, correct a Worker, decide acceptance, verify
+  a correction, replace a Worker, or recruit another Watcher.
 - Codex MUST use the canonical role mapping and separate configuration metadata
   above for Orchestrator, Watcher, and Worker routing.
 - Codex MUST distinguish app workers and app watchers from native subagents and packaged
@@ -69,6 +70,20 @@ thinking effort.
   scope expansion, or failure justifies a deeper inspection. Codex MUST NOT
   impose a fixed phase count, universal approval before edits, a new mandatory
   receipt, or exact report wording.
+- At a useful checkpoint or after a concrete signal, the Watcher MUST inspect the
+  smallest changed artifact, diff, or relevant actual tool call and compare it
+  with the currently accepted issue scope, implementation ownership, and latest
+  user constraints. It MUST NOT rely only on active/idle state, HEAD, or a
+  Worker self-report. The Watcher MUST distinguish ordinary in-scope progress
+  from actual drift and report only the material distinction.
+- A credible drift report MUST identify the concrete source or call inspected,
+  the conflicting current requirement, and the consequence or remaining
+  uncertainty in concise natural prose; it MUST NOT require a fixed packet
+  schema or contain a repair directive. The Watcher reports only; the
+  Orchestrator judges and instructs the Worker, the Worker repairs, and the
+  Orchestrator verifies the next relevant source, call, diff, or result. A
+  later Watcher observation may report a new mismatch but MUST remain read-only
+  and MUST NOT own that correction loop.
 
 ## Waiting and direct correction
 
@@ -156,6 +171,17 @@ thinking effort.
   comparisons proportionate to the changed boundary rather than copying a
   hidden answer. Observed cumulative usage totals MUST NOT be presented as
   priced, cached, or proven savings without the corresponding measurement.
+- The bounded real-drift/correction evaluation MUST distinguish Watcher-first
+  artifact or tool-call detection from a Worker or Orchestrator finding merely
+  relayed through the Watcher. Where a real current fault is available, it MUST
+  label the actor-separated sequence as Watcher detection/report,
+  Orchestrator judgement/instruction, Worker repair, and Orchestrator
+  verification, and require the actual report and next relevant readback; it
+  MUST NOT manufacture a production fault when none exists. Legitimate
+  in-scope progress and no-drift checkpoints MUST control false alarms. The
+  evaluator MUST report detection and correction latency, extra reads, and
+  role-separated usage when available; missing telemetry remains unmeasured,
+  and no savings or coverage claim may be forced.
 - Codex MUST finish with current branch, PR state, exact head/base, changed files, actual
   app observations, evaluation limitations, measured versus unmeasured usage,
   retained review history, unresolved findings, and one Orchestrator-owned next

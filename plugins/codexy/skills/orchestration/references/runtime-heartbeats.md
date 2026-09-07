@@ -31,7 +31,8 @@ heartbeat registration; it ends in desktop-origin root re-entry.
 An explicitly authorized Watcher MUST be an independent Codex app task in the
 same saved project as its assigned Workers. It observes Worker callbacks and
 task state, and MUST report material drift or an unavailable channel. It MUST
-remain read-only: it MUST NOT edit, correct, accept, replace, or recruit. The actual
+remain read-only: it MUST NOT edit, direct or message a Worker, supply a repair
+directive, correct, accept, verify a correction, replace, or recruit. The actual
 creating tool distinguishes this surface from native subagents and packaged
 reviewers. A Watcher callback is a signal, not acceptance, and repeated
 unchanged observations MUST be suppressed. Unchanged active-goal reads, routine
@@ -87,9 +88,11 @@ action. The observed-state identity MUST be a deterministic fingerprint of the
 gate inputs, such as a PR head plus check/review/thread state. Eligible material
 events are a terminal child result, a Sentinel verdict, a new HEAD, a GitHub
 check-state change, actionable review feedback, review-thread resolution, or an
-explicit user/Orchestrator message. The prompt MUST suppress unchanged observations
-and MUST wake the owner only for a material gate change or an explicit
-user/Orchestrator message.
+explicit user/Orchestrator message. The prompt MUST suppress unchanged
+observations and MUST wake the owner only for a material gate change or an
+explicit user/Orchestrator message. Ordinary app-thread Watcher reports use the
+direct app-message path defined in [parent-supervision.md](parent-supervision.md)
+and are not heartbeat events or a reason to create a heartbeat.
 
 A live Sentinel, pending Worker, queued CI, pending connector review, Orchestrator
 authorization, dependency integration, or resource slot is a nonterminal
