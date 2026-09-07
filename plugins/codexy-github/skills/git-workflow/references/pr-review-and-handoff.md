@@ -13,10 +13,11 @@ draft while proof or known risk is incomplete.
 
 For ordinary authorized GitHub metadata or remote operations, including an
 issue/PR update, review, workflow, release, or merge request, do not require a
-new issue, local branch/worktree, prescribed title/body/footer, transcript
+new issue, local branch/worktree, prescribed body/footer, transcript
 reconstruction, or diagnostic invocation solely because this plugin is
-installed. Follow the actual user or repository choice and the host, connector,
-and GitHub response.
+installed. The existing PR-title and squash-subject checks remain effective on
+their supported paths; otherwise follow the actual user or repository choice and
+the host, connector, and GitHub response.
 
 Prefer an existing repository template when one is selected. If none is
 selected, offer a concise `Summary` and `Verification` example and expand it
@@ -28,14 +29,16 @@ free-form description, renamed/omitted/reordered sections, or another language
 MUST NOT be blocked, rewritten, or sent for extra approval by the distributed
 default.
 
-When the PR contract above is selected, the PR title MUST use
-`type(scope): description`, with a nonempty valid scope and a nonempty
-description. An optional breaking marker goes after the scope:
-`feat(task)!: change behavior`. The PR title MUST NOT include an issue or PR
-number. The squash subject MUST be the validated PR title followed by one ASCII
-space and `(#<actual PR number>)`. It MUST be added only after the captured PR
-title has passed validation. Otherwise, use the actual user or repository title
-and merge-message convention.
+The retained PR-title check applies on supported PR creation and title-edit
+paths. On those paths, the PR title MUST use `type(scope): description`, with a
+nonempty valid scope and a nonempty description. An optional breaking marker
+goes after the scope: `feat(task)!: change behavior`. The PR title MUST NOT
+include an issue or PR number. The retained squash-subject check applies on
+squash merges. The squash subject MUST be the validated PR title followed by one
+ASCII space and `(#<actual PR number>)`. It MUST be added only after the
+captured PR title has passed validation. These retained title checks do not
+impose a body template, review quota, fixed approval phrase, or exclusive
+mutation route.
 
 Native host transcript capture and recovery apply only when a selected review or
 transition path consumes those historical events. If that path uses a selected
