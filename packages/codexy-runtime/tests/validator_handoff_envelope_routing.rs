@@ -35,6 +35,75 @@ fn stable_handoff_accepts_structured_task_surface_risk_classification() -> TestR
 }
 
 #[test]
+fn ordinary_github_surface_does_not_select_review_guidance() -> TestResult {
+    let stable = StableHandoff {
+        policy_digest: String::new(),
+        workflow_profile: "standard".into(),
+        task_classification: StableClassification::Structured(StructuredClassification {
+            workflow: "other".into(),
+            surfaces: vec!["GitHub".into()],
+            risks: vec![],
+        }),
+        selected_references: vec![
+            "workflow_profiles".into(),
+            "tdd_classification_policy".into(),
+            "child_routing".into(),
+            "proof_completion".into(),
+            "public_extension_contracts".into(),
+        ],
+    };
+    let envelope = HandoffEnvelope::new(stable.clone(), volatile("ordinary-github"));
+    let canonical = envelope.canonical_json()?;
+    assert!(validate_handoff(&canonical, &authority(stable.clone())).is_ok());
+
+    let mut overselected = stable;
+    overselected
+        .selected_references
+        .insert(3, "review_profiles".into());
+    overselected
+        .selected_references
+        .insert(4, "review_lifecycle".into());
+    let overselected_json =
+        HandoffEnvelope::new(overselected.clone(), volatile("overselected")).canonical_json()?;
+    assert!(validate_handoff(&overselected_json, &authority(overselected)).is_err());
+    Ok(())
+}
+
+#[test]
+fn explicit_github_merge_workflow_retains_review_guidance() -> TestResult {
+    let stable = StableHandoff {
+        policy_digest: String::new(),
+        workflow_profile: "strict".into(),
+        task_classification: StableClassification::Structured(StructuredClassification {
+            workflow: "GitHub/merge".into(),
+            surfaces: vec!["GitHub".into()],
+            risks: vec![],
+        }),
+        selected_references: vec![
+            "workflow_profiles".into(),
+            "task_classification".into(),
+            "tdd_classification_policy".into(),
+            "review_profiles".into(),
+            "review_lifecycle".into(),
+            "proof_completion".into(),
+            "public_extension_contracts".into(),
+        ],
+    };
+    let envelope = HandoffEnvelope::new(stable.clone(), volatile("explicit-review"));
+    let canonical = envelope.canonical_json()?;
+    assert!(validate_handoff(&canonical, &authority(stable.clone())).is_ok());
+
+    let mut underselected = stable;
+    underselected
+        .selected_references
+        .retain(|reference| !matches!(reference.as_str(), "review_profiles" | "review_lifecycle"));
+    let underselected_json =
+        HandoffEnvelope::new(underselected.clone(), volatile("underselected")).canonical_json()?;
+    assert!(validate_handoff(&underselected_json, &authority(underselected)).is_err());
+    Ok(())
+}
+
+#[test]
 fn stable_handoff_validates_task_surface_union_and_fallback_risk_route() -> TestResult {
     let ordinary = ordinary_stable();
     let ordinary_json =

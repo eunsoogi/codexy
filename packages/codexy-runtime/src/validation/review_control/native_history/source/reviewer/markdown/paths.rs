@@ -27,21 +27,10 @@ pub(super) fn explicit_paths(block: &str) -> Vec<String> {
 }
 
 pub(super) fn operative_text_lines(raw: &str) -> Vec<&str> {
-    let mut in_fence = false;
-    let mut result = Vec::new();
-    for part in raw.split_inclusive('\n') {
-        let without_newline = part.strip_suffix('\n').unwrap_or(part);
-        let line = without_newline
-            .strip_suffix('\r')
-            .unwrap_or(without_newline);
-        let trimmed = line.trim_start();
-        if trimmed.starts_with("```") {
-            in_fence = !in_fence;
-        } else if !in_fence && !trimmed.starts_with('>') {
-            result.push(line);
-        }
-    }
-    result
+    super::super::operative_lines(raw)
+        .into_iter()
+        .map(|(_, _, line)| line)
+        .collect()
 }
 
 pub(super) fn clean_path(value: &str) -> Option<String> {

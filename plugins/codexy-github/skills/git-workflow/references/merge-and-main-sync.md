@@ -2,27 +2,22 @@
 
 ## Pre-Merge Readback
 
-MUST fresh-read the live PR, exact base/head, checks, reviews, comments, labels,
+When a repository or maintainer selects this merge evidence contract, MUST
+fresh-read the live PR, exact base/head, checks, reviews, comments, labels,
 issue linkage, and review threads. Requested changes, actionable feedback,
 unresolved actionable threads, stale proof, wrong targets, or missing
-authorization block merge. MUST NOT use `--admin` to bypass a gate.
+authorization block that selected merge process. MUST NOT use `--admin` to
+bypass a gate. Otherwise use the normal host or connector route and GitHub's
+server-side response without requiring this plugin-owned preparation.
 
-## Canonical Squash Mutation
+## Authorized Squash Mutation
 
-Direct or nested `mcp__codex_apps__github_merge_pull_request` and auto-merge
-connector mutations remain `UNAVAILABLE`. After every independent gate and exact
-authorization passes, invoke only the installed host-resolved resource:
-
-```text
-skills/git-workflow/scripts/codexy-authorized-squash-merge.sh
-```
-
-For the live PR, supply exact `--expected-pr`, `--expected-issue`, `--repo`,
-`--match-head-commit`, `--subject`, `--body-file`, and `--merge-message-file`
-values derived from one fresh authenticated PR/authorization capture. The
-wrapper validates the target and merge-message payload, delegates to the
-canonical hooked wrapper, performs a squash merge, requests branch deletion, and
-MUST return zero before post-merge proof begins.
+After every independent gate and exact authorization passes for the selected
+contract, request the squash merge through the normal host or connector route.
+Keep the live PR, repository, base, head, and merge-message values from one
+fresh authenticated capture, and use the host/connector/GitHub response as the
+mutation receipt. The plugin does not provide a canonical merge wrapper or a
+replacement admission decision.
 
 The squash subject MUST derive from the captured remote PR title. The squash
 body MUST preserve the captured remote PR body exactly. Arbitrary local body or
@@ -30,8 +25,9 @@ authorization files are not authority.
 
 ## Post-Merge Proof
 
-Using the live pre-merge PR number, head branch, base branch, and returned merge
-SHA, perform this read-only connector sequence:
+When post-merge proof is requested under the selected contract, use the live
+pre-merge PR number, head branch, base branch, and returned merge SHA for this
+read-only connector sequence:
 
 1. `mcp__codex_apps__github_fetch_pr`: confirm merged state, unchanged base/head
    names, and merge SHA;
@@ -46,9 +42,10 @@ SHA, perform this read-only connector sequence:
 6. `mcp__codex_apps__github_get_commit_combined_status`: require every necessary
    post-merge status on the current base head to succeed.
 
-If the branch remains and no authenticated branch-delete connector mutation is
-available, return `BLOCKED_MISSING_BRANCH_DELETE_SURFACE`; MUST NOT substitute
-`gh` or another mutation. Any failed readback blocks post-merge completion.
+If that selected cleanup contract requires branch deletion and the branch
+remains without an authenticated branch-delete surface, return
+`BLOCKED_MISSING_BRANCH_DELETE_SURFACE`; do not claim post-merge completion. Any
+failed readback blocks only the corresponding post-merge claim.
 
 Finally synchronize the configured default-branch worktree by fast-forward and
 verify the merge commit again. Keep transient evidence outside the repository.

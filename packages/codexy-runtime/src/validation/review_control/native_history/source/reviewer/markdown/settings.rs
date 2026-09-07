@@ -1,4 +1,11 @@
-use super::{Setting, clean, operative_lines};
+use super::{Setting, operative_lines};
+
+fn clean(value: &str) -> String {
+    value
+        .trim()
+        .trim_matches(|character: char| character == '`' || ",.;()[]".contains(character))
+        .to_owned()
+}
 
 pub(super) fn reviewer_setting(raw: &str) -> Result<Option<Setting>, String> {
     let mut matches = Vec::new();

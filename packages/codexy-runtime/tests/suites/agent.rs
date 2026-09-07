@@ -110,6 +110,22 @@ mod validator_post_cap_review_negatives;
 #[cfg(unix)]
 mod validator_post_cap_external_finding;
 
+#[path = "../validator_actions_external_finding.rs"]
+#[cfg(unix)]
+mod validator_actions_external_finding;
+
+#[path = "../validator_actions_external_finding_identity.rs"]
+#[cfg(unix)]
+mod validator_actions_external_finding_identity;
+
+#[path = "../validator_actions_external_finding_negatives.rs"]
+#[cfg(unix)]
+mod validator_actions_external_finding_negatives;
+
+#[path = "../validator_actions_cli_compat.rs"]
+#[cfg(unix)]
+mod validator_actions_cli_compat;
+
 #[path = "../validator_post_cap_external_finding_negatives.rs"]
 #[cfg(unix)]
 mod validator_post_cap_external_finding_negatives;

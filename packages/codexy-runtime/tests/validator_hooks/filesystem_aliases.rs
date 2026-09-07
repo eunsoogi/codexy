@@ -6,7 +6,7 @@ use super::admission_runtime::{
 };
 
 #[cfg(unix)]
-use super::admission_runtime::{assert_case, executable};
+use super::admission_runtime::assert_case;
 
 #[cfg(unix)]
 #[test]
@@ -28,8 +28,6 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
     let traversal = owned.join("traversal");
     let external = workspace.path().join("external");
     let modeled_link = owned.join("modeled-link");
-    let relative_link = owned.join("relative-link");
-    let gh = executable("gh")?;
     let path = format!(
         "PATH={}:{}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
         owned.display(),
@@ -71,15 +69,6 @@ fn same_command_filesystem_aliases_cannot_disguise_git_mutations() -> TestResult
         &format!("mkdir -p {0} && ln -sf /usr/bin/git {0}/../safe && {0}/../safe push --force origin topic", nested_parent.display()),
         &format!("mkdir -p {0} && cp /usr/bin/git {0}/../safe && {0}/../safe push --force origin topic", nested_parent.display()),
         &format!("{path}; ln -sf README.md safe && ln -sf /usr/bin/git {}/safe && safe push --force origin topic", fallback.display()),
-        &format!("mkdir -p {0}/x/../y && ln -sf {1} {0}/x/safe && {0}/x/safe pr merge 453 --merge", traversal.display(), gh.display()),
-        &format!("mkdir -pv {0}/x/../y && ln -sf {1} {0}/x/safe && {0}/x/safe pr merge 453 --merge", traversal.display(), gh.display()),
-        &format!("mkdir -p {0}/../x/../y && ln -sf {1} {0}/../x/safe && {0}/../x/safe pr merge 453 --merge", directory_link.display(), gh.display()),
-        &format!("mkdir -T {0}/unknown && ln -sf {1} {0}/unknown/safe && {0}/unknown/safe pr merge 453 --merge", traversal.display(), gh.display()),
-        &format!("mkdir -p {0}/nested//./child/../sibling && cp {1} {0}/nested/child/safe && {0}/nested/child/safe pr merge 453 --merge", traversal.display(), gh.display()),
-        &format!("ln -s {0}/target {1} && mkdir -p {1}/../x/../y && ln -sf {2} {1}/../x/safe && {0}/x/safe pr merge 453 --merge", external.display(), modeled_link.display(), gh.display()),
-        &format!("ln -s {0}/target {1} && mkdir -p {1}/x && ln -sf {2} {1}/x/safe && {0}/target/x/safe pr merge 453 --merge", external.display(), modeled_link.display(), gh.display()),
-        &format!("ln -s ../external/target {0} && mkdir -p {0}/x && ln -sf {1} {0}/x/safe && {2}/target/x/safe pr merge 453 --merge", relative_link.display(), gh.display(), external.display()),
-        &format!("ln -s {0} parent && ln -s parent/target child && mkdir -p child/x && ln -sf {1} child/x/safe && {0}/target/x/safe pr merge 453 --merge", external.display(), gh.display()),
     ] {
         assert_case(&root, &owned, command, true, &[])?;
     }

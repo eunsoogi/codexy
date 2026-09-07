@@ -14,12 +14,6 @@ from .component_core_hooks import (
 )
 from .component_integrity import MAX_COMPONENT_BYTES, _read_regular, valid_agent_toml
 from .component_manifest import load_component_manifest
-from .component_registration_matchers import (
-    FUNCTIONS_EXEC_MATCHER,
-    ISSUE_MATCHER,
-    MERGE_MATCHER,
-    PULL_REQUEST_MATCHER,
-)
 
 CATALOGS = {
     "core": """# Codexy packaged-agent discovery/registration contract. Validators and the
@@ -72,45 +66,44 @@ def _command_hook(matcher: str, launcher_stem: str, event: str) -> dict[str, obj
     }
 
 
-def _native_hook(matcher: str, rule: str) -> dict[str, object]:
+def _bash_hooks(event: str) -> list[dict[str, object]]:
+    return [_command_hook("^Bash$", "codexy-destructive-command", event)]
+
+
+def _title_hooks(event: str) -> list[dict[str, object]]:
+    return [
+        _title_hook(
+            "^(?:mcp__codex_apps__github_(?:create|update)_issue|github\\.(?:create|update)_issue)$",
+            "issue",
+            event,
+        ),
+        _title_hook(
+            "^(?:mcp__codex_apps__github_(?:create|update)_pull_request|github\\.(?:create|update)_pull_request)$",
+            "pr",
+            event,
+        ),
+        _title_hook(
+            "^(?:mcp__codex_apps__github_(?:merge_pull_request|enable_auto_merge)|github\\.(?:merge_pull_request|enable_auto_merge))$",
+            "merge",
+            event,
+        ),
+        _title_hook("^functions\\.exec$", "nested", event),
+        _title_hook("^Bash$", "shell", event),
+    ]
+
+
+def _title_hook(matcher: str, kind: str, event: str) -> dict[str, object]:
     return {
         "matcher": matcher,
         "hooks": [
             {
                 "type": "command",
-                "command": f'"${{PLUGIN_ROOT}}/hooks/codexy-github-admission.sh" --rule {rule}',
-                "commandWindows": f'"${{PLUGIN_ROOT}}/hooks/codexy-github-admission-{rule}.cmd"',
+                "command": f'"${{PLUGIN_ROOT}}/hooks/codexy-title-check.sh" {event} {kind}',
+                "commandWindows": f'"${{PLUGIN_ROOT}}/hooks/codexy-title-check.cmd" {event} {kind}',
                 "timeout": 5,
             }
         ],
     }
-
-
-CONNECTOR_HOOKS = (
-    (ISSUE_MATCHER, "codexy-repository-issue"),
-    (
-        PULL_REQUEST_MATCHER,
-        "codexy-repository-pull-request",
-    ),
-    (
-        MERGE_MATCHER,
-        "codexy-repository-merge",
-    ),
-    (FUNCTIONS_EXEC_MATCHER, "codexy-repository-github-exec"),
-)
-
-
-def _connector_hooks(event: str) -> list[dict[str, object]]:
-    return [
-        _command_hook(matcher, launcher, event) for matcher, launcher in CONNECTOR_HOOKS
-    ]
-
-
-def _bash_hooks(event: str) -> list[dict[str, object]]:
-    return [
-        _command_hook("^Bash$", stem, event)
-        for stem in ("codexy-repository-github-command", "codexy-destructive-command")
-    ]
 
 
 HOOKS = {
@@ -138,13 +131,11 @@ HOOKS = {
                 }
             ],
             "PermissionRequest": [
-                *_connector_hooks("PermissionRequest"),
+                *_title_hooks("PermissionRequest"),
                 *_bash_hooks("PermissionRequest"),
             ],
             "PreToolUse": [
-                _native_hook("^mcp__codex_apps__github_create_issue$", "issue"),
-                _native_hook("^mcp__codex_apps__github_create_pull_request$", "pr"),
-                *_connector_hooks("PreToolUse"),
+                *_title_hooks("PreToolUse"),
                 *_bash_hooks("PreToolUse"),
             ],
         }
@@ -167,19 +158,8 @@ LAUNCHERS = {
     "github": (
         "hooks/codexy-github-workflow-context.sh",
         "hooks/codexy-github-workflow-context.cmd",
-        "hooks/codexy-github-admission.sh",
-        "hooks/codexy-github-admission-issue.cmd",
-        "hooks/codexy-github-admission-pr.cmd",
-        "hooks/codexy-repository-issue.sh",
-        "hooks/codexy-repository-issue.cmd",
-        "hooks/codexy-repository-pull-request.sh",
-        "hooks/codexy-repository-pull-request.cmd",
-        "hooks/codexy-repository-merge.sh",
-        "hooks/codexy-repository-merge.cmd",
-        "hooks/codexy-repository-github-exec.sh",
-        "hooks/codexy-repository-github-exec.cmd",
-        "hooks/codexy-repository-github-command.sh",
-        "hooks/codexy-repository-github-command.cmd",
+        "hooks/codexy-title-check.sh",
+        "hooks/codexy-title-check.cmd",
         "hooks/codexy-destructive-command.sh",
         "hooks/codexy-destructive-command.cmd",
     ),

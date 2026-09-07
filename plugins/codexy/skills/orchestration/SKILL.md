@@ -5,9 +5,13 @@ description: Use when classifying workflow, surface, and risk or coordinating ow
 
 Read request/issue/PR/AGENTS.md and classify task/surface/risk. Read the
 [context retention contract](references/context-tiers.md) for the existing
-runtime handoff/route contract, then load only the relevant references below;
-progressive disclosure does not require loading every reference. Compaction:
-current wins; missing proof MUST NOT permit action.
+runtime handoff/route contract, then load the references selected by that route;
+these are the canonical handoff references. When a separate condition requires
+additional guidance (for example, app-thread workers, a watcher, or delegated
+goal ownership), the agent MUST load that reference when the condition applies
+and MUST NOT add it to unrelated routes. Progressive disclosure does not require
+loading every reference. A GitHub surface alone does not select review-specific
+references. Compaction: current wins; missing proof MUST NOT permit action.
 
 ### Classify and route
 
@@ -25,6 +29,9 @@ current wins; missing proof MUST NOT permit action.
 - MUST read
   [classification and control](references/classification-and-control.md) when
   assigning ownership, coordinating a child, or applying stop gates.
+- MUST read [parent supervision](references/parent-supervision.md) when an issue
+  uses app-thread workers, a watcher, worker callbacks, drift correction, or
+  delegated goal ownership.
 - MUST read [agent registration](references/agent-registration.md) when
   discovering or invoking packaged specialist agents.
 

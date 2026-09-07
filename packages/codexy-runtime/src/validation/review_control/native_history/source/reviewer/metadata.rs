@@ -111,6 +111,15 @@ pub(super) fn reviewer_facts(
 fn labeled(raw: &str) -> Result<Option<Map<String, Value>>, String> {
     let mut map = Map::new();
     for (_, _, line) in markdown::operative_lines(raw) {
+        if let Some((sha, _)) = markdown::labelled_head(line)? {
+            merge(
+                &mut map,
+                "reviewed_head",
+                Value::String(sha),
+                "reviewed head",
+            )?;
+            continue;
+        }
         let Some((label, value)) = line.split_once(':') else {
             continue;
         };
@@ -124,19 +133,6 @@ fn labeled(raw: &str) -> Result<Option<Map<String, Value>>, String> {
         match label.as_str() {
             "kind" | "review_kind" | "review_type" => {
                 merge(&mut map, "kind", Value::String(clean(value)), "review kind")?;
-            }
-            "reviewed_head" | "exact_reviewed_pr_head" => {
-                let sha = value
-                    .split_whitespace()
-                    .map(clean)
-                    .find(|part| fields::is_sha(part))
-                    .ok_or("reviewed head label lacks a SHA")?;
-                merge(
-                    &mut map,
-                    "reviewed_head",
-                    Value::String(sha),
-                    "reviewed head",
-                )?;
             }
             "terminal_result" | "terminal_verdict" => {
                 let result = markdown::result_value(value)
