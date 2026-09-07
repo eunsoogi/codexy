@@ -23,12 +23,14 @@ pub(super) fn read_live_from_source(
 }
 
 fn read_locator(locator: Locator, expected_commit: Option<&str>) -> Result<Value, String> {
+    let allow_escape_sequences = supports_allow_escape_sequences()?;
     let run = api_json(
         &locator,
         &format!(
             "actions/runs/{}/attempts/{}",
             locator.workflow_run, locator.run_attempt
         ),
+        allow_escape_sequences,
     )?;
     let run_object = object(Some(&run), "Actions workflow run")?;
     let observed = text(run_object, "head_sha", "Actions workflow run")?.to_owned();
@@ -38,19 +40,29 @@ fn read_locator(locator: Locator, expected_commit: Option<&str>) -> Result<Value
             "actions/runs/{}/attempts/{}/jobs?per_page=100",
             locator.workflow_run, locator.run_attempt
         ),
+        allow_escape_sequences,
     )?;
     let (job, step, ambiguous_step_boundary) = select_job(&jobs, &locator, &observed)?;
-    let pulls = api_json(&locator, &format!("commits/{observed}/pulls?per_page=100"))?;
+    let pulls = api_json(
+        &locator,
+        &format!("commits/{observed}/pulls?per_page=100"),
+        allow_escape_sequences,
+    )?;
     let relation = select_pull(&pulls, &locator)?;
     let source_ownership = read_source_ownership(&locator)?;
     let timeline = api_json(
         &locator,
         &format!("issues/{}/timeline?per_page=100", locator.pull_request),
+        allow_escape_sequences,
     )?;
     let issue_relation = select_issue(&timeline, &locator, &source_ownership)?;
     let step_object = object(Some(&step), "Actions failed step")?;
     let log = projection::scoped_log(
-        &api_log(&locator, &format!("actions/jobs/{}/logs", locator.job))?,
+        &api_log(
+            &locator,
+            &format!("actions/jobs/{}/logs", locator.job),
+            allow_escape_sequences,
+        )?,
         step_object,
         &locator.repository,
         ambiguous_step_boundary,
@@ -151,16 +163,29 @@ fn minimal_run(run: &Map<String, Value>) -> Result<Value, String> {
     Ok(Value::Object(result))
 }
 
-fn api_json(locator: &Locator, path: &str) -> Result<Value, String> {
+fn supports_allow_escape_sequences() -> Result<bool, String> {
     let output = Command::new("gh")
-        .args([
-            "api",
-            "--hostname",
-            "github.com",
-            "--method",
-            "GET",
-            "--allow-escape-sequences",
-        ])
+        .args(["api", "--help"])
+        .output()
+        .map_err(|error| {
+            format!("authenticated GitHub Actions CLI capability read failed: {error}")
+        })?;
+    if !output.status.success() {
+        return Err(format!(
+            "authenticated GitHub Actions CLI capability read failed: {}",
+            bounded(&output.stderr)
+        ));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).contains("--allow-escape-sequences"))
+}
+
+fn api_json(locator: &Locator, path: &str, allow_escape_sequences: bool) -> Result<Value, String> {
+    let mut command = Command::new("gh");
+    command.args(["api", "--hostname", "github.com", "--method", "GET"]);
+    if allow_escape_sequences {
+        command.arg("--allow-escape-sequences");
+    }
+    let output = command
         .arg(format!("repos/{}/{}", locator.repository, path))
         .output()
         .map_err(|error| format!("authenticated GitHub Actions read failed: {error}"))?;
@@ -177,16 +202,13 @@ fn api_json(locator: &Locator, path: &str) -> Result<Value, String> {
         .map_err(|error| format!("authenticated GitHub Actions response is invalid: {error}"))
 }
 
-fn api_log(locator: &Locator, path: &str) -> Result<String, String> {
-    let output = Command::new("gh")
-        .args([
-            "api",
-            "--hostname",
-            "github.com",
-            "--method",
-            "GET",
-            "--allow-escape-sequences",
-        ])
+fn api_log(locator: &Locator, path: &str, allow_escape_sequences: bool) -> Result<String, String> {
+    let mut command = Command::new("gh");
+    command.args(["api", "--hostname", "github.com", "--method", "GET"]);
+    if allow_escape_sequences {
+        command.arg("--allow-escape-sequences");
+    }
+    let output = command
         .arg(format!("repos/{}/{}", locator.repository, path))
         .output()
         .map_err(|error| format!("authenticated GitHub Actions log read failed: {error}"))?;

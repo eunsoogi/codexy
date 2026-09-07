@@ -122,6 +122,10 @@ mod validator_actions_external_finding_identity;
 #[cfg(unix)]
 mod validator_actions_external_finding_negatives;
 
+#[path = "../validator_actions_cli_compat.rs"]
+#[cfg(unix)]
+mod validator_actions_cli_compat;
+
 #[path = "../validator_post_cap_external_finding_negatives.rs"]
 #[cfg(unix)]
 mod validator_post_cap_external_finding_negatives;

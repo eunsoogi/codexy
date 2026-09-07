@@ -150,6 +150,7 @@ impl ActionsGhFixture {
             r##"#!/bin/sh
 set -eu
 case "$*" in
+  "api --help") printf '%s\n' '  --allow-escape-sequences  Include terminal escape sequences in output' ;;
   *"/actions/runs/"*"/attempts/1/jobs?per_page=100"*) cat "$ACTIONS_JOBS" ;;
   *"/actions/runs/"*"/attempts/1"*) cat "$ACTIONS_RUN" ;;
   *"/commits/"*"/pulls?per_page=100"*) cat "$ACTIONS_PULLS" ;;
@@ -170,5 +171,34 @@ esac
             source_ownership,
             log,
         })
+    }
+
+    pub(crate) fn write_rejecting_unsupported_escape_sequence(
+        root: &std::path::Path,
+        delta: &str,
+    ) -> TestResult<Self> {
+        let fixture = Self::write(root, delta)?;
+        let gh = fixture.path.join("gh");
+        let backend = fixture.path.join("gh.backend");
+        fs::rename(&gh, &backend)?;
+        fs::write(
+            &gh,
+            r##"#!/bin/sh
+set -eu
+case "$*" in
+  "api --help") printf '%s\n' '  --hostname HOST  GitHub hostname' ; exit 0 ;;
+esac
+for argument in "$@"; do
+  if test "$argument" = "--allow-escape-sequences"; then
+    echo "unknown flag: --allow-escape-sequences" >&2
+    exit 2
+  fi
+done
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec "$script_dir/gh.backend" "$@"
+"##,
+        )?;
+        make_executable(&gh)?;
+        Ok(fixture)
     }
 }
