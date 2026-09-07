@@ -17,8 +17,8 @@ the validator compares the complete list including its order.
 
 The selected list is the canonical handoff set, not a prohibition on
 conditionally required guidance. When an independent condition requires a
-reference, load it for that condition without adding its identifier to an
-unrelated route or changing the exact selected list.
+reference, the agent MUST load it for that condition and MUST NOT add its
+identifier to an unrelated route or change the exact selected list.
 
 For a valid structured classification, use this procedure:
 
