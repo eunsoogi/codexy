@@ -188,11 +188,14 @@ leave the task idle without claiming the issue, release, implementation, or any
 longer-lived goal complete. If the finite phase remains unmet, the Worker MUST
 retain the honest goal state required by the existing lifecycle authority and
 return control through a supported wait or terminal-delivery path; it MUST NOT
-use administrative completion merely to clear the handoff. A qualifying event
-MUST create a fresh short-lived execution goal and current plan before any edit,
-proof, review response, publication, or merge work. The Orchestrator exemption
-above overrides this rule for that role. A live packaged Sentinel remains
-outside heartbeat observation and retains its no-poll/no-message boundary.
+use administrative completion merely to clear the handoff. After a finite phase
+is completed and no active execution goal remains, a qualifying event MUST
+create a fresh short-lived execution goal and current plan before any edit,
+proof, review response, publication, or merge work. If an unmet active finite
+goal was retained, a qualifying event MUST resume its existing authorized goal
+and plan instead of creating a duplicate. The Orchestrator exemption above
+overrides this rule for that role. A live packaged Sentinel remains outside
+heartbeat observation and retains its no-poll/no-message boundary.
 
 For repeat handoffs, copy [the delta-poll template](../templates/delta-poll.md)
 and fill only the current slots. MUST keep the template output in the thread or
