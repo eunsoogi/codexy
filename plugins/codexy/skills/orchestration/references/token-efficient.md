@@ -16,15 +16,19 @@ wait on, or poll a native Sentinel; its observation targets MUST remain limited
 to its assigned Workers and their scoped artifact or tool-call channel. Both the
 Worker owner and the root Orchestrator MUST NOT message, interrupt, replace,
 duplicate, follow up with, or poll a live Sentinel. When only a native-reviewer
-event remains pending, the Worker MUST use the existing finite idle-wait handoff
-and MUST NOT start unchanged model-continuation turns or poll the reviewer. The
-Worker MUST NOT force-complete an unmet goal or edit goal-lifecycle state to
-escape that wait. A bounded wait with no event is a non-terminal `PENDING`
-observation, and an independently observed live reviewer is `RUNNING`; neither
-observation is a reviewer verdict or fallback-eligible. The owning lane MUST
-retain the same reviewer and wait for its natural terminal result. A live
-Sentinel MUST report its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result
-naturally.
+event remains pending, the Worker MUST NOT start unchanged model-continuation
+turns or poll the reviewer. Once the current finite execution phase is
+satisfied, the Worker MUST use the existing finite idle-wait handoff; that
+finite phase transition MUST be reported separately and MUST NOT be treated as
+completion of an unmet issue, release, or long-lived goal. If the current finite
+phase objective is genuinely unmet, the Worker MUST retain its honest goal state
+and return control through the supported wait or terminal-delivery path; it MUST
+NOT force-complete the unmet goal or edit goal-lifecycle state merely to escape
+the wait. A bounded wait with no event is a non-terminal `PENDING` observation,
+and an independently observed live reviewer is `RUNNING`; neither observation is
+a reviewer verdict or fallback-eligible. The owning lane MUST retain the same
+reviewer and wait for its natural terminal result. A live Sentinel MUST report
+its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
 
 ## Required Proof Gates
 
@@ -177,13 +181,18 @@ For ordinary owners outside the canonical role mapping, the Worker MUST retain
 its active goal and plan only while an immediately executable in-scope
 obligation remains, record `goal state=active` and `goal transition=none`, and
 return control without completing or blocking the goal. When only an external
-event or explicit Orchestrator wake remains, the Worker MUST use the idle-wait
-handoff, complete the finite goal, and leave the task idle without claiming the
-issue complete. A qualifying event MUST create a fresh short-lived execution
-goal and current plan before any edit, proof, review response, publication, or
-merge work. The Orchestrator exemption above overrides this rule for that role.
-A live packaged Sentinel remains outside heartbeat observation and retains its
-no-poll/no-message boundary.
+event or explicit Orchestrator wake remains, the Worker MUST first determine
+whether the current finite execution phase is satisfied. If it is satisfied, the
+Worker MUST use the idle-wait handoff, complete only that finite phase, and
+leave the task idle without claiming the issue, release, implementation, or any
+longer-lived goal complete. If the finite phase remains unmet, the Worker MUST
+retain the honest goal state required by the existing lifecycle authority and
+return control through a supported wait or terminal-delivery path; it MUST NOT
+use administrative completion merely to clear the handoff. A qualifying event
+MUST create a fresh short-lived execution goal and current plan before any edit,
+proof, review response, publication, or merge work. The Orchestrator exemption
+above overrides this rule for that role. A live packaged Sentinel remains
+outside heartbeat observation and retains its no-poll/no-message boundary.
 
 For repeat handoffs, copy [the delta-poll template](../templates/delta-poll.md)
 and fill only the current slots. MUST keep the template output in the thread or
