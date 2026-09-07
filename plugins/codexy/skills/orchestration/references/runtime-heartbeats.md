@@ -3,14 +3,14 @@
 The owner MUST use event-driven `wait_threads` with each target's latest cursor
 as the default for ordinary child completion or attention waits. The owner MUST
 reserve heartbeat scheduling for genuinely scheduled monitoring or when
-`wait_threads` is unavailable. An app-thread watcher is a separate, explicitly
+`wait_threads` is unavailable. An app-thread Watcher is a separate, explicitly
 authorized observation task, not a heartbeat or an automatic scheduler.
 
 After a host transition or `No handler registered` failure, the owner MUST treat
 the mismatch as host-transition exposure evidence, perform one fresh thread-tool
 discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT
 use unbounded `read_thread`, and any bounded metadata fallback MUST consume the
-current parent-stage budget and record only returned size/token metadata.
+current Orchestrator-stage budget and record only returned size/token metadata.
 
 While a desktop-origin root turn has a callable `wait_threads` handler, the
 owner MUST use the cursor-based wait for an assigned observation obligation
@@ -26,46 +26,50 @@ heartbeat relay, use `read_thread`, or use `handoff_thread` for recovery. The
 slingshot recovery route is not an unavailable-wait fallback eligible for
 heartbeat registration; it ends in desktop-origin root re-entry.
 
-## App-thread watcher boundary
+## App-thread Watcher boundary
 
-An explicitly authorized watcher MUST be an independent Codex app task in the
-same saved project as its assigned workers. It observes worker callbacks and
+An explicitly authorized Watcher MUST be an independent Codex app task in the
+same saved project as its assigned Workers. It observes Worker callbacks and
 task state, and MUST report material drift or an unavailable channel. It MUST
 remain read-only: it MUST NOT edit, correct, accept, replace, or recruit. The actual
 creating tool distinguishes this surface from native subagents and packaged
-reviewers. A watcher callback is a signal, not acceptance, and repeated
-unchanged observations MUST be suppressed.
+reviewers. A Watcher callback is a signal, not acceptance, and repeated
+unchanged observations MUST be suppressed. Unchanged active-goal reads, routine
+pre/post/continuation receipts, and liveness-only goal-status messages MUST
+remain internal; the Watcher MUST NOT wake the Orchestrator for them. Only an
+actual lifecycle transition, failure, or other material event may produce a
+callback or receipt.
 
-When the watcher is carrying an exact long-lived release goal, the parent MAY
-return control instead of continuing a model turn solely for unchanged waiting.
-In watcher-supervised Astra-parent mode, only the watcher carries that goal and
-the Astra/medium parent's `get_goal` state MUST remain `null`. The parent MUST
-NOT call `create_goal` or recreate any goal for setup, callbacks, correction,
-review or merge decisions, or external-event resume; after authorized work it
-MUST return control. The watcher goal does not transfer file ownership,
-correction authority, final judgment, or issue completion. Codex MUST record
-parent and watcher goal states separately. Codex MUST NOT mark an unfinished
-parent goal complete, invent a transfer operation, or promise that an idle
-parent will wake later. If the host does not expose the requested pause,
-transfer, or wake behavior, Codex MUST report it as unsupported. This
-parent-only exemption MUST NOT remove ordinary worker finite-goal closure or
-`blocked` recovery.
+When the Watcher is carrying an exact long-lived release goal, the Orchestrator
+MAY return control instead of continuing a model turn solely for unchanged
+waiting. In [the canonical role mapping](parent-supervision.md), only the
+Watcher carries that release goal and the Orchestrator's `get_goal` state MUST
+remain `null`. The Orchestrator MUST NOT call `create_goal` or recreate any goal
+for setup, callbacks, correction, review or merge decisions, or external-event
+resume; after authorized work it MUST return control. The Watcher goal does not
+transfer file ownership, correction authority, final judgment, or issue
+completion. Codex MUST record Orchestrator and Watcher goal states separately.
+Codex MUST NOT mark an unfinished Orchestrator goal complete, invent a transfer
+operation, or promise that an idle Orchestrator will wake later. If the host
+does not expose the requested pause, transfer, or wake behavior, Codex MUST
+report it as unsupported. This Orchestrator-only exemption MUST NOT remove
+ordinary Worker finite-goal closure or `blocked` recovery.
 
 ## Eligibility And Discovery
 
 When genuinely scheduled monitoring or an unavailable `wait_threads` route other
-than slingshot recovery will outlive the current turn, the owning parent
-orchestrator or child MUST search the callable tool surface for
+than slingshot recovery will outlive the current turn, the owning Orchestrator
+or Worker MUST search the callable tool surface for
 `automation_update` before declaring persistent monitoring unavailable. A
 callable heartbeat surface is `automation_update` with a thread-targeted
 `kind=heartbeat`. For such genuinely scheduled monitoring or unavailable-wait
 fallback other than slingshot recovery, the owner MUST register a heartbeat
 instead of repeated model continuations or ending without a wakeup path. This
 route requires explicit scheduled-monitoring authorization; it MUST NOT be
-recreated merely to replace an app watcher or preserve an unconditional parent
-turn. The
-heartbeat MUST use a thread-targeted `kind=heartbeat`. The heartbeat schedule
-MUST be bounded to the external gate's expected window. For the current thread,
+recreated merely to replace an app Watcher or preserve an unconditional
+Orchestrator turn. The heartbeat MUST use a thread-targeted `kind=heartbeat`.
+The heartbeat schedule MUST be bounded to the external gate's expected window.
+For the current thread,
 creation MUST use `destination="thread"` rather than inventing or copying a
 target-thread id. Creation MUST use a heartbeat name, prompt, bounded schedule,
 active status, and heartbeat kind; the owner MUST retain the returned automation
@@ -83,11 +87,11 @@ action. The observed-state identity MUST be a deterministic fingerprint of the
 gate inputs, such as a PR head plus check/review/thread state. Eligible material
 events are a terminal child result, a Sentinel verdict, a new HEAD, a GitHub
 check-state change, actionable review feedback, review-thread resolution, or an
-explicit user/parent message. The prompt MUST suppress unchanged observations
+explicit user/Orchestrator message. The prompt MUST suppress unchanged observations
 and MUST wake the owner only for a material gate change or an explicit
-user/parent message.
+user/Orchestrator message.
 
-A live Sentinel, pending child, queued CI, pending connector review, parent
+A live Sentinel, pending Worker, queued CI, pending connector review, Orchestrator
 authorization, dependency integration, or resource slot is a nonterminal
 producer. The owner MUST preserve ownership through a nonterminal wait handoff
 while immediately executable work remains, or through an idle-wait handoff after
@@ -98,22 +102,23 @@ do so.
 
 ## Goal And Terminal Lifecycle
 
-The following lifecycle applies to ordinary workers and other owners that are
-not in watcher-supervised Astra-parent mode. For that parent mode, the
-parent-supervision exemption above takes precedence: the parent MUST keep
-`get_goal=null`, MUST NOT create or recreate a goal on a qualifying event, and
-MUST return control after the authorized event work.
+The following lifecycle applies to ordinary Workers and other owners that are
+not in the canonical role mapping in `parent-supervision.md`. For that
+arrangement, the role-mapping exemption takes precedence: the Orchestrator MUST
+keep `get_goal=null`, MUST NOT create or recreate a goal on a qualifying event,
+and MUST return control after the authorized event work.
 
 A successfully registered heartbeat is runtime-owned waiting. The owner MUST
 retain its active goal and plan only while an immediately executable in-scope
 obligation remains, record `goal state=active` and `goal transition=none`, and
 return control without completing or blocking the goal. When no immediately
-executable obligation remains and only an external event or explicit parent wake
-can advance work, the owner MUST send the idle-wait handoff defined in
+executable obligation remains and only an external event or explicit
+Orchestrator wake can advance work, the owner MUST send the idle-wait handoff
+defined in
 `goal-transition-reporting.md`, complete the finite execution phase, and leave
 the task idle without claiming issue, implementation, transfer, or release
-completion. This finite phase is distinct from a watcher-held long-lived
-release goal; its completion MUST NOT be used as evidence that the watcher goal
+completion. This finite phase is distinct from a Watcher-held long-lived
+release goal; its completion MUST NOT be used as evidence that the Watcher goal
 or release objective was achieved. A qualifying event MUST create a fresh
 short-lived execution goal and current plan before any edit, proof, review
 response, publication, or merge work. The awakened owner MUST first read the

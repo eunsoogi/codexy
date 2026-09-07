@@ -19,15 +19,16 @@
    - MUST mark exactly one step `in_progress`.
    - MUST carry classification evidence into the plan before branch, worktree,
      child-thread, implementation, PR, or review-response actions.
-   - For delegated outcomes, MUST record one implementation owner, the saved
-     project identity, the watcher identity when authorized, the callback
+   - For delegated outcomes, MUST record one Worker owner, the saved project
+     identity, the Watcher identity when authorized, the callback
      channels, and one current next action. MUST NOT require a fixed checkpoint
      count or unchanged-progress receipt.
-   - In watcher-supervised Astra-parent mode, MUST read back the parent's
-     `get_goal=null` state and the watcher's exact active goal separately. The
-     Astra/medium parent MUST NOT call `create_goal` or recreate a goal for
+   - In [the canonical role mapping](parent-supervision.md), MUST read back the
+     Orchestrator's `get_goal=null` state and the Watcher's exact active goal
+     separately. The Orchestrator MUST NOT call `create_goal` or recreate a goal for
      setup, callbacks, correction, review or merge decisions, or
-     external-event resume; the parent returns control after authorized work.
+     external-event resume; the Orchestrator returns control after authorized
+     work.
    - MUST split independent outcomes into separate issues and lanes unless a
      maintainer explicitly scopes them as one atomic lane.
    - MUST mark each lane as parent-owned or child-owned before any
@@ -46,12 +47,13 @@
      child-thread/worktree owner for an issue-sized implementation lane.
    - For issue-sized implementation lanes, the root orchestrator MUST start or
      fork a separate Codex thread in a worktree when the tool is available.
-   - An authorized watcher MUST be an independent Codex app task in the same
-     saved project as its assigned workers. It observes and reports; it MUST
-     NOT edit worker files, correct workers, decide acceptance, or recruit a
+   - An authorized Watcher MUST be an independent Codex app task in the same
+     saved project as its assigned Workers. It observes and reports; it MUST
+     NOT edit Worker files, correct Workers, decide acceptance, or recruit a
      second watcher.
-   - MUST complete lane assignment before implementation edits begin. A parent
-     may prepare issue text, branch name, worktree path, and handoff text, but
+   - MUST complete lane assignment before implementation edits begin. An
+     Orchestrator may prepare issue text, branch name, worktree path, and
+     handoff text, but
      MUST NOT patch implementation files for the child-owned lane.
    - MUST give each lane an assignment, issue, branch, worktree path, allowed
      paths, read-first files, deliverable, required evidence, verification
@@ -59,7 +61,7 @@
 4. Integrate:
    - MUST re-read files and outputs before trusting child results.
    - MUST preserve user changes and unrelated work.
-   - MUST treat worker callbacks and watcher observations as signals, not
+   - MUST treat Worker callbacks and Watcher observations as signals, not
      acceptance. Deduplicate the same event, verify any correction at the next
      actual call, diff, or result, and preserve the creating surface and native
      review history.
@@ -77,8 +79,8 @@
    - MUST keep evidence tied to the exact commit, PR head, file state, or
      runtime surface being claimed.
    - For app-thread supervision, MUST exercise the actual app delivery/readback
-     path and report worker, watcher, parent-goal, and watcher-goal state
-     separately. A watcher goal or callback does not prove issue completion.
+     path and report Worker, Watcher, Orchestrator-goal, and Watcher-goal state
+     separately. A Watcher goal or callback does not prove issue completion.
 6. Finish:
    - MUST confirm no running sessions, open child lanes, untracked required
      files, or unverified claims remain.
@@ -87,7 +89,7 @@
      stop, wait, draft-only, or leave-open behavior.
    - MUST report what changed, what proved it, what was not run, and remaining
      risk.
-   - MUST report measured and unmeasured worker/watcher usage separately, retain
+   - MUST report measured and unmeasured Worker/Watcher usage separately, retain
      actual review history, and state unsupported wake, transfer, or recovery
      behavior instead of inventing it.
 
