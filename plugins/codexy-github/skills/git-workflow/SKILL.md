@@ -51,8 +51,8 @@ checks. It does not admit, deny, or rewrite general GitHub mutations. It retains
 the existing issue-title, PR-title, and squash-subject checks on their supported
 paths; those narrow checks are separate from operation admission and body or
 review formatting. Commands MUST use the host, connector, and GitHub
-authorization that applies to the current session; repository-local
-instructions remain repository-owned.
+authorization that applies to the current session; repository-local instructions
+remain repository-owned.
 
 ## Merge Boundary
 
