@@ -42,3 +42,11 @@ pub(crate) fn recover_text(
 ) -> Result<serde_json::Value, String> {
     recovery::recover_text(plugin_root, current_text, input_text)
 }
+
+pub(crate) fn recover_native_history(
+    plugin_root: &Path,
+    current_text: &str,
+    input_text: &str,
+) -> anyhow::Result<serde_json::Value> {
+    recover_text(plugin_root, current_text, input_text).map_err(anyhow::Error::msg)
+}

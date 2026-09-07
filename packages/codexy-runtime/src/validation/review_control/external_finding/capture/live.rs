@@ -118,11 +118,14 @@ impl Locator {
     }
 }
 
-pub(crate) fn read_live(locator: &Value, expected_commit: Option<&str>) -> Result<Value, String> {
+pub(super) fn read_graphql_live(
+    locator: &Value,
+    expected_commit: Option<&str>,
+) -> Result<Value, String> {
     read_locator(Locator::from_value(locator)?, expected_commit)
 }
 
-pub(crate) fn read_live_from_source(
+pub(super) fn read_graphql_live_from_source(
     source: &Value,
     expected_commit: Option<&str>,
 ) -> Result<Value, String> {

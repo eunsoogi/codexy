@@ -5,6 +5,34 @@ use crate::support::TestResult;
 #[path = "support/review_control_import.rs"]
 mod import_support;
 
+#[path = "support/connector_snapshot.rs"]
+mod connector_snapshot;
+
+#[test]
+fn import_normalizes_source_only_connector_history() -> TestResult {
+    let head = git_sha("HEAD")?;
+    let base = git_sha("HEAD^")?;
+    let current = snapshot(&head, &base, None);
+    let history = envelope(vec![event("full", "full", &head, "turn", 1)]);
+    let (_, expected) = run_import(&current, &history)?;
+    let connector = connector_snapshot::source_only(&current);
+    let (result, actual) = run_import(&connector, &history)?;
+    assert!(result.status.success(), "{}", stderr(&result));
+    let actual = actual.expect("import output");
+    assert_eq!(actual["reviewControl"], expected.expect("GraphQL output")["reviewControl"]);
+    assert_eq!(actual["capture"], connector["capture"]);
+    assert_eq!(actual["number"], current["number"]);
+    for key in ["source", "owningIssue"] {
+        let mut invalid = connector.clone();
+        invalid["capture"].as_object_mut().unwrap().remove(key);
+        assert!(!run_import(&invalid, &history)?.0.status.success());
+    }
+    let mut contradictory = connector;
+    contradictory["headRefOid"] = json!(base);
+    assert!(!run_import(&contradictory, &history)?.0.status.success());
+    Ok(())
+}
+
 use import_support::{
     envelope, event, git_sha, history_event, legacy_event, light_control, run_build, run_import,
     run_producer, snapshot, stderr,

@@ -1,0 +1,17 @@
+query($owner:String!, $name:String!, $pullRequest:Int!) {
+  repository(owner:$owner, name:$name) {
+    pullRequest(number:$pullRequest) {
+      number
+      url
+      repository { nameWithOwner }
+      closingIssuesReferences(first:100) {
+        nodes {
+          number
+          url
+          repository { nameWithOwner }
+        }
+        pageInfo { hasNextPage }
+      }
+    }
+  }
+}
