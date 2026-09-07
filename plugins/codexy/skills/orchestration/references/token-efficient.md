@@ -66,16 +66,19 @@ MUST use this flow after compaction and before handoff:
    overrides the generic fresh-goal-on-wake rule and does not prove issue
    completion.
    A Watcher callback or observation is a material signal only when its event
-   identity is new. Unchanged active-goal reads, routine pre/post/continuation
-   receipts, and liveness-only goal-status messages MUST remain internal and
-   MUST NOT wake the Orchestrator. Workers MUST send compact deltas for terminal
-   child state, fatal/gate/final callbacks, Watcher failure or drift, Sentinel
-   verdict, PR creation, new HEAD, GitHub check-state change, actionable review feedback,
-   or review-thread resolution. A Watcher drift event is qualifying only when
-   its report is grounded in a changed artifact, diff, or relevant actual tool
-   call and identifies the conflicting current scope, ownership, or user
-   constraint without a repair directive; relayed Worker or Orchestrator
-   findings MUST remain distinct from Watcher-first detection.
+   identity is new and Orchestrator action is required. Unchanged active-goal
+   reads, routine pre/post/continuation receipts, liveness-only goal-status
+   messages, normal progress, intermediate successful tests, resolved command
+   mistakes, commits, and queued CI MUST remain internal and MUST NOT wake the
+   Orchestrator. Workers MUST send compact deltas for terminal child state,
+   fatal/gate/final callbacks, Watcher failure or actionable drift, Sentinel
+   verdict, PR creation, a required external check-state change, actionable
+   review feedback, or review-thread resolution. A Watcher drift event is
+   qualifying only when its report is grounded in a changed artifact, diff, or
+   relevant actual tool call, identifies the conflicting current scope,
+   ownership, or user constraint without a repair directive, and requires an
+   Orchestrator decision; relayed Worker or Orchestrator findings MUST remain
+   distinct from Watcher-first detection.
 3. **Validate stable event identity**: every event MUST use a deterministic
    `<kind>|<lane>|<subject>` identity. The ledger MUST reject a repeated
    identity before it changes counters or next actions.

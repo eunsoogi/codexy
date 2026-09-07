@@ -54,12 +54,19 @@ thinking effort.
 
 - Workers MUST send compact gate, fatal-error, and final-result callbacks to the
   Orchestrator when those phases or failures occur. The Watcher observes assigned
-  Workers and MUST report only material deltas. A callback or Watcher observation
-  alone is a signal, not proof that the work is healthy, corrected, or complete.
+  Workers and MUST report only action-required material deltas. A callback or
+  Watcher observation alone is a signal, not proof that the work is healthy,
+  corrected, or complete.
 - Unchanged active-goal reads, routine pre/post/continuation receipts, and
   liveness-only goal-status messages MUST remain internal. The Watcher MUST NOT
-  wake the Orchestrator for them; only an actual lifecycle transition, failure,
-  or other material event may produce a callback or receipt.
+  wake the Orchestrator for them; only an actual lifecycle transition, an
+  unresolved drift or failure requiring Orchestrator action, missing terminal
+  delivery, or a ready external gate may produce a callback or receipt.
+- New or changed evidence alone is not notification-eligible. Normal progressing
+  work, intermediate successful tests, resolved command mistakes, commits, and
+  queued CI MUST remain internal while the Workers are actively progressing.
+  A commit or new HEAD alone MUST NOT wake the Orchestrator; it may be retained
+  as evidence for a later actionable gate.
 - Codex MUST deduplicate one event using a stable event identity before changing counters,
   plan state, or next action. A missed callback, Worker failure, Watcher failure,
   or loss of both channels is an observable limitation; it is not permission to
@@ -92,7 +99,7 @@ thinking effort.
   not stalls. Codex MUST NOT emit repeated unchanged status, read a full
   transcript to observe activity, rerun tests only to watch progress, or
   interrupt a live reviewer merely because it is taking time.
-- When a material signal arrives, the Orchestrator MUST send one grouped, actionable
+- When an actionable signal arrives, the Orchestrator MUST send one grouped, actionable
   correction to the existing worker: observed deviation, smallest repair,
   required evidence, and next permitted step. An acknowledgement is not proof.
   The Orchestrator MUST read back the next relevant actual tool call, diff, or

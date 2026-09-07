@@ -30,16 +30,18 @@ heartbeat registration; it ends in desktop-origin root re-entry.
 
 An explicitly authorized Watcher MUST be an independent Codex app task in the
 same saved project as its assigned Workers. It observes Worker callbacks and
-task state, and MUST report material drift or an unavailable channel. It MUST
+task state, and MUST report action-required drift or an unavailable channel. It MUST
 remain read-only: it MUST NOT edit, direct or message a Worker, supply a repair
 directive, correct, accept, verify a correction, replace, or recruit. The actual
 creating tool distinguishes this surface from native subagents and packaged
 reviewers. A Watcher callback is a signal, not acceptance, and repeated
 unchanged observations MUST be suppressed. Unchanged active-goal reads, routine
 pre/post/continuation receipts, and liveness-only goal-status messages MUST
-remain internal; the Watcher MUST NOT wake the Orchestrator for them. Only an
-actual lifecycle transition, failure, or other material event may produce a
-callback or receipt.
+remain internal; the Watcher MUST NOT wake the Orchestrator for them. Normal
+progressing work, intermediate successful tests, resolved command mistakes,
+commits, and queued CI MUST also remain internal. Only an actual lifecycle
+transition, unresolved drift or failure requiring Orchestrator action, missing
+terminal delivery, or a ready external gate may produce a callback or receipt.
 
 When the Watcher is carrying an exact long-lived release goal, the Orchestrator
 MAY return control instead of continuing a model turn solely for unchanged
