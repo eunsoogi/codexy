@@ -25,6 +25,9 @@ current wins; missing proof MUST NOT permit action.
 - MUST read
   [classification and control](references/classification-and-control.md) when
   assigning ownership, coordinating a child, or applying stop gates.
+- MUST read [parent supervision](references/parent-supervision.md) when an issue
+  uses app-thread workers, a watcher, worker callbacks, drift correction, or
+  delegated goal ownership.
 - MUST read [agent registration](references/agent-registration.md) when
   discovering or invoking packaged specialist agents.
 
