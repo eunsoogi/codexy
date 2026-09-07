@@ -3,45 +3,48 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
 
 from .shell_segments import segments
-from .titles import issue_title, pr_title, squash_subject
+from .title_api import forbidden as api_forbidden
+from .title_merge import forbidden as merge_forbidden
+from .titles import issue_title, pr_title
 
 
 _ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 _DYNAMIC = re.compile(r"[$`]|__codexy_(?:command|process)_substitution__")
-_FIELD_FLAGS = {"-f", "-F", "--field", "--raw-field"}
 
 
-def forbidden(command: object) -> bool:
+def forbidden(command: object, cwd: object = None) -> bool:
     if not isinstance(command, str):
         return False
     parsed = segments(command)
     if parsed is None:
         return bool(
-            re.search(r"\bgh\s+(?:issue|pr)\s+(?:create|edit|merge)\b", command)
+            re.search(r"\bgh\s+(?:issue|pr)\s+(?:create|new|edit|merge)\b", command)
         )
-    return any(_inspect_segment(segment) for segment in parsed)
+    return any(_inspect_segment(segment, cwd) for segment in parsed)
 
 
-def _inspect_segment(segment: tuple[str, ...]) -> bool:
+def _inspect_segment(segment: tuple[str, ...], cwd: object) -> bool:
     tokens = _command_tokens(segment)
     if not tokens or tokens[0].rsplit("/", 1)[-1] != "gh":
         return False
     args = list(tokens[1:])
     if len(args) < 2:
         return False
-    if args[:2] == ["api", "graphql"]:
-        return _inspect_graphql(args[2:])
     if args[0] == "api":
-        return _inspect_api(args[1:])
-    if args[:2] in (["issue", "create"], ["pr", "create"]):
+        return api_forbidden(args[1:], cwd)
+    if args[:2] in (
+        ["issue", "create"],
+        ["issue", "new"],
+        ["pr", "create"],
+        ["pr", "new"],
+    ):
         return _inspect_form(args[0], True, args[2:])
     if args[:2] in (["issue", "edit"], ["pr", "edit"]):
         return _inspect_form(args[0], False, args[2:])
     if args[:2] == ["pr", "merge"]:
-        return _inspect_merge(args[2:])
+        return merge_forbidden(args[2:])
     return False
 
 
@@ -52,127 +55,6 @@ def _inspect_form(kind: str, create: bool, args: list[str]) -> bool:
     return not isinstance(value, str) or not (
         issue_title if kind == "issue" else pr_title
     )(value)
-
-
-def _inspect_merge(args: list[str]) -> bool:
-    if "--squash" not in args:
-        return False
-    present, value = _option(args, ("--subject",))
-    if not present:
-        return True
-    number = next((token for token in args if token.isdigit() and int(token) > 0), None)
-    return (
-        not isinstance(value, str)
-        or number is None
-        or not squash_subject(value, int(number))
-    )
-
-
-def _inspect_api(args: list[str]) -> bool:
-    method = "GET"
-    method_explicit = False
-    endpoint = None
-    fields: list[str | None] = []
-    index = 0
-    while index < len(args):
-        token = args[index]
-        if token in {"--method", "-X"}:
-            if index + 1 >= len(args):
-                return False
-            method, index = args[index + 1].upper(), index + 2
-            method_explicit = True
-            continue
-        if token.startswith("--method="):
-            method = token.split("=", 1)[1].upper()
-            method_explicit = True
-            index += 1
-            continue
-        if token.startswith("-X") and len(token) > 2:
-            method, index = token[2:].upper(), index + 1
-            method_explicit = True
-            continue
-        if token in _FIELD_FLAGS:
-            fields.append(args[index + 1] if index + 1 < len(args) else None)
-            if not method_explicit:
-                method = "POST"
-            index += 2
-            continue
-        if any(token.startswith(flag + "=") for flag in _FIELD_FLAGS):
-            fields.append(token.split("=", 1)[1])
-            if not method_explicit:
-                method = "POST"
-            index += 1
-            continue
-        if endpoint is None and not token.startswith("-"):
-            endpoint = token
-        index += 1
-    if endpoint is None:
-        return False
-    if endpoint == "graphql":
-        return _inspect_graphql(fields)
-    if method not in {"POST", "PATCH", "PUT"}:
-        return False
-    operation = _api_operation(endpoint, method)
-    if operation is None:
-        return False
-    kind, create = operation
-    present, value = _field(fields, "title")
-    if not present:
-        return create
-    predicate = issue_title if kind == "issue" else pr_title
-    return not isinstance(value, str) or not predicate(value)
-
-
-def _inspect_graphql(fields: Sequence[str | None]) -> bool:
-    present, query = _field(fields, "query")
-    if not present:
-        return False
-    if not isinstance(query, str):
-        return True
-    match = re.search(
-        r"\b(createIssue|updateIssue|createPullRequest|updatePullRequest)\b", query
-    )
-    if match is None:
-        return False
-    create = match.group(1).startswith("create")
-    kind = "issue" if "Issue" in match.group(1) else "pr"
-    title_field = re.search(r"\btitle\s*:", query)
-    if title_field is None:
-        return create
-    title = re.search(r"\btitle\s*:\s*([\"'])(.*?)\1", query, re.S)
-    if title is None:
-        return True
-    predicate = issue_title if kind == "issue" else pr_title
-    return not predicate(title.group(2))
-
-
-def _api_operation(endpoint: str, method: str) -> tuple[str, bool] | None:
-    parts = endpoint.strip("/").split("/")
-    if len(parts) < 4 or parts[0] != "repos":
-        return None
-    resource = parts[3]
-    if resource not in {"issues", "pulls"}:
-        return None
-    kind = "issue" if resource == "issues" else "pr"
-    if method == "POST" and len(parts) == 4:
-        return kind, True
-    if method in {"PATCH", "PUT"} and len(parts) == 5 and parts[4].isdigit():
-        return kind, False
-    return None
-
-
-def _field(fields: Sequence[str | None], name: str) -> tuple[bool, str | None]:
-    values = [
-        value
-        for value in fields
-        if isinstance(value, str) and value.startswith(name + "=")
-    ]
-    if not values:
-        return False, None
-    if len(values) != 1:
-        return True, None
-    value = values[0].split("=", 1)[1]
-    return True, None if _DYNAMIC.search(value) else value
 
 
 def _option(args: list[str], names: tuple[str, ...]) -> tuple[bool, str | None]:

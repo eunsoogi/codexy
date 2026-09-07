@@ -1,6 +1,7 @@
 use serde_json::{Value, json};
 use std::io::Write as _;
 use std::process::Stdio;
+use std::{env, fs};
 
 use crate::support::FixtureCommand as Command;
 
@@ -59,6 +60,26 @@ fn title_hook_preserves_only_the_three_title_contracts() -> TestResult {
             "tool_name": "Bash",
             "tool_input": {"command": "gh api --method POST graphql -f query='mutation { createIssue(input: {title: \"Valid issue\"}) { issue { id } } }'"},
         }), false)?;
+        for (command, denied) in [
+            ("gh issue new --title 'fix: invalid issue' --body note", true),
+            ("gh issue new --title 'Valid issue' --body note", false),
+            ("gh pr new --title 'plain title' --body note", true),
+            ("gh pr new --title 'fix(hooks): valid title' --body note", false),
+            ("gh api --hostname ghe.example repos/o/r/issues -f title='plain title'", true),
+            ("gh api --header 'Accept: application/json' repos/o/r/issues -f title='plain title'", true),
+            ("gh api -H 'Accept: application/json' repos/o/r/issues -f title='Valid issue'", false),
+            ("gh api --method POST graphql -f query='mutation { first: createIssue(input: {title: \"Valid issue\"}) { issue { id } } second: createIssue(input: {title: \"plain title\"}) { issue { id } } }'", true),
+            ("gh api --method POST graphql -f query='mutation { first: createIssue(input: {title: \"Valid issue\"}) { issue { id } } second: createPullRequest(input: {title: \"fix(hooks): valid title\"}) { pullRequest { id } } }'", false),
+            ("gh pr merge --body 17 42 --squash --subject 'fix(hooks): valid title (#42)'", false),
+            ("gh pr merge https://github.com/o/r/pull/42 --squash --subject 'fix(hooks): valid title (#42)'", false),
+            ("gh pr merge --body 17 42 --squash --subject 'fix(hooks): valid title (#17)'", true),
+        ] {
+            assert_title(event, "shell", json!({
+                "hook_event_name": event,
+                "tool_name": "Bash",
+                "tool_input": {"command": command},
+            }), denied)?;
+        }
         for (command, denied) in [
             ("gh api repos/eunsoogi/codexy/issues -f title='plain title'", true),
             ("gh api repos/eunsoogi/codexy/issues -f title='Valid issue'", false),
@@ -138,6 +159,49 @@ fn assert_title(event: &str, kind: &str, payload: Value, denied: bool) -> TestRe
             specific["permissionDecisionReason"].as_str().unwrap_or_default()
         };
         assert!(reason.starts_with("CODEXY_TITLE_CHECK_"), "{reason}");
+    }
+    Ok(())
+}
+
+#[test]
+fn windows_title_runtime_fallback_is_valid_json() -> TestResult {
+    if !cfg!(windows) {
+        return Ok(());
+    }
+    let temporary = tempfile::tempdir()?;
+    fs::write(temporary.path().join("py.cmd"), "@echo off\r\nexit /b 1\r\n")?;
+    let plugin = codexy_runtime::paths::repository_root().join("plugins/codexy-github");
+    let original_path = env::var_os("PATH").unwrap_or_default();
+    let path = format!("{};{}", temporary.path().display(), original_path.to_string_lossy());
+    for event in ["PermissionRequest", "PreToolUse"] {
+        let payload = json!({
+            "hook_event_name": event,
+            "tool_name": "Bash",
+            "tool_input": {"command": "gh issue create --title arbitrary"},
+        });
+        let mut command = Command::new("cmd.exe");
+        let mut child = command
+            .args(["/d", "/c"])
+            .arg(plugin.join("hooks/codexy-title-check.cmd"))
+            .args([event, "shell"])
+            .env("PATH", &path)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+        child.stdin.take().ok_or("title fallback stdin")?.write_all(
+            &serde_json::to_vec(&payload)?,
+        )?;
+        let output = child.wait_with_output()?;
+        assert!(output.status.success());
+        assert!(output.stderr.is_empty());
+        let denial: Value = serde_json::from_slice(&output.stdout)?;
+        assert_eq!(denial["hookSpecificOutput"]["hookEventName"], event);
+        if event == "PermissionRequest" {
+            assert_eq!(denial["hookSpecificOutput"]["decision"]["behavior"], "deny");
+        } else {
+            assert_eq!(denial["hookSpecificOutput"]["permissionDecision"], "deny");
+        }
     }
     Ok(())
 }

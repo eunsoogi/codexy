@@ -62,6 +62,30 @@ class GithubTitleHooksTests(unittest.TestCase):
                 True,
             ),
             (
+                "shell",
+                "Bash",
+                {"command": "gh issue new --title 'fix: invalid issue' --body note"},
+                True,
+            ),
+            (
+                "shell",
+                "Bash",
+                {"command": "gh issue new --title 'Valid issue' --body note"},
+                False,
+            ),
+            (
+                "shell",
+                "Bash",
+                {"command": "gh pr new --title 'plain title' --body note"},
+                True,
+            ),
+            (
+                "shell",
+                "Bash",
+                {"command": "gh pr new --title 'fix(hooks): valid title' --body note"},
+                False,
+            ),
+            (
                 "nested",
                 "functions.exec",
                 {
@@ -145,6 +169,46 @@ class GithubTitleHooksTests(unittest.TestCase):
                 "gh api --method GET repos/eunsoogi/codexy/issues -f title='plain title'",
                 False,
             ),
+            (
+                "shell",
+                "gh api --hostname ghe.example repos/o/r/issues -f title='plain title'",
+                True,
+            ),
+            (
+                "shell",
+                "gh api --header 'Accept: application/json' repos/o/r/issues -f title='plain title'",
+                True,
+            ),
+            (
+                "shell",
+                "gh api -H 'Accept: application/json' repos/o/r/issues -f title='Valid issue'",
+                False,
+            ),
+            (
+                "shell",
+                'gh api --method POST graphql -f query=\'mutation { first: createIssue(input: {title: "Valid issue"}) { issue { id } } second: createIssue(input: {title: "plain title"}) { issue { id } } }\'',
+                True,
+            ),
+            (
+                "shell",
+                'gh api --method POST graphql -f query=\'mutation { first: createIssue(input: {title: "Valid issue"}) { issue { id } } second: createPullRequest(input: {title: "fix(hooks): valid title"}) { pullRequest { id } } }\'',
+                False,
+            ),
+            (
+                "shell",
+                "gh pr merge --body 17 42 --squash --subject 'fix(hooks): valid title (#42)'",
+                False,
+            ),
+            (
+                "shell",
+                "gh pr merge https://github.com/o/r/pull/42 --squash --subject 'fix(hooks): valid title (#42)'",
+                False,
+            ),
+            (
+                "shell",
+                "gh pr merge --body 17 42 --squash --subject 'fix(hooks): valid title (#17)'",
+                True,
+            ),
         )
         for kind, value, denied in cases:
             tool = "functions.exec" if kind == "nested" else "Bash"
@@ -161,6 +225,24 @@ class GithubTitleHooksTests(unittest.TestCase):
                     [hook, "PreToolUse", kind], payload, environment
                 )
                 self.assertEqual(bool(output), denied, output)
+
+    def test_windows_permission_fallback_is_valid_json(self) -> None:
+        launcher = (PLUGIN / "hooks/codexy-title-check.cmd").read_text(encoding="utf-8")
+        lines = [
+            line.strip()
+            for line in launcher.splitlines()
+            if line.strip().startswith("echo {")
+        ]
+        self.assertEqual(len(lines), 2)
+        for line in lines:
+            denial = json.loads(line.removeprefix("echo "))
+            specific = denial["hookSpecificOutput"]
+            event = specific["hookEventName"]
+            with self.subTest(event=event):
+                if event == "PermissionRequest":
+                    self.assertEqual(specific["decision"]["behavior"], "deny")
+                else:
+                    self.assertEqual(specific["permissionDecision"], "deny")
 
 
 if __name__ == "__main__":

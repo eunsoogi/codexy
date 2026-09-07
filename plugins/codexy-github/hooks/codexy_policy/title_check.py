@@ -57,7 +57,7 @@ def forbidden(request: Request, kind: str) -> bool:
         return _merge(request)
     if kind == "shell":
         data = _mapping(request.tool_input)
-        return data is not None and shell_forbidden(data.get("command"))
+        return data is not None and shell_forbidden(data.get("command"), request.cwd)
     if kind == "nested":
         data = _mapping(request.tool_input)
         return data is not None and nested_forbidden(data.get("code"))
