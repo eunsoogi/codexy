@@ -59,6 +59,19 @@ fn title_hook_preserves_only_the_three_title_contracts() -> TestResult {
             "tool_name": "Bash",
             "tool_input": {"command": "gh api --method POST graphql -f query='mutation { createIssue(input: {title: \"Valid issue\"}) { issue { id } } }'"},
         }), false)?;
+        for (command, denied) in [
+            ("gh api repos/eunsoogi/codexy/issues -f title='plain title'", true),
+            ("gh api repos/eunsoogi/codexy/issues -f title='Valid issue'", false),
+            ("gh api repos/eunsoogi/codexy/issues -f body='free form'", true),
+            ("gh api repos/eunsoogi/codexy/issues -F title='plain title'", true),
+            ("gh api --method GET repos/eunsoogi/codexy/issues -f title='plain title'", false),
+        ] {
+            assert_title(event, "shell", json!({
+                "hook_event_name": event,
+                "tool_name": "Bash",
+                "tool_input": {"command": command},
+            }), denied)?;
+        }
         assert_title(event, "nested", json!({
             "hook_event_name": event,
             "tool_name": "functions.exec",

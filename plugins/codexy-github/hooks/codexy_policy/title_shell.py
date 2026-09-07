@@ -70,6 +70,7 @@ def _inspect_merge(args: list[str]) -> bool:
 
 def _inspect_api(args: list[str]) -> bool:
     method = "GET"
+    method_explicit = False
     endpoint = None
     fields: list[str | None] = []
     index = 0
@@ -79,20 +80,27 @@ def _inspect_api(args: list[str]) -> bool:
             if index + 1 >= len(args):
                 return False
             method, index = args[index + 1].upper(), index + 2
+            method_explicit = True
             continue
         if token.startswith("--method="):
             method = token.split("=", 1)[1].upper()
+            method_explicit = True
             index += 1
             continue
         if token.startswith("-X") and len(token) > 2:
             method, index = token[2:].upper(), index + 1
+            method_explicit = True
             continue
         if token in _FIELD_FLAGS:
             fields.append(args[index + 1] if index + 1 < len(args) else None)
+            if not method_explicit:
+                method = "POST"
             index += 2
             continue
         if any(token.startswith(flag + "=") for flag in _FIELD_FLAGS):
             fields.append(token.split("=", 1)[1])
+            if not method_explicit:
+                method = "POST"
             index += 1
             continue
         if endpoint is None and not token.startswith("-"):

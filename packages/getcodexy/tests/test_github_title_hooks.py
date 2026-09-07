@@ -120,6 +120,31 @@ class GithubTitleHooksTests(unittest.TestCase):
                 "gh api --method POST graphql -f query='mutation { createIssue(input: {title: \"Valid issue\"}) { issue { id } } }'",
                 False,
             ),
+            (
+                "shell",
+                "gh api repos/eunsoogi/codexy/issues -f title='plain title'",
+                True,
+            ),
+            (
+                "shell",
+                "gh api repos/eunsoogi/codexy/issues -f title='Valid issue'",
+                False,
+            ),
+            (
+                "shell",
+                "gh api repos/eunsoogi/codexy/issues -f body='free form'",
+                True,
+            ),
+            (
+                "shell",
+                "gh api repos/eunsoogi/codexy/issues -F title='plain title'",
+                True,
+            ),
+            (
+                "shell",
+                "gh api --method GET repos/eunsoogi/codexy/issues -f title='plain title'",
+                False,
+            ),
         )
         for kind, value, denied in cases:
             tool = "functions.exec" if kind == "nested" else "Bash"
