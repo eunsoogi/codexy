@@ -5,11 +5,12 @@ use serde_json::{Value, json};
 
 pub(crate) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
-const TOOLS: &[&str] = &[
+pub(crate) const TOOLS: &[&str] = &[
     "spawn_agent",
     "agents__spawn_agent",
     "multi_agent_v1__spawn_agent",
 ];
+pub(crate) const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
 const MATCHER: &str = "^(?:(?:agents|multi_agent_v1)__)?spawn_agent$";
 const LAUNCHER: &str = "codexy-subagent-ownership.sh";
 
@@ -195,7 +196,7 @@ pub(crate) fn assert_denied(agent_type: Option<&str>, message: &str, code: &str)
     Ok(())
 }
 
-fn payload(tool: &str, event: &str, agent_type: Option<&str>, message: &str) -> Value {
+pub(crate) fn payload(tool: &str, event: &str, agent_type: Option<&str>, message: &str) -> Value {
     let mut tool_input = json!({"task_name": "bounded_task", "message": message});
     if let Some(agent_type) = agent_type {
         tool_input["agent_type"] = json!(agent_type);
@@ -207,7 +208,7 @@ fn payload(tool: &str, event: &str, agent_type: Option<&str>, message: &str) -> 
     })
 }
 
-fn run_payload(input: &Value, event: &str) -> TestResult<Option<String>> {
+pub(crate) fn run_payload(input: &Value, event: &str) -> TestResult<Option<String>> {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy");
     let mut child = Command::new(root.join("hooks").join(LAUNCHER))
         .arg(event)
