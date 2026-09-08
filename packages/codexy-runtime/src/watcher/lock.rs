@@ -14,7 +14,7 @@ const STALE_LOCK_MS: u64 = 120_000;
 pub(super) struct LockGuard {
     path: PathBuf,
     owner: String,
-    _file: File,
+    file: Option<File>,
 }
 
 impl LockGuard {
@@ -54,13 +54,14 @@ impl LockGuard {
         Ok(Some(Self {
             path: path.to_path_buf(),
             owner,
-            _file: file,
+            file: Some(file),
         }))
     }
 }
 
 impl Drop for LockGuard {
     fn drop(&mut self) {
+        drop(self.file.take());
         let matches = fs::read_to_string(&self.path).is_ok_and(|contents| contents == self.owner);
         if matches {
             let _ = fs::remove_file(&self.path);
@@ -70,16 +71,27 @@ impl Drop for LockGuard {
 
 fn stale(path: &Path) -> bool {
     let Ok(contents) = fs::read_to_string(path) else {
-        return true;
+        return older_than_stale(path);
     };
     let mut fields = contents.split(':');
     let pid = fields.next().and_then(|value| value.parse::<u32>().ok());
     let started = fields.next().and_then(|value| value.parse::<u64>().ok());
-    let Some(pid) = pid else { return true };
+    let Some(pid) = pid else {
+        return older_than_stale(path);
+    };
     if process_alive(pid) {
         return false;
     }
-    started.is_none_or(|time| now_ms().saturating_sub(time) >= STALE_LOCK_MS)
+    started.is_some_and(|time| now_ms().saturating_sub(time) >= STALE_LOCK_MS)
+        || older_than_stale(path)
+}
+
+fn older_than_stale(path: &Path) -> bool {
+    fs::metadata(path)
+        .and_then(|metadata| metadata.modified())
+        .ok()
+        .and_then(|modified| modified.elapsed().ok())
+        .is_some_and(|age| age >= Duration::from_millis(STALE_LOCK_MS))
 }
 
 #[cfg(unix)]
@@ -95,4 +107,40 @@ fn process_alive(pid: u32) -> bool {
 #[cfg(not(unix))]
 fn process_alive(_pid: u32) -> bool {
     false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keeps_a_recently_created_empty_lock_for_its_initializer() -> Result<()> {
+        let temporary = tempfile::tempdir()?;
+        let path = temporary.path().join("state.lock");
+        let initializer = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)?;
+
+        assert!(LockGuard::try_acquire(&path)?.is_none());
+        assert!(
+            path.exists(),
+            "contender must not reclaim an initializing lock"
+        );
+
+        drop(initializer);
+        Ok(())
+    }
+
+    #[test]
+    fn removes_the_lock_after_the_guard_releases_its_file() -> Result<()> {
+        let temporary = tempfile::tempdir()?;
+        let path = temporary.path().join("state.lock");
+        let guard = LockGuard::try_acquire(&path)?.context("lock was not acquired")?;
+
+        assert!(path.exists());
+        drop(guard);
+        assert!(!path.exists());
+        Ok(())
+    }
 }
