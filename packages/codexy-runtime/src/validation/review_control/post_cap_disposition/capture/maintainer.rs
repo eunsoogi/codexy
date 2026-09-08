@@ -1,10 +1,8 @@
-use std::process::Command;
-
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
 use super::super::super::pre_pr::{number, object, text};
-use super::{Locator, bounded_response};
+use super::{Locator, bounded_response, github_command};
 
 #[path = "maintainer_body.rs"]
 mod body;
@@ -23,7 +21,7 @@ pub(super) fn read_raw(locator: &Locator) -> Result<Value, String> {
     let pull = format!("pullRequest={}", locator.pull_request);
     let issue = format!("owningIssue={}", locator.owning_issue);
     let query = format!("query={}", include_str!("query.graphql"));
-    let output = Command::new("gh")
+    let output = github_command()
         .args([
             "api",
             "graphql",

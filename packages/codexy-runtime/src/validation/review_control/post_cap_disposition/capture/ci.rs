@@ -3,7 +3,7 @@ use std::process::Command;
 use serde_json::{Value, json};
 
 use super::super::super::pre_pr::{object, reject_unknown, text};
-use super::{Locator, bounded_response};
+use super::{Locator, bounded_response, github_command};
 
 mod inventory;
 mod pull;
@@ -17,7 +17,7 @@ const SCHEMA: &str = "codexy.github-current-head-ci.v1";
 
 pub(super) fn read(locator: &Locator) -> Result<(Value, Value), String> {
     let pull_number = locator.pull_request.to_string();
-    let mut pull_command = Command::new("gh");
+    let mut pull_command = github_command();
     pull_command.args([
         "pr",
         "view",
@@ -36,7 +36,7 @@ pub(super) fn read(locator: &Locator) -> Result<(Value, Value), String> {
         "repos/{}/branches/{}/protection",
         locator.repository, base_name
     );
-    let mut protection_command = Command::new("gh");
+    let mut protection_command = github_command();
     protection_command.args(["api", &protection_endpoint]);
     let required_status_checks = run_json(&mut protection_command, "required status checks")?;
 
@@ -44,7 +44,7 @@ pub(super) fn read(locator: &Locator) -> Result<(Value, Value), String> {
         "repos/{}/commits/{}/check-runs?per_page=100",
         locator.repository, head
     );
-    let mut check_runs_command = Command::new("gh");
+    let mut check_runs_command = github_command();
     check_runs_command
         .args(["api", "--paginate", "--slurp"])
         .arg(&check_runs_endpoint);
@@ -54,7 +54,7 @@ pub(super) fn read(locator: &Locator) -> Result<(Value, Value), String> {
         "repos/{}/commits/{}/check-suites?per_page=100",
         locator.repository, head
     );
-    let mut check_suites_command = Command::new("gh");
+    let mut check_suites_command = github_command();
     check_suites_command
         .args(["api", "--paginate", "--slurp"])
         .arg(&check_suites_endpoint);

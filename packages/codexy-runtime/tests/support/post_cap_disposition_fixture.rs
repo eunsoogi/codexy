@@ -17,6 +17,7 @@ pub(crate) struct CiSources {
 
 pub(crate) struct GhFixture {
     pub(crate) path: Vec<PathBuf>,
+    pub(crate) gh_command: PathBuf,
     pub(crate) ci: PathBuf,
     pub(crate) required: PathBuf,
     pub(crate) expected: PathBuf,
@@ -109,12 +110,17 @@ esac
     make_executable(&gh)?;
     #[cfg(windows)]
     windows::write_gh_companion(&bin)?;
+    #[cfg(windows)]
+    let gh_command = bin.join("gh.cmd");
+    #[cfg(not(windows))]
+    let gh_command = gh.clone();
     let mut path = vec![bin];
     if let Some(existing) = std::env::var_os("PATH") {
         path.extend(std::env::split_paths(&existing));
     }
     Ok(GhFixture {
         path,
+        gh_command,
         ci,
         required,
         expected,

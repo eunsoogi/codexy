@@ -1,3 +1,5 @@
+use std::process::Command;
+
 use serde_json::{Map, Value, json};
 
 use super::super::pre_pr::{number, object, reject_unknown, text};
@@ -7,6 +9,23 @@ mod maintainer;
 
 const SCHEMA: &str = "codexy.review-control-finding-disposition.v1";
 const MAX_RESPONSE_BYTES: usize = 4 * 1024 * 1024;
+const TEST_GH_COMMAND_ENV: &str = "CODEXY_TEST_GH_COMMAND";
+
+pub(super) fn github_command() -> Command {
+    if matches!(std::env::var("CODEXY_TEST_MODE").as_deref(), Ok("1"))
+        && let Some(program) = std::env::var_os(TEST_GH_COMMAND_ENV)
+    {
+        #[cfg(windows)]
+        {
+            let mut command = Command::new("cmd.exe");
+            command.args(["/D", "/C"]).arg(program);
+            return command;
+        }
+        #[cfg(not(windows))]
+        return Command::new(program);
+    }
+    Command::new("gh")
+}
 
 pub(super) struct Locator {
     pub(super) repository: String,
