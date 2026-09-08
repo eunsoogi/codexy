@@ -239,6 +239,7 @@ jobs:
       - shell: pwsh
         run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - *rust-cache-save
+      - *measurement-cache-save
       - name: Upload opt-in measurement artifacts
         if: github.event_name == 'workflow_dispatch' && (inputs.cache_mode == 'isolated' || inputs.profiling == true) && always()
         uses: actions/upload-artifact@v7

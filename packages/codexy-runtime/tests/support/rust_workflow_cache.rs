@@ -7,6 +7,10 @@ use super::{workflow_failures, workflow_text, CARGO_COMMAND};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 const WINDOWS_TOOLCHAIN_CACHE_SUBPATH: &str = ".rustup/toolchains/stable-x86_64-pc-windows-msvc";
+const RUST_CACHE_RESTORE_IF: &str = "github.event_name != 'workflow_dispatch' || inputs.cache_mode == 'normal'";
+const RUST_CACHE_SAVE_IF: &str = "(github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'normal' && inputs.condition == 'cold') && steps.rust-cache.outputs.cache-hit != 'true' && success()";
+const MEASUREMENT_CACHE_RESTORE_IF: &str = "github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated' && inputs.condition == 'warm'";
+const MEASUREMENT_CACHE_SAVE_IF: &str = "github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated' && inputs.condition == 'cold' && success()";
 
 #[test]
 fn rust_workflow_rejects_obvious_shell_success_masking() -> TestResult {
@@ -75,6 +79,53 @@ fn rust_workflow_shares_a_bounded_windows_toolchain_cache_path() -> TestResult {
     assert!(!workflow.contains("RUSTUP_HOME"));
     assert!(!workflow.contains(".rustup/toolchains/*"));
     Ok(())
+}
+
+#[test]
+fn isolated_measurement_cache_connects_cold_save_to_warm_restore_on_each_platform() -> TestResult {
+    let workflow: Value = serde_yaml::from_str(&workflow_text()?)?;
+    let jobs = super::mapping_field(workflow.as_mapping(), "jobs", "workflow")?;
+    for job_id in ["rust-test", "windows-rust-test"] {
+        let job = super::mapping_field(Some(jobs), job_id, "jobs")?;
+        let steps = super::step_mappings(job).collect::<Vec<_>>();
+        let cargo = steps
+            .iter()
+            .position(|step| step.get("run").and_then(Value::as_str).is_some_and(|run| run.contains(CARGO_COMMAND)))
+            .ok_or_else(|| format!("{job_id} is missing the cargo test step"))?;
+        let rust_restore = find_cache_step(&steps, "actions/cache/restore@v5", RUST_CACHE_RESTORE_IF)
+            .ok_or_else(|| format!("{job_id} is missing normal cache restore"))?;
+        let rust_save = find_cache_step(&steps, "actions/cache/save@v5", RUST_CACHE_SAVE_IF)
+            .ok_or_else(|| format!("{job_id} is missing normal cache save"))?;
+        let measurement_restore = find_cache_step(
+            &steps,
+            "actions/cache/restore@v5",
+            MEASUREMENT_CACHE_RESTORE_IF,
+        )
+        .ok_or_else(|| format!("{job_id} is missing isolated warm restore"))?;
+        let measurement_save = find_cache_step(&steps, "actions/cache/save@v5", MEASUREMENT_CACHE_SAVE_IF)
+            .ok_or_else(|| format!("{job_id} is missing isolated cold save"))?;
+
+        assert!(rust_restore < cargo && cargo < rust_save, "{job_id} moved normal cache around cargo");
+        assert!(measurement_restore < cargo && cargo < measurement_save, "{job_id} broke isolated cache flow");
+        assert_eq!(cache_key(&steps[measurement_restore]), cache_key(&steps[measurement_save]), "{job_id} changed isolated cache key between warm restore and cold save");
+        assert_eq!(cache_path(&steps[measurement_restore]), cache_path(&steps[measurement_save]), "{job_id} changed isolated cache paths between warm restore and cold save");
+    }
+    Ok(())
+}
+
+fn find_cache_step(steps: &[&serde_yaml::Mapping], uses: &str, condition: &str) -> Option<usize> {
+    steps.iter().position(|step| {
+        step.get("uses").and_then(Value::as_str) == Some(uses)
+            && step.get("if").and_then(Value::as_str) == Some(condition)
+    })
+}
+
+fn cache_key(step: &serde_yaml::Mapping) -> Option<&str> {
+    step.get("with")?.as_mapping()?.get("key")?.as_str()
+}
+
+fn cache_path(step: &serde_yaml::Mapping) -> Option<&str> {
+    step.get("with")?.as_mapping()?.get("path")?.as_str()
 }
 
 #[test]
