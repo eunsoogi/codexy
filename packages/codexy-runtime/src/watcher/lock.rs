@@ -126,9 +126,10 @@ mod tests {
         let legacy = b"1234:1700000000000:deadbeef";
         fs::write(&path, legacy)?;
 
-        let guard = LockGuard::try_acquire(&path)?.context("lock was not acquired")?;
         assert_eq!(fs::read(&path)?, legacy);
+        let guard = LockGuard::try_acquire(&path)?.context("lock was not acquired")?;
         drop(guard);
+        assert_eq!(fs::read(&path)?, legacy);
         Ok(())
     }
 
@@ -185,7 +186,16 @@ mod tests {
         let native = native.expect_err("denied creation must fail");
         assert_eq!(native.raw_os_error(), Some(5));
         let actual = actual.expect_err("access denial must not become contention");
-        assert!(actual.to_string().contains(&native.to_string()));
+        assert!(actual.chain().any(|cause| {
+            cause
+                .downcast_ref::<std::io::Error>()
+                .is_some_and(|error| error.raw_os_error() == Some(5))
+        }));
+        assert!(
+            actual
+                .chain()
+                .any(|cause| cause.to_string() == native.to_string())
+        );
         Ok(())
     }
 }

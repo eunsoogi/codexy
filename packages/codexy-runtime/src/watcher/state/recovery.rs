@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context as _, Result, bail};
 
-use super::super::io::random_hex;
+use super::super::io::{atomic_write, random_hex, reject_link};
 use crate::watcher::lock::LockGuard;
 
 const SESSION_TEMP_PREFIX: &str = ".session.json.tmp-";
@@ -11,6 +11,7 @@ const SESSION_TEMP_HEX_BYTES: usize = 24;
 const QUARANTINE_PREFIX: &str = ".codexy-watcher-reclaim-";
 const QUARANTINE_HEX_BYTES: usize = 32;
 const MAX_QUARANTINE_SCAN_ENTRIES: usize = 64;
+const RECOVERY_CURSOR_FILE: &str = ".reclaim.cursor";
 const OWNED_FILES: [&str; 6] = [
     "state.lock",
     "wait.lock",
@@ -63,11 +64,24 @@ pub(super) fn recover_quarantines(root: &Path) -> Result<()> {
         return Ok(());
     };
     let parent = root.parent().context("watcher state root has no parent")?;
-    for (index, entry) in fs::read_dir(parent)?.enumerate() {
-        if index >= MAX_QUARANTINE_SCAN_ENTRIES {
-            break;
+    let cursor = read_cursor(root)?;
+    let mut entries = fs::read_dir(parent)?;
+    let mut skipped = 0;
+    while skipped < cursor {
+        if entries.next().transpose()?.is_none() {
+            write_cursor(root, 0)?;
+            return Ok(());
         }
-        let entry = entry?;
+        skipped += 1;
+    }
+
+    let mut scanned = 0;
+    while scanned < MAX_QUARANTINE_SCAN_ENTRIES {
+        let Some(entry) = entries.next().transpose()? else {
+            write_cursor(root, 0)?;
+            return Ok(());
+        };
+        scanned += 1;
         let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
             continue;
         };
@@ -81,7 +95,29 @@ pub(super) fn recover_quarantines(root: &Path) -> Result<()> {
         }
         recover_quarantine(&path)?;
     }
+    write_cursor(root, cursor.saturating_add(scanned))?;
     Ok(())
+}
+
+fn read_cursor(root: &Path) -> Result<usize> {
+    let path = root.join(RECOVERY_CURSOR_FILE);
+    reject_link(&path)?;
+    let bytes = match fs::read(&path) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(0),
+        Err(error) => return Err(error.into()),
+    };
+    Ok(std::str::from_utf8(&bytes)
+        .ok()
+        .and_then(|text| text.trim().parse::<usize>().ok())
+        .unwrap_or(0))
+}
+
+fn write_cursor(root: &Path, cursor: usize) -> Result<()> {
+    atomic_write(
+        &root.join(RECOVERY_CURSOR_FILE),
+        cursor.to_string().as_bytes(),
+    )
 }
 
 fn recover_quarantine(path: &Path) -> Result<()> {

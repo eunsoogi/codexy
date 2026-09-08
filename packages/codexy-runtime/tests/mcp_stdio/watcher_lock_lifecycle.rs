@@ -124,7 +124,7 @@ fn startup_scans_past_invalid_quarantines_without_starving_later_cleanup(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let state = tempfile::tempdir()?;
     let mut invalid = Vec::new();
-    for index in 0..24 {
+    for index in 0..80 {
         let quarantine = state
             .path()
             .join(format!(".codexy-watcher-reclaim-{index:032x}"));
@@ -140,9 +140,19 @@ fn startup_scans_past_invalid_quarantines_without_starving_later_cleanup(
         fs::write(valid.join(name), b"owned")?;
     }
 
-    let mut client = watcher_client(state.path())?;
-    initialize(&mut client)?;
-    open_session(&mut client, "bounded-quarantine-scan", 2)?;
+    for request_id in 2..=4 {
+        let mut client = watcher_client(state.path())?;
+        initialize(&mut client)?;
+        open_session(
+            &mut client,
+            &format!("bounded-quarantine-scan-{request_id}"),
+            request_id,
+        )?;
+        drop(client);
+        if !valid.exists() {
+            break;
+        }
+    }
     assert!(!valid.exists(), "later valid quarantine was starved");
     for quarantine in invalid {
         assert!(quarantine.join("preserve-me").is_file());
