@@ -18,8 +18,10 @@
   ],
   "supportedPlatforms": [
     "darwin-arm64",
-    "linux-x86_64"
+    "linux-x86_64",
+    "windows-x86_64"
   ],
+  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Codexy",
     "shortDescription": "Run Codex work through atomic orchestration, evidence, review, and merge gates.",

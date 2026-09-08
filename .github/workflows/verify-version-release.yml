@@ -52,7 +52,7 @@ jobs:
           sha256sum public.tar.gz | grep "$(jq -r .artifact.sha256 public-receipt.json)"
           sha256sum public-bundle.tar.gz | grep "$(jq -r .bundleArtifact.sha256 public-receipt.json)"
           sha256sum public-runtime.tar.gz | grep "$(jq -r .runtimeArtifact.sha256 public-receipt.json)"
-          jq -e --arg commit "$STAGING_SOURCE_COMMIT" '.runtimeClasses.coreHandoff.source.commit == $commit and (.runtimeClasses.coreHandoff.source.tree | test("^[0-9a-f]{40}$")) and (.runtimeClasses.coreHandoff.sha256 | test("^[0-9a-f]{64}$"))' public-receipt.json >/dev/null
+          jq -e --arg commit "$STAGING_SOURCE_COMMIT" '.runtimeClasses.coreHandoff.source.commit == $commit and (.runtimeClasses.coreHandoff.source.tree | test("^[0-9a-f]{40}$")) and (.runtimeClasses.coreHandoff.sha256 | test("^[0-9a-f]{64}$")) and .runtimeClasses.coreWatcherMcp.source.commit == $commit and (.runtimeClasses.coreWatcherMcp.source.tree | test("^[0-9a-f]{40}$")) and (.runtimeClasses.coreWatcherMcp.sha256 | test("^[0-9a-f]{64}$"))' public-receipt.json >/dev/null
           test "$(jq -r .release.tag public-receipt.json)" = "$RELEASE_TAG"
           test "$(jq -r .source.activationCommit public-receipt.json)" = "$ACTIVATION_COMMIT"
           test "$(jq -r .source.stagingSourceCommit public-receipt.json)" = "$STAGING_SOURCE_COMMIT"

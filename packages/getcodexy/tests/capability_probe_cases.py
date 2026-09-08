@@ -12,8 +12,7 @@ from unittest.mock import patch
 
 from codexy_runtime_tools.component_health import health
 from codexy_runtime_tools.component_manifest import load_component_manifest
-from packages.getcodexy.tests.component_distribution_support import FAKE_MCP
-
+from packages.getcodexy.tests.component_distribution_support import FAKE_MCP, install_watcher_runtime
 
 REPOSITORY = Path(__file__).resolve().parents[3]
 PLUGIN_NAMES = {
@@ -23,7 +22,6 @@ PLUGIN_NAMES = {
 }
 _HEALTH_FIELDS = ("installed", "configured", "started", "callable", "healthy")
 
-
 def materialize(
     state, *components: str, version: str = load_component_manifest().version
 ) -> None:
@@ -31,6 +29,7 @@ def materialize(
     for component in components:
         root = state.marketplace / "plugins" / PLUGIN_NAMES[component]
         if root.exists():
+            if component == "core": install_watcher_runtime(root)
             continue
         source = REPOSITORY / "plugins" / PLUGIN_NAMES[component]
         root.parent.mkdir(parents=True, exist_ok=True)
@@ -39,7 +38,8 @@ def materialize(
         contents = json.loads(manifest.read_text(encoding="utf-8"))
         contents["version"] = version
         manifest.write_text(json.dumps(contents), encoding="utf-8")
-
+        if component == "core":
+            install_watcher_runtime(root)
 
 class CapabilityProbeCases:
     def setUp(self) -> None:

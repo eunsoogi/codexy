@@ -73,6 +73,8 @@ edits.
   `codexy-warden` for workflows, shell commands, credentials, remote MCP
   endpoints, untrusted input, repository permissions, install scripts, local
   state mutation, or generated evidence with security implications;
+  `codexy-watcher` for bounded native read-only Worker observation and core
+  Watcher MCP reporting;
   `codexy-auditor` after implementation for acceptance-criteria, readiness, and
   observable verification passes across repository, CLI, config, GitHub,
   browser/desktop, documents/artifacts, spreadsheets/data, research/wiki,
@@ -244,7 +246,4 @@ readback authority.
 
 Light retains its existing no-reviewer route and MUST NOT carry terminal review
 history or post-cap fields. A third `BLOCK` or `UNOBSERVABLE` remains a terminal
-non-PASS disposition; the post-cap path never turns it into readiness.
-
-Headings, prose, and omitted legacy ceremony fields MUST NOT override direct
-state facts; ordered history and qualifying-change evidence stay in that state.
+non-PASS disposition; the post-cap path never turns it into readiness. Headings, prose, and omitted legacy ceremony fields MUST NOT override direct state facts; ordered history and qualifying-change evidence stay in that state.

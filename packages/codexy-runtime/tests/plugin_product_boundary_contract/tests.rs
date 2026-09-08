@@ -40,16 +40,21 @@ fn core_and_devtools_packages_keep_developer_tool_surfaces_separate() -> TestRes
     let core_manifest: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
         root.join("plugins/codexy/.codex-plugin/plugin.json"),
     )?)?;
-    assert!(core_manifest.get("mcpServers").is_none());
+    assert_eq!(core_manifest["mcpServers"], "./.mcp.json");
+    let core = root.join("plugins/codexy");
+    let core_mcp: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+        core.join(".mcp.json"),
+    )?)?;
+    assert_eq!(core_mcp["watcher"]["command"], "./mcp/codexy-mcp-watcher");
+    assert!(core.join("mcp/codexy-mcp-watcher").is_file());
+    assert!(core.join("mcp/codexy-mcp-watcher.cmd").is_file());
     for absent in [
-        ".mcp.json",
         ".codex/lsp-client.json",
         "lsp",
-        "mcp",
         "runtime-release.json",
     ] {
         assert!(
-            !root.join("plugins/codexy").join(absent).exists(),
+            !core.join(absent).exists(),
             "core retains devtools surface: {absent}"
         );
     }

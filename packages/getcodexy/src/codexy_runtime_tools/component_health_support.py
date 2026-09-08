@@ -10,7 +10,7 @@ from .component_resolver import ComponentResolutionError, compare_versions
 
 
 SURFACE_PATHS = {
-    "core": ("agents/catalog.toml", "hooks/hooks.json", "skills/wiki/SKILL.md"),
+    "core": ("agents/catalog.toml", "hooks/hooks.json", "skills/wiki/SKILL.md", ".mcp.json", "mcp/codexy-mcp-watcher", "mcp/codexy-mcp-watcher.cmd"),
     "github": ("agents/catalog.toml", "hooks/hooks.json"),
     "devtools": ("mcp/codexy-mcp-devtools", ".mcp.json"),
 }
@@ -39,13 +39,7 @@ def _legacy_state(manifest, component, actual, records, admission_error, host_er
         return "stale"
     if component == "core" and any(
         os.path.lexists(plugin / path)
-        for path in (
-            ".mcp.json",
-            ".codex/lsp-client.json",
-            "lsp",
-            "mcp",
-            "runtime-release.json",
-        )
+        for path in (".codex/lsp-client.json", "lsp", "runtime-release.json")
     ):
         return "stale"
     if not set(manifest.component(component).dependencies).issubset(actual):

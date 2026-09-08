@@ -99,7 +99,10 @@ pub(super) fn validate_selector(root: &Path, path: &str, selector: &str) -> Test
     let registrations: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(root.join(path))?)?;
     if selector.is_empty()
-        || path != "plugins/codexy-devtools/.mcp.json"
+        || !matches!(
+            path,
+            "plugins/codexy-devtools/.mcp.json" | "plugins/codexy/.mcp.json"
+        )
         || registrations[selector].is_null()
     {
         return Err(format!("stale selector: {path}#{selector}").into());
@@ -109,13 +112,21 @@ pub(super) fn validate_selector(root: &Path, path: &str, selector: &str) -> Test
 pub(super) fn registration_selectors(
     root: &Path,
 ) -> Result<BTreeSet<String>, Box<dyn std::error::Error>> {
-    let registrations: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
-        root.join("plugins/codexy-devtools/.mcp.json"),
-    )?)?;
-    Ok(registrations
-        .as_object()
-        .ok_or("MCP registrations must be an object")?
-        .keys()
-        .map(|key| format!("plugins/codexy-devtools/.mcp.json#{key}"))
-        .collect())
+    let mut selectors = BTreeSet::new();
+    for path in [
+        "plugins/codexy-devtools/.mcp.json",
+        "plugins/codexy/.mcp.json",
+    ] {
+        let registrations: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+            root.join(path),
+        )?)?;
+        selectors.extend(
+            registrations
+                .as_object()
+                .ok_or("MCP registrations must be an object")?
+                .keys()
+                .map(|key| format!("{path}#{key}")),
+        );
+    }
+    Ok(selectors)
 }

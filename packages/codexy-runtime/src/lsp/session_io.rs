@@ -76,7 +76,10 @@ fn read_stdout(mut stdout: ChildStdout, tx: &mpsc::Sender<Value>, stderr: &Share
                 return;
             }
         };
-        parser.extend(&chunk[..read]);
+        if let Err(error) = parser.extend(&chunk[..read]) {
+            append_stderr(stderr, &error.to_string());
+            return;
+        }
         loop {
             match parser.next_frame() {
                 Ok(Some(message)) => {

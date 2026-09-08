@@ -13,4 +13,5 @@ agent_files = [
   "codexy-inspector.toml",
   "codexy-sentinel.toml",
   "codexy-warden.toml",
+  "codexy-watcher.toml",
 ]

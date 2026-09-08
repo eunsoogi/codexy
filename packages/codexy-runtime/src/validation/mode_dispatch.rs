@@ -29,6 +29,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
                 return all;
             }
             all.extend(hooks::check(plugin_root));
+            all.extend(mcp::check(plugin_root));
             all.extend(roles::check(plugin_root));
             all.extend(routing_policy::check(plugin_root));
             all.extend(tdd_classification::check(plugin_root));
@@ -157,7 +158,10 @@ fn public_devtools_root(plugin_root: &Path) -> PathBuf {
 }
 
 fn tooling_root(plugin_root: &Path) -> PathBuf {
-    if !is_devtools(plugin_root) && !plugin_root.join(".codex/lsp-client.json").is_file() {
+    if !is_devtools(plugin_root)
+        && !plugin_root.join(".codex/lsp-client.json").is_file()
+        && !plugin_root.join(".mcp.json").is_file()
+    {
         return devtools_root(plugin_root);
     }
     plugin_root.to_path_buf()

@@ -19,12 +19,13 @@ from .identity import (
     platforms,
     string,
 )
+from .release_provenance import PROVENANCE_WORKFLOW, validate_provenance
+from .release_watcher_contract import validate_watcher
 
 if TYPE_CHECKING:
     from .contract import RuntimeRelease
 
 REPOSITORY = "https://github.com/eunsoogi/codexy"
-PROVENANCE_WORKFLOW = ".github/workflows/runtime-candidate.yml"
 REPOSITORY_ID = 1_269_350_143
 
 
@@ -69,35 +70,16 @@ def source_platforms(value: Any) -> dict[str, dict[str, dict[str, str]]]:
     return result
 
 
-def validate_provenance(value: Any) -> dict[str, Any]:
-    value = object(value, "provenance")
-    if set(value) != {
-        "repositoryId",
-        "workflowPath",
-        "runId",
-        "runAttempt",
-        "workflowRunUrl",
-    }:
-        raise ValueError("runtime release provenance has unknown or missing fields")
-    if value.get("repositoryId") != REPOSITORY_ID:
-        raise ValueError("runtime release provenance repository is not canonical")
-    if value.get("workflowPath") != PROVENANCE_WORKFLOW:
-        raise ValueError("runtime release provenance workflow is not canonical")
-    for field in ("runId", "runAttempt"):
-        if type(value.get(field)) is not int or value[field] <= 0:
-            raise ValueError(f"runtime release provenance {field} must be positive")
-    if value.get("workflowRunUrl") != f"{REPOSITORY}/actions/runs/{value['runId']}":
-        raise ValueError("runtime release provenance URL is not canonical")
-    return value
-
-
 def validate_classes(
     value: Any,
     expected_platforms: dict[str, dict[str, dict[str, str]]],
     source: dict[str, Any],
 ) -> dict[str, Any]:
     value = object(value, "classes")
-    if set(value) != {"devtoolsMcp", "coreHandoff"}:
+    expected_fields = {"devtoolsMcp", "coreHandoff"}
+    if "coreWatcherMcp" in value:
+        expected_fields.add("coreWatcherMcp")
+    if set(value) != expected_fields:
         raise ValueError("runtime release classes have unknown or missing fields")
     devtools = object(value.get("devtoolsMcp"), "devtoolsMcp")
     if (
@@ -142,6 +124,9 @@ def validate_classes(
         }[platform]
         if bridge.get("kind") != expected_kind:
             raise ValueError("runtime release core bridge kind is not canonical")
+    watcher = value.get("coreWatcherMcp")
+    if watcher is not None:
+        validate_watcher(watcher)
     if source.get("repository") != REPOSITORY or not isinstance(
         source.get("commit"), str
     ):
@@ -224,9 +209,16 @@ def _validate_candidate(
             candidate_classes = validate_classes(
                 candidate.get("classes"), inventory, release_source
             )
-            if candidate_classes["coreHandoff"] != release.classes["coreHandoff"]:
+            if (
+                candidate_classes["coreHandoff"] != release.classes["coreHandoff"]
+                or (
+                    "coreWatcherMcp" in release.classes
+                    and candidate_classes.get("coreWatcherMcp")
+                    != release.classes["coreWatcherMcp"]
+                )
+            ):
                 raise ValueError(
-                    "source-selected core handoff identity does not match candidate"
+                    "source-selected core runtime class identity does not match candidate"
                 )
     elif inventory != release.platforms:
         raise ValueError("runtime candidate inventory does not match release")
@@ -242,4 +234,15 @@ def _validate_candidate(
             ):
                 raise ValueError(
                     f"runtime candidate {candidate_platform}/{server} digest does not match"
+                )
+    if release.classes and "coreWatcherMcp" in release.classes:
+        watcher = release.classes["coreWatcherMcp"]["platforms"]
+        for candidate_platform, binary in watcher.items():
+            member = package.extractfile(f"plugins/{plugin_root}/{binary['path']}")
+            if (
+                member is None
+                or hashlib.sha256(member.read()).hexdigest() != binary["sha256"]
+            ):
+                raise ValueError(
+                    f"runtime candidate {candidate_platform}/watcher digest does not match"
                 )

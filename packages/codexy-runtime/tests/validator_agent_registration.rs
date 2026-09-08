@@ -71,6 +71,7 @@ fn register_codexy_agents_writes_stable_discovery_files() -> Result<(), Box<dyn 
         "codexy-shipwright",
         "codexy-sentinel",
         "codexy-warden",
+        "codexy-watcher",
     ] {
         let installed = std::fs::read_to_string(agents_root.join(format!("{name}.toml")))?;
         assert!(installed.starts_with("# CODEXY MANAGED AGENT\n"));

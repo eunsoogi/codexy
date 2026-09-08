@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from codexy_runtime_tools.version_lock import default_package_version
-
+from packages.getcodexy.tests.component_watcher_fixture import install_watcher_runtime
 
 FAKE_MCP = r"""#!/usr/bin/env python3
 import json, os, subprocess, sys
@@ -117,8 +117,6 @@ else:
     payload = {"ok": True}
 print(json.dumps(payload))
 """
-
-
 def copy_marketplace_plugins(repository: Path, root: Path) -> str:
     version = default_package_version()
     for plugin in ("codexy", "codexy-github", "codexy-devtools"):
@@ -130,6 +128,8 @@ def copy_marketplace_plugins(repository: Path, root: Path) -> str:
         manifest_path.write_text(
             json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
         )
+        if plugin == "codexy":
+            install_watcher_runtime(destination)
     _git(root, "init", "-q")
     _git(root, "branch", "-M", "main")
     _git(root, "config", "user.name", "fixture")

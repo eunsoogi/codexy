@@ -5,7 +5,7 @@
       "id": "codexy",
       "publicName": "Codexy",
       "packageRoot": "plugins/codexy",
-      "responsibility": "Core orchestration, evidence, shared agent and skill contracts, instruction enforcement, engineering, dreaming, Wiki, and shared validation.",
+      "responsibility": "Core orchestration, evidence, shared agent and skill contracts, instruction enforcement, engineering, dreaming, Wiki, required Watcher MCP transport, and shared validation.",
       "dependsOn": [],
       "forbiddenDependencies": ["codexy-github", "codexy-devtools"]
     },
@@ -137,7 +137,8 @@
         "plugins/codexy/agents/codexy-inspector.toml",
         "plugins/codexy/agents/codexy-sentinel.toml",
         "plugins/codexy/agents/codexy-shipwright.toml",
-        "plugins/codexy/agents/codexy-warden.toml"
+        "plugins/codexy/agents/codexy-warden.toml",
+        "plugins/codexy/agents/codexy-watcher.toml"
       ],
       "target": "codexy",
       "disposition": "retain"
@@ -169,6 +170,13 @@
       "disposition": "move"
     },
     {
+      "id": "mcp.watcher",
+      "category": "mcp",
+      "sources": ["plugins/codexy/.mcp.json#watcher"],
+      "target": "codexy",
+      "disposition": "retain"
+    },
+    {
       "id": "mcp.lsp",
       "category": "mcp",
       "sources": ["plugins/codexy-devtools/.mcp.json#lsp"],
@@ -181,6 +189,13 @@
       "sources": ["plugins/codexy-devtools/mcp"],
       "target": "codexy-devtools",
       "disposition": "move"
+    },
+    {
+      "id": "mcp.core-runtimes",
+      "category": "mcp",
+      "sources": ["plugins/codexy/mcp"],
+      "target": "codexy",
+      "disposition": "retain"
     },
     {
       "id": "lsp.integration",
@@ -215,6 +230,16 @@
       ],
       "target": "codexy-devtools",
       "disposition": "move"
+    },
+    {
+      "id": "runtime.watcher",
+      "category": "mcp",
+      "sources": [
+        "packages/codexy-runtime/src/watcher",
+        "packages/codexy-runtime/src/bin/codexy_mcp_watcher.rs"
+      ],
+      "target": "codexy",
+      "disposition": "retain"
     },
     {
       "id": "runtime.repository",

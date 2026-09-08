@@ -6,9 +6,12 @@ use serde_json::Value;
 use crate::paths::display_relative;
 use crate::validation::{json_array_strings, load_json, removed_mcp};
 
-const REQUIRED_MCP_NAMES: &[&str] = &["lsp", "codegraph"];
+use super::mcp_fragments::disallowed_value_fragments;
+
+const DEVTOOLS_MCP_NAMES: &[&str] = &["lsp", "codegraph"];
+const CORE_MCP_NAMES: &[&str] = &["watcher"];
 const DISALLOWED_NAMES: &[&str] = &["context7"];
-const DISALLOWED_FRAGMENTS: &[&str] = &["openai", "context7", "grep_app", "grep.app"];
+pub(super) const DISALLOWED_FRAGMENTS: &[&str] = &["openai", "context7", "grep_app", "grep.app"];
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     match check_inner(plugin_root) {
@@ -43,7 +46,12 @@ fn check_inner(plugin_root: &Path) -> Result<()> {
             display_relative(&path)
         );
     }
-    let missing = REQUIRED_MCP_NAMES
+    let required = if manifest.get("name").and_then(Value::as_str) == Some("codexy") {
+        CORE_MCP_NAMES
+    } else {
+        DEVTOOLS_MCP_NAMES
+    };
+    let missing = required
         .iter()
         .filter(|name| !servers.contains_key(**name))
         .copied()
@@ -217,33 +225,4 @@ fn check_plugin_relative_entrypoint(
         }
     }
     Ok(())
-}
-
-fn disallowed_value_fragments(value: &Value) -> Vec<&'static str> {
-    let mut matches = Vec::new();
-    collect_fragments(value, &mut matches);
-    matches.sort_unstable();
-    matches.dedup();
-    matches
-}
-
-fn collect_fragments(value: &Value, matches: &mut Vec<&str>) {
-    match value {
-        Value::String(text) => {
-            let lowered = text.to_ascii_lowercase();
-            matches.extend(
-                DISALLOWED_FRAGMENTS
-                    .iter()
-                    .copied()
-                    .filter(|fragment| lowered.contains(fragment)),
-            );
-        }
-        Value::Array(items) => items
-            .iter()
-            .for_each(|item| collect_fragments(item, matches)),
-        Value::Object(items) => items
-            .values()
-            .for_each(|item| collect_fragments(item, matches)),
-        Value::Null | Value::Bool(_) | Value::Number(_) => {}
-    }
 }
