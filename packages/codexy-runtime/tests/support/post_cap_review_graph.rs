@@ -109,6 +109,12 @@ impl SyntheticRepository {
         })
     }
 
+    pub(crate) fn commit_finding_repair(&self, relative: &str) -> TestResult<String> {
+        git(&self.path, &["switch", "--create", "native-finding-repair", &self.delta])?;
+        write(&self.path, relative, "repaired\n")?;
+        commit(&self.path, "native finding repair")
+    }
+
     pub(crate) fn prepare(
         &self,
         control: &Value,

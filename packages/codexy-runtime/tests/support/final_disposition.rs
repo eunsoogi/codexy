@@ -15,6 +15,8 @@ mod builder;
 mod handoff;
 #[path = "final_disposition/runner.rs"]
 mod runner;
+#[path = "final_disposition/runner_native_919.rs"]
+mod runner_native_919;
 #[path = "final_disposition/native_919.rs"]
 mod native_919;
 

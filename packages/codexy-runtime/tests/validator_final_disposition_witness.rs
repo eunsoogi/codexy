@@ -1,3 +1,5 @@
+use serde_json::Value;
+
 use crate::support::TestResult;
 #[path = "support/review_control_direct_state.rs"]
 mod direct_state;
@@ -49,8 +51,18 @@ fn current_919_witness_consumes_sanitized_same_head_disposition() -> TestResult 
     assert!(!produced["terminal_review_history"][0]["unresolved_findings"].as_array().unwrap().is_empty());
     assert!(!produced["terminal_review_history"][1]["unresolved_findings"].as_array().unwrap().is_empty());
     assert_eq!(produced["terminal_review_history"][2]["unresolved_findings"][0]["id"], final_support::native_919_remaining_finding);
-    assert_eq!(state["nativeHistoryRecovery"], recovered["nativeHistoryRecovery"]);
-    assert_eq!(state["reviewControl"]["terminal_review_history"], produced["terminal_review_history"]);
+    assert_eq!(
+        without_commit_oids(&state["nativeHistoryRecovery"]),
+        without_commit_oids(&recovered["nativeHistoryRecovery"])
+    );
+    assert_eq!(
+        state["nativeHistoryRecovery"]["binding"]["current_head"],
+        state["headRefOid"]
+    );
+    assert_eq!(
+        without_commit_oids(&state["reviewControl"]["terminal_review_history"]),
+        without_commit_oids(&produced["terminal_review_history"])
+    );
     assert!(state["reviewControl"].get("native_history_recovery").is_none());
     let handoff = final_support::validate_handoff_state(
         &state,
@@ -58,6 +70,22 @@ fn current_919_witness_consumes_sanitized_same_head_disposition() -> TestResult 
     )?;
     assert!(handoff.status.success(), "#919 native-history handoff failed: {}", String::from_utf8_lossy(&handoff.stderr));
     Ok(())
+}
+
+fn without_commit_oids(value: &Value) -> Value {
+    match value {
+        Value::String(text) if text.len() == 40 && text.bytes().all(|byte| byte.is_ascii_hexdigit()) => {
+            Value::String("<synthetic-commit>".into())
+        }
+        Value::Array(values) => Value::Array(values.iter().map(without_commit_oids).collect()),
+        Value::Object(values) => Value::Object(
+            values
+                .iter()
+                .map(|(key, value)| (key.clone(), without_commit_oids(value)))
+                .collect(),
+        ),
+        value => value.clone(),
+    }
 }
 
 #[test]

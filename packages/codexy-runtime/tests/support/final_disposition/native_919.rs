@@ -2,6 +2,7 @@ use std::{fs, process::Command};
 
 use serde_json::{Value, json};
 
+use super::{direct_state, graph};
 use crate::support::TestResult;
 
 #[path = "native_919_pages.rs"]
@@ -13,10 +14,44 @@ pub(crate) const BASE: &str = "fa12bcacf84e00ec4a66f4d8cd9d9f1693f83d9c";
 pub(crate) const FULL_HEAD: &str = "e8df6c7a1e2a43c544f106c08e9ce140f0e9f6ca";
 pub(crate) const DELTA_HEAD: &str = "6419fdeba270c2b889ee1986bdcda8642d084458";
 pub(crate) const CURRENT_HEAD: &str = "9e431bcfcae06227ab0c9ce0986f7edea709dcc6";
+pub(crate) const REPAIR_PATH: &str = "plugins/codexy/skills/project-brief/SKILL.md";
 pub(crate) const FULL_EVENT: &str = "strict-full-1";
 pub(crate) const DELTA_EVENT: &str = "strict-delta-1";
 pub(crate) const REQUIRED_EVENT: &str = "strict-required-head-1";
 pub(crate) const REMAINING_FINDING: &str = "919-canonical-execution-provenance";
+
+pub(crate) fn localize_for_repository(
+    repository: &graph::SyntheticRepository,
+    value: &Value,
+    current_head: &str,
+) -> TestResult<Value> {
+    let replacements = [
+        (BASE, repository.resolve(direct_state::SYNTHETIC_BASE, false, false, false)?),
+        (FULL_HEAD, repository.resolve(direct_state::SYNTHETIC_FULL_HEAD, false, false, false)?),
+        (DELTA_HEAD, repository.resolve(direct_state::SYNTHETIC_DELTA_HEAD, false, false, false)?),
+        (CURRENT_HEAD, current_head.to_owned()),
+    ];
+    let mut localized = value.clone();
+    replace_commit_oids(&mut localized, &replacements);
+    Ok(localized)
+}
+
+fn replace_commit_oids(value: &mut Value, replacements: &[(&str, String)]) {
+    match value {
+        Value::String(text) => {
+            if let Some((_, replacement)) = replacements.iter().find(|(source, _)| *source == text) {
+                *text = replacement.clone();
+            }
+        }
+        Value::Array(values) => values
+            .iter_mut()
+            .for_each(|value| replace_commit_oids(value, replacements)),
+        Value::Object(values) => values
+            .values_mut()
+            .for_each(|value| replace_commit_oids(value, replacements)),
+        Value::Null | Value::Bool(_) | Value::Number(_) => {}
+    }
+}
 
 pub(crate) fn request_919() -> Value {
     json!({

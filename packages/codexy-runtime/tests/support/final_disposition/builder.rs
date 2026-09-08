@@ -2,7 +2,7 @@ use std::fs;
 
 use serde_json::{Value, json};
 
-use super::{direct_state, fixture, graph};
+use super::{direct_state, fixture, graph, native_919};
 use crate::support::{FixtureCommand, TestResult};
 
 pub(crate) fn build_pr_state(control: &Value, previous_control: &Value) -> TestResult<Value> {
@@ -126,6 +126,11 @@ pub(crate) fn build_pr_state_with_states(
     pull_request: u64,
 ) -> TestResult<Value> {
     let temporary = tempfile::tempdir()?;
+    let repository = graph::SyntheticRepository::create(temporary.path())?;
+    let repair_head = repository.commit_finding_repair(native_919::REPAIR_PATH)?;
+    let control = native_919::localize_for_repository(&repository, control, &repair_head)?;
+    let current = native_919::localize_for_repository(&repository, current, &repair_head)?;
+    let previous = native_919::localize_for_repository(&repository, previous, &repair_head)?;
     let issue = control["issue_number"].as_u64().ok_or("final disposition issue")?;
     let base = current["baseRefOid"].as_str().ok_or("current base")?;
     let head = current["headRefOid"].as_str().ok_or("current head")?;
@@ -149,10 +154,12 @@ pub(crate) fn build_pr_state_with_states(
     let current_path = temporary.path().join("current-pr-state.json");
     let previous_path = temporary.path().join("previous-pr-state.json");
     let output_path = temporary.path().join("pr-state.json");
-    let predecessor = super::runner::canonical_third_predecessor(
-        control,
-        current,
-        previous,
+    let predecessor = super::runner::canonical_third_predecessor_in_repository(
+        &repository,
+        &repair_head,
+        &control,
+        &current,
+        &previous,
     )?;
     let mut previous_state = previous.clone();
     previous_state["reviewControl"] = predecessor;
@@ -165,7 +172,7 @@ pub(crate) fn build_pr_state_with_states(
             "previous_pr_state": previous_state
         }))?,
     )?;
-    fs::write(&current_path, serde_json::to_vec(current)?)?;
+    fs::write(&current_path, serde_json::to_vec(&current)?)?;
     fs::write(&previous_path, serde_json::to_vec(&previous_state)?)?;
     let mut producer = FixtureCommand::new(env!("CARGO_BIN_EXE_codexy-review-control"));
     fixture::configure(&mut producer, &fixture);
@@ -175,7 +182,7 @@ pub(crate) fn build_pr_state_with_states(
         .args(["--output"])
         .arg(&control_path)
         .args(["--repository-root"])
-        .arg(codexy_runtime::paths::repository_root())
+        .arg(&repository.path)
         .output()?;
     if !result.status.success() {
         return Err(format!(
@@ -190,7 +197,7 @@ pub(crate) fn build_pr_state_with_states(
     fixture::configure(&mut build, &fixture);
     let result = build
         .args(["--repository-root"])
-        .arg(codexy_runtime::paths::repository_root())
+        .arg(&repository.path)
         .args(["--base-pr-state-file"])
         .arg(&current_path)
         .args(["--review-control-state-file"])

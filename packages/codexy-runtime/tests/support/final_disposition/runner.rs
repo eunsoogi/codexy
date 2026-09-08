@@ -2,7 +2,7 @@ use std::fs;
 
 use serde_json::{Value, json};
 
-use super::{builder, fixture, graph};
+use super::{builder, fixture, graph, native_919};
 use crate::support::{FixtureCommand, TestResult};
 
 pub(crate) fn produce(control: &Value, previous_control: &Value) -> TestResult<Value> {
@@ -26,41 +26,10 @@ pub(crate) fn produce_for(
     Ok(serde_json::from_slice(&result.stdout)?)
 }
 
-pub(crate) fn canonical_third_predecessor(
-    control: &Value,
-    current: &Value,
-    previous: &Value,
-) -> TestResult<Value> {
-    let temporary = tempfile::tempdir()?;
-    let input = temporary.path().join("third-predecessor-input.json");
-    let output = temporary.path().join("third-predecessor-output.json");
-    let predecessor = super::third_block_predecessor(control);
-    fs::write(
-        &input,
-        serde_json::to_vec(&json!({
-            "control_state": predecessor,
-            "current_pr_state": current,
-            "previous_pr_state": previous
-        }))?,
-    )?;
-    let result = FixtureCommand::new(env!("CARGO_BIN_EXE_codexy-review-control"))
-        .args(["--produce-review-control", "--input"])
-        .arg(&input)
-        .args(["--output"])
-        .arg(&output)
-        .args(["--repository-root"])
-        .arg(codexy_runtime::paths::repository_root())
-        .output()?;
-    if !result.status.success() {
-        return Err(format!(
-            "native-history third predecessor failed: {}{}",
-            String::from_utf8_lossy(&result.stdout),
-            String::from_utf8_lossy(&result.stderr)
-        )
-        .into());
-    }
-    Ok(serde_json::from_slice(&fs::read(output)?)?)
-}
+pub(crate) use super::runner_native_919::{
+    canonical_third_predecessor,
+    canonical_third_predecessor_in_repository,
+};
 
 pub(crate) fn produce_with_states(
     control: &Value,
@@ -186,6 +155,11 @@ fn run_producer_with_states(
     pull_request: u64,
 ) -> TestResult<std::process::Output> {
     let temporary = tempfile::tempdir()?;
+    let repository = graph::SyntheticRepository::create(temporary.path())?;
+    let repair_head = repository.commit_finding_repair(native_919::REPAIR_PATH)?;
+    let control = native_919::localize_for_repository(&repository, control, &repair_head)?;
+    let current = native_919::localize_for_repository(&repository, current, &repair_head)?;
+    let previous = native_919::localize_for_repository(&repository, previous, &repair_head)?;
     let issue = control["issue_number"].as_u64().ok_or("final disposition issue")?;
     let base = current["baseRefOid"].as_str().ok_or("current base")?;
     let head = current["headRefOid"].as_str().ok_or("current head")?;
@@ -204,7 +178,13 @@ fn run_producer_with_states(
         head,
         finding_id,
     )?;
-    let predecessor = canonical_third_predecessor(control, current, previous)?;
+    let predecessor = canonical_third_predecessor_in_repository(
+        &repository,
+        &repair_head,
+        &control,
+        &current,
+        &previous,
+    )?;
     let mut previous_state = previous.clone();
     previous_state["reviewControl"] = predecessor;
     let input = temporary.path().join("producer-input.json");
@@ -225,7 +205,7 @@ fn run_producer_with_states(
         .arg(&input)
         .args(["--output", output.to_str().ok_or("producer output path")?])
         .args(["--repository-root"])
-        .arg(codexy_runtime::paths::repository_root())
+        .arg(&repository.path)
         .output()?;
     if result.status.success() {
         result.stdout = fs::read(output)?;
