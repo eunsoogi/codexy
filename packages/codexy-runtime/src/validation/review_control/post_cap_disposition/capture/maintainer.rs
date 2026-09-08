@@ -12,6 +12,12 @@ mod body;
 const SCHEMA: &str = "codexy.github-maintainer-policy-decision.v1";
 
 pub(super) fn read(locator: &Locator) -> Result<(Value, Value), String> {
+    let raw = read_raw(locator)?;
+    let projection = project(&raw, locator)?;
+    Ok((raw, projection))
+}
+
+pub(super) fn read_raw(locator: &Locator) -> Result<Value, String> {
     let owner = format!("owner={}", locator.owner);
     let name = format!("name={}", locator.name);
     let pull = format!("pullRequest={}", locator.pull_request);
@@ -44,9 +50,7 @@ pub(super) fn read(locator: &Locator) -> Result<(Value, Value), String> {
             stderr
         ));
     }
-    let raw = bounded_response(&output.stdout, "maintainer decision")?;
-    let projection = project(&raw, locator)?;
-    Ok((raw, projection))
+    bounded_response(&output.stdout, "maintainer decision")
 }
 
 pub(super) fn project(raw: &Value, locator: &Locator) -> Result<Value, String> {

@@ -107,7 +107,32 @@ Caller-supplied source, capture, classification, and IDs are rejected; producer,
 build, and handoff MUST refresh and rederive the live classification before
 comparison. The disposition never waives code, CI, review, merge, or quota
 requirements. The third verdict does not authorize completion by itself.
-Exact-head `PASS`, no unresolved findings, tests, validators, CI, review-thread,
-ownership, safety, LOC, and merge gates remain required. Both third-result paths
-waive only review four, which MUST NOT occur. Reviewer MUST NOT be messaged,
-interrupted, replaced, duplicated, or polled.
+
+After an authentic third `BLOCK`, the sibling `final_disposition` object MAY
+record one bounded parent/maintainer disposition without creating a fourth
+review event or rewriting the third result. It MUST preserve the immutable
+three-event history, `terminal_result = BLOCK`, and `terminal_review_count = 3`.
+For a repaired source head, `source_repair` MUST bind the third head to an
+ancestor evidence commit and then to the exact current head; its evidence and
+final-tree diffs MUST be non-empty, limited to the selected finding paths, and
+retain each change at the current head. For a same-head correction,
+`evidence_refresh` MUST be used instead, with no artificial source edit.
+
+The parent authority MUST be produced from an authenticated
+`authenticated_final_disposition_locator`, never caller-supplied. Producer,
+`build-pr-state`, and handoff MUST reread the live source and bind its
+OWNER/MEMBER immutable comment and exact-head all-success CI to the repository,
+owning issue, PR, base, current head, third review event, and finding set.
+Complete paginated review-thread evidence with zero unresolved threads remains
+required. This path does not permit synthetic `PASS` or `UNOBSERVABLE`, a fourth
+profile review, private evaluator inputs, or any waiver of ordinary tests,
+ownership, safety, LOC, connector-review, CI, or merge gates.
+Outside `final_disposition`, exact-head reviewer `PASS` and no unresolved
+reviewer findings, together with tests, validators, CI, review-thread,
+ownership, safety, LOC, and merge gates, remain required. With
+`final_disposition`, the reviewer projection remains the authentic third
+`BLOCK`; its live authority MUST still prove exact-head all-success CI and
+complete resolved review-thread evidence, while the same ordinary gates remain
+active. Both final-disposition forms waive only review four, which MUST NOT
+occur. Reviewer MUST NOT be messaged, interrupted, replaced, duplicated, or
+polled.

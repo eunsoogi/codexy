@@ -151,10 +151,11 @@ authenticated exception only at boundary 1 and binds the delta. Facts and
 direction MUST come from the authenticated snapshot; callers MUST NOT change
 them.
 
-For standard and strict profiles, the reviewer and `reviewed_head` MUST match
-the current PR state, `terminal_result` MUST be exactly `PASS`, `BLOCK`, or
-`UNOBSERVABLE`, and a readiness handoff MUST have `PASS`, no unresolved
-findings, one full review, and at most one delta review. The history MUST
+For standard and strict profiles without `final_disposition`, the reviewer and
+`reviewed_head` MUST match the current PR state, `terminal_result` MUST be
+exactly `PASS`, `BLOCK`, or `UNOBSERVABLE`, and a readiness handoff MUST have
+`PASS`, no unresolved findings, one full review, and at most one delta review.
+The history MUST
 contain that one `full` event, optionally followed by one `delta` event, with
 unique review IDs, the selected reviewer on every event unless the exact
 versioned migration marker authorizes one supported exception, and a different
@@ -174,6 +175,19 @@ delta head. It MUST also carry `qualifying_change.from_head`,
 `qualifying_change.to_head`, and `qualifying_change.evidence_commit`; those
 values MUST bind the delta head and current head, and the evidence commit MUST
 be in their Git ancestry. The current head MUST differ from that prior head.
+After an authentic third `BLOCK`, the sibling `final_disposition` MAY record
+one bounded parent/maintainer disposition while preserving the immutable
+three-event history, third `terminal_result = BLOCK`, and
+`terminal_review_count = 3`; it MUST NOT create a fourth review or synthetic
+`PASS`/`UNOBSERVABLE`. A repaired-head disposition MUST bind the third head
+through an ancestor evidence commit to the exact current head, with non-empty
+diffs limited to selected finding paths and retained in the final tree; a
+same-head correction MUST use evidence refresh without an artificial source
+edit. Its authority MUST be produced from the locator-only
+`authenticated_final_disposition_locator`, reread at producer, build, and
+handoff, and bind an immutable OWNER/MEMBER decision, exact-head all-success
+CI, and complete zero-unresolved review-thread evidence. Ordinary tests,
+ownership, safety, LOC, connector-review, CI, and merge gates remain active.
 Optional churn, a fourth event, a duplicate head or ID, a truncated/reordered
 history, and a marker on a non-third event MUST be rejected.
 
@@ -205,42 +219,25 @@ integration evidence MUST descend from the current base. For
 delta MUST be `BLOCK` with non-empty findings, and
 `qualifying_change.finding_ids` MUST exactly identify those findings; its
 evidence diff MUST change every finding's recorded path. For
-`authenticated_external_finding_repair`, the base OID MUST remain unchanged, the
-prior delta MUST be a clean `PASS` with no unresolved findings, and
-`qualifying_change.external_finding` MUST be produced from a locator-only
-`authenticated_external_finding_locator` request. The producer MUST perform a
-fixed-argument, host-authorized GitHub GraphQL read for that locator, reject
-command failures, GraphQL errors, incomplete connections, and identity
-mismatches, and persist the raw response with its deterministic projection in
-the `codexy.review-control-external-finding.v1` envelope. Caller-supplied
-`authenticated_external_finding` or `authenticated_external_finding_capture`
-values MUST be rejected. `capture.raw` equality and re-projection are offline
-shape/integrity checks only and MUST NOT be treated as authentication. The
-producer, `build-pr-state`, and completion handoff MUST use the live source read
-for external-finding authority; offline validators only validate an envelope
-already admitted by that source-owned boundary. The envelope MUST bind the
-source repository, owning issue, source PR, immutable review-thread/comment
-identity and canonical URL, author, `observedCommit` equal to the prior delta
-head, unique finding IDs, and repository-relative paths to the live projection.
-The evidence diff MUST touch every recorded path. The source PR's owning issue
-is provenance and MUST NOT replace the target `reviewControl.issue_number`. For
-`authenticated_finding_disposition`, the base OID MUST remain unchanged, the
-prior delta MUST be `BLOCK` with non-empty findings, and the producer MUST cover
-every prior finding exactly once through a locator-only
-`authenticated_finding_disposition_locator` request. Its exact authenticated CI
-and maintainer-source contract is defined in
-[authenticated finding-disposition CI](finding-disposition-ci.md). The producer
-MUST derive IDs, paths, and kinds from the prior authenticated delta, reject
-caller-supplied source, capture, classification, or IDs, and reread both sources
-at producer, build, and handoff. Disposition classification MUST come from each
-retained finding's semantic kind, not its path: a `ci_incomplete_observation`
-resolves through CI, the policy finding through the maintainer decision, and a
-source defect—including one under the workflow directory—through an evidence
-diff; at least one code repair MUST remain. This source MUST NOT waive code, CI,
-review, merge, or quota requirements. In all four cases, the evidence commit
-MUST descend from the prior delta and precede the current head; repair evidence
-MUST change the reviewed tree. Arbitrary JSON agreement is not authenticated
-readback authority.
+`authenticated_external_finding_repair`, the base OID MUST remain unchanged,
+the prior delta MUST be a clean `PASS`, and the source MUST come from the
+locator-only `authenticated_external_finding_locator`. The producer MUST use a
+fixed-argument, host-authorized GraphQL read, reject command/GraphQL,
+pagination, and identity failures, persist raw plus deterministic projection,
+and reject caller-supplied source or capture; raw equality is offline integrity,
+not authentication. Producer, build, and handoff MUST reread the live source,
+which binds repository, owning issue, source PR, immutable thread/comment,
+author, observed delta head, finding IDs, and repository-relative paths; the
+evidence diff MUST touch every path. The source issue is provenance only. For
+`authenticated_finding_disposition`, the base MUST remain unchanged, the prior
+delta MUST be a `BLOCK` with findings, and every finding MUST be covered once
+from locator-only `authenticated_finding_disposition_locator`; see
+[authenticated finding-disposition CI](finding-disposition-ci.md). IDs, paths,
+and kinds MUST derive from the delta, both sources MUST be reread at producer,
+build, and handoff, semantic classification MUST require CI/maintainer/code
+evidence by finding kind, and at least one code repair MUST remain. These paths
+MUST NOT waive code, CI, review, merge, or quota requirements; evidence MUST be
+ancestral, precede the current head, and change the reviewed tree.
 
 Light retains its existing no-reviewer route and MUST NOT carry terminal review
 history or post-cap fields. A third `BLOCK` or `UNOBSERVABLE` remains a terminal

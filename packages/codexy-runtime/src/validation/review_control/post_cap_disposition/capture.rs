@@ -111,6 +111,12 @@ pub(super) fn read_live(locator: Locator, expected_head: Option<&str>) -> Result
     Ok(source)
 }
 
+pub(super) fn read_final_sources(locator: &Locator) -> Result<(Value, Value), String> {
+    let (_ci_raw, ci_projection) = ci::read(locator)?;
+    let maintainer_raw = maintainer::read_raw(locator)?;
+    Ok((ci_projection, maintainer_raw))
+}
+
 pub(super) fn check(source: &Map<String, Value>) -> Result<(), String> {
     let locator = Locator::from_value(
         source

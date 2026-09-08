@@ -20,7 +20,10 @@ pub(crate) struct SyntheticRepository {
     integration_evidence: String,
     integration_current: String,
     repair_evidence: String,
+    final_repair_evidence: String,
     repair_current: String,
+    repair_reverted_current: String,
+    repair_out_of_scope_current: String,
     external_evidence: String,
     external_current: String,
     disposition_evidence: String,
@@ -63,8 +66,16 @@ impl SyntheticRepository {
         git(&path, &["switch", "--create", "repair", &delta])?;
         write(&path, REPAIR_PATH, "repaired\n")?;
         let repair_evidence = commit(&path, "in-scope root repair")?;
+        write(&path, "repair-current.txt", "evidence\n")?;
+        let final_repair_evidence = commit(&path, "final repair evidence")?;
         write(&path, "repair-current.txt", "current\n")?;
         let repair_current = commit(&path, "current repair head")?;
+        git(&path, &["switch", "--create", "repair-reverted", &final_repair_evidence])?;
+        git(&path, &["rm", "--quiet", "--", "repair-current.txt"])?;
+        let repair_reverted_current = commit(&path, "reverted repair head")?;
+        git(&path, &["switch", "--create", "repair-out-of-scope", &final_repair_evidence])?;
+        write(&path, "out-of-scope.txt", "unexpected\n")?;
+        let repair_out_of_scope_current = commit(&path, "out-of-scope repair head")?;
 
         git(&path, &["switch", "--create", "external", &delta])?;
         write(&path, external_finding_path, "repaired external finding\n")?;
@@ -87,7 +98,10 @@ impl SyntheticRepository {
             integration_evidence,
             integration_current,
             repair_evidence,
+            final_repair_evidence,
             repair_current,
+            repair_reverted_current,
+            repair_out_of_scope_current,
             external_evidence,
             external_current,
             disposition_evidence,
@@ -128,6 +142,7 @@ impl SyntheticRepository {
         disposition: bool,
     ) -> TestResult<String> {
         self.map(value, root_repair, external_finding, disposition)
+            .or_else(|| valid_oid(value).then_some(value))
             .map(str::to_owned)
             .ok_or_else(|| format!("unknown synthetic review reference: {value}").into())
     }
@@ -157,11 +172,20 @@ impl SyntheticRepository {
             }
             direct_state::SYNTHETIC_INTEGRATION_EVIDENCE => Some(&self.integration_evidence),
             direct_state::SYNTHETIC_REPAIR_EVIDENCE => Some(&self.repair_evidence),
+            direct_state::SYNTHETIC_FINAL_EVIDENCE => Some(&self.final_repair_evidence),
+            direct_state::SYNTHETIC_REVERTED_CURRENT_HEAD => Some(&self.repair_reverted_current),
+            direct_state::SYNTHETIC_OUT_OF_SCOPE_CURRENT_HEAD => {
+                Some(&self.repair_out_of_scope_current)
+            }
             direct_state::SYNTHETIC_EXTERNAL_EVIDENCE => Some(&self.external_evidence),
             direct_state::SYNTHETIC_DISPOSITION_EVIDENCE => Some(&self.disposition_evidence),
             _ => None,
         }
     }
+}
+
+fn valid_oid(value: &str) -> bool {
+    value.len() == 40 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
 fn rewrite(

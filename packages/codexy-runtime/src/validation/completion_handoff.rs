@@ -60,6 +60,7 @@ fn has_direct_control(state: &Value) -> bool {
         "terminal_review_limit",
         "terminal_review_history",
         "post_cap_re_review",
+        "final_disposition",
     ]
     .iter()
     .any(|field| control.contains_key(*field));
