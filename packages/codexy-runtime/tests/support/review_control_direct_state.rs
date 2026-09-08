@@ -17,6 +17,9 @@ pub(crate) const SYNTHETIC_DELTA_HEAD: &str = "synthetic-delta-head";
 pub(crate) const SYNTHETIC_CURRENT_HEAD: &str = "synthetic-current-head";
 pub(crate) const SYNTHETIC_INTEGRATION_EVIDENCE: &str = "synthetic-integration-evidence";
 pub(crate) const SYNTHETIC_REPAIR_EVIDENCE: &str = "synthetic-repair-evidence";
+pub(crate) const SYNTHETIC_FINAL_EVIDENCE: &str = "synthetic-final-evidence";
+pub(crate) const SYNTHETIC_REVERTED_CURRENT_HEAD: &str = "synthetic-reverted-current-head";
+pub(crate) const SYNTHETIC_OUT_OF_SCOPE_CURRENT_HEAD: &str = "synthetic-out-of-scope-current-head";
 pub(crate) const SYNTHETIC_EXTERNAL_EVIDENCE: &str = "synthetic-external-evidence";
 pub(crate) const SYNTHETIC_DISPOSITION_EVIDENCE: &str = "synthetic-disposition-evidence";
 

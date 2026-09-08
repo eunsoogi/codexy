@@ -85,6 +85,30 @@ fn check_packaged_runtime_artifacts(plugin_root: &Path, manifest: &Value) -> Res
     Ok(())
 }
 
+pub(super) fn check_core_watcher_artifacts(plugin_root: &Path, supported: &[String]) -> Result<()> {
+    let runtime = plugin_root.join("runtime");
+    if !runtime.exists() {
+        return Ok(());
+    }
+    if !runtime.is_dir() {
+        bail!(
+            "{} core watcher runtime must be a directory",
+            display_relative(&runtime)
+        );
+    }
+    for platform in supported {
+        let path = runtime.join(runtime_binary::artifact_name("watcher", platform));
+        if !path.is_file() {
+            bail!(
+                "{} core watcher runtime missing for supported platform {platform}",
+                display_relative(&path)
+            );
+        }
+        runtime_binary::check(&path, platform)?;
+    }
+    Ok(())
+}
+
 fn check_no_source_runtime_artifacts(plugin_root: &Path) -> Result<()> {
     for dir in GENERATED_SOURCE_DIRS {
         let path = plugin_root.join(dir);

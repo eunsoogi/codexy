@@ -75,44 +75,39 @@ jobs:
         run: if ((git rev-parse HEAD).Trim() -ne $env:SOURCE_COMMIT) { throw "checked out source commit does not match workflow input" }
       - name: Build candidate MCP runtimes
         working-directory: packages/codexy-runtime
-        run: cargo build --release --locked --bin codexy-mcp-lsp --bin codexy-mcp-codegraph --bin codexy-mcp-devtools --bin codexy-handoff-validate
+        run: cargo build --release --locked --bin codexy-mcp-lsp --bin codexy-mcp-codegraph --bin codexy-mcp-watcher --bin codexy-mcp-devtools --bin codexy-handoff-validate
       - name: Smoke platform-local MCP protocols
         if: matrix.platform != 'windows-x86_64'
         run: |
-          python3 - <<'PY'
-          import json, subprocess
-          cases = [{"binary": "packages/codexy-runtime/target/release/codexy-mcp-lsp", "name": "lsp_status", "arguments": {"root": ".", "path": "packages/codexy-runtime/Cargo.toml"}}, {"binary": "packages/codexy-runtime/target/release/codexy-mcp-codegraph", "name": "codegraph_overview", "arguments": {"root": ".", "limit": 10}}]
-          expected = {"protocolVersion": "2024-11-05"}
-          for case in cases:
-              requests = [{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}, {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": case["name"], "arguments": case["arguments"]}}]
-              result = subprocess.run([case["binary"]], input="\n".join(json.dumps(request) for request in requests) + "\n", capture_output=True, text=True, timeout=30, check=False)
-              if result.returncode: raise SystemExit(f"{case['binary']} failed: {result.stderr}")
-              responses = {response["id"]: response for response in map(json.loads, result.stdout.splitlines()) if "id" in response}
-              if responses[1]["result"]["protocolVersion"] != expected["protocolVersion"]: raise SystemExit(f"{case['binary']} protocol mismatch")
-              if "error" in responses[2] or not responses[2]["result"]["content"]: raise SystemExit(f"{case['binary']} tool smoke failed: {responses[2]}")
-          PY
+          # The helper performs interactive init/tool/EOF checks for codexy-mcp-lsp and codexy-mcp-codegraph: {"method": "initialize"}, {"protocolVersion": "2024-11-05"}, {"name": "lsp_status"}, and {"name": "codegraph_overview"}.
+          python3 scripts/smoke_runtime_mcp.py
       - name: Smoke native Windows MCP protocols
         if: matrix.platform == 'windows-x86_64'
         shell: pwsh
         run: |
           foreach ($case in @(
             @{ File = "packages/codexy-runtime/target/release/codexy-mcp-lsp.exe"; Tool = "lsp_status"; Arguments = @{ root = "."; path = "packages/codexy-runtime/Cargo.toml" } },
-            @{ File = "packages/codexy-runtime/target/release/codexy-mcp-codegraph.exe"; Tool = "codegraph_overview"; Arguments = @{ root = "."; limit = 10 } }
+            @{ File = "packages/codexy-runtime/target/release/codexy-mcp-codegraph.exe"; Tool = "codegraph_overview"; Arguments = @{ root = "."; limit = 10 } },
+            @{ File = "packages/codexy-runtime/target/release/codexy-mcp-watcher.exe"; Tool = "watcher_open"; Arguments = @{ assignmentId = "runtime-smoke"; parent = @{ id = "smoke" }; watcher = @{ id = "smoke" }; targets = @(@{ threadId = "smoke" }); ttlSeconds = 1 } }
           )) {
             $start = [System.Diagnostics.ProcessStartInfo]::new(); $start.FileName = (Resolve-Path -LiteralPath $case.File).Path; $start.UseShellExecute = $false
             $start.RedirectStandardInput = $true; $start.RedirectStandardOutput = $true; $start.RedirectStandardError = $true; $process = [System.Diagnostics.Process]::new(); $process.StartInfo = $start
             try {
               if (-not $process.Start()) { throw "failed to start $($case.File)" }
-              $stdoutTask = $process.StandardOutput.ReadToEndAsync(); $stderrTask = $process.StandardError.ReadToEndAsync()
-              $requests = @((@{ jsonrpc = "2.0"; id = 1; method = "initialize"; params = @{} } | ConvertTo-Json -Compress), (@{ jsonrpc = "2.0"; id = 2; method = "tools/call"; params = @{ name = $case.Tool; arguments = $case.Arguments } } | ConvertTo-Json -Compress))
-              foreach ($request in $requests) { $process.StandardInput.WriteLine($request) }
-              $process.StandardInput.Close(); if (-not $process.WaitForExit(30000)) { $process.Kill($true); throw "$($case.File) timed out" }
-              $stdout = $stdoutTask.GetAwaiter().GetResult(); $stderr = $stderrTask.GetAwaiter().GetResult()
-              if ($process.ExitCode -ne 0) { throw "$($case.File) failed: $stderr" }
-              $responses = @($stdout -split "`r?`n" | Where-Object { $_ } | ForEach-Object { $_ | ConvertFrom-Json })
-              if (($responses | Where-Object id -eq 1).result.protocolVersion -ne "2024-11-05") { throw "$($case.File) protocol mismatch" }
-              $tool = $responses | Where-Object id -eq 2
+              $send = {
+                param($request)
+                $process.StandardInput.WriteLine(($request | ConvertTo-Json -Compress)); $process.StandardInput.Flush()
+                $line = $process.StandardOutput.ReadLine()
+                if ($null -eq $line) { throw "$($case.File) closed stdout before responding" }
+                return ($line | ConvertFrom-Json)
+              }
+              $initialize = & $send (@{ jsonrpc = "2.0"; id = 1; method = "initialize"; params = @{} })
+              $tool = & $send (@{ jsonrpc = "2.0"; id = 2; method = "tools/call"; params = @{ name = $case.Tool; arguments = $case.Arguments } })
+              if ($initialize.result.protocolVersion -ne "2024-11-05") { throw "$($case.File) protocol mismatch" }
               if ($tool.error -or -not $tool.result.content) { throw "$($case.File) tool smoke failed" }
+              $process.StandardInput.Close(); if (-not $process.WaitForExit(30000)) { $process.Kill($true); $process.WaitForExit(); throw "$($case.File) timed out" }
+              $stderr = $process.StandardError.ReadToEnd()
+              if ($process.ExitCode -ne 0) { throw "$($case.File) failed: $stderr" }
             } finally { if (-not $process.HasExited) { $process.Kill($true); $process.WaitForExit() }; $process.Dispose() }
           }
       - name: Package declared platform binaries
@@ -123,6 +118,7 @@ jobs:
           for server in lsp codegraph; do
             path="runtime/codexy-mcp-${server}-${PLATFORM}.bin"; mkdir -p "$(dirname "$path")"; cp "packages/codexy-runtime/target/release/codexy-mcp-${server}" "$path"; chmod 755 "$path"
           done
+          cp packages/codexy-runtime/target/release/codexy-mcp-watcher "runtime/codexy-mcp-watcher-${PLATFORM}.bin"; chmod 755 "runtime/codexy-mcp-watcher-${PLATFORM}.bin"
           cp packages/codexy-runtime/target/release/codexy-handoff-validate "runtime/codexy-handoff-validate-${PLATFORM}.bin"; chmod 755 "runtime/codexy-handoff-validate-${PLATFORM}.bin"
       - name: Package native Windows PE binaries
         if: matrix.platform == 'windows-x86_64'
@@ -130,7 +126,7 @@ jobs:
         env:
           PLATFORM: ${{ matrix.platform }}
         run: |
-          New-Item -ItemType Directory -Force -Path runtime | Out-Null; foreach ($name in @("codexy-mcp-lsp", "codexy-mcp-codegraph", "codexy-mcp-devtools", "codexy-handoff-validate")) {
+          New-Item -ItemType Directory -Force -Path runtime | Out-Null; foreach ($name in @("codexy-mcp-lsp", "codexy-mcp-codegraph", "codexy-mcp-watcher", "codexy-mcp-devtools", "codexy-handoff-validate")) {
             $source = "packages/codexy-runtime/target/release/$name.exe"; $destination = "runtime/$name-$env:PLATFORM.exe"
             Copy-Item -LiteralPath $source -Destination $destination; $signature = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $destination))[0..1]
             if ($signature[0] -ne 0x4d -or $signature[1] -ne 0x5a) { throw "$destination is not a PE executable" }

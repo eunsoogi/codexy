@@ -73,6 +73,7 @@ receipt = {
 }
 candidate = staging.get("candidate", {})
 core_handoff = candidate.get("classes", {}).get("coreHandoff")
+core_watcher = candidate.get("classes", {}).get("coreWatcherMcp")
 if core_handoff:
     source = candidate["source"]
     receipt["runtimeClasses"] = {
@@ -84,4 +85,12 @@ if core_handoff:
             "source": {"commit": source["commit"], "tree": source["tree"]},
         }
     }
+    if core_watcher:
+        source = candidate["source"]
+        receipt["runtimeClasses"]["coreWatcherMcp"] = {
+            "sha256": hashlib.sha256(
+                json.dumps(core_watcher, sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest(),
+            "source": {"commit": source["commit"], "tree": source["tree"]},
+        }
 output.write_text(json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n")

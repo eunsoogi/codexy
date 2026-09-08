@@ -67,14 +67,10 @@ MUST use this flow after compaction and before handoff:
    host transition or `No handler registered` failure, treat the mismatch as
    exposure evidence, perform one fresh thread-tool discovery and one host-aware
    `wait_threads` retry before any fallback, and MUST NOT use unbounded
-   `read_thread`. If a supported same-project Watcher owns the exact long-lived
-   goal, the Orchestrator MAY return control instead of holding a model turn
-   open solely for unchanged waiting. In the canonical role mapping in
-   [parent-supervision.md](parent-supervision.md), the Orchestrator's `get_goal`
-   state MUST remain `null`; it MUST NOT call `create_goal` or recreate any goal
-   for setup, callbacks, correction, review or merge decisions, or
-   external-event resume. This Orchestrator-only exception overrides the generic
-   fresh-goal-on-wake rule and does not prove issue completion. A Watcher
+   `read_thread`. If the bounded Watcher subagent is observing through
+   `wait_watcher`, the Orchestrator MAY return control instead of holding a
+   model turn open solely for unchanged waiting, while retaining its active
+   overall goal. The Watcher MUST NOT create or own that goal. A Watcher
    callback or observation is a material signal only when its event identity is
    new and Orchestrator action is required. Unchanged active-goal reads, routine
    pre/post/continuation receipts, liveness-only goal-status messages, normal
@@ -83,13 +79,13 @@ MUST use this flow after compaction and before handoff:
    Workers MUST send compact deltas for terminal child state, their
    fatal/gate/final callbacks, PR creation, a required external check-state
    change, actionable review feedback, or review-thread resolution. Watchers
-   MUST send their own compact deltas for Watcher-owned observation-channel
-   failure or actionable drift, and selected reviewers MUST send their verdicts.
-   A Watcher drift event is qualifying only when its report is grounded in a
-   changed artifact, diff, or relevant actual tool call, identifies the
-   conflicting current scope, ownership, or user constraint without a repair
-   directive, and requires an Orchestrator decision; relayed Worker or
-   Orchestrator findings MUST remain distinct from Watcher-first detection.
+   MUST send their own compact deltas for observation-channel failure or
+   actionable drift, and selected reviewers MUST send their verdicts. A Watcher
+   drift event is qualifying only when its report is grounded in a changed
+   artifact, diff, or relevant actual tool call, identifies the conflicting
+   current scope, ownership, or user constraint without a repair directive, and
+   requires an Orchestrator decision; relayed Worker or Orchestrator findings
+   MUST remain distinct from Watcher-first detection.
 3. **Validate stable event identity**: every event MUST use a deterministic
    `<kind>|<lane>|<subject>` identity. The ledger MUST reject a repeated
    identity before it changes counters or next actions.
@@ -169,13 +165,12 @@ changes its plan. The awakened owner MUST consume a material event in the same
 turn and MUST delete or disable its heartbeat when no further observation is
 required. A successfully registered heartbeat is runtime-owned waiting. The
 heartbeat route is not the ordinary app-thread Watcher: do not create or
-recreate a heartbeat as a substitute for an explicitly authorized same-project
-Watcher. When the Watcher carries the exact release goal in the canonical role
-mapping, the Orchestrator's `get_goal` state MUST remain `null` and the
-Orchestrator MUST NOT create or recreate a goal; neither an idle Orchestrator
-nor a Watcher goal proves transfer or completion. Record Orchestrator and
-Watcher goal readbacks separately. This exemption does not remove ordinary
-Worker finite-goal closure or `blocked` recovery.
+recreate a heartbeat as a substitute for the bounded native-subagent observation
+route. The Orchestrator retains the active overall goal while the Watcher
+observes; neither an idle turn nor a Watcher assignment proves transfer or
+completion. Record the Orchestrator goal and bounded Watcher assignment
+separately. This does not remove ordinary Worker finite-goal closure or
+`blocked` recovery.
 
 For ordinary owners outside the canonical role mapping, the Worker MUST retain
 its active goal and plan only while an immediately executable in-scope

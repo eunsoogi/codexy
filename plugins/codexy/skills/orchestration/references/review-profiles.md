@@ -75,5 +75,17 @@ both sources; callers MUST NOT provide source, capture, classification, or
 finding IDs, and this reason MUST NOT waive code, CI, review, merge, or quota
 requirements.
 
+After a third terminal `BLOCK`, the sibling `final_disposition` path MAY record
+the parent's bounded disposition while retaining all three original review
+events and `terminal_review_count = 3`. A repaired-head disposition MUST bind
+the third head through an ancestor evidence commit to the exact current head,
+with non-empty, finding-path-only diffs retained in the final tree. A same-head
+disposition MUST use evidence refresh and MUST NOT invent a source edit. Its
+authority MUST come from the locator-only
+`authenticated_final_disposition_locator` and a live reread of exact-head
+all-success CI plus a complete, resolved thread inventory. Ordinary PR,
+ownership, tests, LOC, connector-review, CI, and merge gates remain active;
+synthetic `PASS`/`UNOBSERVABLE` and a fourth profile review are forbidden.
+
 Escalation may only move to a strictly higher profile. The executable profile
 contract is maintained by the packaged runtime validator.

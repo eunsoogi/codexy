@@ -76,7 +76,8 @@ compaction, reauthorization, and route resets. After those two reviews are
 exhausted, the one third
 `required_current_head` event MUST carry exactly one `post_cap_re_review`
 object: its reason MUST be `mandatory_base_integration`,
-`in_scope_contract_root_repair`, or `authenticated_external_finding_repair`;
+`in_scope_contract_root_repair`, `authenticated_external_finding_repair`, or
+`authenticated_finding_disposition`;
 its `prior_reviewed_head` MUST equal the delta head, and its
 `qualifying_change` MUST bind that delta head to the current head through an
 evidence commit in the Git ancestry. The current authenticated PR snapshot MUST
@@ -99,7 +100,20 @@ repository, owning issue, source PR, review-thread/comment identity, author,
 observed commit equal to the delta head, unique finding IDs, and
 repository-relative paths MUST equal the live projection. Its producer-derived
 `finding_ids` MUST match the source exactly, and the evidence diff MUST touch
-every recorded path. The current head MUST differ.
+every recorded path. The current head MUST differ. After an authentic third
+`BLOCK`, the sibling `final_disposition` MAY record one bounded parent/maintainer
+decision, but MUST preserve all three original events, the third `BLOCK`, and
+count `3/3`. A repaired-head disposition MUST bind the third head through an
+ancestor evidence commit to the exact current head with non-empty,
+finding-path-only diffs retained in the final tree; a same-head disposition MUST
+use evidence refresh without an artificial source edit. Its authority MUST come
+only from the locator-only `authenticated_final_disposition_locator` and live
+rereads at producer, build, and handoff. The reread MUST prove an immutable
+OWNER/MEMBER decision, exact repository/issue/PR/base/head identity, exact-head
+all-success CI, and complete paginated review threads with zero unresolved
+nodes. This path does not permit synthetic `PASS`/`UNOBSERVABLE`, a fourth
+profile review, private evaluator inputs, or waiving ordinary tests, ownership,
+safety, LOC, connector-review, CI, or merge gates.
 Ordinary churn, duplicate or unchanged heads, a fourth event, and missing,
 reordered, or truncated history MUST be rejected. The same Sentinel remains
 active; it MUST NOT be duplicated,

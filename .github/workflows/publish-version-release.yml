@@ -82,7 +82,7 @@ jobs:
           receipt=staging/runtime-staging-receipt.json
           test "$(git rev-parse HEAD)" = "$ACTIVATION_COMMIT"
           test "$(jq -r .candidate.source.commit "$receipt")" = "$STAGING_SOURCE_COMMIT"
-          jq -e '(.candidate.source.tree | test("^[0-9a-f]{40}$")) and .candidate.classes.coreHandoff.manifest.path == "handoff-runtime.json"' "$receipt" >/dev/null
+          jq -e '(.candidate.source.tree | test("^[0-9a-f]{40}$")) and .candidate.classes.coreHandoff.manifest.path == "handoff-runtime.json" and (.candidate.classes.coreWatcherMcp.platforms | keys | length == 3)' "$receipt" >/dev/null
           test "$(jq -r .provenance.runId "$receipt")" = "$STAGING_RUN_ID"
           test "$(jq -r .candidate.artifact.stagingRunAttempt "$receipt")" = "$(jq -r .run_attempt staging/runtime-staging-run.json)"
           test "$(jq -r .provenance.runAttempt "$receipt")" = "$(jq -r .run_attempt staging/runtime-staging-run.json)"
@@ -100,6 +100,7 @@ jobs:
           test "$(jq -r .candidate.source.commit "$record")" = "$STAGING_SOURCE_COMMIT"
           test "$(jq -r .artifact.sha256 "$record")" = "$(jq -r .artifact.sha256 "$receipt")"
           test "$(jq -r .candidate.classes.coreHandoff.manifest.sha256 "$record")" = "$(jq -r .candidate.classes.coreHandoff.manifest.sha256 "$receipt")"
+          test "$(jq -r '.candidate.classes.coreWatcherMcp.platforms["linux-x86_64"].sha256' "$record")" = "$(jq -r '.candidate.classes.coreWatcherMcp.platforms["linux-x86_64"].sha256' "$receipt")"
           test ! -e plugins/codexy-devtools/runtime-candidate.json
       - name: Materialize and exercise activated final artifacts
         id: materialize_final_artifacts

@@ -29,6 +29,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
                 return all;
             }
             all.extend(hooks::check(plugin_root));
+            all.extend(mcp::check(plugin_root));
             all.extend(roles::check(plugin_root));
             all.extend(routing_policy::check(plugin_root));
             all.extend(tdd_classification::check(plugin_root));
@@ -63,7 +64,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             errors.extend(github_labels::check_completion_handoff(&handoff, &pr_state));
             errors
         }
-        Mode::Mcp => mcp::check(&tooling_root(plugin_root)),
+        Mode::Mcp => mcp::check(&mcp_root(plugin_root)),
         Mode::Hooks => hooks::check(plugin_root),
         Mode::Roles => roles::check(plugin_root),
         Mode::RuntimeArtifacts => runtime::check_artifacts(plugin_root),
@@ -161,6 +162,14 @@ fn tooling_root(plugin_root: &Path) -> PathBuf {
         return devtools_root(plugin_root);
     }
     plugin_root.to_path_buf()
+}
+
+fn mcp_root(plugin_root: &Path) -> PathBuf {
+    if is_devtools(plugin_root) || plugin_root.join(".mcp.json").is_file() {
+        plugin_root.to_path_buf()
+    } else {
+        devtools_root(plugin_root)
+    }
 }
 
 /// Runs plugin contract validation for the selected mode.

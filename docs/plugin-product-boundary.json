@@ -5,7 +5,7 @@
       "id": "codexy",
       "publicName": "Codexy",
       "packageRoot": "plugins/codexy",
-      "responsibility": "Core orchestration, evidence, shared agent and skill contracts, instruction enforcement, engineering, dreaming, Wiki, and shared validation.",
+      "responsibility": "Core orchestration, evidence, shared agent and skill contracts, instruction enforcement, engineering, dreaming, Wiki, required Watcher MCP transport, and shared validation.",
       "dependsOn": [],
       "forbiddenDependencies": ["codexy-github", "codexy-devtools"]
     },

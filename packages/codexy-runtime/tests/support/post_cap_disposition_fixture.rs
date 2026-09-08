@@ -4,6 +4,10 @@ use serde_json::{Value, json};
 
 use crate::support::{TestResult, make_executable};
 
+#[cfg(windows)]
+#[path = "post_cap_disposition_fixture_windows.rs"]
+mod windows;
+
 pub(crate) struct CiSources {
     pub(crate) pull_request: Value,
     pub(crate) required_status_checks: Value,
@@ -13,12 +17,15 @@ pub(crate) struct CiSources {
 
 pub(crate) struct GhFixture {
     pub(crate) path: Vec<PathBuf>,
+    pub(crate) gh_command: PathBuf,
     pub(crate) ci: PathBuf,
     pub(crate) required: PathBuf,
     pub(crate) expected: PathBuf,
     pub(crate) suites: PathBuf,
     pub(crate) maintainer: PathBuf,
 }
+
+pub(crate) const FINAL_AUTHORITY_COMMENT: u64 = 5_554_573_061;
 
 pub(crate) fn ci_sources(pull_request: u64, base: &str, head: &str) -> CiSources {
     CiSources {
@@ -101,12 +108,19 @@ esac
 "#,
     )?;
     make_executable(&gh)?;
+    #[cfg(windows)]
+    windows::write_gh_companion(&bin)?;
+    #[cfg(windows)]
+    let gh_command = bin.join("gh.cmd");
+    #[cfg(not(windows))]
+    let gh_command = gh.clone();
     let mut path = vec![bin];
     if let Some(existing) = std::env::var_os("PATH") {
         path.extend(std::env::split_paths(&existing));
     }
     Ok(GhFixture {
         path,
+        gh_command,
         ci,
         required,
         expected,
@@ -135,9 +149,16 @@ pub(crate) fn maintainer_response(
                 "pullRequest": {
                     "number": pull_request,
                     "url": pull_url,
+                    "state": "OPEN",
+                    "isDraft": false,
+                    "mergeStateStatus": "CLEAN",
                     "baseRefOid": base,
                     "headRefOid": head,
                     "repository": {"nameWithOwner": repository},
+                    "reviewThreads": {
+                        "nodes": [],
+                        "pageInfo": {"hasNextPage": false}
+                    },
                     "comments": {
                         "nodes": [{
                             "id": "IC_kwDOS6i-_88AAAABSxQPBA",
@@ -146,6 +167,62 @@ pub(crate) fn maintainer_response(
                             "body": body,
                             "createdAt": "2026-09-05T20:28:23Z",
                             "updatedAt": "2026-09-05T20:28:23Z",
+                            "author": {"login": "eunsoogi"},
+                            "authorAssociation": "OWNER",
+                            "isMinimized": false
+                        }],
+                        "pageInfo": {"hasNextPage": false}
+                    }
+                },
+                "issue": {
+                    "number": issue,
+                    "url": issue_url,
+                    "repository": {"nameWithOwner": repository}
+                }
+            }
+        }
+    })
+}
+
+pub(crate) fn final_authority_response(
+    pull_request: u64,
+    issue: u64,
+    base: &str,
+    source_head: &str,
+    current_head: &str,
+    finding_id: &str,
+) -> Value {
+    let repository = "eunsoogi/codexy";
+    let pull_url = format!("https://github.com/{repository}/pull/{pull_request}");
+    let issue_url = format!("https://github.com/{repository}/issues/{issue}");
+    let comment_url = format!("{pull_url}#issuecomment-{FINAL_AUTHORITY_COMMENT}");
+    let body = format!(
+        "## Final parent disposition recorded by the release orchestrator\n\nThis records the parent-maintainer's bounded final disposition for the completed third review. The orchestrator records an existing decision; it does not create a reviewer event.\n\nScope of this disposition:\n- Repository: {repository}\n- Owning issue: #{issue}\n- Pull request: #{pull_request}\n- Base: {base}\n- Source head: {source_head}\n- Current head: {current_head}\n- Review event: strict-required-head-1\n- Addressed findings: {finding_id}\n- Remaining findings: none\n- Decision: accept only the bounded final disposition after the authentic third BLOCK; preserve all reviewer history and independently verify ordinary gates.\n\nThis disposition does not waive CI, review-thread resolution, ownership, branch synchronization, connector review, or merge requirements; it does not authorize a fourth review, synthetic PASS, counter reset, or history rewrite."
+    );
+    json!({
+        "data": {
+            "repository": {
+                "pullRequest": {
+                    "number": pull_request,
+                    "url": pull_url,
+                    "state": "OPEN",
+                    "isDraft": false,
+                    "mergeStateStatus": "CLEAN",
+                    "baseRefOid": base,
+                    "headRefOid": current_head,
+                    "repository": {"nameWithOwner": repository},
+                    "reviewThreads": {
+                        "nodes": [],
+                        "pageInfo": {"hasNextPage": false}
+                    },
+                    "comments": {
+                        "nodes": [{
+                            "id": "IC_kwDOS6i-_88AAAABSxQPBQ",
+                            "databaseId": FINAL_AUTHORITY_COMMENT,
+                            "url": comment_url,
+                            "body": body,
+                            "createdAt": "2026-09-08T00:00:00Z",
+                            "updatedAt": "2026-09-08T00:00:00Z",
                             "author": {"login": "eunsoogi"},
                             "authorAssociation": "OWNER",
                             "isMinimized": false

@@ -131,6 +131,50 @@ flowchart TD
     review --> finish["PR·병합 또는 명시적 인수인계"]
 ```
 
+### 모델 역할과 추론 수준
+
+Codexy는 작업 담당자와 Codexy에 포함된 전문 에이전트를 구분합니다. 아래는
+프로젝트의 역할 설정이며, 설치만으로 호스트의 기본 모델이 바뀌거나 다른 저장소의
+GitHub 정책에 동의한 것으로 해석되지 않습니다.
+
+| 역할                       | 모델           | 추론 수준 | 담당 범위                                                                                                                            |
+| -------------------------- | -------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Orchestrator / parent      | `gpt-6-astra`  | `medium`  | Worker 작업을 배정·추적하고 전체 작업 목표를 맡아 이탈을 교정하며 보고를 검증하고 결과를 인수합니다.                                 |
+| Watcher / `codexy-watcher` | `gpt-5.6-luna` | `max`     | 할당된 Worker를 native subagent로 읽기 전용 관찰하고 core Watcher MCP로 중요한 사건을 보고하며, 지시·수정·교체·인수는 하지 않습니다. |
+| Worker / ordinary child    | `gpt-5.6-luna` | `max`     | 별도 app task에서 자신의 branch/worktree로 이슈를 구현·검증하고 결과와 근거를 Orchestrator에 돌려줍니다.                             |
+
+보고 흐름은 Orchestrator가 native Watcher를 호출하고 Worker에게 작업을
+배정·교정하면, Worker는 app task를 통해 결과와 근거를 돌려줍니다. Luna/max
+Watcher는 `watcher_report`로 중요한 사건을 보고하고, Astra/medium Orchestrator는
+`wait_watcher`로 받아 보고를 판단하며 교정과 결과 인수 권한을 유지합니다. MCP는
+신호를 전달할 뿐 Worker 상태를 판단하지 않습니다. App task 전달은
+parent→Worker가 Luna/max, Worker→parent가 Astra/medium이며, native Watcher는 app
+task 전달이 아니라 Luna/max로 `watcher_report`를 호출하고 Astra/medium
+Orchestrator가 `wait_watcher`로 받습니다.
+
+목표도 분리됩니다. Orchestrator는 전체 작업 목표, Watcher는 유한한 관찰 배정,
+Worker는 유한한 실행 목표를 맡습니다. Watcher는 전체 목표를 소유하거나 옮기지
+않습니다. 이 설정은 Codexy에 포함된 구성이지 이미 실행 중인 host가 실제로 사용한
+모델의 증거는 아닙니다. `low`, `medium`, `high`, `xhigh`, `max`는 추론
+수준입니다.
+
+### 패키지 전문 에이전트
+
+패키지 catalog는 각 전문 에이전트에 고유한 모델과 추론 수준을 지정하며, 선택형
+`codexy-github` 플러그인이 Weaver를 제공합니다.
+
+| 컴포넌트 | 전문 에이전트         | 모델            | 추론 수준 | 담당 범위                                  |
+| -------- | --------------------- | --------------- | --------- | ------------------------------------------ |
+| core     | `codexy-architect`    | `gpt-6-astra`   | `high`    | 아키텍처와 통합 경계                       |
+| core     | `codexy-sentinel`     | `gpt-6-astra`   | `xhigh`   | 엄격한 리뷰                                |
+| core     | `codexy-warden`       | `gpt-6-astra`   | `xhigh`   | 안전·권한 경계                             |
+| core     | `codexy-inspector`    | `gpt-5.6-sol`   | `medium`  | 표준 리뷰                                  |
+| core     | `codexy-auditor`      | `gpt-5.6-terra` | `medium`  | 인수 기준과 실제 동작 검증                 |
+| core     | `codexy-cartographer` | `gpt-5.6-luna`  | `low`     | 저장소 탐색                                |
+| core     | `codexy-shipwright`   | `gpt-5.6-terra` | `high`    | 릴리스와 패키징                            |
+| core     | `codexy-watcher`      | `gpt-5.6-luna`  | `max`     | core Watcher MCP를 통한 native Worker 관찰 |
+| github   | `codexy-weaver`       | `gpt-5.6-terra` | `medium`  | GitHub 통합; GitHub 컴포넌트 제공          |
+
 ### 실시간 음성 모드
 
 `realtime-voice-orchestration` skill은 일반 `$orchestration`과 함께 사용하는

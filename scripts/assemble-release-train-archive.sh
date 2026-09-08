@@ -35,6 +35,8 @@ components = json.loads(Path(os.environ["COMPONENT_MANIFEST"]).read_text())["com
 marketplace = json.loads(Path(os.environ["MARKETPLACE"]).read_text())
 activation = json.loads((root / ".agents/plugins/runtime-activation.json").read_text())
 runtime_platforms = list(activation["candidate"]["platforms"])
+runtime_classes = activation["candidate"].get("classes", {})
+core_watcher = runtime_classes.get("coreWatcherMcp")
 expected = [(item["id"], item["plugin"], item["asset"]["packageRoot"]) for item in components]
 if expected != [("core", "codexy", "plugins/codexy"), ("github", "codexy-github", "plugins/codexy-github"), ("devtools", "codexy-devtools", "plugins/codexy-devtools")]:
     raise SystemExit("unsupported release-train component inventory")
@@ -59,6 +61,27 @@ for _, plugin, package_root in expected:
             extension = "exe" if platform == "windows-x86_64" else "bin"
             name = f"codexy-handoff-validate-{platform}.{extension}"
             shutil.copy2(runtime_source / "runtime" / name, destination / "runtime" / name)
+    if plugin == "codexy" and core_watcher:
+        (destination / "runtime").mkdir(parents=True, exist_ok=True)
+        source_launcher = destination / "mcp/codexy-mcp-watcher.sh"
+        public_launcher = destination / "mcp/codexy-mcp-watcher"
+        if not source_launcher.is_file():
+            raise SystemExit("core watcher POSIX source launcher is missing")
+        shutil.copy2(source_launcher, public_launcher)
+        for platform, binary in core_watcher["platforms"].items():
+            source_binary = runtime_source / binary["path"]
+            target_binary = destination / "runtime" / source_binary.name
+            shutil.copy2(source_binary, target_binary)
+            if target_binary.read_bytes() != source_binary.read_bytes():
+                raise SystemExit(f"core watcher runtime copy mismatch: {target_binary.name}")
+            if platform == "windows-x86_64":
+                public_binary = destination / "mcp/codexy-mcp-watcher.exe"
+                shutil.copy2(source_binary, public_binary)
+                if public_binary.read_bytes() != source_binary.read_bytes():
+                    raise SystemExit("core watcher Windows launcher copy mismatch")
+    if plugin == "codexy-devtools" and core_watcher:
+        for binary in core_watcher["platforms"].values():
+            (destination / binary["path"]).unlink(missing_ok=True)
     if plugin == "codexy-devtools" and any((destination / name).exists() for name in ("runtime-candidate.json", "runtime-release.json")):
         raise SystemExit("release train may not retain runtime contracts")
     manifest = json.loads((destination / ".codex-plugin/plugin.json").read_text())

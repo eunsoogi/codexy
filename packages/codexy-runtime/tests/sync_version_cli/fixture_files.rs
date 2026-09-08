@@ -9,6 +9,8 @@ pub(super) const REPLACED_FILES: &[&str] = &[
     "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
     "plugins/codexy-devtools/.mcp.json",
     "plugins/codexy-devtools/mcp/codexy-mcp-devtools",
+    "plugins/codexy/mcp/codexy-mcp-watcher.sh",
+    "plugins/codexy/mcp/codexy-mcp-watcher.cmd",
     "packages/codexy-runtime/src/version.rs",
     "packages/codexy-runtime/src/version/github_plugin.rs",
     "packages/codexy-runtime/src/version/admission.rs",

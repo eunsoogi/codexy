@@ -14,6 +14,7 @@ from .source import ExplicitRuntimeSource, RuntimeSourceIdentity
 
 
 REPOSITORY = "https://github.com/eunsoogi/codexy"
+PUBLIC_BUNDLE_ASSET = "codexy-marketplace-bundle.tar.gz"
 
 
 def host_platform_name() -> str:
@@ -58,6 +59,7 @@ class Configuration:
     git_fallback: bool
     release_contract: RuntimeRelease | None = None
     source_identity: RuntimeSourceIdentity | None = None
+    allow_mixed_plugin_roots: bool = False
 
     @classmethod
     def load(
@@ -98,7 +100,12 @@ class Configuration:
                 release_contract.artifact.sha256,
             )
         elif explicit_source is None:
-            package_url = f"{REPOSITORY}/releases/download/v{release}/codexy-marketplace-plugin.tar.gz"
+            asset = (
+                PUBLIC_BUNDLE_ASSET
+                if server == "watcher"
+                else "codexy-marketplace-plugin.tar.gz"
+            )
+            package_url = f"{REPOSITORY}/releases/download/v{release}/{asset}"
         platform = host_platform_name()
         return cls(
             server=server,
@@ -107,7 +114,7 @@ class Configuration:
             platform=platform,
             manifest=manifest,
             release=release,
-            runtime_name=f"codexy-mcp-{server}-{platform}.bin",
+            runtime_name=f"codexy-mcp-{server}-{platform}.{'exe' if platform == 'windows-x86_64' else 'bin'}",
             package_path=package_path,
             package_url=package_url,
             artifacts_api=artifacts_api,
@@ -132,4 +139,5 @@ class Configuration:
                 package_url=package_url,
                 release=release_contract,
             ),
+            allow_mixed_plugin_roots=server == "watcher" and release_contract is None,
         )

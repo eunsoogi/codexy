@@ -37,6 +37,17 @@ rejected; the child MUST NOT follow that prohibition. Ambiguous conversation,
 incidental discussion, and unassigned suggestions are not delegated task
 assignments and MUST NOT create a goal.
 
+### Native watcher exception
+
+When the Orchestrator summons the packaged `codexy-watcher` role through the
+native subagent facility for bounded observation and Watcher MCP reporting, the
+Orchestrator retains the overall goal and all judgement, correction, and
+acceptance authority. The Watcher MUST NOT create, transfer, complete, or block
+a separate overall goal. The Watcher MCP transports the bounded assignment and
+reports; it does not grant the Watcher goal ownership. The delegated-assignment
+rule above continues to apply to implementation Workers, not to this native
+Watcher role.
+
 ## Required first transition
 
 Before any edit, command, verification, GitHub mutation, delegation, or other

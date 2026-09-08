@@ -83,8 +83,19 @@ task/thread
 - terminal proof:
 - post-third disposition (not applicable, PASS, final repair, or maintainer
   disposition):
-- post-cap reason (mandatory_base_integration, in_scope_contract_root_repair, or
-  authenticated_external_finding_repair):
+- final disposition form (not applicable, repaired-head, or same-head
+  evidence-only):
+- final disposition authority locator and live-source reread at producer, build,
+  and handoff:
+- final authority exact repository/issue/PR/base/head, OWNER/MEMBER immutable
+  decision, exact-head all-success CI, and complete resolved review threads:
+- immutable third BLOCK history and terminal_review_count=3 preserved:
+- final source-repair evidence/final-tree diff is non-empty and
+  finding-path-only, or same-head evidence refresh has no artificial source
+  edit:
+- synthetic PASS/UNOBSERVABLE, fourth profile review, and ordinary-gate waiver:
+- post-cap reason (mandatory_base_integration, in_scope_contract_root_repair,
+  authenticated_external_finding_repair, or authenticated_finding_disposition):
 - prior reviewed head (must equal the delta head):
 - qualifying-change from/to heads and evidence commit in Git ancestry:
 - authenticated current/previous PR snapshots, baseRefOid transition, and
