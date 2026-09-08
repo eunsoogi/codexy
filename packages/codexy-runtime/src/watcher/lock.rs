@@ -32,13 +32,11 @@ impl LockGuard {
     }
 
     pub(super) fn try_acquire(path: &Path) -> Result<Option<Self>> {
-        if path.exists() {
-            reject_link(path)?;
-        }
         let owner = format!("{}:{}:{}", std::process::id(), now_ms(), random_hex(8)?);
         let mut file = match open_new_lock(path) {
             Ok(file) => file,
             Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
+                reject_lock_link(path)?;
                 if stale(path) {
                     let _ = fs::remove_file(path);
                 }
@@ -61,6 +59,28 @@ impl LockGuard {
 
 fn open_new_lock(path: &Path) -> io::Result<File> {
     OpenOptions::new().write(true).create_new(true).open(path)
+}
+
+fn reject_lock_link(path: &Path) -> Result<()> {
+    let Some(parent) = path.parent() else {
+        return reject_link(path);
+    };
+    let Some(name) = path.file_name() else {
+        return reject_link(path);
+    };
+    for entry in fs::read_dir(parent)? {
+        let entry = entry?;
+        if entry.file_name().eq_ignore_ascii_case(name) {
+            if entry.file_type()?.is_symlink() {
+                bail!(
+                    "watcher state path must not be a symlink: {}",
+                    path.display()
+                );
+            }
+            break;
+        }
+    }
+    Ok(())
 }
 
 impl Drop for LockGuard {
