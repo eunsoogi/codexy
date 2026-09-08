@@ -1,9 +1,6 @@
-use std::fs;
-
+use std::{fs, io::Write as _, process::{Command, Stdio}};
 use serde_yaml::Value;
-
 use crate::support;
-
 #[path = "runtime_workflow_recovery/release_lineage.rs"]
 mod release_lineage;
 #[path = "runtime_workflow_recovery/release_reconciliation.rs"]
@@ -20,7 +17,6 @@ mod legacy_selected_source;
 mod legacy_public_assembly;
 #[path = "runtime_workflow_recovery/exact_pr_head_admission.rs"]
 mod exact_pr_head_admission;
-
 #[test]
 fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -50,7 +46,6 @@ fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()
     );
     Ok(())
 }
-
 #[test]
 fn staging_publication_uses_expiring_authenticated_artifacts()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -64,7 +59,6 @@ fn staging_publication_uses_expiring_authenticated_artifacts()
     assert_eq!(publish["with"]["retention-days"], 14);
     Ok(())
 }
-
 #[test]
 fn staging_publication_records_a_reproducible_success_binding()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -93,7 +87,6 @@ fn staging_publication_records_a_reproducible_success_binding()
     );
     Ok(())
 }
-
 #[test]
 fn activation_requires_a_successful_authenticated_staging_binding()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -112,7 +105,6 @@ fn activation_requires_a_successful_authenticated_staging_binding()
     );
     Ok(())
 }
-
 #[test]
 fn activation_pr_creation_reuses_an_existing_verified_staging_branch()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -131,7 +123,6 @@ fn activation_pr_creation_reuses_an_existing_verified_staging_branch()
     support::assert_structured_literals(creation, "activation PR reuse", &["gh pr list --head \"$branch\" --state open", "activation branch differs from verified contract"]);
     Ok(())
 }
-
 #[test]
 fn candidate_builds_run_platform_local_lsp_and_codegraph_protocol_smokes()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -157,7 +148,6 @@ fn candidate_builds_run_platform_local_lsp_and_codegraph_protocol_smokes()
     );
     Ok(())
 }
-
 #[test]
 fn candidate_keeps_windows_native_until_verified_activation()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -176,8 +166,25 @@ fn candidate_keeps_windows_native_until_verified_activation()
     support::assert_structured_literals(
         native["run"].as_str().ok_or("native Windows smoke")?,
         "native Windows candidate proof",
-        &["ProcessStartInfo", "codexy-mcp-lsp.exe", "codexy-mcp-codegraph.exe", "tools/call"],
+        &["ProcessStartInfo", "codexy-mcp-lsp.exe", "codexy-mcp-codegraph.exe", "tools/call", "parent = @{ id = \"smoke\" }", "watcher = @{ id = \"smoke\" }", "targets = @(@{ threadId = \"smoke\" })", "ConvertTo-Json -Compress -Depth 10", "tool smoke failed: $($tool | ConvertTo-Json -Depth 10 -Compress)"],
     );
+    assert!(!native["run"].as_str().ok_or("native Windows smoke")?.contains("ConvertTo-Json -Compress));"));
+    let state = tempfile::tempdir()?;
+    let mut child = Command::new(env!("CARGO_BIN_EXE_codexy-mcp-watcher")).env("CODEXY_WATCHER_STATE_DIR", state.path()).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
+    let mut stdin = child.stdin.take().ok_or("watcher stdin")?;
+    let mut stdout = std::io::BufReader::new(child.stdout.take().ok_or("watcher stdout")?);
+    let mut send = |input: &str| -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        stdin.write_all(input.as_bytes())?; stdin.flush()?;
+        let mut line = String::new(); std::io::BufRead::read_line(&mut stdout, &mut line)?;
+        Ok(serde_json::from_str(&line)?)
+    };
+    let initialize = send(concat!(r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#, "\n"))?;
+    assert_eq!(initialize["result"]["protocolVersion"], "2024-11-05");
+    let opened = send(concat!(r#"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"watcher_open","arguments":{"assignmentId":"runtime-smoke","parent":{"id":"smoke"},"watcher":{"id":"smoke"},"targets":[{"threadId":"smoke"}],"ttlSeconds":1}}}"#, "\n"))?;
+    assert!(opened["result"]["content"].as_array().is_some_and(|content| !content.is_empty()));
+    drop(send); drop(stdin);
+    let output = child.wait_with_output()?;
+    assert!(output.status.success(), "watcher stderr: {}", String::from_utf8_lossy(&output.stderr));
     let assembly = run(&candidate, "stage-runtime", "Assemble canonical staged archive and receipt")?;
     assert_eq!(assembly, "scripts/assemble-runtime-candidate");
     let assembly = script("assemble-runtime-candidate")?;
@@ -192,7 +199,6 @@ fn candidate_keeps_windows_native_until_verified_activation()
             "codexy-mcp-devtools.exe",
         ],
     );
-
     let selected = workflow("plugin-runtime-binaries.yml")?;
     let windows = run(
         &selected,
@@ -211,16 +217,13 @@ fn candidate_keeps_windows_native_until_verified_activation()
     );
     Ok(())
 }
-
 fn workflow(name: &str) -> Result<Value, Box<dyn std::error::Error>> {
     let path = codexy_runtime::paths::repository_root().join(".github/workflows").join(name);
     Ok(serde_yaml::from_str(&fs::read_to_string(path)?)?)
 }
-
 fn script(name: &str) -> Result<String, Box<dyn std::error::Error>> {
     Ok(fs::read_to_string(codexy_runtime::paths::repository_root().join("scripts").join(name))?)
 }
-
 fn run<'a>(
     value: &'a Value,
     job: &str,
@@ -232,7 +235,6 @@ fn run<'a>(
         .and_then(|step| step["run"].as_str())
         .ok_or_else(|| format!("missing run step {name:?}").into())
 }
-
 fn named_step<'a>(
     steps: &'a [Value],
     name: &str,
@@ -243,7 +245,6 @@ fn named_step<'a>(
         .find(|(_, step)| step["name"] == name)
         .ok_or_else(|| format!("missing step {name:?}").into())
 }
-
 fn step_index(steps: &[Value], name: &str) -> Result<usize, Box<dyn std::error::Error>> {
     named_step(steps, name).map(|(index, _)| index)
 }

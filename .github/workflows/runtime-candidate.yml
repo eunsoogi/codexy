@@ -96,7 +96,7 @@ jobs:
               if (-not $process.Start()) { throw "failed to start $($case.File)" }
               $send = {
                 param($request)
-                $process.StandardInput.WriteLine(($request | ConvertTo-Json -Compress)); $process.StandardInput.Flush()
+                $process.StandardInput.WriteLine(($request | ConvertTo-Json -Compress -Depth 10)); $process.StandardInput.Flush()
                 $line = $process.StandardOutput.ReadLine()
                 if ($null -eq $line) { throw "$($case.File) closed stdout before responding" }
                 return ($line | ConvertFrom-Json)
@@ -104,7 +104,7 @@ jobs:
               $initialize = & $send (@{ jsonrpc = "2.0"; id = 1; method = "initialize"; params = @{} })
               $tool = & $send (@{ jsonrpc = "2.0"; id = 2; method = "tools/call"; params = @{ name = $case.Tool; arguments = $case.Arguments } })
               if ($initialize.result.protocolVersion -ne "2024-11-05") { throw "$($case.File) protocol mismatch" }
-              if ($tool.error -or -not $tool.result.content) { throw "$($case.File) tool smoke failed" }
+              if ($tool.error -or -not $tool.result.content) { throw "$($case.File) tool smoke failed: $($tool | ConvertTo-Json -Depth 10 -Compress)" }
               $process.StandardInput.Close(); if (-not $process.WaitForExit(30000)) { $process.Kill($true); $process.WaitForExit(); throw "$($case.File) timed out" }
               $stderr = $process.StandardError.ReadToEnd()
               if ($process.ExitCode -ne 0) { throw "$($case.File) failed: $stderr" }
