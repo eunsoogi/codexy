@@ -136,13 +136,41 @@ mod tests {
         let source = fs::read("/bin/cat")?;
         publish_executable(&executable, &source)?;
 
-        let writer = fs::OpenOptions::new().write(true).open(&executable)?;
-        publish_executable(&executable, &source)?;
+        let writer = fs::OpenOptions::new()
+            .write(true)
+            .open(&executable)
+            .map_err(|error| {
+                std::io::Error::new(
+                    error.kind(),
+                    format!(
+                        "open writable published executable {}: {error}",
+                        executable.display()
+                    ),
+                )
+            })?;
+        publish_executable(&executable, &source).map_err(|error| {
+            std::io::Error::new(
+                error.kind(),
+                format!(
+                    "republish executable while writer is held {}: {error}",
+                    executable.display()
+                ),
+            )
+        })?;
 
         let mut child = Command::new(&executable)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
-            .spawn()?;
+            .spawn()
+            .map_err(|error| {
+                std::io::Error::new(
+                    error.kind(),
+                    format!(
+                        "spawn republished executable after writer-held replacement {}: {error}",
+                        executable.display()
+                    ),
+                )
+            })?;
         let status = child.wait()?;
         assert!(status.success(), "published executable was not runnable: {status:?}");
         drop(writer);

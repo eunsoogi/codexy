@@ -1,19 +1,15 @@
 use std::fs;
 
-use crate::support::FixtureCommand;
-
-use super::{archive_repository, isolation::next_patch_version, shared_repository_archive};
+use super::{
+    archive_repository, isolation::next_patch_version, run_sync, shared_repository_archive,
+};
 
 #[test]
-fn sync_version_script_rejects_a_pyproject_projection_that_differs_from_uv_lock()
+fn sync_version_cli_rejects_a_pyproject_projection_that_differs_from_uv_lock()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let archive = shared_repository_archive()?;
     let repo = archive_repository(archive, &temp, "repo")?;
-    fs::copy(
-        codexy_runtime::paths::repository_root().join("scripts/sync-plugin-version.sh"),
-        repo.join("scripts/sync-plugin-version.sh"),
-    )?;
 
     let package_path = repo.join("packages/getcodexy/pyproject.toml");
     let package_text = fs::read_to_string(&package_path)?;
@@ -30,10 +26,7 @@ fn sync_version_script_rejects_a_pyproject_projection_that_differs_from_uv_lock(
     assert_ne!(package_text, stale_package, "package fixture did not change");
     fs::write(&package_path, &stale_package)?;
 
-    let output = FixtureCommand::new(repo.join("scripts/sync-plugin-version.sh"))
-        .arg("--check")
-        .current_dir(&repo)
-        .output()?;
+    let output = run_sync(&repo, &["--check"])?;
     assert!(
         !output.status.success(),
         "sync-version --check unexpectedly accepted a stale pyproject projection\nstdout:\n{}\nstderr:\n{}",

@@ -162,19 +162,19 @@ fn oversized_source_uses_the_uncached_path() -> Result<(), Box<dyn std::error::E
 }
 
 #[test]
-fn many_long_path_files_use_the_uncached_path() -> Result<(), Box<dyn std::error::Error>> {
+fn long_path_files_are_discovered_and_parsed() -> Result<(), Box<dyn std::error::Error>> {
     let repository = tempfile::tempdir()?;
-    let directories = 300;
-    let files_per_directory = 150;
+    let directories = 4;
+    let files_per_directory = 4;
     for directory_index in 0..directories {
         let directory = repository
             .path()
-            .join(format!("segment_{directory_index:03}_{}", "x".repeat(220)));
-        let nested = directory.join(format!("nested_{}", "y".repeat(220)));
+            .join(format!("segment_{directory_index:02}_{}", "x".repeat(96)));
+        let nested = directory.join(format!("nested_{}", "y".repeat(96)));
         fs::create_dir_all(&nested)?;
         for file_index in 0..files_per_directory {
             fs::write(
-                nested.join(format!("file_{file_index:03}_{}.json", "z".repeat(220))),
+                nested.join(format!("file_{file_index:02}_{}.json", "z".repeat(96))),
                 "",
             )?;
         }
@@ -182,13 +182,39 @@ fn many_long_path_files_use_the_uncached_path() -> Result<(), Box<dyn std::error
     invalidate();
     reset_parse_call_count();
 
-    let _ = build_graph(repository.path(), Some(usize::MAX));
+    let expected_files = directories * files_per_directory;
+    let graph = build_graph(repository.path(), Some(usize::MAX));
     let _ = build_graph(repository.path(), Some(usize::MAX));
 
+    assert_eq!(graph.files.len(), expected_files);
+    assert!(graph.files.iter().all(|file| file.path.len() > 250));
+    assert_eq!(parse_call_count(), expected_files);
+    Ok(())
+}
+
+#[test]
+fn aggregate_source_bytes_use_the_uncached_path() -> Result<(), Box<dyn std::error::Error>> {
+    let repository = tempfile::tempdir()?;
+    let files = 33;
+    let source_size = MAX_CACHE_BYTES / files + 1;
+    let source = format!("{{\"data\":\"{}\"}}\n", "x".repeat(source_size));
+    for file_index in 0..files {
+        fs::write(
+            repository.path().join(format!("file_{file_index:02}.json")),
+            &source,
+        )?;
+    }
+    invalidate();
+    reset_parse_call_count();
+
+    let graph = build_graph(repository.path(), Some(usize::MAX));
+    let _ = build_graph(repository.path(), Some(usize::MAX));
+
+    assert_eq!(graph.files.len(), files);
     assert_eq!(
         parse_call_count(),
-        directories * files_per_directory * 2,
-        "retained cache state over the limit must use the uncached path"
+        files * 2,
+        "cumulative cached source bytes over the limit must not be reused"
     );
     Ok(())
 }
