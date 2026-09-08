@@ -2,7 +2,6 @@
 
 import json
 import os
-from pathlib import Path
 import shlex
 import subprocess
 import time
@@ -140,13 +139,19 @@ def _argv(command, plugin, args=()):
         str(value) for value in (args if isinstance(args, list) else ())
     ]
     if values and values[0].endswith("mcp/codexy-mcp-watcher"):
-        entrypoint = Path(values[0])
-        resolved = entrypoint if entrypoint.is_absolute() else plugin / entrypoint
-        if not resolved.is_file():
-            suffix = ".cmd" if os.name == "nt" else ".sh"
-            fallback = Path(f"{resolved}{suffix}")
-            if fallback.is_file():
-                values[0] = str(fallback)
+        entrypoint = values[0]
+        resolved = (
+            entrypoint
+            if os.path.isabs(entrypoint)
+            else os.path.join(str(plugin), entrypoint)
+        )
+        resolved = os.path.normpath(resolved)
+        suffixes = (".exe", ".cmd", "") if os.name == "nt" else ("", ".sh")
+        for suffix in suffixes:
+            candidate = f"{resolved}{suffix}"
+            if os.path.isfile(candidate):
+                values[0] = candidate
+                break
     if (
         os.name == "nt"
         and values[0].lower().endswith((".bat", ".cmd"))

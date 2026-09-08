@@ -207,6 +207,13 @@ for _, plugin, package_root in inventory:
             if hashlib.sha256(entries.get(name, b"")).hexdigest() != binary["sha256"]:
                 reject(f"core-owned watcher binary differs from activated class identity")
             expected_entries.add(name)
+        windows_binary = core_watcher["platforms"].get("windows-x86_64")
+        if windows_binary:
+            windows_name = f"{prefix}{windows_binary['path']}"
+            public_name = f"{prefix}mcp/codexy-mcp-watcher.exe"
+            if entries.get(public_name) != entries.get(windows_name):
+                reject("core watcher Windows launcher differs from its runtime binary")
+            expected_entries.add(public_name)
         expected_directories.add(f"{package_root}/runtime")
     if plugin == "codexy-devtools":
         admit_handoff(prefix, "devtools")

@@ -74,6 +74,11 @@ for _, plugin, package_root in expected:
             shutil.copy2(source_binary, target_binary)
             if target_binary.read_bytes() != source_binary.read_bytes():
                 raise SystemExit(f"core watcher runtime copy mismatch: {target_binary.name}")
+            if platform == "windows-x86_64":
+                public_binary = destination / "mcp/codexy-mcp-watcher.exe"
+                shutil.copy2(source_binary, public_binary)
+                if public_binary.read_bytes() != source_binary.read_bytes():
+                    raise SystemExit("core watcher Windows launcher copy mismatch")
     if plugin == "codexy-devtools" and core_watcher:
         for binary in core_watcher["platforms"].values():
             (destination / binary["path"]).unlink(missing_ok=True)

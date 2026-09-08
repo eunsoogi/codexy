@@ -20,6 +20,28 @@ class WatcherProbeTests(unittest.TestCase):
             )
         self.assertEqual(values, [str(launcher), "--stdio"])
 
+    def test_windows_prefers_native_binary_over_extensionless_launcher(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            plugin = Path(directory)
+            launcher = plugin / "mcp/codexy-mcp-watcher"
+            launcher.parent.mkdir()
+            for path in (launcher, Path(f"{launcher}.exe")):
+                path.write_bytes(b"watcher")
+            with patch.object(probe.os, "name", "nt"):
+                values = probe._argv("./mcp/codexy-mcp-watcher", plugin)
+        self.assertEqual(values, [f"{launcher}.exe"])
+
+    def test_windows_falls_back_to_cmd_when_native_binary_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            plugin = Path(directory)
+            launcher = plugin / "mcp/codexy-mcp-watcher"
+            launcher.parent.mkdir()
+            Path(f"{launcher}.cmd").write_text("@echo off\n", encoding="utf-8")
+            with patch.object(probe.os, "name", "nt"):
+                values = probe._argv("./mcp/codexy-mcp-watcher", plugin)
+        self.assertIsInstance(values, str)
+        self.assertIn(f"{launcher}.cmd", values)
+
     def test_repeated_probe_assignments_are_unique(self) -> None:
         with (
             patch.object(probe.os, "getpid", return_value=42),

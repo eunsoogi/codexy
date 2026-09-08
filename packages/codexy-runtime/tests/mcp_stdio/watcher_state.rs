@@ -2,7 +2,7 @@ use super::*;
 use std::sync::{Arc, Barrier};
 use std::thread;
 
-fn watcher_client(state_dir: &Path) -> Result<McpClient, Box<dyn std::error::Error>> {
+pub(super) fn watcher_client(state_dir: &Path) -> Result<McpClient, Box<dyn std::error::Error>> {
     let mut command = Command::new(env!("CARGO_BIN_EXE_codexy-mcp-watcher"));
     command
         .env("CODEXY_WATCHER_STATE_DIR", state_dir)
@@ -12,7 +12,7 @@ fn watcher_client(state_dir: &Path) -> Result<McpClient, Box<dyn std::error::Err
     McpClient::spawn_command(command)
 }
 
-fn tool_payload(response: &Value) -> Result<Value, Box<dyn std::error::Error>> {
+pub(super) fn tool_payload(response: &Value) -> Result<Value, Box<dyn std::error::Error>> {
     let text = response
         .get("result")
         .and_then(|result| result.get("content"))
@@ -24,7 +24,7 @@ fn tool_payload(response: &Value) -> Result<Value, Box<dyn std::error::Error>> {
     Ok(serde_json::from_str(text)?)
 }
 
-fn initialize(client: &mut McpClient) -> Result<(), Box<dyn std::error::Error>> {
+pub(super) fn initialize(client: &mut McpClient) -> Result<(), Box<dyn std::error::Error>> {
     client.send(&json!({
         "jsonrpc": "2.0",
         "id": 1,
@@ -34,7 +34,7 @@ fn initialize(client: &mut McpClient) -> Result<(), Box<dyn std::error::Error>> 
     Ok(())
 }
 
-fn open_session(
+pub(super) fn open_session(
     client: &mut McpClient,
     id: &str,
     request_id: u64,

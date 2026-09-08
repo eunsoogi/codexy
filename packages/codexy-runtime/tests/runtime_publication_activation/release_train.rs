@@ -122,6 +122,7 @@ fn release_train_inspector_accepts_the_complete_activation_checkout()
             .stdout,
     )?;
     assert!(entries.contains("plugins/codexy/runtime/codexy-mcp-watcher-linux-x86_64.bin"));
+    assert!(entries.contains("plugins/codexy/mcp/codexy-mcp-watcher.exe"));
     assert!(!entries.contains("plugins/codexy-devtools/runtime/codexy-mcp-watcher-"));
     let inspected = Command::new(root.join("scripts/inspect_release_train_archive.py"))
         .arg_path(&bundle)
