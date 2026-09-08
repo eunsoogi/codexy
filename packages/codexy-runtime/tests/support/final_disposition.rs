@@ -32,6 +32,7 @@ pub(crate) use native_919::{
 };
 pub(crate) use runner::produce_with_states;
 pub(crate) use runner::produce_with_recovered_predecessor;
+pub(crate) use runner::produce_with_binary;
 
 const CASE_HASH: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
