@@ -16,12 +16,12 @@ if /I "%~2"=="graphql" (
   exit /b 0
 )
 if /I "%~1"=="api" if /I "%~2"=="--paginate" (
-  echo(%~4| findstr.exe /C:"check-runs?per_page=100" >nul
+  echo(%*| findstr.exe /L /C:"check-runs" >nul
   if not errorlevel 1 (
     type "%CODEXY_TEST_EXPECTED_CHECKS_RESPONSE%"
     exit /b 0
   )
-  echo(%~4| findstr.exe /C:"check-suites?per_page=100" >nul
+  echo(%*| findstr.exe /L /C:"check-suites" >nul
   if not errorlevel 1 (
     type "%CODEXY_TEST_CHECK_SUITES_RESPONSE%"
     exit /b 0
