@@ -5,7 +5,7 @@
 <h1 align="center">Codexy</h1>
 
 <p align="center">
-  담당 범위가 분명한 작업, 전문 에이전트, 검증 중심 완료를 위한 Codex 하네스
+  Codex 에이전트의 작업을 계획하고 나누어 맡기며, 구현, 검증과 리뷰를 연결하는 하네스
 </p>
 
 <p align="center">
@@ -18,9 +18,9 @@
   <a href="https://github.com/eunsoogi/codexy/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/eunsoogi/codexy.svg"></a>
 </p>
 
-Codexy는 큰 저장소 요청을 담당자가 분명한 구현, 실제 동작 검증, 범위가 제한된
-리뷰, 안전한 완료까지 이어 주는 Codex 하네스입니다. 컴포넌트별 설치와 현재
-근거를 보존하는 인수인계를 지원하며, 자세한 계약은 연결된 `docs` 문서에 둡니다.
+Codexy는 Codex 에이전트의 작업을 계획하고 나누어 맡기며, 구현 결과를 실제로
+검증하고 리뷰와 인수인계까지 연결하는 Codex 하네스입니다. 자세한 구조와 실행
+계약은 연결된 `docs` 문서에서 확인할 수 있습니다.
 
 ## getcodexy로 설치하기
 

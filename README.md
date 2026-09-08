@@ -5,7 +5,7 @@
 <h1 align="center">Codexy</h1>
 
 <p align="center">
-  A component-aware Codex harness for owned work, specialist help, and proof-driven completion.
+  A Codex harness for coordinating agents through planning, implementation, verification, and review.
 </p>
 
 <p align="center">
@@ -18,11 +18,11 @@
   <a href="https://github.com/eunsoogi/codexy/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/eunsoogi/codexy.svg"></a>
 </p>
 
-Codexy gives Codex a disciplined path from a broad repository request to an
-owned implementation, observable verification, bounded review, and a safe
-finish. Use it to coordinate planning, implementation, verification, review, and
-handoff across one or more Codex agents. Detailed architecture and executable
-contracts live in the linked guides.
+Codexy is a Codex harness for coordinating agents through planning, work
+division, implementation, verification, and review. It turns a broad repository
+request into an owned plan, divides work across agents, checks actual outcomes,
+and keeps the next handoff tied to current evidence. Detailed architecture and
+executable contracts live in the linked guides.
 
 ## Install with getcodexy
 
