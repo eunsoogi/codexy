@@ -13,11 +13,15 @@ fn watcher_client(state_dir: &Path) -> Result<McpClient, Box<dyn std::error::Err
 }
 
 fn tool_payload(response: &Value) -> Result<Value, Box<dyn std::error::Error>> {
-    Ok(serde_json::from_str(
-        response["result"]["content"][0]["text"]
-            .as_str()
-            .ok_or("missing watcher tool result text")?,
-    )?)
+    let text = response
+        .get("result")
+        .and_then(|result| result.get("content"))
+        .and_then(Value::as_array)
+        .and_then(|content| content.first())
+        .and_then(|item| item.get("text"))
+        .and_then(Value::as_str)
+        .ok_or_else(|| format!("missing watcher tool result text: {response}"))?;
+    Ok(serde_json::from_str(text)?)
 }
 
 fn initialize(client: &mut McpClient) -> Result<(), Box<dyn std::error::Error>> {
@@ -33,10 +37,10 @@ fn initialize(client: &mut McpClient) -> Result<(), Box<dyn std::error::Error>> 
 fn open_session(
     client: &mut McpClient,
     id: &str,
+    request_id: u64,
 ) -> Result<(String, String, String), Box<dyn std::error::Error>> {
     let response = client.send(&json!({
-        "jsonrpc": "2.0",
-        "id": 2,
+        "jsonrpc": "2.0", "id": request_id,
         "method": "tools/call",
         "params": {"name": "watcher_open", "arguments": {
             "assignmentId": id,
@@ -60,7 +64,8 @@ fn concurrent_reports_and_health_leave_a_restartable_event_log() -> Result<(), S
     let mut setup = watcher_client(state.path()).map_err(|error| error.to_string())?;
     initialize(&mut setup).map_err(|error| error.to_string())?;
     let (session, parent_token, watcher_token) =
-        open_session(&mut setup, "concurrent-report-health").map_err(|error| error.to_string())?;
+        open_session(&mut setup, "concurrent-report-health", 2)
+            .map_err(|error| error.to_string())?;
     drop(setup);
 
     let mut observer = watcher_client(state.path()).map_err(|error| error.to_string())?;
@@ -144,7 +149,8 @@ fn session_capacity_is_bounded_and_cancelled_sessions_are_reclaimed() -> Result<
     let mut sessions = Vec::new();
     for index in 0..128 {
         let (session, parent, _) =
-            open_session(&mut client, &format!("capacity-{index}")).map_err(|error| error.to_string())?;
+            open_session(&mut client, &format!("capacity-{index}"), index + 2)
+                .map_err(|error| error.to_string())?;
         sessions.push((session, parent));
     }
     let overflow = client
@@ -173,6 +179,7 @@ fn session_capacity_is_bounded_and_cancelled_sessions_are_reclaimed() -> Result<
     if cancelled_payload["status"] != "cancelled" {
         return Err(format!("session cancellation failed: {cancelled}"));
     }
-    open_session(&mut client, "capacity-after-reclaim").map_err(|error| error.to_string())?;
+    open_session(&mut client, "capacity-after-reclaim", 502)
+        .map_err(|error| error.to_string())?;
     Ok(())
 }
