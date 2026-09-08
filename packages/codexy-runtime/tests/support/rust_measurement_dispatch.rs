@@ -2,6 +2,9 @@ use std::{io, path::Path, process::{Command, Output}};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+const IDENTITY_64: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const IDENTITY_65: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
 #[test]
 fn measurement_validation_accepts_native_modes_and_rejects_invalid_inputs() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
@@ -16,16 +19,24 @@ fn measurement_validation_accepts_native_modes_and_rejects_invalid_inputs() -> T
         ("malformed cache identity", head.clone(), "normal", "false", false),
         ("trailing LF repeat", head.clone(), "normal", "false", false),
         ("trailing LF cache identity", head.clone(), "normal", "false", false),
+        ("repeat identity 64 accepted", head.clone(), "normal", "false", true),
+        ("repeat identity 65 rejected", head.clone(), "normal", "false", false),
+        ("cache identity 64 accepted", head.clone(), "normal", "false", true),
+        ("cache identity 65 rejected", head.clone(), "normal", "false", false),
     ];
     for (name, candidate, mode, profiling, expected_success) in cases {
         let repeat = match name {
             "malformed repeat" => "normal cold",
             "trailing LF repeat" => "normal-cold-1\n",
+            "repeat identity 64 accepted" => IDENTITY_64,
+            "repeat identity 65 rejected" => IDENTITY_65,
             _ => "normal-cold-1",
         };
         let identity = match name {
             "malformed cache identity" => "normal pair",
             "trailing LF cache identity" => "normal-pair\n",
+            "cache identity 64 accepted" => IDENTITY_64,
+            "cache identity 65 rejected" => IDENTITY_65,
             _ => "normal-pair",
         };
         let temp = tempfile::tempdir()?;
