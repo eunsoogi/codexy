@@ -38,10 +38,7 @@ impl LockGuard {
         let owner = format!("{}:{}:{}", std::process::id(), now_ms(), random_hex(8)?);
         let mut file = match open_new_lock(path) {
             Ok(file) => file,
-            Err(error)
-                if error.kind() == io::ErrorKind::AlreadyExists
-                    || is_transient_lock_contention(&error) =>
-            {
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
                 if stale(path) {
                     let _ = fs::remove_file(path);
                 }
@@ -64,17 +61,6 @@ impl LockGuard {
 
 fn open_new_lock(path: &Path) -> io::Result<File> {
     OpenOptions::new().write(true).create_new(true).open(path)
-}
-
-#[cfg(windows)]
-fn is_transient_lock_contention(error: &io::Error) -> bool {
-    const ERROR_SHARING_VIOLATION: i32 = 32;
-    error.raw_os_error() == Some(ERROR_SHARING_VIOLATION)
-}
-
-#[cfg(not(windows))]
-const fn is_transient_lock_contention(_error: &io::Error) -> bool {
-    false
 }
 
 impl Drop for LockGuard {
@@ -183,7 +169,7 @@ mod tests {
 
     #[cfg(windows)]
     #[test]
-    fn treats_a_real_windows_sharing_violation_as_contention() -> Result<()> {
+    fn treats_a_real_windows_existing_lock_as_contention() -> Result<()> {
         use std::os::windows::fs::OpenOptionsExt as _;
 
         let temporary = tempfile::tempdir()?;
@@ -193,12 +179,14 @@ mod tests {
             .create_new(true)
             .share_mode(0)
             .open(&path)?;
-        let native = open_new_lock(&path).expect_err("the held lock must deny sharing");
-        assert_eq!(native.raw_os_error(), Some(32));
-        assert!(is_transient_lock_contention(&native));
+        let native = open_new_lock(&path).expect_err("the held lock must already exist");
+        assert_eq!(native.kind(), io::ErrorKind::AlreadyExists);
         assert!(LockGuard::try_acquire(&path)?.is_none());
         drop(blocker);
-        fs::remove_file(path)?;
+        fs::remove_file(&path)?;
+        let guard = LockGuard::try_acquire(&path)?.context("lock was not reacquired")?;
+        drop(guard);
+        assert!(!path.exists());
         Ok(())
     }
 
