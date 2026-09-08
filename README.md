@@ -106,7 +106,7 @@ it when you need to install individual components directly, and install `core`
 first.
 
 ```sh
-codex plugin marketplace add eunsoogi/codexy --ref v1.6.3
+codex plugin marketplace add eunsoogi/codexy --ref v1.7.0
 codex plugin add codexy@codexy
 codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy

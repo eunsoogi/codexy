@@ -91,7 +91,7 @@ durable recovery journal을 보존합니다.
 개발 또는 통제된 복구에서만 사용하고 `core`부터 설치하세요.
 
 ```sh
-codex plugin marketplace add eunsoogi/codexy --ref v1.6.3
+codex plugin marketplace add eunsoogi/codexy --ref v1.7.0
 codex plugin add codexy@codexy
 codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
