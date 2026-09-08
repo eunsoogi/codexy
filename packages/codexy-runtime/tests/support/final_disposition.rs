@@ -15,10 +15,23 @@ mod builder;
 mod handoff;
 #[path = "final_disposition/runner.rs"]
 mod runner;
+#[path = "final_disposition/native_919.rs"]
+mod native_919;
 
 pub(crate) use handoff::{validate_handoff, validate_handoff_with_state};
 pub(crate) use builder::build_pr_state;
 pub(crate) use runner::{produce, produce_for, produce_with_fixture_mutation, produce_without_locator};
+pub(crate) use builder::build_pr_state_with_states;
+pub(crate) use handoff::validate_handoff_state;
+pub(crate) use native_919::{
+    final_control_919, recover_919, DELTA_EVENT as native_919_delta_event,
+    FULL_EVENT as native_919_full_event, ISSUE as native_919_issue,
+    PULL_REQUEST as native_919_pull_request,
+    REMAINING_FINDING as native_919_remaining_finding,
+    REQUIRED_EVENT as native_919_required_event,
+};
+pub(crate) use runner::produce_with_states;
+pub(crate) use runner::produce_with_recovered_predecessor;
 
 const CASE_HASH: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 

@@ -26,6 +26,32 @@ pub(crate) fn produce_for(
     Ok(serde_json::from_slice(&result.stdout)?)
 }
 
+pub(crate) fn produce_with_states(
+    control: &Value,
+    current: &Value,
+    previous: &Value,
+    pull_request: u64,
+) -> TestResult<Value> {
+    let result = run_producer_with_states(control, current, previous, pull_request, true)?;
+    if !result.status.success() {
+        return Err(format!(
+            "final disposition producer with native history failed: {}",
+            String::from_utf8_lossy(&result.stderr)
+        )
+        .into());
+    }
+    Ok(serde_json::from_slice(&result.stdout)?)
+}
+
+pub(crate) fn produce_with_recovered_predecessor(
+    control: &Value,
+    current: &Value,
+    previous: &Value,
+    pull_request: u64,
+) -> TestResult<std::process::Output> {
+    run_producer_with_states(control, current, previous, pull_request, false)
+}
+
 pub(crate) fn produce_without_locator(
     control: &Value,
     previous_control: &Value,
@@ -119,6 +145,66 @@ where
         .arg(&input)
         .args(["--output", output.to_str().ok_or("producer output path")?])
         .args(["--repository-root", repository.path.to_str().ok_or("repository path")?])
+        .output()?;
+    if result.status.success() {
+        result.stdout = fs::read(output)?;
+    }
+    Ok(result)
+}
+
+fn run_producer_with_states(
+    control: &Value,
+    current: &Value,
+    previous: &Value,
+    pull_request: u64,
+    append_third_block_predecessor: bool,
+) -> TestResult<std::process::Output> {
+    let temporary = tempfile::tempdir()?;
+    let repository = graph::SyntheticRepository::create(temporary.path())?;
+    let issue = control["issue_number"].as_u64().ok_or("final disposition issue")?;
+    let base = current["baseRefOid"].as_str().ok_or("current base")?;
+    let head = current["headRefOid"].as_str().ok_or("current head")?;
+    let source_head = control["final_disposition"]["source_head"]
+        .as_str()
+        .ok_or("final disposition source head")?;
+    let finding_id = control["final_disposition"]["addressed_finding_ids"][0]
+        .as_str()
+        .ok_or("final disposition finding id")?;
+    let fixture = fixture::write(
+        temporary.path(),
+        issue,
+        pull_request,
+        base,
+        source_head,
+        head,
+        finding_id,
+    )?;
+    let input = temporary.path().join("producer-input.json");
+    let output = temporary.path().join("producer-output.json");
+    let previous_state = if append_third_block_predecessor {
+        let mut state = previous.clone();
+        state["reviewControl"] = super::third_block_predecessor(control);
+        state
+    } else {
+        previous.clone()
+    };
+    fs::write(
+        &input,
+        serde_json::to_vec(&json!({
+            "control_state": control,
+            "authenticated_final_disposition_locator": fixture::locator(issue, pull_request),
+            "current_pr_state": current,
+            "previous_pr_state": previous_state
+        }))?,
+    )?;
+    let mut command = FixtureCommand::new(env!("CARGO_BIN_EXE_codexy-review-control"));
+    fixture::configure(&mut command, &fixture);
+    let mut result = command
+        .args(["--produce-review-control", "--input"])
+        .arg(&input)
+        .args(["--output", output.to_str().ok_or("producer output path")?])
+        .args(["--repository-root"])
+        .arg(repository.path.to_str().ok_or("repository path")?)
         .output()?;
     if result.status.success() {
         result.stdout = fs::read(output)?;

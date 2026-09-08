@@ -119,6 +119,97 @@ pub(crate) fn build_pr_state(control: &Value, previous_control: &Value) -> TestR
     Ok(serde_json::from_slice(&fs::read(output_path)?)?)
 }
 
+pub(crate) fn build_pr_state_with_states(
+    control: &Value,
+    current: &Value,
+    previous: &Value,
+    pull_request: u64,
+) -> TestResult<Value> {
+    let temporary = tempfile::tempdir()?;
+    let repository = graph::SyntheticRepository::create(temporary.path())?;
+    let issue = control["issue_number"].as_u64().ok_or("final disposition issue")?;
+    let base = current["baseRefOid"].as_str().ok_or("current base")?;
+    let head = current["headRefOid"].as_str().ok_or("current head")?;
+    let source_head = control["final_disposition"]["source_head"]
+        .as_str()
+        .ok_or("final disposition source head")?;
+    let finding_id = control["final_disposition"]["addressed_finding_ids"][0]
+        .as_str()
+        .ok_or("final disposition finding id")?;
+    let fixture = fixture::write(
+        temporary.path(),
+        issue,
+        pull_request,
+        base,
+        source_head,
+        head,
+        finding_id,
+    )?;
+    let input_path = temporary.path().join("producer-input.json");
+    let control_path = temporary.path().join("review-control.json");
+    let current_path = temporary.path().join("current-pr-state.json");
+    let previous_path = temporary.path().join("previous-pr-state.json");
+    let output_path = temporary.path().join("pr-state.json");
+    let mut previous_state = previous.clone();
+    previous_state["reviewControl"] = super::third_block_predecessor(control);
+    fs::write(
+        &input_path,
+        serde_json::to_vec(&json!({
+            "control_state": control,
+            "authenticated_final_disposition_locator": fixture::locator(issue, pull_request),
+            "current_pr_state": current,
+            "previous_pr_state": previous_state
+        }))?,
+    )?;
+    fs::write(&current_path, serde_json::to_vec(current)?)?;
+    fs::write(&previous_path, serde_json::to_vec(&previous_state)?)?;
+    let mut producer = FixtureCommand::new(env!("CARGO_BIN_EXE_codexy-review-control"));
+    fixture::configure(&mut producer, &fixture);
+    let result = producer
+        .args(["--produce-review-control", "--input"])
+        .arg(&input_path)
+        .args(["--output"])
+        .arg(&control_path)
+        .args(["--repository-root"])
+        .arg(&repository.path)
+        .output()?;
+    if !result.status.success() {
+        return Err(format!(
+            "native-history producer before build failed: {}",
+            String::from_utf8_lossy(&result.stderr)
+        )
+        .into());
+    }
+    let mut build = FixtureCommand::new(
+        codexy_runtime::paths::repository_root().join("scripts/build-pr-state"),
+    );
+    fixture::configure(&mut build, &fixture);
+    let result = build
+        .args(["--repository-root"])
+        .arg(&repository.path)
+        .args(["--base-pr-state-file"])
+        .arg(&current_path)
+        .args(["--review-control-state-file"])
+        .arg(&control_path)
+        .args(["--previous-pr-state-file"])
+        .arg(&previous_path)
+        .args(["--output"])
+        .arg(&output_path)
+        .env_path(
+            "CODEXY_REVIEW_CONTROL_BIN",
+            env!("CARGO_BIN_EXE_codexy-review-control"),
+        )
+        .output()?;
+    if !result.status.success() {
+        return Err(format!(
+            "native-history build-pr-state failed: {}",
+            String::from_utf8_lossy(&result.stderr)
+        )
+        .into());
+    }
+    Ok(serde_json::from_slice(&fs::read(output_path)?)?)
+}
+
 pub(crate) fn snapshot(
     pull_request: u64,
     issue: u64,

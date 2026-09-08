@@ -13,6 +13,50 @@ pub(crate) fn validate_handoff(
     validate_handoff_with_state(control, pull_request, head_seed, |_| Ok(()))
 }
 
+pub(crate) fn validate_handoff_state(
+    state: &Value,
+    pull_request: u64,
+) -> TestResult<std::process::Output> {
+    let temporary = tempfile::tempdir()?;
+    let repository = graph::SyntheticRepository::create(temporary.path())?;
+    let control = state
+        .get("reviewControl")
+        .ok_or("handoff state review control")?;
+    let issue = control["issue_number"].as_u64().ok_or("handoff issue")?;
+    let base = state["baseRefOid"].as_str().ok_or("handoff base")?;
+    let head = state["headRefOid"].as_str().ok_or("handoff head")?;
+    let source_head = control["final_disposition"]["source_head"]
+        .as_str()
+        .ok_or("handoff source head")?;
+    let finding_id = control["final_disposition"]["addressed_finding_ids"][0]
+        .as_str()
+        .ok_or("handoff finding id")?;
+    let fixture = fixture::write(
+        temporary.path(),
+        issue,
+        pull_request,
+        base,
+        source_head,
+        head,
+        finding_id,
+    )?;
+    let handoff = temporary.path().join("handoff.md");
+    let state_path = temporary.path().join("state.json");
+    fs::write(&handoff, "PASS on the exact current head.\n")?;
+    fs::write(&state_path, serde_json::to_vec(state)?)?;
+    let mut command = FixtureCommand::new(env!("CARGO_BIN_EXE_codexy-validate"));
+    fixture::configure(&mut command, &fixture);
+    command.env_path("CODEXY_REPO_ROOT", &repository.path);
+    Ok(command
+        .args(["--check-completion-handoff", "--handoff-file"])
+        .arg(&handoff)
+        .args(["--pr-state-file"])
+        .arg(&state_path)
+        .args(["--plugin-root"])
+        .arg(codexy_runtime::paths::repository_root().join("plugins/codexy"))
+        .output()?)
+}
+
 pub(crate) fn validate_handoff_with_state<F>(
     control: &Value,
     pull_request: u64,
