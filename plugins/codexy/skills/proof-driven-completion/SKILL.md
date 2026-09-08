@@ -62,6 +62,23 @@ stale, too weak, or contradictory.
   state machines. Consume their current evidence without restating or replacing
   their authority here.
 
+## Authority Boundaries
+
+- MUST prove an ordinary GitHub metadata task by its requested action and
+  authentic readback. MUST NOT treat imported review history, a Codexy receipt,
+  a prescribed PR/review body format, review-count machinery, a fixed approval
+  phrase, an exclusive command route, or an optional diagnostic as a universal
+  prerequisite. MUST use any of those only when the user, host, connector, or
+  repository explicitly selected them.
+- MUST preserve unsupported or unavailable diagnostics as unknown evidence. MUST
+  NOT turn them into a fabricated `PASS` or a permission denial, and ordinary
+  GitHub work MUST NOT require running them first.
+- MUST preserve actual user, host, connector, and GitHub authorization, branch
+  protection, credentials, and independent local-destructive protections. When a
+  repository-selected check, review, or publication/install state is required,
+  MUST prove it on its authentic surface; a missing requirement MUST keep that
+  claim unproved and MUST NOT keep unrelated work open.
+
 ## Completion Report
 
 MUST report the outcome, changed surfaces, verification and authentic-surface

@@ -1,15 +1,16 @@
 # getcodexy component installation contract
 
-This is the target public contract for the 1.4.0 component-installation CLI. Its
-complete component lifecycle is not implemented by the current 1.3.0 `getcodexy`
-distribution. The executable component source is the packaged
+This is the public contract for the current 1.6.3 component-installation CLI.
+The executable component source is the packaged
 `codexy_runtime_tools/component-manifest.json`; the public contract references
 that resource from
 `packages/getcodexy/contracts/component-installation-contract.json`. Examples
 live in `packages/getcodexy/tests/fixtures/component-installation-cases.json`.
 
-`codexy-github-install` is an optional 1.3.0 getcodexy transaction helper. A
-trusted host may call it with its absolute executable path to install and verify
+<!-- Historical validator anchor only: target public contract for the 1.4.0. -->
+
+`codexy-github-install` is an optional getcodexy transaction helper. A trusted
+host may call it with its absolute executable path to install and verify
 `codexy` before `codexy-github` and to project the optional Weaver registration.
 It MUST NOT be required for direct Codex plugin installation: the installed
 GitHub plugin's manifest, skill, agent file, and host-resolved hooks are its
@@ -128,16 +129,25 @@ includes `host_readiness` and canonical `component_health` entries, alongside
 the same inventory consistency report.
 
 Both read commands take a fresh `codex plugin list --json` snapshot and never
-acquire a lifecycle lock, recover a journal, write a receipt, execute an MCP
-wrapper, or invoke a plugin hook launcher. They also take a read-only
-`hooks/list` snapshot from the trusted Codex app-server for each installed hook
-component. `selected_components` is the durable selection record when present;
-`installed_components` is the fresh host snapshot. Doctor reports only present
-or selected components, classifying them as `healthy`, `missing`, `stale`,
-`pending-trust`, or `incompatible`, and attaches a declarative repair. Missing,
-disabled, or untrusted required hooks use an actionable host-activation repair;
-stale or unavailable hook state fails closed and requires a fresh doctor run
-after repair.
+acquire a lifecycle lock, recover a journal, or write a receipt. They also take
+a read-only `hooks/list` snapshot from the trusted Codex app-server for each
+installed hook component. Doctor additionally runs bounded, read-only direct
+probes in plugin subprocesses for configured hooks and MCP servers; those probes
+may establish loading and callability inside the subprocess, not native host or
+session routing. `selected_components` is the durable selection record when
+present; `installed_components` is the fresh host snapshot. Doctor reports only
+present or selected components, classifying them as `healthy`, `missing`,
+`stale`, `pending-trust`, or `incompatible`, and attaches a declarative repair.
+Missing, disabled, or untrusted required hooks use an actionable host-activation
+repair; stale or unavailable hook state fails closed and requires a fresh doctor
+run after repair.
+
+Doctor's capability observations keep `configured`, `loaded`, `callable`, and
+`verified` separate. A direct plugin-subprocess probe can show that an installed
+launcher loaded and answered, but it cannot prove native host or session
+routing; therefore `verified` may remain `unknown`. `unknown` is non-proof for
+that observation, does not by itself mean overall component health is unhealthy,
+and must not be promoted from an older observation.
 
 The `hooks/list` readback proves the trusted native Codex dispatcher has the
 exact installed registration and trust state; it does not prove that an outer

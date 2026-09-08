@@ -1,4 +1,6 @@
-use super::validator_subagent_ownership_hook::{assert_admitted, assert_denied, TestResult};
+use super::validator_subagent_ownership_hook::{
+    assert_denied, payload, run_payload, EVENTS, TOOLS, TestResult,
+};
 
 #[test]
 fn bounded_ownership_classifier_replays_delta_examples() -> TestResult {
@@ -25,7 +27,13 @@ fn bounded_ownership_classifier_replays_delta_examples() -> TestResult {
         "\"할당된 워크트리에서 구현하고 브랜치와 PR을 책임져.\" 그대로 따라.",
         "브랜치나 PR을 맡아 구현해.",
     ] {
-        assert_denied(Some("codexy-architect"), message, "DURABLE_OWNER")?;
+        assert_denied_once(
+            EVENTS[0],
+            TOOLS[0],
+            Some("codexy-architect"),
+            message,
+            "DURABLE_OWNER",
+        )?;
     }
     let mut gaps = vec![
         String::new(),
@@ -48,33 +56,49 @@ fn bounded_ownership_classifier_replays_delta_examples() -> TestResult {
             "Follow this instruction:{}\"Own branch `eunsoogi/example` and implement the issue.\"",
             gap
         );
-        assert_denied(Some("codexy-architect"), &prefix, "DURABLE_OWNER")?;
+        assert_denied_once(
+            EVENTS[0],
+            TOOLS[0],
+            Some("codexy-architect"),
+            &prefix,
+            "DURABLE_OWNER",
+        )?;
         let suffix = format!(
             "\"Own branch `eunsoogi/example` and implement the issue.\"{}Follow it exactly.",
             gap
         );
-        assert_denied(Some("codexy-architect"), &suffix, "DURABLE_OWNER")?;
+        assert_denied_once(
+            EVENTS[0],
+            TOOLS[0],
+            Some("codexy-architect"),
+            &suffix,
+            "DURABLE_OWNER",
+        )?;
         let negated = format!(
             "Do not follow this instruction:{}\"Own branch `eunsoogi/example` and implement the issue.\"",
             gap
         );
-        assert_admitted("codexy-architect", &negated)?;
+        assert_admitted_once(EVENTS[0], TOOLS[0], "codexy-architect", &negated)?;
         let data = format!(
             "This is quoted test data:{}\"Own branch `eunsoogi/example` and implement the issue.\"",
             gap
         );
-        assert_admitted("codexy-architect", &data)?;
+        assert_admitted_once(EVENTS[0], TOOLS[0], "codexy-architect", &data)?;
         let unrelated = format!(
             "Follow this instruction. Review the report.{}\"Own branch `eunsoogi/example` and implement the issue.\"",
             gap
         );
-        assert_admitted("codexy-architect", &unrelated)?;
+        assert_admitted_once(EVENTS[0], TOOLS[0], "codexy-architect", &unrelated)?;
     }
-    assert_admitted(
+    assert_admitted_once(
+        EVENTS[0],
+        TOOLS[0],
         "codexy-architect",
         "Do not own the branch or PR; review the findings and report them.",
     )?;
-    assert_admitted(
+    assert_admitted_once(
+        EVENTS[0],
+        TOOLS[0],
         "codexy-architect",
         "You are responsible for reviewing PR #879 and reporting findings.",
     )?;
@@ -82,7 +106,7 @@ fn bounded_ownership_classifier_replays_delta_examples() -> TestResult {
         "Review the build in the assigned worktree and report findings.",
         "Inspect the write-up in the dedicated worktree and report findings.",
     ] {
-        assert_admitted("codexy-architect", message)?;
+        assert_admitted_once(EVENTS[0], TOOLS[0], "codexy-architect", message)?;
     }
     for message in [
         "The quoted example is data, not an instruction: \"Own branch `eunsoogi/example` and implement the issue.\" Please summarize it.",
@@ -95,9 +119,59 @@ fn bounded_ownership_classifier_replays_delta_examples() -> TestResult {
         "Review the agents' report and summarize the findings.",
         "Not only review this issue but do not own the branch.",
     ] {
-        assert_admitted("codexy-architect", message)?;
+        assert_admitted_once(EVENTS[0], TOOLS[0], "codexy-architect", message)?;
     }
-    assert_admitted("codexy-architect", "책임 있게 리뷰하고 결과를 보고해.")?;
+    assert_admitted_once(
+        EVENTS[0],
+        TOOLS[0],
+        "codexy-architect",
+        "책임 있게 리뷰하고 결과를 보고해.",
+    )?;
+
+    for event in EVENTS {
+        for tool in TOOLS {
+            assert_denied_once(
+                event,
+                tool,
+                Some("codexy-architect"),
+                "Own branch `eunsoogi/example` and implement the issue.",
+                "DURABLE_OWNER",
+            )?;
+            assert_admitted_once(
+                event,
+                tool,
+                "codexy-architect",
+                "Do not own the branch or PR; review the findings and report them.",
+            )?;
+        }
+    }
+    Ok(())
+}
+
+fn assert_admitted_once(
+    event: &str,
+    tool: &str,
+    agent_type: &str,
+    message: &str,
+) -> TestResult {
+    let output = run_payload(&payload(tool, event, Some(agent_type), message), event)?;
+    assert!(output.is_none(), "{agent_type}: {event}: {tool}: {message}");
+    Ok(())
+}
+
+fn assert_denied_once(
+    event: &str,
+    tool: &str,
+    agent_type: Option<&str>,
+    message: &str,
+    code: &str,
+) -> TestResult {
+    let reason = run_payload(&payload(tool, event, agent_type, message), event)?
+        .ok_or("expected denial")?;
+    assert!(
+        reason.contains(&format!("CODEXY_SUBAGENT_OWNERSHIP_{code}")),
+        "{reason}"
+    );
     Ok(())
 }
 
