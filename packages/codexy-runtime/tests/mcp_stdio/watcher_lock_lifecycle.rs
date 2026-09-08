@@ -103,7 +103,7 @@ fn startup_resumes_recovery_when_a_lock_was_deleted_before_restart(
     let state = tempfile::tempdir()?;
     let quarantine = state
         .path()
-        .join(format!(".codexy-watcher-reclaim-{}", "1".repeat(32)));
+        .join(format!(".codexy-watcher-reclaim-{:032x}", 1));
     fs::create_dir(&quarantine)?;
     for name in ["wait.lock", "session.json", "health.json", "events.jsonl"] {
         fs::write(quarantine.join(name), b"owned")?;
@@ -134,7 +134,7 @@ fn startup_scans_past_invalid_quarantines_without_starving_later_cleanup(
     }
     let valid = state
         .path()
-        .join(format!(".codexy-watcher-reclaim-{}", "f".repeat(32)));
+        .join(format!(".codexy-watcher-reclaim-{:032x}", 80));
     fs::create_dir(&valid)?;
     for name in ["state.lock", "wait.lock", "session.json"] {
         fs::write(valid.join(name), b"owned")?;

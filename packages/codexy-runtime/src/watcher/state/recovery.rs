@@ -1,17 +1,20 @@
 use std::fs;
+use std::io::Read as _;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context as _, Result, bail};
 
-use super::super::io::{atomic_write, random_hex, reject_link};
+use super::super::io::{atomic_write, reject_link};
 use crate::watcher::lock::LockGuard;
 
 const SESSION_TEMP_PREFIX: &str = ".session.json.tmp-";
 const SESSION_TEMP_HEX_BYTES: usize = 24;
 const QUARANTINE_PREFIX: &str = ".codexy-watcher-reclaim-";
-const QUARANTINE_HEX_BYTES: usize = 32;
 const MAX_QUARANTINE_SCAN_ENTRIES: usize = 64;
+// Fixed slots keep recovery probes bounded even when unrelated parent entries exist.
+const MAX_QUARANTINE_SLOTS: usize = super::MAX_SESSIONS;
 const RECOVERY_CURSOR_FILE: &str = ".reclaim.cursor";
+const MAX_RECOVERY_CURSOR_BYTES: usize = 20;
 const OWNED_FILES: [&str; 6] = [
     "state.lock",
     "wait.lock",
@@ -49,14 +52,22 @@ pub(super) fn reclaim(directory: &Path) -> Result<()> {
 
 pub(super) fn quarantine(root: &Path, path: &Path) -> Result<PathBuf> {
     let parent = root.parent().context("watcher state root has no parent")?;
-    let quarantined = parent.join(format!("{QUARANTINE_PREFIX}{}", random_hex(16)?));
-    fs::rename(path, &quarantined).with_context(|| {
-        format!(
-            "quarantining expired watcher session directory {}",
-            path.display()
-        )
-    })?;
-    Ok(quarantined)
+    for slot in 0..MAX_QUARANTINE_SLOTS {
+        let quarantined = quarantine_path(parent, slot);
+        match fs::symlink_metadata(&quarantined) {
+            Ok(_) => continue,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.into()),
+        }
+        fs::rename(path, &quarantined).with_context(|| {
+            format!(
+                "quarantining expired watcher session directory {}",
+                path.display()
+            )
+        })?;
+        return Ok(quarantined);
+    }
+    bail!("watcher quarantine storage is full")
 }
 
 pub(super) fn recover_quarantines(root: &Path) -> Result<()> {
@@ -64,49 +75,42 @@ pub(super) fn recover_quarantines(root: &Path) -> Result<()> {
         return Ok(());
     };
     let parent = root.parent().context("watcher state root has no parent")?;
-    let cursor = read_cursor(root)?;
-    let mut entries = fs::read_dir(parent)?;
-    let mut skipped = 0;
-    while skipped < cursor {
-        if entries.next().transpose()?.is_none() {
-            write_cursor(root, 0)?;
-            return Ok(());
-        }
-        skipped += 1;
-    }
-
-    let mut scanned = 0;
-    while scanned < MAX_QUARANTINE_SCAN_ENTRIES {
-        let Some(entry) = entries.next().transpose()? else {
-            write_cursor(root, 0)?;
-            return Ok(());
+    let cursor = read_cursor(root)? % MAX_QUARANTINE_SLOTS;
+    for offset in 0..MAX_QUARANTINE_SCAN_ENTRIES {
+        let slot = (cursor + offset) % MAX_QUARANTINE_SLOTS;
+        let path = quarantine_path(parent, slot);
+        let metadata = match fs::symlink_metadata(&path) {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(error.into()),
         };
-        scanned += 1;
-        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
-            continue;
-        };
-        if !is_quarantine_name(&name) {
-            continue;
-        }
-        let path = entry.path();
-        let file_type = entry.file_type()?;
-        if !file_type.is_dir() {
+        if !metadata.is_dir() {
             continue;
         }
         recover_quarantine(&path)?;
     }
-    write_cursor(root, cursor.saturating_add(scanned))?;
+    write_cursor(
+        root,
+        (cursor + MAX_QUARANTINE_SCAN_ENTRIES) % MAX_QUARANTINE_SLOTS,
+    )?;
     Ok(())
 }
 
 fn read_cursor(root: &Path) -> Result<usize> {
     let path = root.join(RECOVERY_CURSOR_FILE);
     reject_link(&path)?;
-    let bytes = match fs::read(&path) {
-        Ok(bytes) => bytes,
+    let mut file = match fs::File::open(&path) {
+        Ok(file) => file,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(0),
         Err(error) => return Err(error.into()),
     };
+    let mut bytes = Vec::new();
+    file.by_ref()
+        .take((MAX_RECOVERY_CURSOR_BYTES + 1) as u64)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() > MAX_RECOVERY_CURSOR_BYTES {
+        return Ok(0);
+    }
     Ok(std::str::from_utf8(&bytes)
         .ok()
         .and_then(|text| text.trim().parse::<usize>().ok())
@@ -118,6 +122,10 @@ fn write_cursor(root: &Path, cursor: usize) -> Result<()> {
         &root.join(RECOVERY_CURSOR_FILE),
         cursor.to_string().as_bytes(),
     )
+}
+
+fn quarantine_path(parent: &Path, slot: usize) -> PathBuf {
+    parent.join(format!("{QUARANTINE_PREFIX}{slot:032x}"))
 }
 
 fn recover_quarantine(path: &Path) -> Result<()> {
@@ -201,11 +209,6 @@ fn regular_file(path: &Path) -> Result<bool> {
         Err(error) => return Err(error.into()),
     };
     Ok(metadata.is_file())
-}
-
-fn is_quarantine_name(name: &str) -> bool {
-    name.strip_prefix(QUARANTINE_PREFIX)
-        .is_some_and(|suffix| is_lower_hex(suffix, QUARANTINE_HEX_BYTES))
 }
 
 fn is_owned_file(name: &str) -> bool {
