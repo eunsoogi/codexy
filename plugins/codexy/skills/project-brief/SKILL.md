@@ -7,9 +7,9 @@ description: Use when a person returns to an ongoing task and needs a read-only 
 
 ## Trigger
 
-A natural-language request for project status MUST receive a concise human
+A natural-language request for project status MUST select a concise human
 explanation by default. An explicit request for a machine receipt, or an actual
-existing machine consumer, selects the machine contract in
+existing machine consumer, MUST select the machine contract in
 [contract.md](contract.md).
 
 MUST use only for human re-entry to an ongoing task. MUST return
@@ -38,8 +38,8 @@ GitHub state.
 
 - MUST state the current recorded result, verified phase, remaining work,
   blocker reason, and next observation or action in the user's language when
-  each is recorded. It MUST render the same recorded `result` and `uncertainty`
-  included verbatim in the machine `verified_phase` scalar.
+  each is recorded. When a separate `result` or `uncertainty` is recorded, it
+  MUST render each exact value verbatim in the human summary.
 - MUST preserve the same facts and uncertainty as the named current state. An
   unknown status MUST remain unknown and MUST NOT become a completion judgment.
 - MUST NOT require a machine receipt for an ordinary human status request or for
@@ -58,7 +58,7 @@ this order and no other prose:
 {
   "objective": "recorded or unavailable",
   "owner": "recorded or unavailable",
-  "verified_phase": "recorded scalar containing its facts or unavailable",
+  "verified_phase": "recorded scalar copied unchanged or unavailable",
   "changes_since_touch": ["recorded change or unavailable"],
   "decision_required": "recorded or unavailable",
   "evidence_handle": ["current reference or unavailable"],
@@ -67,14 +67,11 @@ this order and no other prose:
 }
 ```
 
-When a separate `result` or `uncertainty` value is recorded, MUST include that
-exact value verbatim in the existing `verified_phase` scalar together with any
-recorded phase. The scalar is an opaque human-readable string, not a nested
-schema: no delimiter, escaping rule, or parser contract is defined, and
-consumers MUST NOT infer or decode fields from it. If neither separate value is
-recorded, MUST copy a recorded `verified_phase` unchanged. In machine mode, MUST
-copy `decision_required`, `next_action`, and `done_when` only when each is
-recorded as that field. MUST report a current recorded head change in
+MUST copy a recorded `verified_phase` unchanged. A separately recorded `result`
+or `uncertainty` is not a v1 output field and MUST NOT be folded into or used to
+rewrite that scalar; human mode MUST render each such value verbatim. In machine
+mode, MUST copy `decision_required`, `next_action`, and `done_when` only when
+each is recorded as that field. MUST report a current recorded head change in
 `changes_since_touch`; MUST NOT derive a change from stale memory alone. A
 completed proof MUST NOT become task completion.
 
