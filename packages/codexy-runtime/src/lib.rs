@@ -5,3 +5,4 @@ pub mod paths;
 pub(crate) mod strict_json;
 pub mod validation;
 pub mod version;
+pub mod watcher;

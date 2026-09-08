@@ -16,6 +16,7 @@ _SPECIALISTS = frozenset(
         "codexy-sentinel",
         "codexy-shipwright",
         "codexy-warden",
+        "codexy-watcher",
         "codexy-weaver",
     }
 )

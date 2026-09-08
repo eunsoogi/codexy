@@ -62,6 +62,12 @@ const EXPECTED_AGENTS: &[ExpectedAgent] = &[
         model: "gpt-6-astra",
         effort: "xhigh",
     },
+    ExpectedAgent {
+        name: "codexy-watcher",
+        filename: "codexy-watcher.toml",
+        model: "gpt-5.6-luna",
+        effort: "max",
+    },
 ];
 
 #[test]
@@ -156,8 +162,8 @@ fn validator_cli_reports_unexpected_catalog_contract_entry() -> TestResult {
     assert_rejected(
         validate_catalog_replacement(
             &fixture,
-            "  \"codexy-warden.toml\",\n]",
-            "  \"codexy-warden.toml\",\n  \"codexy-unknown.toml\",\n]",
+            "  \"codexy-watcher.toml\",\n]",
+            "  \"codexy-watcher.toml\",\n  \"codexy-unknown.toml\",\n]",
         )?,
         "missing: none; unexpected: codexy-unknown.toml",
     );

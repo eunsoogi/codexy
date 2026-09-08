@@ -63,6 +63,12 @@ jobs:
           test "$(jq -r .candidate.source.commit "$receipt")" = "$SOURCE_COMMIT"
           jq -e '.candidate.source.tree | test("^[0-9a-f]{40}$")' "$receipt" >/dev/null
           test "$(jq -r .candidate.classes.coreHandoff.manifest.path "$receipt")" = handoff-runtime.json
+          for platform in darwin-arm64 linux-x86_64 windows-x86_64; do
+            extension=bin
+            test "$platform" = windows-x86_64 && extension=exe
+            test "$(jq -r --arg platform "$platform" '.candidate.classes.coreWatcherMcp.platforms[$platform].path' "$receipt")" = "runtime/codexy-mcp-watcher-$platform.$extension"
+            jq -e --arg platform "$platform" '.candidate.classes.coreWatcherMcp.platforms[$platform].sha256 | test("^[0-9a-f]{64}$")' "$receipt" >/dev/null
+          done
           test "$(jq -r .candidate.artifact.stagingRunId "$receipt")" = "$STAGING_RUN_ID"
           test "$(jq -r .candidate.artifact.stagingRunAttempt "$receipt")" = "$(jq -r .run_attempt staging/runtime-staging-run.json)"
           test "$(jq -r .provenance.runId "$receipt")" = "$STAGING_RUN_ID"

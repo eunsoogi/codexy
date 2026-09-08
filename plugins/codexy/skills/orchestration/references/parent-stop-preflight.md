@@ -20,21 +20,20 @@ branch, worktree, PR, durable child context, or review-response ownership:
    against the evidence.
 5. A failed first search for thread or worktree tooling is not proof that the
    tooling is unavailable. MUST continue discovery before reporting a blocker.
-6. For app-thread supervision, MUST read back the saved project identity and the
-   actual creating tool for the Worker and any Watcher before edits. The Watcher
-   MUST be in the same saved project, remain observation-only, and never become
-   a second implementation owner.
-7. A Watcher may carry an explicitly authorized long-lived goal, but that does
-   not transfer file ownership, correction authority, final judgment, or issue
-   completion to the Watcher. Record Orchestrator and Watcher lifecycle states
-   separately; during an unfinished active-goal handoff, MUST NOT mark the goal
-   complete merely to make the handoff fit. An observed `blocked` state remains
-   governed by the existing `goal-lifecycle` recovery authority.
+6. For supervision, MUST read back the saved project identity and actual
+   creating tool for the Worker and the callable native-subagent tool for the
+   Watcher before edits. The Watcher MUST remain observation-only and never
+   become a second implementation owner.
+7. The Orchestrator owns the overall active goal. A Watcher subagent may carry
+   only a finite observation assignment; it MUST NOT transfer file ownership,
+   correction authority, final judgement, or issue completion. Record the
+   Orchestrator goal and bounded Watcher assignment separately; an observed
+   `blocked` state remains governed by the existing `goal-lifecycle` recovery
+   authority.
 8. In the canonical role mapping in
-   [parent-supervision.md](parent-supervision.md), the Watcher is the sole
-   holder of the long-lived release goal and the Orchestrator's `get_goal`
-   readback MUST be `null`. The Orchestrator MUST NOT call `create_goal` or
-   recreate a goal for setup, callbacks, correction, review or merge decisions,
-   or external-event resume; it MUST return control after authorized work. This
-   exemption applies only to the Orchestrator and MUST NOT remove ordinary
-   Worker finite-goal closure or `blocked` recovery.
+   [parent-supervision.md](parent-supervision.md), the Orchestrator's exact
+   overall goal MUST remain active while the Watcher is summoned. The Watcher
+   MUST NOT create or recreate that goal, and the Orchestrator MUST NOT clear,
+   transfer, or falsely complete it to fit a handoff. The Orchestrator returns
+   control only after the bounded observation or material event work, while
+   ordinary Worker finite-goal closure and `blocked` recovery remain required.

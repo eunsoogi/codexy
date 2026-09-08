@@ -91,6 +91,7 @@ for platform in darwin-arm64 linux-x86_64; do
 	for server in lsp codegraph; do
 		chmod 755 "$root/runtime/codexy-mcp-${server}-${platform}.bin"
 	done
+	chmod 755 "$root/runtime/codexy-mcp-watcher-${platform}.bin"
 	if test "$core_aware" = 1; then chmod 755 "$root/runtime/codexy-handoff-validate-${platform}.bin"; fi
 done
 
@@ -115,6 +116,7 @@ mode = os.environ["MODE"]
 pull_request = os.environ["EXACT_PR_NUMBER"]
 platforms = {}
 handoff = {}
+watcher = {}
 core_aware = os.environ["CORE_AWARE"] == "1"
 for platform in ("darwin-arm64", "linux-x86_64", "windows-x86_64"):
     inventory = {}
@@ -123,6 +125,15 @@ for platform in ("darwin-arm64", "linux-x86_64", "windows-x86_64"):
         path = f"runtime/codexy-mcp-{server}-{platform}.{extension}"
         data = open(f"{root}/{path}", "rb").read()
         inventory[server] = {"path": path, "sha256": hashlib.sha256(data).hexdigest()}
+    if core_aware:
+        extension = "exe" if platform == "windows-x86_64" else "bin"
+        watcher_path = f"runtime/codexy-mcp-watcher-{platform}.{extension}"
+        watcher_data = open(f"{root}/{watcher_path}", "rb").read()
+        watcher[platform] = {
+            "path": watcher_path,
+            "sha256": hashlib.sha256(watcher_data).hexdigest(),
+            "kind": {"darwin-arm64": "mach-o", "linux-x86_64": "elf", "windows-x86_64": "pe"}[platform],
+        }
     platforms[platform] = inventory
     if core_aware:
         extension = "exe" if platform == "windows-x86_64" else "bin"
@@ -149,6 +160,7 @@ candidate = {
 if core_aware:
     candidate["classes"] = {
         "devtoolsMcp": {"platforms": platforms},
+        "coreWatcherMcp": {"platforms": watcher},
         "coreHandoff": {
             "manifest": {"path": "handoff-runtime.json", "sha256": hashlib.sha256(handoff_bytes).hexdigest()},
             "platforms": handoff,

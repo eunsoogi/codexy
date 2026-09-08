@@ -1,8 +1,18 @@
+mod cancellation;
+mod frame;
+
 use std::io::{self, Read, Write};
 
-use anyhow::{Context as _, Result, bail};
+use anyhow::{Context as _, Result};
 use serde::Serialize;
 use serde_json::{Value, json};
+
+pub use cancellation::{CancellationToken, run_stdio_server_with_cancellation};
+pub(crate) use frame::FrameParser;
+
+pub(super) const MAX_FRAME_BYTES: usize = 1_048_576;
+pub(super) const MAX_HEADER_BYTES: usize = 8_192;
+pub(super) const MAX_BUFFER_BYTES: usize = MAX_FRAME_BYTES + MAX_HEADER_BYTES + 4;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ToolDef {
@@ -54,10 +64,9 @@ where
         if read == 0 {
             break;
         }
-        parser.extend(&chunk[..read]);
+        parser.extend(&chunk[..read])?;
         while let Some(message) = parser.next_frame()? {
-            let response = handle_message(name, version, tools, &mut call_tool, &message);
-            if let Some(response) = response {
+            if let Some(response) = handle_message(name, version, tools, &mut call_tool, &message) {
                 write_frame(&response)?;
             }
         }
@@ -81,17 +90,7 @@ where
         .and_then(Value::as_str)
         .unwrap_or_default();
     match method {
-        "initialize" => id.map(|id| {
-            json!({
-                "jsonrpc": "2.0",
-                "id": id,
-                "result": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": { "tools": {} },
-                    "serverInfo": { "name": name, "version": version }
-                }
-            })
-        }),
+        "initialize" => id.map(|id| initialize_response(&id, name, version)),
         "notifications/initialized" => None,
         "tools/list" => {
             id.map(|id| json!({ "jsonrpc": "2.0", "id": id, "result": { "tools": tools } }))
@@ -105,134 +104,60 @@ where
             let arguments = params.get("arguments").unwrap_or(&Value::Null);
             match call_tool(tool_name, arguments) {
                 Ok(result) => json!({ "jsonrpc": "2.0", "id": id, "result": result }),
-                Err(error) => json!({
-                    "jsonrpc": "2.0",
-                    "id": id,
-                    "error": { "code": -32000, "message": error.to_string() }
-                }),
+                Err(error) => error_response(&id, -32000, &error.to_string()),
             }
         }),
+        _ => id.map(|id| error_response(&id, -32601, &format!("Unknown method: {method}"))),
+    }
+}
+
+pub(super) fn handle_control_message(
+    name: &str,
+    version: &str,
+    tools: &[ToolDef],
+    message: &Value,
+) -> Option<Value> {
+    let id = message.get("id").cloned();
+    match message
+        .get("method")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+    {
+        "initialize" => id.map(|id| initialize_response(&id, name, version)),
+        "notifications/initialized" => None,
+        "tools/list" => {
+            id.map(|id| json!({ "jsonrpc": "2.0", "id": id, "result": { "tools": tools } }))
+        }
         _ => id.map(|id| {
-            json!({
-                "jsonrpc": "2.0",
-                "id": id,
-                "error": { "code": -32601, "message": format!("Unknown method: {method}") }
-            })
+            error_response(
+                &id,
+                -32601,
+                &format!(
+                    "Unknown method: {}",
+                    message
+                        .get("method")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default()
+                ),
+            )
         }),
     }
 }
 
-#[derive(Debug, Default)]
-pub(crate) struct FrameParser {
-    buffer: Vec<u8>,
-}
-
-impl FrameParser {
-    pub(crate) fn extend(&mut self, chunk: &[u8]) {
-        self.buffer.extend_from_slice(chunk);
-    }
-
-    pub(crate) fn next_frame(&mut self) -> Result<Option<Value>> {
-        if let Some(header_end) = find_header_end(&self.buffer) {
-            let header = std::str::from_utf8(&self.buffer[..header_end])
-                .context("MCP header is not UTF-8")?;
-            if header_has_content_length(header) {
-                return self.next_content_length_frame();
-            }
-        } else if starts_like_header_block(&self.buffer) {
-            return Ok(None);
+fn initialize_response(id: &Value, name: &str, version: &str) -> Value {
+    json!({
+        "jsonrpc": "2.0",
+        "id": id,
+        "result": {
+            "protocolVersion": "2024-11-05",
+            "capabilities": { "tools": {} },
+            "serverInfo": { "name": name, "version": version }
         }
-        if starts_with_content_length(&self.buffer) {
-            return self.next_content_length_frame();
-        }
-        self.next_newline_frame()
-    }
-
-    fn next_content_length_frame(&mut self) -> Result<Option<Value>> {
-        let Some(header_end) = find_header_end(&self.buffer) else {
-            return Ok(None);
-        };
-        let header =
-            std::str::from_utf8(&self.buffer[..header_end]).context("MCP header is not UTF-8")?;
-        let length = content_length(header)?;
-        let start = header_end + 4;
-        let end = start + length;
-        if self.buffer.len() < end {
-            return Ok(None);
-        }
-        let body = self.buffer[start..end].to_vec();
-        self.buffer.drain(..end);
-        serde_json::from_slice(&body)
-            .map(Some)
-            .context("parsing MCP JSON frame")
-    }
-
-    fn next_newline_frame(&mut self) -> Result<Option<Value>> {
-        let Some(line_end) = self.buffer.iter().position(|byte| *byte == b'\n') else {
-            return Ok(None);
-        };
-        let mut line = self.buffer.drain(..=line_end).collect::<Vec<_>>();
-        while matches!(line.last(), Some(b'\n' | b'\r')) {
-            line.pop();
-        }
-        if line.is_empty() {
-            return Ok(None);
-        }
-        serde_json::from_slice(&line)
-            .map(Some)
-            .context("parsing MCP newline JSON message")
-    }
-}
-
-fn starts_with_content_length(buffer: &[u8]) -> bool {
-    const HEADER: &[u8] = b"content-length:";
-    buffer.len() >= HEADER.len()
-        && buffer[..HEADER.len()]
-            .iter()
-            .zip(HEADER)
-            .all(|(actual, expected)| actual.to_ascii_lowercase() == *expected)
-}
-
-fn starts_like_header_block(buffer: &[u8]) -> bool {
-    let first_line_end = buffer
-        .iter()
-        .position(|byte| matches!(byte, b'\n' | b'\r'))
-        .unwrap_or(buffer.len());
-    let first_line = &buffer[..first_line_end];
-    let Some(colon) = first_line.iter().position(|byte| *byte == b':') else {
-        return false;
-    };
-    let name = &first_line[..colon];
-    !name.is_empty()
-        && name
-            .iter()
-            .all(|byte| byte.is_ascii_alphanumeric() || *byte == b'-')
-}
-
-fn header_has_content_length(header: &str) -> bool {
-    header.lines().any(|line| {
-        line.split_once(':')
-            .is_some_and(|(name, _)| name.eq_ignore_ascii_case("content-length"))
     })
 }
 
-fn find_header_end(buffer: &[u8]) -> Option<usize> {
-    buffer.windows(4).position(|window| window == b"\r\n\r\n")
-}
-
-fn content_length(header: &str) -> Result<usize> {
-    for line in header.lines() {
-        let Some((name, value)) = line.split_once(':') else {
-            continue;
-        };
-        if name.eq_ignore_ascii_case("content-length") {
-            return value
-                .trim()
-                .parse::<usize>()
-                .context("parsing Content-Length header");
-        }
-    }
-    bail!("Missing Content-Length header")
+pub(super) fn error_response(id: &Value, code: i64, message: &str) -> Value {
+    json!({ "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": message } })
 }
 
 fn write_frame(payload: &Value) -> Result<()> {
@@ -242,4 +167,35 @@ fn write_frame(payload: &Value) -> Result<()> {
     stdout.write_all(b"\n")?;
     stdout.flush()?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ToolDef, handle_control_message};
+    use serde_json::json;
+
+    #[test]
+    fn control_messages_return_initialize_and_tool_list() {
+        let tools = [ToolDef::new(
+            "example",
+            "Example",
+            json!({"type": "object"}),
+        )];
+        let initialize = handle_control_message(
+            "server",
+            "1.0.0",
+            &tools,
+            &json!({"id": 1, "method": "initialize"}),
+        )
+        .expect("initialize response");
+        assert_eq!(initialize["result"]["serverInfo"]["name"], "server");
+        let listing = handle_control_message(
+            "server",
+            "1.0.0",
+            &tools,
+            &json!({"id": 2, "method": "tools/list"}),
+        )
+        .expect("tools/list response");
+        assert_eq!(listing["result"]["tools"][0]["name"], "example");
+    }
 }

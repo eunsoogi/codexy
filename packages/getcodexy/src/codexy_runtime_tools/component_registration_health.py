@@ -31,6 +31,7 @@ agent_files = [
   "codexy-inspector.toml",
   "codexy-sentinel.toml",
   "codexy-warden.toml",
+  "codexy-watcher.toml",
 ]
 """,
     "github": """version = "0.1.0"
@@ -47,6 +48,7 @@ AGENT_FILES = {
         "codexy-inspector.toml",
         "codexy-sentinel.toml",
         "codexy-warden.toml",
+        "codexy-watcher.toml",
     ),
     "github": ("codexy-weaver.toml",),
 }
@@ -153,6 +155,13 @@ MCP = {
         "cwd": ".",
     },
 }
+CORE_MCP = {
+    "watcher": {
+        "command": "./mcp/codexy-mcp-watcher",
+        "args": ["--stdio"],
+        "cwd": ".",
+    }
+}
 LAUNCHERS = {
     "core": CORE_HOOK_LAUNCHERS,
     "github": (
@@ -174,8 +183,14 @@ def valid_registration(plugin: Path, component: str) -> bool:
             return json.loads(
                 _text(plugin / ".mcp.json", plugin)
             ) == MCP and _executable(plugin / LAUNCHERS[component][0], plugin)
+        core_mcp = (
+            component == "core"
+            and json.loads(_text(plugin / ".mcp.json", plugin)) == CORE_MCP
+            and _executable(plugin / "mcp/codexy-mcp-watcher.sh", plugin)
+        )
         return (
-            _text(plugin / "agents/catalog.toml", plugin) == CATALOGS[component]
+            (component != "core" or core_mcp)
+            and _text(plugin / "agents/catalog.toml", plugin) == CATALOGS[component]
             and json.loads(_text(plugin / "hooks/hooks.json", plugin))
             == HOOKS[component]
             and all(

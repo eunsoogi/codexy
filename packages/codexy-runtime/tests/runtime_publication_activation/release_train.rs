@@ -1,10 +1,14 @@
-use std::{fs, path::{Path, PathBuf}};
+use std::{fs, path::Path};
 
 use serde_json::{Value, json};
 
 use crate::support::{self, FixtureCommand as Command};
 
 use super::final_archive_fixture::FinalArchiveFixture;
+
+#[path = "release_train_support.rs"]
+mod release_train_support;
+use release_train_support::{project_release_versions, release_checkout};
 
 const COMPONENT_MANIFEST: &str =
     "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
@@ -110,6 +114,16 @@ fn release_train_inspector_accepts_the_complete_activation_checkout()
         .env("RELEASE_TAG", &release_tag)
         .output()?;
     assert!(assembled.status.success(), "{}", String::from_utf8_lossy(&assembled.stderr));
+    let entries = String::from_utf8(
+        Command::new("tar")
+            .args(["-tzf"])
+            .arg_path(&bundle)
+            .output()?
+            .stdout,
+    )?;
+    assert!(entries.contains("plugins/codexy/runtime/codexy-mcp-watcher-linux-x86_64.bin"));
+    assert!(entries.contains("plugins/codexy/mcp/codexy-mcp-watcher.exe"));
+    assert!(!entries.contains("plugins/codexy-devtools/runtime/codexy-mcp-watcher-"));
     let inspected = Command::new(root.join("scripts/inspect_release_train_archive.py"))
         .arg_path(&bundle)
         .arg_path(&checkout)
@@ -120,7 +134,18 @@ fn release_train_inspector_accepts_the_complete_activation_checkout()
     let staging_run = temporary.path().join("staging-run.json");
     let runtime = temporary.path().join("runtime.tar.gz");
     let receipt = temporary.path().join("release-receipt.json");
-    fs::write(&staging_receipt, r#"{"provenance":{"runId":42}}"#)?;
+    let activation: Value = serde_json::from_slice::<Value>(&fs::read(
+        checkout.join(".agents/plugins/runtime-activation.json"),
+    )?)?;
+    let mut staging_candidate = activation["candidate"].clone();
+    staging_candidate["source"]["commit"] = json!("a".repeat(40));
+    fs::write(
+        &staging_receipt,
+        serde_json::to_vec(&json!({
+            "candidate": staging_candidate,
+            "provenance": {"runId": 42},
+        }))?,
+    )?;
     fs::write(&staging_run, r#"{"run_attempt":7}"#)?;
     let created = Command::new(checkout.join("scripts/create_release_train_receipt.py"))
         .arg_path(&runtime)
@@ -139,6 +164,8 @@ fn release_train_inspector_accepts_the_complete_activation_checkout()
     let receipt: serde_json::Value = serde_json::from_slice(&fs::read(receipt)?)?;
     assert_eq!(receipt["schema"], "codexy-runtime-release-receipt/v2");
     assert_eq!(receipt["components"].as_array().ok_or("receipt components")?.len(), 3);
+    assert_eq!(receipt["runtimeClasses"]["coreWatcherMcp"]["source"]["commit"], "a".repeat(40));
+    assert_eq!(receipt["runtimeClasses"]["coreWatcherMcp"]["sha256"].as_str().map(str::len), Some(64));
     fs::write(staged.join("unexpected.txt"), "unexpected\n")?;
     let tampered_runtime = temporary.path().join("tampered-runtime.tar.gz");
     assert!(Command::new("tar")
@@ -178,10 +205,19 @@ fn materialize_core_handoff_fixture(checkout: &Path, staged: &Path) -> Result<()
         if extension == "bin" { support::make_executable(&path)?; }
         platforms.insert(platform.to_owned(), json!({"path": relative, "sha256": support::sha256_file(&path)?, "kind": kind}));
     }
+    let mut watcher_platforms = serde_json::Map::new();
+    for (platform, extension, kind) in [("darwin-arm64", "bin", "mach-o"), ("linux-x86_64", "bin", "elf"), ("windows-x86_64", "exe", "pe")] {
+        let relative = format!("runtime/codexy-mcp-watcher-{platform}.{extension}");
+        let path = staged.join(&relative);
+        fs::write(&path, format!("fixture watcher {platform}\n"))?;
+        if extension == "bin" { support::make_executable(&path)?; }
+        watcher_platforms.insert(platform.to_owned(), json!({"path": relative, "sha256": support::sha256_file(&path)?, "kind": kind}));
+    }
     let handoff = json!({"schema": "codexy.handoff-runtime.v1", "version": 1, "source": {"commit": activation["candidate"]["source"]["commit"], "tree": activation["candidate"]["source"]["tree"]}, "platforms": platforms});
     let handoff_path = staged.join("handoff-runtime.json");
     fs::write(&handoff_path, serde_json::to_vec(&handoff)?)?;
     activation["candidate"]["classes"]["coreHandoff"] = json!({"manifest": {"path": "handoff-runtime.json", "sha256": support::sha256_file(&handoff_path)?}, "platforms": handoff["platforms"]});
+    activation["candidate"]["classes"]["coreWatcherMcp"] = json!({"platforms": watcher_platforms});
     fs::write(activation_path, format!("{}\n", serde_json::to_string_pretty(&activation)?))?;
     Ok(())
 }
@@ -201,50 +237,4 @@ fn set_manifest_version(path: &Path, version: &str) -> Result<(), Box<dyn std::e
     manifest["version"] = serde_json::Value::String(version.to_owned());
     fs::write(path, format!("{}\n", serde_json::to_string_pretty(&manifest)?))?;
     Ok(())
-}
-
-fn project_release_versions(root: &Path, version: &str) -> Result<(), Box<dyn std::error::Error>> {
-    for relative in PLUGIN_MANIFESTS {
-        set_manifest_version(&root.join(relative), version)?;
-    }
-    let path = root.join(MARKETPLACE);
-    let mut marketplace: serde_json::Value = serde_json::from_slice(&fs::read(&path)?)?;
-    for plugin in marketplace["plugins"]
-        .as_array_mut()
-        .ok_or("marketplace plugins")?
-    {
-        plugin["version"] = serde_json::Value::String(version.to_owned());
-    }
-    fs::write(path, format!("{}\n", serde_json::to_string_pretty(&marketplace)?))?;
-    Ok(())
-}
-
-fn release_checkout(
-    root: &Path,
-    parent: &Path,
-    version: &str,
-) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let checkout = parent.join("activation-checkout");
-    for relative in ["plugins/codexy", "plugins/codexy-github", "plugins/codexy-devtools"] {
-        support::copy_dir(root.join(relative), &checkout.join(relative))?;
-    }
-    for relative in [COMPONENT_MANIFEST, MARKETPLACE, ".agents/plugins/runtime-activation.json"] {
-        let target = checkout.join(relative);
-        fs::create_dir_all(target.parent().ok_or("checkout artifact parent")?)?;
-        fs::copy(root.join(relative), target)?;
-    }
-    fs::create_dir_all(checkout.join("scripts"))?;
-    for script in [
-        "assemble-release-train-archive.sh",
-        "create_release_train_receipt.py",
-        "handoff_runtime_contract.py",
-    ] {
-        let target = checkout.join("scripts").join(script);
-        fs::copy(root.join("scripts").join(script), &target)?;
-        if script.ends_with(".sh") {
-            support::make_executable(&target)?;
-        }
-    }
-    project_release_versions(&checkout, version)?;
-    Ok(checkout)
 }

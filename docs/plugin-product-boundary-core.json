@@ -59,7 +59,8 @@
         "plugins/codexy/agents/codexy-inspector.toml",
         "plugins/codexy/agents/codexy-sentinel.toml",
         "plugins/codexy/agents/codexy-shipwright.toml",
-        "plugins/codexy/agents/codexy-warden.toml"
+        "plugins/codexy/agents/codexy-warden.toml",
+        "plugins/codexy/agents/codexy-watcher.toml"
       ],
       "target": "codexy",
       "disposition": "retain"
@@ -81,6 +82,34 @@
         "plugins/codexy/agents/openai.yaml",
         "plugins/codexy/bootstrap-codexy-agents",
         "plugins/codexy/check-codexy-agents"
+      ],
+      "target": "codexy",
+      "disposition": "retain"
+    },
+    {
+      "id": "mcp.watcher",
+      "category": "mcp",
+      "sources": [
+        "plugins/codexy/.mcp.json#watcher"
+      ],
+      "target": "codexy",
+      "disposition": "retain"
+    },
+    {
+      "id": "mcp.core-runtimes",
+      "category": "mcp",
+      "sources": [
+        "plugins/codexy/mcp"
+      ],
+      "target": "codexy",
+      "disposition": "retain"
+    },
+    {
+      "id": "runtime.watcher",
+      "category": "mcp",
+      "sources": [
+        "packages/codexy-runtime/src/watcher",
+        "packages/codexy-runtime/src/bin/codexy_mcp_watcher.rs"
       ],
       "target": "codexy",
       "disposition": "retain"

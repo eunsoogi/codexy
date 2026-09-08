@@ -16,8 +16,9 @@ preserves former capabilities without retaining removed callable aliases.
 | `codexy-shipwright`   | Retain      | Release, package, and rollback readiness.                             |
 | `codexy-tracer`       | Remove      | The engineering workflow owns diagnosis and regression investigation. |
 | `codexy-warden`       | Retain      | Security, permission, shell, and state-mutation boundaries.           |
+| `codexy-watcher`      | Retain      | Bounded native Worker observation through the core Watcher MCP.       |
 | `codexy-weaver`       | Move        | GitHub/integration contract in the Codexy GitHub package.             |
 
 `codexy-inspector` is reserved for #562 as the distinct bounded standard-review
-role. It is packaged separately from the seven retained implementation
-specialists and is not an alias for Auditor or Sentinel.
+role. It is packaged separately from the retained implementation specialists and
+the dedicated Watcher specialist; it is not an alias for Auditor or Sentinel.

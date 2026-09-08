@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from packages.getcodexy.tests import component_distribution_support as support
+from packages.getcodexy.tests.component_probe_support import windows_argv
 
 
 class _OSProxy:
@@ -37,7 +38,7 @@ class CapabilityProcessTests(unittest.TestCase):
         from codexy_runtime_tools import component_capability_probe as probe
 
         with tempfile.TemporaryDirectory() as directory:
-            paths, batch, raw, py, ran = support.windows_argv(
+            paths, batch, raw, py, ran = windows_argv(
                 probe, Path(directory), _OSProxy("nt")
             )
         for launcher, command in zip(paths, batch, strict=True):

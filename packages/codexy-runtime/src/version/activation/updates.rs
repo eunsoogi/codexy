@@ -17,7 +17,11 @@ const CORE_HANDOFF_SOURCES: [&str; 4] = [
     "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd",
     "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py",
 ];
-const WRAPPER: &str = "plugins/codexy-devtools/mcp/codexy-mcp-devtools";
+const WRAPPERS: [&str; 3] = [
+    "plugins/codexy-devtools/mcp/codexy-mcp-devtools",
+    "plugins/codexy/mcp/codexy-mcp-watcher.sh",
+    "plugins/codexy/mcp/codexy-mcp-watcher.cmd",
+];
 
 #[derive(Debug)]
 pub(super) struct Update {
@@ -54,7 +58,7 @@ pub(super) fn prepare(
     if actual_manifest_sha != expected_manifest_sha {
         bail!("candidate manifest bytes do not match receipt payload SHA-256");
     }
-    Ok(vec![
+    let mut updates = vec![
         bootstrap_update(repo_root, bootstrap_version)?,
         publish_contract_update(repo_root, bootstrap_version, &release_tag)?,
         Update {
@@ -63,13 +67,14 @@ pub(super) fn prepare(
             delete: false,
         },
         runtime_release_update(repo_root, &release)?,
-        wrapper_update(repo_root, bootstrap_version)?,
-        Update {
-            path: repo_root.join("plugins/codexy-devtools/runtime-candidate.json"),
-            bytes: Vec::new(),
-            delete: true,
-        },
-    ])
+    ];
+    updates.extend(wrapper_updates(repo_root, bootstrap_version)?);
+    updates.push(Update {
+        path: repo_root.join("plugins/codexy-devtools/runtime-candidate.json"),
+        bytes: Vec::new(),
+        delete: true,
+    });
+    Ok(updates)
 }
 
 fn validate_core_aware_tree(repo_root: &Path) -> Result<bool> {
@@ -137,22 +142,30 @@ fn runtime_release_update(root: &Path, release: &Value) -> Result<Update> {
     })
 }
 
-fn wrapper_update(root: &Path, version: &str) -> Result<Update> {
-    let path = root.join(WRAPPER);
+fn wrapper_updates(root: &Path, version: &str) -> Result<Vec<Update>> {
     let previous = super::super::runtime_selection::wrapper_version(root)?;
     super::super::wrappers::check_version_at(root, &previous)?;
-    let source = fs::read_to_string(&path)
-        .with_context(|| format!("reading selected runtime wrapper: {}", path.display()))?;
     let old_pin = format!("getcodexy=={previous}");
     let new_pin = format!("getcodexy=={version}");
-    if source.match_indices(&old_pin).count() != 1 {
-        bail!("selected runtime wrapper must contain exactly one current package pin");
-    }
-    Ok(Update {
-        path,
-        bytes: source.replacen(&old_pin, &new_pin, 1).into_bytes(),
-        delete: false,
-    })
+    WRAPPERS
+        .into_iter()
+        .filter_map(|relative| {
+            let path = root.join(relative);
+            path.is_file().then_some(path)
+        })
+        .map(|path| {
+            let source = fs::read_to_string(&path)
+                .with_context(|| format!("reading selected runtime wrapper: {}", path.display()))?;
+            if source.match_indices(&old_pin).count() != 1 {
+                bail!("selected runtime wrapper must contain exactly one current package pin");
+            }
+            Ok(Update {
+                path,
+                bytes: source.replacen(&old_pin, &new_pin, 1).into_bytes(),
+                delete: false,
+            })
+        })
+        .collect()
 }
 
 fn bootstrap_update(root: &Path, version: &str) -> Result<Update> {
