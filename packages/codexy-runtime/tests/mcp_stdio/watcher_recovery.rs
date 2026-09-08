@@ -47,7 +47,7 @@ fn wait_all(
 }
 
 #[test]
-fn interrupted_event_tail_is_recovered_before_the_next_report() -> Result<(), String> {
+fn interrupted_utf8_event_tail_is_recovered_before_the_next_report() -> Result<(), String> {
     let state = tempfile::tempdir().map_err(|error| error.to_string())?;
     let mut setup = watcher_client(state.path()).map_err(|error| error.to_string())?;
     initialize(&mut setup).map_err(|error| error.to_string())?;
@@ -61,7 +61,10 @@ fn interrupted_event_tail_is_recovered_before_the_next_report() -> Result<(), St
 
     let path = event_path(state.path(), &session);
     let mut events = std::fs::read(&path).map_err(|error| error.to_string())?;
-    events.extend_from_slice(br#"{"eventId":"interrupted""#);
+    events.extend_from_slice(
+        br#"{"eventId":"interrupted","sequence":2,"kind":"gate_ready","target":{"threadId":"target"},"summary":"#,
+    );
+    events.extend_from_slice(&"완료".as_bytes()[..1]);
     std::fs::write(&path, events).map_err(|error| error.to_string())?;
 
     let mut reporter = watcher_client(state.path()).map_err(|error| error.to_string())?;

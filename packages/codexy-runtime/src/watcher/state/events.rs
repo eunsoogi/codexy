@@ -72,34 +72,59 @@ pub(super) fn read(root: &Path, session_id: &str) -> Result<Vec<Event>> {
     if bytes.len() > MAX_STATE_BYTES {
         bail!("watcher event log exceeds the state size limit");
     }
-    let text = std::str::from_utf8(&bytes).context("watcher event log is not UTF-8")?;
     let mut events = Vec::new();
     let mut last_sequence = 0_u64;
-    let mut lines = text.split('\n').peekable();
-    while let Some(line) = lines.next() {
-        if line.is_empty() {
+    let mut line_start = 0;
+    for (index, byte) in bytes.iter().enumerate() {
+        if *byte != b'\n' {
             continue;
         }
-        let trailing_partial = lines.peek().is_none() && !text.ends_with('\n');
-        let event = match serde_json::from_str::<Event>(line) {
-            Ok(event) => event,
-            Err(_) if trailing_partial => break,
-            Err(error) => return Err(error).context("parsing watcher event log"),
-        };
-        if event.sequence != last_sequence.saturating_add(1) {
-            bail!("watcher event log sequence is invalid");
-        }
-        if events
-            .iter()
-            .any(|item: &Event| item.event_id == event.event_id)
-        {
-            bail!("watcher event log contains a duplicate eventId");
-        }
-        if events.len() >= MAX_EVENTS {
-            bail!("watcher event log contains too many events");
-        }
-        last_sequence = event.sequence;
-        events.push(event);
+        append_line(
+            &bytes[line_start..index],
+            false,
+            &mut events,
+            &mut last_sequence,
+        )?;
+        line_start = index + 1;
+    }
+    if line_start < bytes.len() {
+        append_line(&bytes[line_start..], true, &mut events, &mut last_sequence)?;
     }
     Ok(events)
+}
+
+fn append_line(
+    line: &[u8],
+    trailing: bool,
+    events: &mut Vec<Event>,
+    last_sequence: &mut u64,
+) -> Result<()> {
+    if line.is_empty() {
+        return Ok(());
+    }
+    let text = match std::str::from_utf8(line) {
+        Ok(text) => text,
+        Err(_) if trailing => return Ok(()),
+        Err(error) => return Err(error).context("watcher event log is not UTF-8"),
+    };
+    let event = match serde_json::from_str::<Event>(text) {
+        Ok(event) => event,
+        Err(_) if trailing => return Ok(()),
+        Err(error) => return Err(error).context("parsing watcher event log"),
+    };
+    if event.sequence != last_sequence.saturating_add(1) {
+        bail!("watcher event log sequence is invalid");
+    }
+    if events
+        .iter()
+        .any(|item: &Event| item.event_id == event.event_id)
+    {
+        bail!("watcher event log contains a duplicate eventId");
+    }
+    if events.len() >= MAX_EVENTS {
+        bail!("watcher event log contains too many events");
+    }
+    *last_sequence = event.sequence;
+    events.push(event);
+    Ok(())
 }
