@@ -97,6 +97,17 @@ pub(crate) fn final_control_919(recovered: &Value) -> TestResult<Value> {
     let policy_reviewer = control["reviewer"].clone();
     let source_reviewer = control["terminal_review_history"][1]["reviewer"].clone();
     let finding = control["terminal_review_history"][1]["unresolved_findings"][1].clone();
+    let qualifying_finding_ids = control["terminal_review_history"][1]["unresolved_findings"]
+        .as_array()
+        .ok_or("#919 recovered delta findings")?
+        .iter()
+        .map(|finding| {
+            finding
+                .get("id")
+                .cloned()
+                .ok_or("#919 recovered delta finding id")
+        })
+        .collect::<Result<Vec<_>, _>>()?;
     let required_findings = json!([finding]);
     let history = control["terminal_review_history"]
         .as_array_mut()
@@ -124,7 +135,7 @@ pub(crate) fn final_control_919(recovered: &Value) -> TestResult<Value> {
             "from_head": DELTA_HEAD,
             "to_head": CURRENT_HEAD,
             "evidence_commit": CURRENT_HEAD,
-            "finding_ids": [REMAINING_FINDING]
+            "finding_ids": qualifying_finding_ids
         }
     }));
     object.insert("final_disposition".into(), json!({

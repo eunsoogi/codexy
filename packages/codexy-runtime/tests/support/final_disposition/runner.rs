@@ -26,13 +26,49 @@ pub(crate) fn produce_for(
     Ok(serde_json::from_slice(&result.stdout)?)
 }
 
+pub(crate) fn canonical_third_predecessor(
+    control: &Value,
+    current: &Value,
+    previous: &Value,
+) -> TestResult<Value> {
+    let temporary = tempfile::tempdir()?;
+    let input = temporary.path().join("third-predecessor-input.json");
+    let output = temporary.path().join("third-predecessor-output.json");
+    let predecessor = super::third_block_predecessor(control);
+    fs::write(
+        &input,
+        serde_json::to_vec(&json!({
+            "control_state": predecessor,
+            "current_pr_state": current,
+            "previous_pr_state": previous
+        }))?,
+    )?;
+    let result = FixtureCommand::new(env!("CARGO_BIN_EXE_codexy-review-control"))
+        .args(["--produce-review-control", "--input"])
+        .arg(&input)
+        .args(["--output"])
+        .arg(&output)
+        .args(["--repository-root"])
+        .arg(codexy_runtime::paths::repository_root())
+        .output()?;
+    if !result.status.success() {
+        return Err(format!(
+            "native-history third predecessor failed: {}{}",
+            String::from_utf8_lossy(&result.stdout),
+            String::from_utf8_lossy(&result.stderr)
+        )
+        .into());
+    }
+    Ok(serde_json::from_slice(&fs::read(output)?)?)
+}
+
 pub(crate) fn produce_with_states(
     control: &Value,
     current: &Value,
     previous: &Value,
     pull_request: u64,
 ) -> TestResult<Value> {
-    let result = run_producer_with_states(control, current, previous, pull_request, true)?;
+    let result = run_producer_with_states(control, current, previous, pull_request)?;
     if !result.status.success() {
         return Err(format!(
             "final disposition producer with native history failed: {}",
@@ -41,15 +77,6 @@ pub(crate) fn produce_with_states(
         .into());
     }
     Ok(serde_json::from_slice(&result.stdout)?)
-}
-
-pub(crate) fn produce_with_recovered_predecessor(
-    control: &Value,
-    current: &Value,
-    previous: &Value,
-    pull_request: u64,
-) -> TestResult<std::process::Output> {
-    run_producer_with_states(control, current, previous, pull_request, false)
 }
 
 pub(crate) fn produce_without_locator(
@@ -157,10 +184,8 @@ fn run_producer_with_states(
     current: &Value,
     previous: &Value,
     pull_request: u64,
-    append_third_block_predecessor: bool,
 ) -> TestResult<std::process::Output> {
     let temporary = tempfile::tempdir()?;
-    let repository = graph::SyntheticRepository::create(temporary.path())?;
     let issue = control["issue_number"].as_u64().ok_or("final disposition issue")?;
     let base = current["baseRefOid"].as_str().ok_or("current base")?;
     let head = current["headRefOid"].as_str().ok_or("current head")?;
@@ -179,15 +204,11 @@ fn run_producer_with_states(
         head,
         finding_id,
     )?;
+    let predecessor = canonical_third_predecessor(control, current, previous)?;
+    let mut previous_state = previous.clone();
+    previous_state["reviewControl"] = predecessor;
     let input = temporary.path().join("producer-input.json");
     let output = temporary.path().join("producer-output.json");
-    let previous_state = if append_third_block_predecessor {
-        let mut state = previous.clone();
-        state["reviewControl"] = super::third_block_predecessor(control);
-        state
-    } else {
-        previous.clone()
-    };
     fs::write(
         &input,
         serde_json::to_vec(&json!({
@@ -204,7 +225,7 @@ fn run_producer_with_states(
         .arg(&input)
         .args(["--output", output.to_str().ok_or("producer output path")?])
         .args(["--repository-root"])
-        .arg(repository.path.to_str().ok_or("repository path")?)
+        .arg(codexy_runtime::paths::repository_root())
         .output()?;
     if result.status.success() {
         result.stdout = fs::read(output)?;

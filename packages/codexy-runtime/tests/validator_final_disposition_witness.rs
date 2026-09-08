@@ -8,19 +8,21 @@ mod final_support;
 fn current_919_witness_consumes_sanitized_same_head_disposition() -> TestResult {
     let (recovered, current) = final_support::recover_919()?;
     let control = final_support::final_control_919(&recovered)?;
-    let incomplete_predecessor = final_support::produce_with_recovered_predecessor(
-        &control,
+    let mut incomplete_change = control.clone();
+    incomplete_change["post_cap_re_review"]["qualifying_change"]["finding_ids"] =
+        serde_json::json!([final_support::native_919_remaining_finding]);
+    let incomplete_change = final_support::canonical_third_predecessor(
+        &incomplete_change,
         &current,
         &recovered,
-        final_support::native_919_pull_request,
-    )?;
-    assert!(!incomplete_predecessor.status.success());
-    let incomplete_diagnostic = format!(
-        "{}{}",
-        String::from_utf8_lossy(&incomplete_predecessor.stdout),
-        String::from_utf8_lossy(&incomplete_predecessor.stderr)
+    )
+    .err()
+    .ok_or("incomplete change unexpectedly passed the ordinary transition")?;
+    let incomplete_diagnostic = incomplete_change.to_string();
+    assert!(
+        incomplete_diagnostic.contains("qualifying change evidence is not linked to the prior findings"),
+        "unexpected incomplete-change diagnostic: {incomplete_diagnostic}"
     );
-    assert!(incomplete_diagnostic.contains("only valid after the third terminal verdict"));
     let produced = final_support::produce_with_states(
         &control,
         &current,

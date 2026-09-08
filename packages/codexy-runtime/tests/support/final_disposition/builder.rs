@@ -126,7 +126,6 @@ pub(crate) fn build_pr_state_with_states(
     pull_request: u64,
 ) -> TestResult<Value> {
     let temporary = tempfile::tempdir()?;
-    let repository = graph::SyntheticRepository::create(temporary.path())?;
     let issue = control["issue_number"].as_u64().ok_or("final disposition issue")?;
     let base = current["baseRefOid"].as_str().ok_or("current base")?;
     let head = current["headRefOid"].as_str().ok_or("current head")?;
@@ -150,8 +149,13 @@ pub(crate) fn build_pr_state_with_states(
     let current_path = temporary.path().join("current-pr-state.json");
     let previous_path = temporary.path().join("previous-pr-state.json");
     let output_path = temporary.path().join("pr-state.json");
+    let predecessor = super::runner::canonical_third_predecessor(
+        control,
+        current,
+        previous,
+    )?;
     let mut previous_state = previous.clone();
-    previous_state["reviewControl"] = super::third_block_predecessor(control);
+    previous_state["reviewControl"] = predecessor;
     fs::write(
         &input_path,
         serde_json::to_vec(&json!({
@@ -171,7 +175,7 @@ pub(crate) fn build_pr_state_with_states(
         .args(["--output"])
         .arg(&control_path)
         .args(["--repository-root"])
-        .arg(&repository.path)
+        .arg(codexy_runtime::paths::repository_root())
         .output()?;
     if !result.status.success() {
         return Err(format!(
@@ -186,7 +190,7 @@ pub(crate) fn build_pr_state_with_states(
     fixture::configure(&mut build, &fixture);
     let result = build
         .args(["--repository-root"])
-        .arg(&repository.path)
+        .arg(codexy_runtime::paths::repository_root())
         .args(["--base-pr-state-file"])
         .arg(&current_path)
         .args(["--review-control-state-file"])

@@ -30,8 +30,8 @@ pub(crate) use native_919::{
     REMAINING_FINDING as native_919_remaining_finding,
     REQUIRED_EVENT as native_919_required_event,
 };
+pub(crate) use runner::canonical_third_predecessor;
 pub(crate) use runner::produce_with_states;
-pub(crate) use runner::produce_with_recovered_predecessor;
 
 const CASE_HASH: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
