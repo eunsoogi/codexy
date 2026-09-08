@@ -113,12 +113,12 @@ fn project(
         "connector source arguments",
     )?;
     let repository = required_text(arguments, "repository_full_name", "connector arguments")?;
-    if let Some(snapshot_repository) = snapshot.get("repository") {
-        if snapshot_repository.as_str() != Some(repository) {
-            return Err(format!(
-                "review control {label} PR snapshot connector arguments change repository identity"
-            ));
-        }
+    if let Some(snapshot_repository) = snapshot.get("repository")
+        && snapshot_repository.as_str() != Some(repository)
+    {
+        return Err(format!(
+            "review control {label} PR snapshot connector arguments change repository identity"
+        ));
     }
     let number = arguments
         .get("pr_number")
@@ -127,12 +127,12 @@ fn project(
         .ok_or_else(|| {
             "review control connector arguments must contain positive pr_number".to_owned()
         })?;
-    if let Some(snapshot_number) = snapshot.get("number") {
-        if snapshot_number != &Value::from(number) {
-            return Err(format!(
-                "review control {label} PR snapshot connector arguments change PR identity"
-            ));
-        }
+    if let Some(snapshot_number) = snapshot.get("number")
+        && snapshot_number != &Value::from(number)
+    {
+        return Err(format!(
+            "review control {label} PR snapshot connector arguments change PR identity"
+        ));
     }
     let result = source
         .get("result")
@@ -148,12 +148,12 @@ fn project(
             "review control {label} PR snapshot connector result changes PR identity"
         ));
     }
-    if let Some(result_repository) = result.get("repository") {
-        if result_repository.as_str() != Some(repository) {
-            return Err(format!(
-                "review control {label} PR snapshot connector result changes repository identity"
-            ));
-        }
+    if let Some(result_repository) = result.get("repository")
+        && result_repository.as_str() != Some(repository)
+    {
+        return Err(format!(
+            "review control {label} PR snapshot connector result changes repository identity"
+        ));
     }
     let url = required_text(result, "url", "connector result")?;
     if url != format!("https://github.com/{repository}/pull/{number}") {

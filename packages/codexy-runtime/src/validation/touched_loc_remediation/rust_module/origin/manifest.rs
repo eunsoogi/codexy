@@ -34,10 +34,10 @@ pub(super) fn cargo_manifest_paths(root: &Path) -> Vec<PathBuf> {
         let declares_package = manifest
             .as_ref()
             .is_some_and(|path| manifest_declares_package(path));
-        if let Some(manifest) = manifest.as_ref() {
-            if !inside_workspace || declares_workspace {
-                manifests.push(manifest.to_owned());
-            }
+        if let Some(manifest) = manifest.as_ref()
+            && (!inside_workspace || declares_workspace)
+        {
+            manifests.push(manifest.to_owned());
         }
         if is_root || manifest.is_none() || (declares_workspace && declares_package) {
             let child_inside_workspace = inside_workspace || declares_workspace;

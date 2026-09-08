@@ -65,12 +65,12 @@ fn has_marked_reference(summary: &str) -> bool {
 }
 
 fn is_issue_category(value: &str) -> bool {
-    if value.starts_with('[') {
-        if let Some(end) = value.find(']') {
-            let inner = &value[1..end];
-            if parse_category_prefix(inner).is_some_and(|(index, _, _)| index == inner.len()) {
-                return true;
-            }
+    if value.starts_with('[')
+        && let Some(end) = value.find(']')
+    {
+        let inner = &value[1..end];
+        if parse_category_prefix(inner).is_some_and(|(index, _, _)| index == inner.len()) {
+            return true;
         }
     }
     let Some((index, scoped, breaking)) = parse_category_prefix(value) else {

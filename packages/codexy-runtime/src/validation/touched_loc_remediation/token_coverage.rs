@@ -7,11 +7,11 @@ pub(super) fn moved_line_coverage(removed: &str, extracted: &str) -> usize {
     let mut moved = 0usize;
     for line in removed.lines().filter(|line| !line.trim().is_empty()) {
         total += 1;
-        if let Some(count) = extracted_lines.get_mut(line) {
-            if *count > 0 {
-                *count -= 1;
-                moved += 1;
-            }
+        if let Some(count) = extracted_lines.get_mut(line)
+            && *count > 0
+        {
+            *count -= 1;
+            moved += 1;
         }
     }
     moved

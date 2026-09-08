@@ -133,10 +133,10 @@ fn check_entry(path: &Path, plugin_root: &Path, name: &str, entry: &Value) -> Re
         super::mcp_runtime::check_no_script_runtime(path, name, &command_items)?;
         check_plugin_relative_entrypoint(path, plugin_root, name, &command_items)?;
     }
-    if let Some(cwd) = object.get("cwd") {
-        if !cwd.is_string() {
-            bail!("{} {name}.cwd must be a string", display_relative(path));
-        }
+    if let Some(cwd) = object.get("cwd")
+        && !cwd.is_string()
+    {
+        bail!("{} {name}.cwd must be a string", display_relative(path));
     }
     Ok(())
 }

@@ -34,10 +34,10 @@ fn declared_paths_in_scope(
 ) {
     for declaration in declarations(source) {
         if let Some(attribute) = declaration.path {
-            if let Some(module_path) = normalize_relative_path(attribute_parent, &attribute) {
-                if module_path != source_path {
-                    paths.push(module_path);
-                }
+            if let Some(module_path) = normalize_relative_path(attribute_parent, &attribute)
+                && module_path != source_path
+            {
+                paths.push(module_path);
             }
         } else {
             let module = declaration

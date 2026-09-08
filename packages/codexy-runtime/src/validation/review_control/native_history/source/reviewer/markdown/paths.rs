@@ -15,10 +15,10 @@ pub(super) fn explicit_paths(block: &str) -> Vec<String> {
             let Some(url_end) = url_start.find(')') else {
                 break;
             };
-            if let Some(path) = clean_path(&line[open + 1..close]) {
-                if !result.contains(&path) {
-                    result.push(path);
-                }
+            if let Some(path) = clean_path(&line[open + 1..close])
+                && !result.contains(&path)
+            {
+                result.push(path);
             }
             cursor = close + 2 + url_end;
         }

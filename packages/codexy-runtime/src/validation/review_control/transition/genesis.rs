@@ -54,10 +54,10 @@ pub(super) fn check_snapshot(value: &Value, control: &Map<String, Value>) -> Res
     if issue != count(control, "issue_number")? {
         return Err("genesis PR snapshot issue identity disagrees with review control".into());
     }
-    if let Some(profile) = object.get("reviewProfile").and_then(Value::as_str) {
-        if control.get("profile").and_then(Value::as_str) != Some(profile) {
-            return Err("genesis PR snapshot profile disagrees with review control".into());
-        }
+    if let Some(profile) = object.get("reviewProfile").and_then(Value::as_str)
+        && control.get("profile").and_then(Value::as_str) != Some(profile)
+    {
+        return Err("genesis PR snapshot profile disagrees with review control".into());
     }
     Ok(())
 }

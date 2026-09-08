@@ -82,10 +82,10 @@ pub(super) fn check_pr_state(
     {
         return Err("native history recovery is not eligible for current PR admission".into());
     }
-    if let Some(control) = state.get("reviewControl").and_then(Value::as_object) {
-        if control.contains_key("native_history_provenance") {
-            native_history::check_provenance(state, control)?;
-        }
+    if let Some(control) = state.get("reviewControl").and_then(Value::as_object)
+        && control.contains_key("native_history_provenance")
+    {
+        native_history::check_provenance(state, control)?;
     }
     check::with_mode(
         plugin_root,

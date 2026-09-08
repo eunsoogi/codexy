@@ -65,15 +65,15 @@ pub(super) fn check(
     if context.legacy_history_boundary.is_some() && context.legacy_history_event.is_some() {
         return Err("review control state reviewer migration has conflicting directions".into());
     }
-    if let Some(boundary) = context.legacy_history_boundary {
-        if boundary == 0 || boundary > history.len() {
-            return Err("review control state reviewer migration boundary is invalid".into());
-        }
+    if let Some(boundary) = context.legacy_history_boundary
+        && (boundary == 0 || boundary > history.len())
+    {
+        return Err("review control state reviewer migration boundary is invalid".into());
     }
-    if let Some(index) = context.legacy_history_event {
-        if index == 0 || index >= history.len() {
-            return Err("review control state historical reviewer exception is invalid".into());
-        }
+    if let Some(index) = context.legacy_history_event
+        && (index == 0 || index >= history.len())
+    {
+        return Err("review control state historical reviewer exception is invalid".into());
     }
     let mut ids = HashSet::new();
     let mut full_seen = 0;

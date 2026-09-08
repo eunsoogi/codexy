@@ -2,6 +2,8 @@ use super::*;
 use std::sync::{Arc, Barrier};
 use std::thread;
 
+const CONCURRENT_REPETITIONS: usize = 3;
+
 pub(super) fn watcher_client(state_dir: &Path) -> Result<McpClient, Box<dyn std::error::Error>> {
     let mut command = Command::new(env!("CARGO_BIN_EXE_codexy-mcp-watcher"));
     command
@@ -60,6 +62,13 @@ pub(super) fn open_session(
 
 #[test]
 fn concurrent_reports_and_health_leave_a_restartable_event_log() -> Result<(), String> {
+    for _ in 0..CONCURRENT_REPETITIONS {
+        run_concurrent_reports_and_health_once()?;
+    }
+    Ok(())
+}
+
+fn run_concurrent_reports_and_health_once() -> Result<(), String> {
     let state = tempfile::tempdir().map_err(|error| error.to_string())?;
     let mut setup = watcher_client(state.path()).map_err(|error| error.to_string())?;
     initialize(&mut setup).map_err(|error| error.to_string())?;

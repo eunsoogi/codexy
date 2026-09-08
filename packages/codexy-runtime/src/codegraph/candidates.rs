@@ -18,10 +18,10 @@ pub(super) fn candidates(candidate: &Path, from_extension: Option<&str>) -> Vec<
     output.push(candidate.to_path_buf());
     let extensions = code_extensions();
     let from = from_extension.map(|item| format!(".{item}"));
-    if let Some(from) = from {
-        if extensions.contains(&from) {
-            output.push(candidate.with_extension(from.trim_start_matches('.')));
-        }
+    if let Some(from) = from
+        && extensions.contains(&from)
+    {
+        output.push(candidate.with_extension(from.trim_start_matches('.')));
     }
     output.extend(
         extensions

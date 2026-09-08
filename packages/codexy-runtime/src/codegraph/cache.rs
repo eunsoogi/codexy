@@ -70,10 +70,10 @@ fn parse_one(
         }
         return empty_graph_file(file);
     };
-    if let Some(index) = file_index {
-        if let Some(graph) = cache.lookup(index, file, &source.digest) {
-            return graph;
-        }
+    if let Some(index) = file_index
+        && let Some(graph) = cache.lookup(index, file, &source.digest)
+    {
+        return graph;
     }
     let graph = parse_file(root, file, indexed_files, &source.source);
     if let Some(index) = file_index {

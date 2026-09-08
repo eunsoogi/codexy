@@ -66,14 +66,14 @@ pub(super) fn section_membership(
     let mut section_level = None;
     let mut result = vec![false; lines.len()];
     for (index, (_, _, line)) in lines.iter().enumerate() {
-        if is_operative(index) {
-            if let Some((level, title)) = heading(line) {
-                if section_level.is_some_and(|active| level <= active) {
-                    section_level = None;
-                }
-                if is_section(level, title) {
-                    section_level = Some(level);
-                }
+        if is_operative(index)
+            && let Some((level, title)) = heading(line)
+        {
+            if section_level.is_some_and(|active| level <= active) {
+                section_level = None;
+            }
+            if is_section(level, title) {
+                section_level = Some(level);
             }
         }
         result[index] = section_level.is_some();

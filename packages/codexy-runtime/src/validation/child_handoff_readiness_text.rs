@@ -138,7 +138,7 @@ fn is_boundary(character: Option<char>) -> bool {
 }
 
 fn is_locally_negated(prefix: &str) -> bool {
-    let clause_start = last_clause_boundary(prefix).map_or(0, |index| index);
+    let clause_start = last_clause_boundary(prefix).unwrap_or(0);
     prefix[clause_start..]
         .split(|character: char| !character.is_ascii_alphanumeric() && character != '\'')
         .filter(|word| !word.is_empty())

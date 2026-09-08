@@ -184,15 +184,14 @@ fn check_agent_file(path: &Path, seen: &mut BTreeSet<String>, errors: &mut Vec<S
             ));
         }
     }
-    if let Some(nicknames) = agent.get("nickname_candidates") {
-        if toml_array_strings(Some(nicknames))
+    if let Some(nicknames) = agent.get("nickname_candidates")
+        && toml_array_strings(Some(nicknames))
             .is_none_or(|items| items.is_empty() || items.iter().any(String::is_empty))
-        {
-            errors.push(format!(
-                "{} nickname_candidates must be a list of non-empty strings",
-                display_relative(path)
-            ));
-        }
+    {
+        errors.push(format!(
+            "{} nickname_candidates must be a list of non-empty strings",
+            display_relative(path)
+        ));
     }
 }
 

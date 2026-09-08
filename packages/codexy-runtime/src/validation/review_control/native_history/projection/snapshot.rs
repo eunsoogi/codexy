@@ -15,10 +15,10 @@ pub(super) fn validate(
     if Some(number) != target.get("pullRequest").and_then(Value::as_u64) {
         return Err("current PR snapshot pull request does not match target".into());
     }
-    if let Some(issue) = optional_u64(snapshot, &["owningIssue", "issueNumber", "issue_number"])? {
-        if Some(issue) != target.get("owningIssue").and_then(Value::as_u64) {
-            return Err("current PR snapshot owning issue does not match target".into());
-        }
+    if let Some(issue) = optional_u64(snapshot, &["owningIssue", "issueNumber", "issue_number"])?
+        && Some(issue) != target.get("owningIssue").and_then(Value::as_u64)
+    {
+        return Err("current PR snapshot owning issue does not match target".into());
     }
     let url = required_text(snapshot, "url")?;
     if url != format!("https://github.com/{repository}/pull/{number}") {

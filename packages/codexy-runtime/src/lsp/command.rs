@@ -9,12 +9,13 @@ pub(crate) fn resolve_command(command: &[String], root: Option<&str>) -> Result<
     let Some(first) = command.first() else {
         return Ok(Vec::new());
     };
-    if first.contains(std::path::MAIN_SEPARATOR) && !Path::new(first).is_absolute() {
-        if let Some(root) = root {
-            let mut output = vec![resolve_root(root)?.join(first).display().to_string()];
-            output.extend(command.iter().skip(1).cloned());
-            return Ok(output);
-        }
+    if first.contains(std::path::MAIN_SEPARATOR)
+        && !Path::new(first).is_absolute()
+        && let Some(root) = root
+    {
+        let mut output = vec![resolve_root(root)?.join(first).display().to_string()];
+        output.extend(command.iter().skip(1).cloned());
+        return Ok(output);
     }
     Ok(command.to_vec())
 }

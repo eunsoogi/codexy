@@ -10,6 +10,21 @@ use super::validation::{authorize, authorize_parent, check_cancelled};
 use super::{MAX_REPORTS, MAX_WAIT_MS, Store};
 
 impl Store {
+    fn consistent_snapshot_with_transition(
+        &self,
+        session_id: &str,
+    ) -> Result<(
+        super::model::Session,
+        Vec<super::model::Event>,
+        super::super::lock::LockGuard,
+    )> {
+        let (transition, state) = self.session_lock(session_id)?;
+        let mut session = self.load_session(session_id)?;
+        let events = self.reconcile_events(&mut session)?;
+        drop(state);
+        Ok((session, events, transition))
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn wait_with_cancellation(
         &self,
@@ -26,7 +41,7 @@ impl Store {
         if timeout_ms > MAX_WAIT_MS {
             bail!("watcher timeoutMs must be at most {MAX_WAIT_MS}");
         }
-        let (session, _) = self.consistent_snapshot(session_id)?;
+        let (session, _, transition) = self.consistent_snapshot_with_transition(session_id)?;
         authorize_parent(&session, token)?;
         check_cancelled(cancellation)?;
         if cursor > session.next_sequence {
@@ -36,6 +51,7 @@ impl Store {
             &self.session_dir(session_id)?.join("wait.lock"),
         )?
         .context("watcher already has an active waiter")?;
+        drop(transition);
         let deadline = Instant::now() + Duration::from_millis(timeout_ms);
         loop {
             check_cancelled(cancellation)?;
@@ -67,7 +83,7 @@ impl Store {
     }
 
     pub(crate) fn health(&self, session_id: &str, token: &str) -> Result<Value> {
-        let (session, _) = self.consistent_snapshot(session_id)?;
+        let (session, _, _transition) = self.consistent_snapshot_with_transition(session_id)?;
         let actor = authorize(&session, token, false)?;
         let health = self.load_health(session_id)?;
         self.health_value(&session, &health, actor)

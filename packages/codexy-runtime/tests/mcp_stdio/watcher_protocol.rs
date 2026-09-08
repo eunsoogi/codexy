@@ -104,6 +104,7 @@ fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
     }))?;
     let response = client.read_frame()?;
     assert_eq!(response["id"], 5, "cancelled wait must not send a late response");
+    assert_eq!(tool_payload(&response)?["waiting"], false);
 
     let reported = client.send(&json!({
         "jsonrpc":"2.0","id":6,"method":"tools/call",

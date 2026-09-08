@@ -16,12 +16,12 @@ pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
                 lines.push(String::new());
                 continue;
             }
-            if let Some((marker, length, tail)) = fence_marker(raw) {
-                if fence.is_some_and(|(open, minimum)| {
+            if let Some((marker, length, tail)) = fence_marker(raw)
+                && fence.is_some_and(|(open, minimum)| {
                     marker == open && length >= minimum && tail.trim().is_empty()
-                }) {
-                    fence = None;
-                }
+                })
+            {
+                fence = None;
             }
             lines.push(String::new());
             continue;

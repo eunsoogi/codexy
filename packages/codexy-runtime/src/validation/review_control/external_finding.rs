@@ -77,12 +77,11 @@ pub(super) fn normalize_producer(control: &mut Value, source: &Value) -> Result<
                 return Err("external finding source changes during producer normalization".into());
             }
         }
-        if let Some(existing) = change.get("finding_ids") {
-            if string_ids(existing, "qualifying change finding ids")?
+        if let Some(existing) = change.get("finding_ids")
+            && string_ids(existing, "qualifying change finding ids")?
                 != facts.finding_ids.iter().cloned().collect()
-            {
-                return Err("qualifying change finding ids do not bind the external source".into());
-            }
+        {
+            return Err("qualifying change finding ids do not bind the external source".into());
         }
     }
     let post_cap = control

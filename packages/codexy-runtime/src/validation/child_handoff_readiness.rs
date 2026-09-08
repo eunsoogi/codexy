@@ -75,12 +75,12 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
         {
             errors.push(error);
         }
-        if let Some(state) = string_field(pr_state, "mergeStateStatus") {
-            if !state.eq_ignore_ascii_case("CLEAN") {
-                errors.push(format!(
-                    "child handoff claims PR readiness but mergeStateStatus is {state}"
-                ));
-            }
+        if let Some(state) = string_field(pr_state, "mergeStateStatus")
+            && !state.eq_ignore_ascii_case("CLEAN")
+        {
+            errors.push(format!(
+                "child handoff claims PR readiness but mergeStateStatus is {state}"
+            ));
         }
         if pr_state.get("isDraft").and_then(Value::as_bool) == Some(true) {
             errors.push("child handoff claims PR readiness but PR is still draft".into());

@@ -9,12 +9,12 @@ pub(super) fn check(
         subject,
         expected_pr,
     ));
-    if let Some(expected_pr) = expected_pr {
-        if !has_expected_pr_suffix(expected_pr, message) {
-            errors.push(format!(
-                "merge commit subject must end with the expected PR suffix: (#{expected_pr})"
-            ));
-        }
+    if let Some(expected_pr) = expected_pr
+        && !has_expected_pr_suffix(expected_pr, message)
+    {
+        errors.push(format!(
+            "merge commit subject must end with the expected PR suffix: (#{expected_pr})"
+        ));
     }
     if let Some(expected_issue) = expected_issue {
         if !has_unique_final_closing_reference(expected_issue, message) {

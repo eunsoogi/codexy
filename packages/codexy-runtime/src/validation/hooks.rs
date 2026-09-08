@@ -101,13 +101,13 @@ fn check_group(path: &Path, plugin_root: &Path, event: &str, group: &Value) -> R
     let object = group
         .as_object()
         .with_context(|| format!("{} {event} group must be an object", display_relative(path)))?;
-    if let Some(matcher) = object.get("matcher") {
-        if matcher.as_str().is_none_or(|value| value.trim().is_empty()) {
-            bail!(
-                "{} {event}.matcher must be a non-empty string when present",
-                display_relative(path)
-            );
-        }
+    if let Some(matcher) = object.get("matcher")
+        && matcher.as_str().is_none_or(|value| value.trim().is_empty())
+    {
+        bail!(
+            "{} {event}.matcher must be a non-empty string when present",
+            display_relative(path)
+        );
     }
     let handlers = object
         .get("hooks")

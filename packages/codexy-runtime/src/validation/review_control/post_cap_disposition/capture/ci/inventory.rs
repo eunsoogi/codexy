@@ -62,10 +62,10 @@ pub(super) fn project_inventory(
             .app_ids
             .get(&suite_id)
             .ok_or("expected check run is not bound to an authenticated check suite")?;
-        if let Some(suite_app) = *suite_app {
-            if run.get("appId") != Some(&json!(suite_app)) {
-                return Err("expected check run and check suite have different apps".into());
-            }
+        if let Some(suite_app) = *suite_app
+            && run.get("appId") != Some(&json!(suite_app))
+        {
+            return Err("expected check run and check suite have different apps".into());
         }
     }
     Ok(InventoryProjection {

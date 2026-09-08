@@ -53,8 +53,10 @@ pub(super) fn reject_link(path: &Path) -> Result<()> {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
         Err(error) => {
-            return Err(error)
-                .with_context(|| format!("inspecting watcher state path {}", path.display()));
+            let native = error.to_string();
+            return Err(error).with_context(|| {
+                format!("inspecting watcher state path {}: {native}", path.display())
+            });
         }
     };
     if metadata.file_type().is_symlink() {
