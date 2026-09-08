@@ -15,7 +15,9 @@ pub(crate) struct Captured {
     pub(crate) target: Value,
     pub(crate) current_pr_snapshot: Option<Value>,
     pub(crate) owner_pages: Vec<Value>,
+    pub(crate) owner_capture: Option<Value>,
     pub(crate) reviewer_pages: Vec<Value>,
+    pub(crate) reviewer_capture: Option<Value>,
     pub(crate) owner_thread: String,
     pub(crate) reviewer_thread: String,
     pub(crate) invocation: Invocation,
@@ -71,6 +73,7 @@ pub(super) struct PageSet {
     pub(super) thread: String,
     pub(super) pages: Vec<Value>,
     pub(super) turns: Vec<Turn>,
+    pub(super) capture: Option<Value>,
 }
 
 pub(super) struct Turn {
@@ -107,7 +110,7 @@ pub(crate) fn capture(input: &Value) -> Result<Captured, String> {
     if owner.thread == reviewer.thread {
         return Err("owner and reviewer threads must be distinct".into());
     }
-    let (invocation, helpers) = owner::select(&owner, &reviewer.thread)?;
+    let (invocation, helpers) = owner::select(&owner, &reviewer)?;
     let mut events = reviewer::events(&reviewer, &invocation)?;
     if events.is_empty() {
         return Err("reviewer source contains no explicit completed review result".into());
@@ -117,7 +120,9 @@ pub(crate) fn capture(input: &Value) -> Result<Captured, String> {
         target: Value::Object(target.clone()),
         current_pr_snapshot: root.get("currentPrSnapshot").cloned(),
         owner_pages: owner.pages,
+        owner_capture: owner.capture,
         reviewer_pages: reviewer.pages,
+        reviewer_capture: reviewer.capture,
         owner_thread: owner.thread,
         reviewer_thread: reviewer.thread,
         invocation,

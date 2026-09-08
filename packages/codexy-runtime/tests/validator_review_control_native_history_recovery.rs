@@ -7,52 +7,14 @@ use serde_json::{Value, json};
 
 use crate::support::TestResult;
 
+#[path = "validator_review_control_native_history_recovery/capture.rs"]
+mod capture;
 #[path = "validator_review_control_native_history/fixtures.rs"]
 mod fixtures;
 #[path = "support/review_control_import.rs"]
 mod import_support;
 
 use import_support::{git_sha, run_build, stderr};
-
-#[test]
-fn cli_recovery_projects_policy_and_source_reviewers() -> TestResult {
-    let current = fixtures::recovery_snapshot();
-    let (result, state) = run_recovery(&current, &fixtures::request())?;
-    assert!(
-        result.status.success(),
-        "native history recovery failed: {}",
-        stderr(&result)
-    );
-    let state = state.ok_or("successful recovery must write state")?;
-    let control = &state["reviewControl"];
-    assert_eq!(control["profile"], "strict");
-    assert_eq!(control["reviewer"]["name"], "codexy-sentinel");
-    assert_eq!(control["reviewer"]["model"], "gpt-6-astra");
-    assert_eq!(control["full_review_count"], 1);
-    assert_eq!(control["delta_review_count"], 1);
-    assert_eq!(control["terminal_review_count"], 2);
-    assert_eq!(
-        control["terminal_review_history"][0]["source_reviewer"]["model"],
-        "model.continuation"
-    );
-    assert_eq!(
-        control["terminal_review_history"][1]["source_reviewer"]["model"],
-        "model.initial"
-    );
-    assert_eq!(
-        state["nativeHistoryRecovery"]["admission"]["temporal"],
-        "proved_post_pr"
-    );
-    assert_eq!(
-        state["nativeHistoryRecovery"]["admission"]["result"],
-        "not_admitted"
-    );
-    assert_eq!(
-        control["native_history_recovery"]["event_ids"],
-        json!(["message-full", "message-delta"])
-    );
-    Ok(())
-}
 
 #[test]
 fn recovery_rejects_unbound_timing_and_existing_history() -> TestResult {
@@ -203,7 +165,7 @@ fn real_recovery_fixture() -> TestResult<(Value, Value, String, String)> {
     let delta_head = git_sha("HEAD^^")?;
     let recovery_head = git_sha("HEAD^")?;
     let current_head = git_sha("HEAD")?;
-    let mut input = fixtures::request();
+    let mut input = fixtures::read_thread_request();
     input["reviewer"]["pages"][1]["turns"][0]["items"][0]["review"]["reviewedHead"] =
         json!(full_head);
     input["reviewer"]["pages"][0]["turns"][0]["items"][0]["review"]["reviewedHead"] =
