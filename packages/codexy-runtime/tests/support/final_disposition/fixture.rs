@@ -41,10 +41,10 @@ pub(crate) fn configure(command: &mut FixtureCommand, fixture: &GhFixture) {
     command
         .env("CODEXY_TEST_MODE", "1")
         .env_path_list("PATH", fixture.path.clone())
-        .env_path("CODEXY_TEST_GH_COMMAND", &fixture.gh_command)
-        .env_path("CODEXY_TEST_CI_RESPONSE", &fixture.ci)
-        .env_path("CODEXY_TEST_REQUIRED_STATUS_RESPONSE", &fixture.required)
-        .env_path("CODEXY_TEST_EXPECTED_CHECKS_RESPONSE", &fixture.expected)
-        .env_path("CODEXY_TEST_CHECK_SUITES_RESPONSE", &fixture.suites)
-        .env_path("CODEXY_TEST_MAINTAINER_RESPONSE", &fixture.maintainer);
+        .env("CODEXY_TEST_GH_COMMAND", &fixture.gh_command)
+        .env("CODEXY_TEST_CI_RESPONSE", &fixture.ci)
+        .env("CODEXY_TEST_REQUIRED_STATUS_RESPONSE", &fixture.required)
+        .env("CODEXY_TEST_EXPECTED_CHECKS_RESPONSE", &fixture.expected)
+        .env("CODEXY_TEST_CHECK_SUITES_RESPONSE", &fixture.suites)
+        .env("CODEXY_TEST_MAINTAINER_RESPONSE", &fixture.maintainer);
 }
