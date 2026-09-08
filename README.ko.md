@@ -143,13 +143,14 @@ GitHub 정책에 동의한 것으로 해석되지 않습니다.
 | Watcher / `codexy-watcher` | `gpt-5.6-luna` | `max`     | 할당된 Worker를 native subagent로 읽기 전용 관찰하고 core Watcher MCP로 중요한 사건을 보고하며, 지시·수정·교체·인수는 하지 않습니다. |
 | Worker / ordinary child    | `gpt-5.6-luna` | `max`     | 별도 app task에서 자신의 branch/worktree로 이슈를 구현·검증하고 결과와 근거를 Orchestrator에 돌려줍니다.                             |
 
-보고 흐름은 Orchestrator가 Watcher를 호출하고 Worker에게 작업을 배정·교정하면,
-Worker가 결과와 근거를 돌려주는 방식입니다. Watcher는 `watcher_report`로 중요한
-사건을 보고하고, Orchestrator는 `wait_watcher`로 기다린 뒤 보고를 판단하며
-교정과 결과 인수 권한을 유지합니다. MCP는 신호를 전달할 뿐 Worker 상태를
-판단하지 않습니다. Orchestrator가 Worker/Watcher에게 보내는 전달은
-`gpt-5.6-luna`/`max`, Worker/Watcher가 Orchestrator에게 보내는 전달은
-`gpt-6-astra`/`medium`입니다.
+보고 흐름은 Orchestrator가 native Watcher를 호출하고 Worker에게 작업을
+배정·교정하면, Worker는 app task를 통해 결과와 근거를 돌려줍니다. Luna/max
+Watcher는 `watcher_report`로 중요한 사건을 보고하고, Astra/medium Orchestrator는
+`wait_watcher`로 받아 보고를 판단하며 교정과 결과 인수 권한을 유지합니다. MCP는
+신호를 전달할 뿐 Worker 상태를 판단하지 않습니다. App task 전달은
+parent→Worker가 Luna/max, Worker→parent가 Astra/medium이며, native Watcher는 app
+task 전달이 아니라 Luna/max로 `watcher_report`를 호출하고 Astra/medium
+Orchestrator가 `wait_watcher`로 받습니다.
 
 목표도 분리됩니다. Orchestrator는 전체 작업 목표, Watcher는 유한한 관찰 배정,
 Worker는 유한한 실행 목표를 맡습니다. Watcher는 전체 목표를 소유하거나 옮기지

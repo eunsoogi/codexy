@@ -174,13 +174,14 @@ opt a user into another repository's GitHub policy.
 | Watcher / `codexy-watcher` | `gpt-5.6-luna` | `max`            | Bounded native-subagent observation of assigned Workers through the core Watcher MCP; reports material events and never directs, edits, replaces, or accepts Worker work. |
 | Worker / ordinary child    | `gpt-5.6-luna` | `max`            | Separate app task that owns its implementation branch/worktree, verifies the issue, and returns results and evidence to the Orchestrator.                                 |
 
-Reporting flow: the Orchestrator summons the Watcher and assigns or corrects the
-Worker; the Worker returns results and evidence; the Watcher reports material
-events through `watcher_report`; the Orchestrator waits with `wait_watcher`,
-judges the report, and retains correction and acceptance authority. The MCP
-transports signals; it does not judge Worker state.
-Orchestrator-to-Worker/Watcher delivery uses `gpt-5.6-luna`/`max`;
-Worker/Watcher-to-Orchestrator delivery uses `gpt-6-astra`/`medium`.
+Reporting flow: the Orchestrator summons the native Watcher and assigns or
+corrects the Worker; the Worker returns results and evidence through its app
+task; the Luna/max Watcher reports material events through `watcher_report`; the
+Astra/medium Orchestrator waits with `wait_watcher`, judges the report, and
+retains correction and acceptance authority. The MCP transports signals; it does
+not judge Worker state. App-task delivery uses Luna/max parent-to-Worker and
+Astra/medium Worker-to-parent; the native Watcher calls `watcher_report` as
+Luna/max, and the Astra/medium parent receives it through `wait_watcher`.
 
 Goal boundary: the Orchestrator owns the overall task goal, the Watcher owns
 only a bounded observation assignment, and the Worker owns its finite execution
