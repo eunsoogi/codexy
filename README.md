@@ -112,9 +112,9 @@ codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
 ```
 
-This example selects pending candidate `v1.7.0`; use published `v1.6.3` for a
-released installation. The capability summary describes current source, not
-source-only changes available from the published pin before a matching release.
+Use the release ref shown above. If it is not published, choose a tag from
+[Releases](https://github.com/eunsoogi/codexy/releases). The summary describes
+current source; install changes from a matching published release.
 
 ## What Codexy does
 
