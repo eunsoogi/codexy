@@ -6,6 +6,8 @@ use serde::{
 };
 use serde_json::{Map, Value};
 
+const ARBITRARY_NUMBER_KEY: &str = "$serde_json::private::Number";
+
 /// Decodes JSON while rejecting duplicate keys at every object depth.
 pub(crate) fn parse(text: &str) -> Result<Value, serde_json::Error> {
     let mut deserializer = serde_json::Deserializer::from_str(text);
@@ -78,6 +80,23 @@ impl<'de> Visitor<'de> for StrictVisitor {
 
     fn visit_map<A: MapAccess<'de>>(self, mut access: A) -> Result<Self::Value, A::Error> {
         let mut values = Map::new();
+        let Some(first_key) = access.next_key::<String>()? else {
+            return Ok(StrictValue(Value::Object(values)));
+        };
+        if first_key == ARBITRARY_NUMBER_KEY {
+            let raw = access.next_value::<String>()?;
+            if access.next_key::<String>()?.is_some() {
+                return Err(A::Error::custom(
+                    "arbitrary-precision number has extra fields",
+                ));
+            }
+            let number = raw
+                .parse::<serde_json::Number>()
+                .map_err(A::Error::custom)?;
+            return Ok(StrictValue(Value::Number(number)));
+        }
+        let StrictValue(first_value) = access.next_value()?;
+        values.insert(first_key, first_value);
         while let Some(key) = access.next_key::<String>()? {
             if values.contains_key(&key) {
                 return Err(A::Error::custom(format!("duplicate JSON key {key}")));
@@ -86,5 +105,26 @@ impl<'de> Visitor<'de> for StrictVisitor {
             values.insert(key, value);
         }
         Ok(StrictValue(Value::Object(values)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse;
+
+    #[test]
+    fn preserves_arbitrary_precision_numbers() {
+        let value = parse(r#"{"value":1.23456789012345678901234567890}"#).expect("valid JSON");
+        assert_eq!(
+            value["value"].to_string(),
+            "1.23456789012345678901234567890"
+        );
+    }
+
+    #[test]
+    fn rejects_extra_arbitrary_precision_number_fields() {
+        let error = parse(r#"{"value":{"$serde_json::private::Number":"1e999","extra":0}}"#)
+            .expect_err("invalid custom visitor");
+        assert!(error.to_string().contains("extra fields"));
     }
 }

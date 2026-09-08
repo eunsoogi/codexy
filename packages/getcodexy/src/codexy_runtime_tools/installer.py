@@ -25,6 +25,7 @@ class InstallConfig(Protocol):
     git_repository: str
     git_ref: str
     source_identity: object
+    allow_mixed_plugin_roots: bool
 
 
 def executable(path: Path) -> bool:
@@ -90,17 +91,24 @@ def install_package(config: InstallConfig, install_root: Path, installed: Path) 
             source_identity.verify_archive(archive, platform=config.platform)
         elif release_contract is not None:
             release_contract.verify_archive(archive, platform=config.platform)
+        allow_mixed_plugin_roots = bool(
+            getattr(config, "allow_mixed_plugin_roots", False)
+        )
+        plugin_root = (
+            source_identity.package_plugin_root()
+            if source_identity is not None
+            else release_contract.package_plugin_root()
+            if release_contract is not None
+            else "codexy"
+        )
+        if plugin_root is None and allow_mixed_plugin_roots:
+            plugin_root = "codexy"
         packaged_runtime, package_manifest = unpack_runtime(
             archive=archive,
             work=work,
             runtime_name=config.runtime_name,
-            plugin_root=(
-                source_identity.package_plugin_root()
-                if source_identity is not None
-                else release_contract.package_plugin_root()
-                if release_contract is not None
-                else "codexy"
-            ),
+            plugin_root=plugin_root,
+            allow_mixed_plugin_roots=allow_mixed_plugin_roots,
         )
         if not config.package_override and release_contract is None:
             matches, message = releases_match(config.manifest, package_manifest)
@@ -127,7 +135,8 @@ def install_git(config: InstallConfig, install_root: Path, installed: Path) -> N
     install_root.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="git-", dir=install_root) as temporary:
         staged_root = Path(temporary) / "root"
-        staged_runtime = staged_root / "bin" / f"codexy-mcp-{config.server}"
+        suffix = ".exe" if getattr(config, "runtime_name", "").endswith(".exe") else ""
+        staged_runtime = staged_root / "bin" / f"codexy-mcp-{config.server}{suffix}"
         command = [
             cargo,
             "install",

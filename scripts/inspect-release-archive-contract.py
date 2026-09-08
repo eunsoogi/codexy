@@ -5,9 +5,11 @@ import json
 import re
 import shlex
 import sys
-from importlib import import_module
 from itertools import groupby
 from pathlib import Path
+
+from inspect_release_archive_helpers import fail_if, print_handoff
+from inspect_release_archive_shell import shell_scan
 
 PUBLIC_PLATFORMS = ["darwin-arm64", "linux-x86_64"]
 ALL_PLATFORMS = [*PUBLIC_PLATFORMS, "windows-x86_64"]
@@ -15,10 +17,6 @@ SERVERS = ("lsp", "codegraph")
 MUTATORS = set("declare export local readonly typeset unset read".split())
 SOURCE_WRAPPER = 'bundled_platforms="darwin-arm64 linux-x86_64"'
 CANDIDATE_WRAPPER = 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64"'
-HEREDOC_PATTERN = re.compile(
-    r"<<(?P<strip>-)?[ \t]*(?P<quote>['\"]?)(?P<delimiter>[^ \t;|&<>()]+)(?P=quote)(?=$|[ \t;|&<>()])"
-)
-SHELL_LITERAL_PATTERN = re.compile(r"'(?:[^']*)'|\"(?:\\.|[^\"])*\"|\\.")
 
 
 def wrapper_declarations(lines: list[str], allowed: tuple[str, ...]) -> list[int]:
@@ -92,19 +90,6 @@ def logical_commands(source: str) -> list[list[str]]:
     ]
 
 
-def shell_scan(line: str) -> tuple[bool, list[tuple[str, bool]]]:
-    masked = SHELL_LITERAL_PATTERN.sub(lambda match: "_" * len(match[0]), line)
-    if comment := re.search(r"(?<!\S)#", masked):
-        masked = masked[: comment.start()]
-    delimiters = []
-    for match in re.finditer(r"<<", masked):
-        heredoc = HEREDOC_PATTERN.match(line, match.start())
-        if not heredoc:
-            raise ValueError("invalid heredoc")
-        delimiters.append((heredoc["delimiter"], bool(heredoc["strip"])))
-    return bool(re.search(r"(?<!\\)(?:\\\\)*\\$", masked)), delimiters
-
-
 def wrapper_paths(root: Path) -> tuple[Path, ...]:
     shared = root / "mcp/codexy-mcp-devtools"
     paths = tuple(root / "mcp" / f"codexy-mcp-{server}" for server in SERVERS)
@@ -145,17 +130,6 @@ def rewrite_wrappers(root: Path, allowed: tuple[str, ...], replacement: str) -> 
         text = open(path, encoding="utf-8", newline="").read()
         rewritten = rewritten_wrapper(text, allowed, replacement)
         open(path, "w", encoding="utf-8", newline="").write(rewritten)
-
-
-def print_handoff(root: Path) -> None:
-    validate = import_module("handoff_runtime_contract").validate
-    manifest = validate(root / "handoff-runtime.json", root)
-    for platform in manifest["platforms"].values():
-        print(platform["path"])
-
-
-def fail_if(condition: bool, message: str) -> None:
-    condition and sys.exit(message)
 
 
 def main() -> None:
@@ -213,6 +187,9 @@ def main() -> None:
             extension = "exe" if platform == "windows-x86_64" else "bin"
             for server in SERVERS:
                 print(f"runtime/codexy-mcp-{server}-{platform}.{extension}")
+            watcher = root / "runtime" / f"codexy-mcp-watcher-{platform}.{extension}"
+            if watcher.is_file():
+                print(f"runtime/{watcher.name}")
         if (root / "handoff-runtime.json").is_file():
             print_handoff(root)
         return
@@ -240,6 +217,16 @@ def main() -> None:
                 print(path)
         if state == "candidate-proven" and "classes" in release:
             print_handoff(root)
+            if "coreWatcherMcp" in release["classes"]:
+                for platform in expected:
+                    extension = "exe" if platform == "windows-x86_64" else "bin"
+                    path = (
+                        root / "runtime" / f"codexy-mcp-watcher-{platform}.{extension}"
+                    )
+                    fail_if(
+                        not path.is_file(), f"missing core watcher runtime: {path.name}"
+                    )
+                    print(f"runtime/{path.name}")
         return
     raise SystemExit("unknown archive mode")
 

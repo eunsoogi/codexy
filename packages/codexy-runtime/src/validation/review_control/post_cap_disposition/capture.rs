@@ -1,3 +1,5 @@
+use std::process::Command;
+
 use serde_json::{Map, Value, json};
 
 use super::super::pre_pr::{number, object, reject_unknown, text};
@@ -7,6 +9,23 @@ mod maintainer;
 
 const SCHEMA: &str = "codexy.review-control-finding-disposition.v1";
 const MAX_RESPONSE_BYTES: usize = 4 * 1024 * 1024;
+const TEST_GH_COMMAND_ENV: &str = "CODEXY_TEST_GH_COMMAND";
+
+pub(super) fn github_command() -> Command {
+    if matches!(std::env::var("CODEXY_TEST_MODE").as_deref(), Ok("1")) {
+        if let Some(program) = std::env::var_os(TEST_GH_COMMAND_ENV) {
+            #[cfg(windows)]
+            {
+                let mut command = Command::new("cmd.exe");
+                command.args(["/D", "/C"]).arg(program);
+                return command;
+            }
+            #[cfg(not(windows))]
+            return Command::new(program);
+        }
+    }
+    Command::new("gh")
+}
 
 pub(super) struct Locator {
     pub(super) repository: String,
@@ -109,6 +128,12 @@ pub(super) fn read_live(locator: Locator, expected_head: Option<&str>) -> Result
     });
     check(source.as_object().ok_or("finding disposition source")?)?;
     Ok(source)
+}
+
+pub(super) fn read_final_sources(locator: &Locator) -> Result<(Value, Value), String> {
+    let (_ci_raw, ci_projection) = ci::read(locator)?;
+    let maintainer_raw = maintainer::read_raw(locator)?;
+    Ok((ci_projection, maintainer_raw))
 }
 
 pub(super) fn check(source: &Map<String, Value>) -> Result<(), String> {

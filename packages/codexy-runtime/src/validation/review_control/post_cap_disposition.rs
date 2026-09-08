@@ -1,11 +1,10 @@
-use std::collections::HashSet;
-
 use serde_json::Value;
 
-use super::pre_pr::{object, reject_unknown, text};
+use super::pre_pr::{object, text};
 
 mod binding;
 mod capture;
+mod check;
 mod classification;
 
 pub(super) fn check_live_binding(
@@ -43,6 +42,24 @@ pub(super) fn requires_source(control: &Value) -> bool {
 
 pub(super) fn read_live(locator: &Value, expected_head: Option<&str>) -> Result<Value, String> {
     capture::read_live(capture::Locator::from_value(locator)?, expected_head)
+}
+
+pub(super) fn check_locator(locator: &Value) -> Result<(), String> {
+    capture::Locator::from_value(locator).map(|_| ())
+}
+
+pub(super) fn read_final_sources(
+    locator: &Value,
+    expected_head: Option<&str>,
+) -> Result<(Value, Value), String> {
+    let locator = capture::Locator::from_value(locator)?;
+    let (ci_projection, maintainer_raw) = capture::read_final_sources(&locator)?;
+    if expected_head
+        .is_some_and(|head| ci_projection.get("headRefOid").and_then(Value::as_str) != Some(head))
+    {
+        return Err("final disposition CI source is stale for the current head".into());
+    }
+    Ok((ci_projection, maintainer_raw))
 }
 
 pub(super) fn validate_locator(locator: &Value, current: &Value) -> Result<(), String> {
@@ -187,61 +204,5 @@ pub(super) fn normalize_producer(
 }
 
 pub(super) fn check(value: &Value) -> Result<(), String> {
-    let source = object(Some(value), "authenticated finding disposition")?;
-    reject_unknown(
-        source,
-        &[
-            "schema",
-            "locator",
-            "repository",
-            "owningIssue",
-            "pullRequest",
-            "sources",
-            "capture",
-            "findings",
-        ],
-        "authenticated finding disposition",
-    )?;
-    if text(source, "schema", "finding disposition")? != SCHEMA {
-        return Err("finding disposition has an unsupported schema".into());
-    }
-    capture::check(source)?;
-    let Some(findings) = source.get("findings") else {
-        return Ok(());
-    };
-    let findings = findings
-        .as_array()
-        .ok_or_else(|| "finding disposition findings must be an array".to_owned())?;
-    let mut ids = HashSet::new();
-    for finding in findings {
-        let finding = object(Some(finding), "finding disposition record")?;
-        reject_unknown(
-            finding,
-            &["id", "path", "kind", "requiredDisposition"],
-            "finding disposition record",
-        )?;
-        let id = text(finding, "id", "finding disposition record")?;
-        if !ids.insert(id) {
-            return Err("finding disposition ids must be unique".into());
-        }
-        let path = text(finding, "path", "finding disposition record")?;
-        if let Some(kind) = finding.get("kind") {
-            if kind.as_str().is_none_or(str::is_empty) {
-                return Err("finding disposition record kind must be non-empty".into());
-            }
-        }
-        if path.starts_with('/')
-            || path.contains('\\')
-            || path
-                .split('/')
-                .any(|part| part.is_empty() || matches!(part, "." | ".."))
-        {
-            return Err("finding disposition paths must be repository-relative".into());
-        }
-        let kind = text(finding, "requiredDisposition", "finding disposition record")?;
-        if !KINDS.contains(&kind) {
-            return Err("finding disposition kind is unsupported".into());
-        }
-    }
-    Ok(())
+    check::check(value)
 }

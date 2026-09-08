@@ -11,6 +11,26 @@ pub(super) fn check(
     object: &Map<String, Value>,
     command: &[String],
 ) -> Result<()> {
+    if name == "watcher" {
+        let expected = [
+            "./mcp/codexy-mcp-watcher".to_string(),
+            "--stdio".to_string(),
+        ];
+        if command != expected {
+            bail!(
+                "{} watcher.command must use the exact core MCP entrypoint {:?}",
+                display_relative(path),
+                expected
+            );
+        }
+        if object.get("cwd").and_then(Value::as_str) != Some(".") {
+            bail!(
+                "{} watcher.cwd must be '.' so Codex resolves the command from the plugin root",
+                display_relative(path)
+            );
+        }
+        return Ok(());
+    }
     if !matches!(name, "lsp" | "codegraph") {
         return Ok(());
     }

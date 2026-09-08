@@ -72,7 +72,7 @@ fn diagnostics_separate_discovery_schema_and_fork_contracts()
     let output = run(&plugin_root, &codex_home, &["--diagnose"])?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("A role-discovery: PASS (7 marker-owned standalone agents)"));
+    assert!(stdout.contains("A role-discovery: PASS (8 marker-owned standalone agents)"));
     assert!(
         stdout.contains("B tool-schema: CONFIGURED (namespace=agents, agent_type-visible=true)")
     );

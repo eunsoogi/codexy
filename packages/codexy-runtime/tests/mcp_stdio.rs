@@ -26,6 +26,12 @@ mod lsp_server_error;
 mod lsp_stderr;
 #[path = "mcp_stdio/wrapper_runtime.rs"]
 mod wrapper_runtime;
+#[path = "mcp_stdio/watcher_protocol.rs"]
+mod watcher_protocol;
+#[path = "mcp_stdio/watcher_recovery.rs"]
+mod watcher_recovery;
+#[path = "mcp_stdio/watcher_state.rs"]
+mod watcher_state;
 
 use client::{InstalledPlugin, McpClient, TempRuntimeDir};
 use fixtures::{installed_plugin_copy, installed_plugin_under_rust_host, temp_runtime_dir};

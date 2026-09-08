@@ -20,6 +20,7 @@ pub(super) const SPECIALIST_MODEL_CONTRACTS: &[SpecialistModelContract] = &[
     contract("codexy-sentinel", "gpt-6-astra", "xhigh"),
     contract("codexy-shipwright", "gpt-5.6-terra", "high"),
     contract("codexy-warden", "gpt-6-astra", "xhigh"),
+    contract("codexy-watcher", "gpt-5.6-luna", "max"),
 ];
 
 const fn contract(

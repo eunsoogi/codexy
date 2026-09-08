@@ -1,0 +1,7 @@
+{
+  "watcher": {
+    "command": "./mcp/codexy-mcp-watcher",
+    "args": ["--stdio"],
+    "cwd": "."
+  }
+}

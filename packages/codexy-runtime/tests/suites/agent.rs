@@ -153,3 +153,12 @@ mod validator_review_control_pre_verdict;
 #[path = "../validator_review_control_pre_verdict_negatives.rs"]
 #[cfg(unix)]
 mod validator_review_control_pre_verdict_negatives;
+
+#[path = "../validator_final_disposition.rs"]
+mod validator_final_disposition;
+
+#[path = "../validator_final_disposition_edges.rs"]
+mod validator_final_disposition_edges;
+
+#[path = "../validator_final_disposition_witness.rs"]
+mod validator_final_disposition_witness;

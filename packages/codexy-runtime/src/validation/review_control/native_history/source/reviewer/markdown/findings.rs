@@ -80,17 +80,19 @@ fn finding_header(line: &str) -> Option<(String, String)> {
     let mut heading = body[..close].trim();
     let tail = body[close + 2..].trim_start();
     let disposition = if let Some(disposition) = leading_parenthetical(tail) {
-        disposition
+        disposition.to_owned()
     } else if let Some(disposition) = leading_em_dash_label(tail) {
+        disposition.to_owned()
+    } else if let Some(disposition) = leading_label(tail, "disposition") {
         disposition
     } else {
         if let Some((open, disposition)) = trailing_parenthetical(heading) {
             heading = heading[..open].trim_end();
-            disposition
+            disposition.to_owned()
         } else {
             let (open, disposition) = trailing_em_dash_label(heading)?;
             heading = heading[..open].trim_end();
-            disposition
+            disposition.to_owned()
         }
     };
     let severity = heading
@@ -98,8 +100,7 @@ fn finding_header(line: &str) -> Option<(String, String)> {
         .or_else(|| heading.split_once(" - "))?
         .0
         .trim();
-    (!severity.is_empty() && !disposition.is_empty())
-        .then(|| (severity.to_owned(), disposition.to_owned()))
+    (!severity.is_empty() && !disposition.is_empty()).then(|| (severity.to_owned(), disposition))
 }
 
 fn strip_number(line: &str) -> &str {
@@ -129,6 +130,25 @@ fn leading_em_dash_label(value: &str) -> Option<&str> {
     }
     let disposition = value[..close].trim();
     (!disposition.is_empty()).then_some(disposition)
+}
+
+fn leading_label(value: &str, expected: &str) -> Option<String> {
+    let (label, value) = value.split_once(':')?;
+    if !label.trim().eq_ignore_ascii_case(expected) {
+        return None;
+    }
+    let value = value.trim();
+    let value = if let Some(value) = value.strip_prefix('`') {
+        let close = value.find('`')?;
+        &value[..close]
+    } else {
+        value
+            .split(|character: char| character.is_whitespace() || ";,.)".contains(character))
+            .next()
+            .unwrap_or_default()
+    };
+    let value = value.trim().trim_matches('`').trim();
+    (!value.is_empty()).then(|| value.to_owned())
 }
 
 fn trailing_parenthetical(value: &str) -> Option<(usize, &str)> {

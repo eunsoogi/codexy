@@ -5,6 +5,12 @@ forbidden. Generic work defaults to `gpt-5.6-luna` at `max`; when that route is
 unavailable, it fails closed to the root or named-specialist route. Simple work
 uses the same Luna route when all simple predicates are complete.
 
+For bounded native observation of assigned Codex Workers, the Orchestrator MUST
+select the packaged `codexy-watcher` specialist and summon it through the host's
+native subagent facility. It MUST NOT substitute a generic subagent or treat a
+self-declared role name as specialist identity. The packaged Watcher declares
+`gpt-5.6-luna` at `max`; caller overrides remain forbidden.
+
 Thread delivery MUST bind `model` and `thinking` to the authenticated recipient,
 not copy the sender settings. Parent-to-generic-child delivery MUST use
 `gpt-5.6-luna` at `max`; child-to-root delivery MUST use `gpt-6-astra` at

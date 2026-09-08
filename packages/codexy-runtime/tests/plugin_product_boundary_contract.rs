@@ -6,5 +6,7 @@ mod inventory;
 mod model;
 #[path = "plugin_product_boundary_contract/support.rs"]
 mod support;
+#[path = "plugin_product_boundary_contract/sidecars.rs"]
+mod sidecars;
 #[path = "plugin_product_boundary_contract/tests.rs"]
 mod tests;

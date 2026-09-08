@@ -31,3 +31,15 @@ fn lifecycle_audit_rejects_lowercase_terminal_results() -> TestResult {
     assert!(!output.status.success(), "lowercase terminal result must not be typed evidence");
     Ok(())
 }
+
+#[test]
+fn lifecycle_audit_preserves_native_history_provenance() -> TestResult {
+    let record = r#"{"issue_number":725,"reviewed_head":"head","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"},"terminal_result":"BLOCK","unresolved_findings":[],"full_review_count":1,"delta_review_count":0,"terminal_review_count":1,"terminal_review_limit":3,"native_history_provenance":{"schema":"codexy.review-control-native-history.v1","temporal":"proved_post_pr","event_ids":["native-full"]},"terminal_review_history":[{"id":"native-full","kind":"full","reviewer":{"name":"codexy-sentinel","model":"model.native","reasoning_effort":"xhigh"},"policy_reviewer":{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"},"source_reviewer":{"name":"codexy-sentinel","model":"model.native","reasoning_effort":"xhigh"},"reviewed_head":"head","terminal_result":"BLOCK","unresolved_findings":[]}]}"#;
+    let output = crate::support::validator_child_lane_ownership(&child_audit_evidence(record))?;
+    assert!(
+        output.status.success(),
+        "native history provenance must survive lifecycle projection: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}

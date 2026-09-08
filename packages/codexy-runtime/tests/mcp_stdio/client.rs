@@ -72,6 +72,18 @@ impl McpClient {
         self.read_frame()
     }
 
+    pub(super) fn send_without_read(
+        &mut self,
+        payload: &Value,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let body = serde_json::to_vec(payload)?;
+        let stdin = self.child.stdin.as_mut().ok_or("missing child stdin")?;
+        write!(stdin, "Content-Length: {}\r\n\r\n", body.len())?;
+        stdin.write_all(&body)?;
+        stdin.flush()?;
+        Ok(())
+    }
+
     pub(super) fn send_with_leading_content_type(
         &mut self,
         payload: &Value,

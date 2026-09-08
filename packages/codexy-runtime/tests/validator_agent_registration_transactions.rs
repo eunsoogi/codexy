@@ -7,7 +7,7 @@ use crate::support;
 
 const MANAGED: &str = "# CODEXY MANAGED AGENT\n";
 const PERSONAL: &[u8] = b"name = \"personal\"\ndescription = \"keep these bytes\"\n";
-const ROLES: [&str; 7] = [
+const ROLES: [&str; 8] = [
     "codexy-architect",
     "codexy-auditor",
     "codexy-cartographer",
@@ -15,6 +15,7 @@ const ROLES: [&str; 7] = [
     "codexy-sentinel",
     "codexy-shipwright",
     "codexy-warden",
+    "codexy-watcher",
 ];
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

@@ -3,9 +3,25 @@ query($owner:String!, $name:String!, $pullRequest:Int!, $owningIssue:Int!) {
     pullRequest(number:$pullRequest) {
       number
       url
+      state
+      isDraft
+      mergeStateStatus
       baseRefOid
       headRefOid
       repository { nameWithOwner }
+      reviewThreads(first:100) {
+        nodes {
+          id
+          isResolved
+          isOutdated
+          path
+          comments(first:100) {
+            nodes { url }
+            pageInfo { hasNextPage }
+          }
+        }
+        pageInfo { hasNextPage }
+      }
       comments(first:100) {
         nodes {
           id

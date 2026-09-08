@@ -24,11 +24,9 @@
      one current next action. MUST NOT require a fixed checkpoint count or
      unchanged-progress receipt.
    - In [the canonical role mapping](parent-supervision.md), MUST read back the
-     Orchestrator's `get_goal=null` state and the Watcher's exact active goal
-     separately. The Orchestrator MUST NOT call `create_goal` or recreate a goal
-     for setup, callbacks, correction, review or merge decisions, or
-     external-event resume; the Orchestrator returns control after authorized
-     work.
+     Orchestrator's exact active overall goal. A Watcher subagent receives only
+     a bounded observation assignment and MUST NOT own or recreate that overall
+     goal.
    - MUST split independent outcomes into separate issues and lanes unless a
      maintainer explicitly scopes them as one atomic lane.
    - MUST mark each lane as parent-owned or child-owned before any
@@ -47,10 +45,12 @@
      child-thread/worktree owner for an issue-sized implementation lane.
    - For issue-sized implementation lanes, the root orchestrator MUST start or
      fork a separate Codex thread in a worktree when the tool is available.
-   - An authorized Watcher MUST be an independent Codex app task in the same
-     saved project as its assigned Workers. It observes and reports; it MUST NOT
-     edit Worker files, correct Workers, decide acceptance, or recruit a second
-     watcher.
+   - The Orchestrator MUST summon the packaged `codexy-watcher` specialist
+     through the callable native-subagent API (`spawn_agent` or its versioned
+     multi-agent equivalent) with the Worker's exact target identities. The
+     Watcher observes and reports through the core Watcher MCP; it MUST NOT
+     become an independent app task, edit Worker files, correct Workers, decide
+     acceptance, or recruit a second watcher.
    - MUST complete lane assignment before implementation edits begin. An
      Orchestrator may prepare issue text, branch name, worktree path, and
      handoff text, but MUST NOT patch implementation files for the child-owned
@@ -80,9 +80,11 @@
      spreadsheets/data, research/wiki, or project settings behavior.
    - MUST keep evidence tied to the exact commit, PR head, file state, or
      runtime surface being claimed.
-   - For app-thread supervision, MUST exercise the actual app delivery/readback
-     path and report Worker, Watcher, Orchestrator-goal, and Watcher-goal state
-     separately. A Watcher goal or callback does not prove issue completion.
+   - For supervision, MUST exercise the actual subagent creation, MCP
+     `watcher_report`/`wait_watcher` delivery, Worker readback, and
+     Orchestrator-goal path. Report the Orchestrator's overall goal and the
+     Watcher's bounded observation assignment separately; a Watcher report does
+     not prove issue completion.
 6. Finish:
    - MUST confirm no running sessions, open child lanes, untracked required
      files, or unverified claims remain.

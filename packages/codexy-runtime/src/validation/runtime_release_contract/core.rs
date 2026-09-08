@@ -4,6 +4,9 @@ use anyhow::{Context as _, Result, bail};
 use serde_json::{Map, Value};
 use sha2::{Digest as _, Sha256};
 
+#[path = "core_watcher.rs"]
+mod core_watcher;
+
 use crate::{
     paths::display_relative,
     validation::{
@@ -14,7 +17,7 @@ use crate::{
     },
 };
 
-const PLATFORMS: [&str; 3] = ["darwin-arm64", "linux-x86_64", "windows-x86_64"];
+pub(super) const PLATFORMS: [&str; 3] = ["darwin-arm64", "linux-x86_64", "windows-x86_64"];
 
 pub(super) fn check_source(
     source: &Map<String, Value>,
@@ -78,7 +81,16 @@ pub(crate) fn check(
     devtools_platforms: &Map<String, Value>,
     path: &Path,
 ) -> Result<()> {
-    exact_keys(classes, &["devtoolsMcp", "coreHandoff"], path)?;
+    let watcher_aware = classes.contains_key("coreWatcherMcp");
+    if watcher_aware {
+        exact_keys(
+            classes,
+            &["devtoolsMcp", "coreHandoff", "coreWatcherMcp"],
+            path,
+        )?;
+    } else {
+        exact_keys(classes, &["devtoolsMcp", "coreHandoff"], path)?;
+    }
     let devtools = object_field(classes, "devtoolsMcp", path)?;
     exact_keys(devtools, &["platforms"], path)?;
     if devtools.get("platforms") != Some(&Value::Object(devtools_platforms.clone())) {
@@ -131,6 +143,9 @@ pub(crate) fn check(
             "core bridge kind",
             path,
         )?;
+    }
+    if watcher_aware {
+        core_watcher::check(object_field(classes, "coreWatcherMcp", path)?, path)?;
     }
     lower_hex(string(source, "commit", path)?, 40, "source.commit", path)?;
     lower_hex(string(source, "tree", path)?, 40, "source.tree", path)

@@ -2,9 +2,10 @@ use std::path::Path;
 
 use serde_json::{Map, Value};
 
-use super::{migration, policy, pre_pr, snapshot, state};
+use super::{final_disposition, migration, policy, pre_pr, snapshot, state};
 
 mod evidence;
+mod genesis;
 
 pub(super) struct PreVerdictContext<'a> {
     pub(super) repository_root: &'a Path,
@@ -60,8 +61,8 @@ pub(super) fn check_with_repository(
     let previous_is_legacy = legacy_reviewer.as_ref() == previous_reviewer;
     let previous_is_native_history = previous_control.contains_key("native_history_recovery");
     if previous_count == 0 {
-        check_genesis(plugin_root, previous_control)?;
-        check_genesis_snapshot(previous, previous_control)?;
+        genesis::check(plugin_root, previous_control)?;
+        genesis::check_snapshot(previous, previous_control)?;
     } else if previous_is_current && previous_is_native_history {
         state::check_native_history_predecessor(plugin_root, previous)?;
         if current.get("nativeHistoryRecovery") != previous.get("nativeHistoryRecovery") {
@@ -78,11 +79,12 @@ pub(super) fn check_with_repository(
     }
 
     let mut normalized_control = current_control.clone();
-    if current_control
-        .get("reviewed_head")
-        .or_else(|| current_control.get("head_oid"))
-        != current.get("headRefOid")
-    {
+    let current_bound_head = current_control
+        .get("final_disposition")
+        .and_then(Value::as_object)
+        .and_then(|disposition| disposition.get("head_oid"))
+        .or_else(|| current_control.get("reviewed_head"));
+    if current_bound_head != current.get("headRefOid") {
         return Err("review control transition current state must bind the current head".into());
     }
     let migration = if previous_is_legacy {
@@ -103,6 +105,19 @@ pub(super) fn check_with_repository(
     let previous_history = history(previous_control, "previous")?;
     let current_history = history(&normalized_control, "current")?;
     let current_count = count(&normalized_control, "terminal_review_count")?;
+    if final_disposition::check_transition(
+        repository_root,
+        previous,
+        current,
+        previous_control,
+        &normalized_control,
+        previous_count,
+        current_count,
+        previous_history,
+        current_history,
+    )? {
+        return Ok(Value::Object(normalized_control));
+    }
     let Some(expected_count) = previous_count.checked_add(1) else {
         return Err("review control transition terminal count overflow".into());
     };
@@ -124,62 +139,6 @@ pub(super) fn check_with_repository(
         )?;
     }
     Ok(Value::Object(normalized_control))
-}
-
-fn check_genesis(plugin_root: &Path, control: &Map<String, Value>) -> Result<(), String> {
-    if control.get("schema").and_then(Value::as_str) != Some(state::CONTROL_SCHEMA)
-        || control.contains_key("reviewed_head")
-        || control.contains_key("terminal_result")
-        || control.contains_key("post_cap_re_review")
-        || control.contains_key("reviewer_migration")
-        || count(control, "full_review_count")? != 0
-        || count(control, "delta_review_count")? != 0
-        || count(control, "terminal_review_count")? != 0
-        || !history(control, "genesis")?.is_empty()
-    {
-        return Err("review control transition previous state is not a clean genesis".into());
-    }
-    if !control
-        .get("unresolved_findings")
-        .and_then(Value::as_array)
-        .is_some_and(Vec::is_empty)
-    {
-        return Err("review control transition genesis must have no findings".into());
-    }
-    let profile_name = required_text(control, "profile", "genesis")?;
-    let profiles =
-        policy::load(plugin_root).map_err(|_| "review profile policy is unavailable".to_owned())?;
-    let profile = profiles
-        .get(profile_name)
-        .ok_or_else(|| "review control transition genesis selects an unknown profile".to_owned())?;
-    let reviewer = profile
-        .reviewer
-        .as_ref()
-        .ok_or_else(|| "review control transition genesis must select a reviewer".to_owned())?;
-    let expected = serde_json::to_value(reviewer)
-        .map_err(|_| "review control transition reviewer is not serializable".to_owned())?;
-    if control.get("reviewer") != Some(&expected)
-        || count(control, "terminal_review_limit")? != u64::from(profile.terminal_review_limit)
-    {
-        return Err("review control transition genesis does not bind policy".into());
-    }
-    Ok(())
-}
-
-fn check_genesis_snapshot(snapshot: &Value, control: &Map<String, Value>) -> Result<(), String> {
-    let object = snapshot
-        .as_object()
-        .ok_or_else(|| "previous PR snapshot must be an object".to_owned())?;
-    let issue = snapshot::owning_issue_number(snapshot, "previous")?;
-    if issue != count(control, "issue_number")? {
-        return Err("genesis PR snapshot issue identity disagrees with review control".into());
-    }
-    if let Some(profile) = object.get("reviewProfile").and_then(Value::as_str) {
-        if control.get("profile").and_then(Value::as_str) != Some(profile) {
-            return Err("genesis PR snapshot profile disagrees with review control".into());
-        }
-    }
-    Ok(())
 }
 
 fn same_control_identity(

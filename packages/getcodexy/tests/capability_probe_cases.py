@@ -12,8 +12,10 @@ from unittest.mock import patch
 
 from codexy_runtime_tools.component_health import health
 from codexy_runtime_tools.component_manifest import load_component_manifest
-from packages.getcodexy.tests.component_distribution_support import FAKE_MCP
-
+from packages.getcodexy.tests.component_distribution_support import (
+    FAKE_MCP,
+    install_watcher_runtime,
+)
 
 REPOSITORY = Path(__file__).resolve().parents[3]
 PLUGIN_NAMES = {
@@ -31,6 +33,8 @@ def materialize(
     for component in components:
         root = state.marketplace / "plugins" / PLUGIN_NAMES[component]
         if root.exists():
+            if component == "core":
+                install_watcher_runtime(root)
             continue
         source = REPOSITORY / "plugins" / PLUGIN_NAMES[component]
         root.parent.mkdir(parents=True, exist_ok=True)
@@ -39,6 +43,8 @@ def materialize(
         contents = json.loads(manifest.read_text(encoding="utf-8"))
         contents["version"] = version
         manifest.write_text(json.dumps(contents), encoding="utf-8")
+        if component == "core":
+            install_watcher_runtime(root)
 
 
 class CapabilityProbeCases:
@@ -224,27 +230,3 @@ class CapabilityProbeCases:
             return result
 
         return probe
-
-
-class CapabilityCliCases:
-    def test_doctor_capability_failure_returns_nonzero_exit(self) -> None:
-        from codexy_runtime_tools.component_cli import main
-
-        receipt = {
-            "schema": "getcodexy.doctor.v1",
-            "command": "doctor",
-            "outcome": "completed",
-            "errors": [],
-            "component_health": [
-                dict(
-                    component="core",
-                    healthy=False,
-                    started=True,
-                    callable=False,
-                    first_failure_stage="callable",
-                    reason_code="capability-call-failed",
-                )
-            ],
-        }
-        with patch("codexy_runtime_tools.component_cli.doctor", return_value=receipt):
-            self.assertEqual(main(["doctor", "--json"]), 2)

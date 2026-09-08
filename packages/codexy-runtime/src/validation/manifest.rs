@@ -128,19 +128,8 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     match load_manifest(plugin_root).and_then(|manifest| {
         match manifest.get("name").and_then(Value::as_str) {
             Some("codexy") => {
-                if manifest.get("mcpServers").is_some() {
-                    bail!(
-                        "{} core manifest must not register devtools MCP servers",
-                        display_relative(&manifest_path(plugin_root))
-                    );
-                }
-                for stale in [
-                    ".mcp.json",
-                    ".codex/lsp-client.json",
-                    "lsp",
-                    "mcp",
-                    "runtime-release.json",
-                ] {
+                crate::validation::core_mcp::check(plugin_root, &manifest)?;
+                for stale in [".codex/lsp-client.json", "lsp", "runtime-release.json"] {
                     if plugin_root.join(stale).exists() {
                         bail!(
                             "{} core package must not retain devtools surface {stale}",
