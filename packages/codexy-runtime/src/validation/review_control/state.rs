@@ -22,9 +22,17 @@ pub(super) fn is_lifecycle_terminal(plugin_root: &Path, record: &str) -> bool {
 pub(super) fn check_control(plugin_root: &Path, control: &Value) -> Result<(), String> {
     let light = control.get("profile").and_then(Value::as_str) == Some("light");
     let head = control
-        .get("reviewed_head")
+        .get("final_disposition")
+        .and_then(Value::as_object)
+        .and_then(|disposition| disposition.get("head_oid"))
         .and_then(Value::as_str)
         .filter(|head| !head.is_empty())
+        .or_else(|| {
+            control
+                .get("reviewed_head")
+                .and_then(Value::as_str)
+                .filter(|head| !head.is_empty())
+        })
         .or_else(|| light.then_some("light-review"))
         .ok_or_else(|| "review control state must bind reviewed_head".to_owned())?;
     let state = json!({"headRefOid": head, "reviewControl": control});

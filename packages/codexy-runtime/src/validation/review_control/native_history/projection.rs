@@ -61,6 +61,12 @@ pub(crate) fn project(captured: Captured) -> Result<Value, String> {
             "result": "not_admitted"
         }
     });
+    if let Some(capture) = captured.owner_capture {
+        receipt["source"]["owner"]["capture"] = capture;
+    }
+    if let Some(capture) = captured.reviewer_capture {
+        receipt["source"]["reviewer"]["capture"] = capture;
+    }
     if let Some(snapshot) = captured.current_pr_snapshot {
         receipt["current_pr_snapshot"] = snapshot;
     }

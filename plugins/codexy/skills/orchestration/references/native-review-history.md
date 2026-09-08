@@ -12,8 +12,28 @@ complete owner and reviewer page chains. Each raw page MUST retain its thread
 identity, page metadata, turns, item IDs, and original UTF-8 text. Continuation
 pages are valid only when every intermediate page declares a continuation and
 the supplied next page completes the chain. A terminal page MUST declare that no
-continuation remains. The normalizer MUST reject truncated, contradictory,
-duplicate, or reordered source records.
+continuation remains. The host response may omit the cursor that was sent to
+request a continuation page. In that case, the role envelope MUST carry
+`capture: {"method":"read_thread","requests":[{"cursor":null},
+{"cursor":"<previous nextCursor>"}, ...]}`
+beside the unchanged raw `pages`. The normalizer MUST bind each recorded request
+cursor to the previous raw page's `nextCursor`, preserve the envelope in the
+receipt, and reject missing, contradictory, duplicate, or reordered source
+records. Legacy captures that carry a cursor in each raw page remain supported
+and continue to be checked directly.
+
+When the host's raw spawn item omits receiver-role fields, the reviewer capture
+MAY carry a separate `provenance` object with schema
+`codexy.review-control-native-history-capture-provenance.v1`. It MUST preserve
+the receiver session creation metadata under `session` and the selected owner
+spawn binding under `spawn`, without copying or modifying the raw pages. The
+session ID MUST equal the reviewer thread, its parent thread MUST equal the
+owner thread, and every present direct or nested role alias MUST agree on
+`codexy-sentinel`. The spawn ID, sender, sole receiver, and `completed` status
+MUST match the unique selected owner spawn. Missing, contradictory, or
+mismatched provenance MUST be rejected. Existing `receiver_agents` evidence
+remains supported; when both forms are present, their receiver role MUST agree.
+Prompt wording and packaged policy configuration are not role provenance.
 
 The owner chain MUST contain exactly one completed collabAgentToolCall
 `spawnAgent` or `spawn_agent` item whose sole receiver is the reviewer thread.
@@ -23,12 +43,19 @@ helper MUST NOT substitute for the reviewer invocation.
 
 The reviewer chain MUST identify completed turns with one final
 agentMessage/AgentMessage item and explicit full, delta, or
-required_current_head metadata. The reviewed head and terminal result MUST be
-explicit and unambiguous. Findings retain their observed text, path, severity,
-disposition, and semantic source. When a pathless observation has explicit
-semantic metadata, preserve it; when that metadata is absent, preserve the null
-path and mark the observation unclassified. The adapter MUST NOT infer a
-proof/process kind or invent a file path.
+required_current_head metadata. A text-only final message MAY express the
+current-head kind through an operative `Required-current-head` ordered history
+item, the result through an operative `terminal_result = BLOCK` assignment, and
+the head through an operative backtick-labelled `reviewed_head` field. The
+reviewed head and terminal result MUST be explicit and unambiguous; quoted or
+fenced historical examples MUST NOT override them. Findings retain their
+observed full item text and UTF-8 source span, path, severity, disposition, and
+semantic source. When a pathless observation has explicit semantic metadata,
+preserve it; when that metadata is absent, preserve the null path and mark the
+observation unclassified. Missing finding IDs MAY be deterministically derived
+from the final message and source span, but the adapter MUST NOT infer a
+proof/process kind, invent a file path, or promote a prose label to a finding
+ID.
 
 ## Projection
 

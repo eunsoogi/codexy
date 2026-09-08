@@ -5,6 +5,7 @@ use serde_json::Value;
 
 mod classification;
 mod external_finding;
+mod final_disposition;
 mod history;
 mod migration;
 mod native_history;
@@ -62,14 +63,42 @@ pub(super) fn check_handoff(plugin_root: &Path, state: &Value) -> Vec<String> {
                 return vec![error];
             }
         }
+        if control.get("final_disposition").is_some() {
+            if let Err(error) = final_disposition::refresh_live(&mut control, None, &state) {
+                return vec![error];
+            }
+            let Some(control_object) = control.as_object() else {
+                return vec!["review control state must be an object".into()];
+            };
+            if let Err(error) = final_disposition::check_handoff_state(&state, control_object) {
+                return vec![error];
+            }
+        }
         if let Some(object) = state.as_object_mut() {
             object.insert("reviewControl".into(), control);
         }
     }
-    state::check_pr_state(plugin_root, &state, true)
-        .err()
-        .into_iter()
-        .collect()
+    if let Err(error) = state::check_pr_state(plugin_root, &state, true) {
+        return vec![error];
+    }
+    if let Some(control) = state.get("reviewControl").and_then(Value::as_object) {
+        if control.get("final_disposition").is_some() {
+            let repository_root = match crate::paths::repo_root() {
+                Ok(root) => root,
+                Err(error) => {
+                    return vec![format!(
+                        "final disposition handoff repository root: {error}"
+                    )];
+                }
+            };
+            if let Err(error) =
+                final_disposition::check_handoff_repository(&repository_root, &state, control)
+            {
+                return vec![error];
+            }
+        }
+    }
+    Vec::new()
 }
 
 pub(super) fn is_lifecycle_terminal(plugin_root: &Path, record: &str) -> bool {

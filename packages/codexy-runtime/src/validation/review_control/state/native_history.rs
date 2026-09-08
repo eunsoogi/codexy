@@ -90,11 +90,13 @@ pub(super) fn check_provenance(state: &Value, control: &Map<String, Value>) -> R
         .and_then(Value::as_object)
         .and_then(|reviewer| reviewer.get("pages"))
         .ok_or("native history recovery receipt must carry reviewer pages")?;
+    let owner = source_role_request(source, "owner", owner_pages)?;
+    let reviewer = source_role_request(source, "reviewer", reviewer_pages)?;
     let source_request = json!({
         "schema": receipt::REQUEST_SCHEMA,
         "target": receipt_map.get("target"),
-        "owner": {"pages": owner_pages},
-        "reviewer": {"pages": reviewer_pages}
+        "owner": owner,
+        "reviewer": reviewer
     });
     let projected = receipt::normalize_native_history(&source_request)?;
     for key in [
@@ -192,4 +194,21 @@ pub(super) fn check_provenance(state: &Value, control: &Map<String, Value>) -> R
         }
     }
     Ok(())
+}
+
+fn source_role_request<'a>(
+    source: &'a Map<String, Value>,
+    role: &str,
+    pages: &'a Value,
+) -> Result<Value, String> {
+    let role_source = source
+        .get(role)
+        .and_then(Value::as_object)
+        .ok_or_else(|| format!("native history recovery receipt must carry {role} source"))?;
+    let mut request = serde_json::Map::new();
+    request.insert("pages".into(), pages.clone());
+    if let Some(capture) = role_source.get("capture") {
+        request.insert("capture".into(), capture.clone());
+    }
+    Ok(Value::Object(request))
 }

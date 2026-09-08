@@ -19,6 +19,7 @@ pub(super) fn with_mode(
         .and_then(Value::as_str)
         .filter(|text| !text.is_empty())
         .ok_or_else(|| "review control state must bind the current head".to_owned())?;
+    let base_oid = state.get("baseRefOid").and_then(Value::as_str);
     let control = state
         .get("reviewControl")
         .and_then(Value::as_object)
@@ -71,6 +72,7 @@ pub(super) fn with_mode(
             "terminal_review_limit",
             "terminal_review_history",
             "post_cap_re_review",
+            "final_disposition",
             "reviewer_migration",
             "pre_pr_import",
         ]
@@ -124,6 +126,13 @@ pub(super) fn with_mode(
         .and_then(Value::as_str)
         .filter(|head| !head.is_empty())
         .ok_or_else(|| "review control state must bind reviewed_head".to_owned())?;
+    let admission_head = control
+        .get("final_disposition")
+        .and_then(Value::as_object)
+        .and_then(|disposition| disposition.get("head_oid"))
+        .and_then(Value::as_str)
+        .filter(|head| !head.is_empty())
+        .unwrap_or(reviewed_head);
     let terminal = control
         .get("terminal_result")
         .and_then(Value::as_str)
@@ -164,19 +173,30 @@ pub(super) fn with_mode(
             terminal_count,
             terminal_limit,
             profile,
+            current_head: head,
+            base_oid,
+            issue_number,
+            repository: matches!(source, StateSource::PrSnapshot)
+                .then(|| state.get("repository").and_then(Value::as_str))
+                .flatten(),
+            pull_request: matches!(source, StateSource::PrSnapshot)
+                .then(|| state.get("number").and_then(Value::as_u64))
+                .flatten(),
+            pr_state: matches!(source, StateSource::PrSnapshot).then_some(state),
         },
     )?;
-    if require_pass && terminal != "PASS" {
+    let has_final_disposition = control.contains_key("final_disposition");
+    if require_pass && terminal != "PASS" && !has_final_disposition {
         return Err("review control state terminal_result is not PASS".into());
     }
-    if require_pass && !findings.is_empty() {
+    if require_pass && !findings.is_empty() && !has_final_disposition {
         return Err("review control state has unresolved actionable findings".into());
     }
     pre_pr::check_state(
         matches!(source, StateSource::PrSnapshot),
         require_pass,
         head,
-        reviewed_head,
+        admission_head,
         control,
     )?;
     Ok(())

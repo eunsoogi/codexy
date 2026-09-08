@@ -2,6 +2,10 @@ use serde_json::{Map, Value};
 
 use super::{Invocation, PageSet, fields};
 
+#[path = "owner_provenance.rs"]
+mod provenance;
+use provenance::{capture_provenance, legacy_role};
+
 struct Spawn {
     raw: Value,
     id: Option<String>,
@@ -11,17 +15,18 @@ struct Spawn {
     prompt: Option<String>,
     model: Option<String>,
     effort: Option<String>,
-    receiver_agents: Vec<ReceiverAgent>,
+    receiver_agents: Option<Vec<ReceiverAgent>>,
     page: usize,
     turn: usize,
     item: usize,
 }
 
 pub(super) fn select(
-    pages: &PageSet,
-    reviewer_thread: &str,
+    owner: &PageSet,
+    reviewer: &PageSet,
 ) -> Result<(Invocation, Vec<Value>), String> {
-    let spawns = collect_spawns(pages)?;
+    let reviewer_thread = reviewer.thread.as_str();
+    let spawns = collect_spawns(owner)?;
     let matching = spawns
         .iter()
         .filter(|spawn| spawn.receivers.len() == 1 && spawn.receivers[0] == reviewer_thread)
@@ -42,16 +47,23 @@ pub(super) fn select(
     if selected.status.as_deref() != Some("completed") {
         return Err("matching reviewer spawnAgent must be completed".into());
     }
-    let receiver_agent = selected
-        .receiver_agents
-        .iter()
-        .filter(|agent| agent.thread == reviewer_thread)
-        .collect::<Vec<_>>();
-    if receiver_agent.len() != 1 {
-        return Err("reviewer invocation must preserve exactly one receiver agent".into());
-    }
-    let receiver_agent = receiver_agent[0];
-    let role = fields::required(receiver_agent.role.clone(), "reviewer receiver agent role")?;
+    let legacy_role = legacy_role(selected, reviewer_thread)?;
+    let capture_role = capture_provenance(
+        reviewer.capture.as_ref(),
+        &owner.thread,
+        reviewer_thread,
+        selected,
+    )?;
+    let role = match (legacy_role, capture_role) {
+        (Some(legacy), Some(captured)) if legacy != captured => {
+            return Err("reviewer receiver agent role conflicts with capture provenance".into());
+        }
+        (Some(legacy), _) => legacy,
+        (None, Some(captured)) => captured,
+        (None, None) => {
+            return Err("reviewer invocation must preserve exactly one receiver agent".into());
+        }
+    };
     if role != "codexy-sentinel" {
         return Err("reviewer receiver agent role is not codexy-sentinel".into());
     }
@@ -153,9 +165,9 @@ struct ReceiverAgent {
     role: Option<String>,
 }
 
-fn receiver_agents(map: &Map<String, Value>) -> Result<Vec<ReceiverAgent>, String> {
+fn receiver_agents(map: &Map<String, Value>) -> Result<Option<Vec<ReceiverAgent>>, String> {
     let Some(value) = map.get("receiver_agents") else {
-        return Ok(Vec::new());
+        return Ok(None);
     };
     let agents = value
         .as_array()
@@ -180,5 +192,6 @@ fn receiver_agents(map: &Map<String, Value>) -> Result<Vec<ReceiverAgent>, Strin
                 )?,
             })
         })
-        .collect()
+        .collect::<Result<Vec<_>, String>>()
+        .map(Some)
 }

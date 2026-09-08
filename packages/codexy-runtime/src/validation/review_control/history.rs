@@ -3,7 +3,11 @@ use std::collections::HashSet;
 use super::policy::Profile;
 use serde_json::{Map, Value};
 
+mod fields;
+mod final_state;
 mod post_cap;
+
+use self::fields::{reject_unknown, required_text};
 
 const TERMINAL_RESULTS: [&str; 3] = ["PASS", "BLOCK", "UNOBSERVABLE"];
 const REVIEW_KINDS: [&str; 3] = ["full", "delta", "required_current_head"];
@@ -21,6 +25,12 @@ pub(super) struct CheckContext<'a> {
     pub(super) terminal_count: u64,
     pub(super) terminal_limit: u64,
     pub(super) profile: &'a Profile,
+    pub(super) current_head: &'a str,
+    pub(super) base_oid: Option<&'a str>,
+    pub(super) issue_number: u64,
+    pub(super) repository: Option<&'a str>,
+    pub(super) pull_request: Option<u64>,
+    pub(super) pr_state: Option<&'a Value>,
 }
 pub(super) fn check(
     control: &Map<String, Value>,
@@ -191,36 +201,32 @@ pub(super) fn check(
         post_cap::check(
             post_cap,
             history[1].get("reviewed_head"),
-            context.reviewed_head,
+            history
+                .last()
+                .and_then(Value::as_object)
+                .and_then(|event| event.get("reviewed_head"))
+                .and_then(Value::as_str)
+                .ok_or_else(|| {
+                    "review control state third event has no reviewed head".to_owned()
+                })?,
         )?;
     } else if required_head_seen != 0 || post_cap.is_some() {
         return Err(
             "review control state post-cap re-review is only valid for the third verdict".into(),
         );
     }
-    Ok(())
-}
-fn required_text<'a>(
-    object: &'a Map<String, Value>,
-    key: &str,
-    context: &str,
-) -> Result<&'a str, String> {
-    object
-        .get(key)
-        .and_then(Value::as_str)
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| format!("review control state {context} must contain non-empty {key}"))
-}
-
-fn reject_unknown(
-    object: &Map<String, Value>,
-    allowed: &[&str],
-    context: &str,
-) -> Result<(), String> {
-    if object.keys().any(|key| !allowed.contains(&key.as_str())) {
-        return Err(format!(
-            "review control state {context} contains an unknown field"
-        ));
-    }
+    final_state::check(
+        control.get("final_disposition"),
+        history,
+        context.reviewed_head,
+        context.terminal,
+        context.findings,
+        context.current_head,
+        context.base_oid,
+        context.issue_number,
+        context.repository,
+        context.pull_request,
+        context.pr_state,
+    )?;
     Ok(())
 }

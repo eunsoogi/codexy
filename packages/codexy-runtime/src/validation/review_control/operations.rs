@@ -4,8 +4,8 @@ use anyhow::{Result, bail};
 use serde_json::Value;
 
 use super::{
-    external_finding, post_cap_disposition, pre_pr, pre_verdict, request, snapshot, state,
-    transition,
+    external_finding, final_disposition, post_cap_disposition, pre_pr, pre_verdict, request,
+    snapshot, state, transition,
 };
 
 pub(crate) fn build_pr_state(
@@ -26,6 +26,10 @@ pub(crate) fn build_pr_state(
     }
     if post_cap_disposition::requires_source(&control) {
         post_cap_disposition::refresh_live(&mut control, Some(&current))
+            .map_err(anyhow::Error::msg)?;
+    }
+    if control.get("final_disposition").is_some() {
+        final_disposition::refresh_live(&mut control, None, &current)
             .map_err(anyhow::Error::msg)?;
     }
     let previous = snapshot::normalize(
@@ -92,6 +96,33 @@ pub(crate) fn produce(
     }
     let (current_pr_state, previous_pr_state) =
         snapshot::normalize_request_states(&request).map_err(anyhow::Error::msg)?;
+    if let Some(disposition) = control.get("final_disposition") {
+        if disposition
+            .as_object()
+            .is_some_and(|object| object.contains_key("authority"))
+        {
+            bail!(
+                "review control producer rejects caller-supplied final disposition authority; provide authenticated_final_disposition_locator"
+            );
+        }
+        let current = current_pr_state.as_ref().ok_or_else(|| {
+            anyhow::anyhow!("final disposition producer requires current_pr_state")
+        })?;
+        let locator = request
+            .get("authenticated_final_disposition_locator")
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "final disposition producer requires authenticated_final_disposition_locator"
+                )
+            })?;
+        final_disposition::refresh_live(&mut control, Some(locator), current)
+            .map_err(anyhow::Error::msg)?;
+    } else if request
+        .get("authenticated_final_disposition_locator")
+        .is_some()
+    {
+        bail!("authenticated_final_disposition_locator requires final_disposition");
+    }
     if request::has_caller_supplied_finding(&request) {
         bail!(
             "review control producer rejects caller-supplied external finding source or capture; provide authenticated_external_finding_locator"

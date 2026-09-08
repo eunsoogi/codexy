@@ -1,5 +1,10 @@
 use serde_json::{Value, json};
 
+#[path = "capture_fixtures.rs"]
+mod capture_fixtures;
+
+pub(crate) use capture_fixtures::{host_provenance_request, read_thread_request};
+
 pub(crate) const FULL_HEAD: &str = "1111111111111111111111111111111111111111";
 pub(crate) const DELTA_HEAD: &str = "2222222222222222222222222222222222222222";
 pub(crate) const CURRENT_HEAD: &str = "3333333333333333333333333333333333333333";
