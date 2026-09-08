@@ -8,7 +8,7 @@ mod wait;
 use std::fs;
 use std::path::PathBuf;
 
-use anyhow::{Result, bail};
+use anyhow::{Context as _, Result, bail};
 use serde_json::{Value, json};
 
 use self::model::{Event, Health, Session};
@@ -81,10 +81,16 @@ impl Store {
                 continue;
             };
             let session: Session = read_json(&session_path, "session")?;
-            if session.status != "active" || now >= session.expires_at_ms {
-                remove_session_directory(&directory)?;
+            if session.status == "active" && now < session.expires_at_ms {
+                continue;
             }
+            let Some(wait_lock) = LockGuard::try_acquire(&directory.join("wait.lock"))? else {
+                continue;
+            };
+            let quarantined = recovery::quarantine(&self.root, &directory)?;
+            drop(wait_lock);
             drop(lock);
+            recovery::remove_directory(&quarantined)?;
         }
         Ok(())
     }
@@ -123,7 +129,12 @@ impl Store {
 
     fn session_lock(&self, session_id: &str) -> Result<LockGuard> {
         let dir = self.session_dir(session_id)?;
-        ensure_dir(&dir)?;
+        reject_link(&dir)?;
+        let metadata = fs::metadata(&dir)
+            .with_context(|| format!("reading watcher session directory {}", dir.display()))?;
+        if !metadata.is_dir() {
+            bail!("watcher session path is not a directory: {}", dir.display());
+        }
         LockGuard::acquire(&dir.join("state.lock"), LOCK_WAIT_MS)
     }
 
@@ -190,9 +201,7 @@ impl Store {
 
     fn health_value(&self, session: &Session, health: &Health, actor: &str) -> Result<Value> {
         let wait_path = self.session_dir(&session.session_id)?.join("wait.lock");
-        if wait_path.exists() {
-            reject_link(&wait_path)?;
-        }
+        let waiting = LockGuard::try_acquire(&wait_path)?.is_none();
         let status = if session.status == "cancelled" {
             "cancelled"
         } else if now_ms() >= session.expires_at_ms {
@@ -214,21 +223,11 @@ impl Store {
             "lastMaterialEventAtMs": health.last_material_event_at_ms,
             "watcherState": health.watcher_state,
             "lastError": health.last_error,
-            "waiting": wait_path.exists(),
+            "waiting": waiting,
             "transport": "filesystem-queue",
             "transportConnected": true,
             "nativeStatus": "unverified",
             "expiresAtMs": session.expires_at_ms,
         }))
     }
-}
-
-fn remove_session_directory(path: &std::path::Path) -> Result<()> {
-    for entry in fs::read_dir(path)? {
-        let entry = entry?;
-        if entry.file_type()?.is_symlink() {
-            reject_link(&entry.path())?;
-        }
-    }
-    fs::remove_dir_all(path).map_err(Into::into)
 }

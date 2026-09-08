@@ -170,3 +170,75 @@ fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
     assert_eq!(tool_payload(&cancelled)?["status"], "cancelled");
     Ok(())
 }
+
+#[test]
+fn wait_lock_is_released_when_its_owner_process_dies() -> Result<(), Box<dyn std::error::Error>> {
+    let state = tempfile::tempdir()?;
+    let mut setup = watcher_client(state.path())?;
+    setup.send(&json!({
+        "jsonrpc":"2.0","id":1,"method":"initialize","params":{}
+    }))?;
+    let opened = setup.send(&json!({
+        "jsonrpc":"2.0","id":2,"method":"tools/call",
+        "params":{"name":"watcher_open","arguments":{
+            "assignmentId":"process-death-lock",
+            "parent":{"id":"parent-task"},
+            "watcher":{"id":"native-watcher"},
+            "targets":[{"threadId":"target-thread"}],
+            "ttlSeconds":60
+        }}
+    }))?;
+    let opened = tool_payload(&opened)?;
+    let session = opened["sessionId"].as_str().ok_or("session id")?.to_owned();
+    let parent_token = opened["parentToken"].as_str().ok_or("parent token")?.to_owned();
+    drop(setup);
+
+    let mut holder = watcher_client(state.path())?;
+    holder.send(&json!({
+        "jsonrpc":"2.0","id":1,"method":"initialize","params":{}
+    }))?;
+    holder.send_without_read(&json!({
+        "jsonrpc":"2.0","id":2,"method":"tools/call",
+        "params":{"name":"wait_watcher","arguments":{
+            "sessionId":session,"parentToken":parent_token,"timeoutMs":30000
+        }}
+    }))?;
+
+    let mut observer = watcher_client(state.path())?;
+    observer.send(&json!({
+        "jsonrpc":"2.0","id":1,"method":"initialize","params":{}
+    }))?;
+    let mut waiting = false;
+    for request_id in 10..110 {
+        let health = observer.send(&json!({
+            "jsonrpc":"2.0","id":request_id,"method":"tools/call",
+            "params":{"name":"watcher_health","arguments":{
+                "sessionId":session,"token":parent_token
+            }}
+        }))?;
+        if health.get("error").is_none() && tool_payload(&health)?["waiting"] == true {
+            waiting = true;
+            break;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert!(waiting, "waiter did not acquire wait.lock before termination");
+    drop(observer);
+
+    holder.child.kill()?;
+    holder.child.wait()?;
+    drop(holder);
+
+    let mut replacement = watcher_client(state.path())?;
+    replacement.send(&json!({
+        "jsonrpc":"2.0","id":1,"method":"initialize","params":{}
+    }))?;
+    let response = replacement.send(&json!({
+        "jsonrpc":"2.0","id":2,"method":"tools/call",
+        "params":{"name":"wait_watcher","arguments":{
+            "sessionId":session,"parentToken":parent_token,"cursor":0,"timeoutMs":0
+        }}
+    }))?;
+    assert_eq!(tool_payload(&response)?["status"], "timeout");
+    Ok(())
+}

@@ -1,20 +1,15 @@
-use std::fs::{self, File, OpenOptions};
-use std::io::{self, Write};
-use std::path::{Path, PathBuf};
+use std::fs::{File, OpenOptions};
+use std::path::Path;
 use std::thread;
 use std::time::Duration;
 
-use anyhow::{Context as _, Result, anyhow, bail};
+use anyhow::{Context as _, Result, bail};
 
-use super::io::{now_ms, random_hex, reject_link_entry};
-
-const STALE_LOCK_MS: u64 = 120_000;
+use super::io::reject_link_entry;
 
 #[derive(Debug)]
 pub(super) struct LockGuard {
-    path: PathBuf,
-    owner: String,
-    file: Option<File>,
+    file: File,
 }
 
 impl LockGuard {
@@ -32,89 +27,28 @@ impl LockGuard {
     }
 
     pub(super) fn try_acquire(path: &Path) -> Result<Option<Self>> {
-        let owner = format!("{}:{}:{}", std::process::id(), now_ms(), random_hex(8)?);
-        let mut file = match open_new_lock(path) {
-            Ok(file) => file,
-            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
-                reject_link_entry(path)?;
-                if stale(path) {
-                    let _ = fs::remove_file(path);
-                }
-                return Ok(None);
+        reject_link_entry(path)?;
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(path)
+            .with_context(|| format!("opening watcher lock {}", path.display()))?;
+        match file.try_lock() {
+            Ok(()) => Ok(Some(Self { file })),
+            Err(std::fs::TryLockError::WouldBlock) => Ok(None),
+            Err(std::fs::TryLockError::Error(error)) => {
+                Err(error).with_context(|| format!("locking watcher lock {}", path.display()))
             }
-            Err(error) => {
-                return Err(anyhow!("creating lock {}: {error}", path.display()));
-            }
-        };
-        file.write_all(owner.as_bytes())
-            .context("writing watcher lock")?;
-        file.sync_all().context("syncing watcher lock")?;
-        Ok(Some(Self {
-            path: path.to_path_buf(),
-            owner,
-            file: Some(file),
-        }))
-    }
-}
-
-fn open_new_lock(path: &Path) -> io::Result<File> {
-    OpenOptions::new().write(true).create_new(true).open(path)
-}
-
-impl Drop for LockGuard {
-    fn drop(&mut self) {
-        drop(self.file.take());
-        let matches = fs::read_to_string(&self.path).is_ok_and(|contents| contents == self.owner);
-        if matches {
-            let _ = fs::remove_file(&self.path);
         }
     }
 }
 
-#[cfg(windows)]
-fn stale(path: &Path) -> bool {
-    older_than_stale(path)
-}
-
-#[cfg(not(windows))]
-fn stale(path: &Path) -> bool {
-    let Ok(contents) = fs::read_to_string(path) else {
-        return older_than_stale(path);
-    };
-    let mut fields = contents.split(':');
-    let pid = fields.next().and_then(|value| value.parse::<u32>().ok());
-    let started = fields.next().and_then(|value| value.parse::<u64>().ok());
-    let Some(pid) = pid else {
-        return older_than_stale(path);
-    };
-    if process_alive(pid) {
-        return false;
+impl Drop for LockGuard {
+    fn drop(&mut self) {
+        let _ = self.file.unlock();
     }
-    started.is_some_and(|time| now_ms().saturating_sub(time) >= STALE_LOCK_MS)
-        || older_than_stale(path)
-}
-
-fn older_than_stale(path: &Path) -> bool {
-    fs::metadata(path)
-        .and_then(|metadata| metadata.modified())
-        .ok()
-        .and_then(|modified| modified.elapsed().ok())
-        .is_some_and(|age| age >= Duration::from_millis(STALE_LOCK_MS))
-}
-
-#[cfg(unix)]
-fn process_alive(pid: u32) -> bool {
-    if pid == 0 {
-        return false;
-    }
-    // SAFETY: kill(pid, 0) performs no signal delivery and only probes liveness.
-    let result = unsafe { libc::kill(pid as libc::pid_t, 0) };
-    result == 0 || std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM)
-}
-
-#[cfg(all(not(unix), not(windows)))]
-fn process_alive(_pid: u32) -> bool {
-    false
 }
 
 #[cfg(test)]
@@ -122,45 +56,44 @@ mod tests {
     use super::*;
 
     #[test]
-    fn keeps_a_recently_created_empty_lock_for_its_initializer() -> Result<()> {
-        let temporary = tempfile::tempdir()?;
-        let path = temporary.path().join("state.lock");
-        let initializer = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&path)?;
-
-        assert!(LockGuard::try_acquire(&path)?.is_none());
-        assert!(
-            path.exists(),
-            "contender must not reclaim an initializing lock"
-        );
-
-        drop(initializer);
-        Ok(())
-    }
-
-    #[test]
-    fn removes_the_lock_after_the_guard_releases_its_file() -> Result<()> {
+    fn keeps_a_persistent_lock_file_after_guard_releases() -> Result<()> {
         let temporary = tempfile::tempdir()?;
         let path = temporary.path().join("state.lock");
         let guard = LockGuard::try_acquire(&path)?.context("lock was not acquired")?;
 
-        assert!(path.exists());
+        assert!(path.is_file());
         drop(guard);
-        assert!(!path.exists());
+        assert!(path.is_file(), "the lock identity must remain stable");
         Ok(())
     }
 
     #[test]
-    fn preserves_the_native_cause_when_lock_creation_fails() -> Result<()> {
+    fn releases_the_os_lock_after_guard_drops() -> Result<()> {
+        let temporary = tempfile::tempdir()?;
+        let path = temporary.path().join("state.lock");
+        let guard = LockGuard::try_acquire(&path)?.context("lock was not acquired")?;
+
+        assert!(LockGuard::try_acquire(&path)?.is_none());
+        drop(guard);
+        let replacement = LockGuard::try_acquire(&path)?.context("lock was not released")?;
+        drop(replacement);
+        Ok(())
+    }
+
+    #[test]
+    fn preserves_the_native_cause_when_lock_open_fails() -> Result<()> {
         let temporary = tempfile::tempdir()?;
         let parent = temporary.path().join("not-a-directory");
         File::create(&parent)?;
         let path = parent.join("state.lock");
-        let expected = open_new_lock(&path).expect_err("a file cannot be a lock parent");
+        let expected = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(&path)
+            .expect_err("a file cannot be a lock parent");
 
-        let error = LockGuard::try_acquire(&path).expect_err("lock creation should fail");
+        let error = LockGuard::try_acquire(&path).expect_err("lock opening should fail");
         assert!(error.to_string().contains(&expected.to_string()));
         Ok(())
     }
@@ -177,64 +110,6 @@ mod tests {
         symlink(&target, &path)?;
         let error = LockGuard::try_acquire(&path).expect_err("symlinked lock must be rejected");
         assert!(error.to_string().contains("must not be a symlink"));
-        Ok(())
-    }
-
-    #[cfg(windows)]
-    #[test]
-    fn treats_a_real_windows_existing_lock_as_contention() -> Result<()> {
-        use std::os::windows::fs::OpenOptionsExt as _;
-
-        let temporary = tempfile::tempdir()?;
-        let path = temporary.path().join("state.lock");
-        let blocker = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .share_mode(0)
-            .open(&path)?;
-        let native = open_new_lock(&path).expect_err("the held lock must already exist");
-        assert_eq!(native.kind(), io::ErrorKind::AlreadyExists);
-        assert!(LockGuard::try_acquire(&path)?.is_none());
-        drop(blocker);
-        fs::remove_file(&path)?;
-        let guard = LockGuard::try_acquire(&path)?.context("lock was not reacquired")?;
-        drop(guard);
-        assert!(!path.exists());
-        Ok(())
-    }
-
-    #[cfg(windows)]
-    #[test]
-    fn preserves_a_real_windows_access_denied_as_an_error() -> Result<()> {
-        use std::process::Command;
-
-        let temporary = tempfile::tempdir()?;
-        let blocked = temporary.path().join("denied");
-        fs::create_dir(&blocked)?;
-        let icacls = std::env::var_os("SystemRoot")
-            .map(|root| PathBuf::from(root).join("System32/icacls.exe"))
-            .unwrap_or_else(|| PathBuf::from("icacls"));
-        let denied = Command::new(&icacls)
-            .arg(&blocked)
-            .args(["/inheritance:r", "/deny", "*S-1-1-0:(OI)(CI)(W)"])
-            .status()?;
-        if !denied.success() {
-            bail!("icacls could not deny writes to {}", blocked.display());
-        }
-        let path = blocked.join("state.lock");
-        let native = open_new_lock(&path);
-        let actual = LockGuard::try_acquire(&path);
-        let reset = Command::new(&icacls)
-            .arg(&blocked)
-            .args(["/reset", "/T", "/C"])
-            .status()?;
-        if !reset.success() {
-            bail!("icacls could not restore {}", blocked.display());
-        }
-        let native = native.expect_err("denied creation must fail");
-        assert_eq!(native.raw_os_error(), Some(5));
-        let actual = actual.expect_err("access denial must not become contention");
-        assert!(actual.to_string().contains(&native.to_string()));
         Ok(())
     }
 }
