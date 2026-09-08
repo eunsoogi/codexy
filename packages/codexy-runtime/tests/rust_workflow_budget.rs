@@ -42,6 +42,8 @@ const FORBIDDEN_WORKFLOW_FRAGMENTS: [&str; 15] = [
 
 #[path = "support/rust_workflow_cache.rs"]
 mod rust_workflow_cache;
+#[path = "support/rust_measurement_dispatch.rs"]
+mod rust_measurement_dispatch;
 
 #[test]
 fn rust_workflow_has_exact_fail_closed_five_minute_matrix_per_platform() -> TestResult {

@@ -1,3 +1,7 @@
+use std::fs;
+
+use serde_yaml::Value;
+
 use super::{workflow_failures, workflow_text, CARGO_COMMAND};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -71,6 +75,85 @@ fn rust_workflow_shares_a_bounded_windows_toolchain_cache_path() -> TestResult {
     assert!(!workflow.contains("RUSTUP_HOME"));
     assert!(!workflow.contains(".rustup/toolchains/*"));
     Ok(())
+}
+
+#[test]
+fn normal_unprofiled_dispatch_validates_before_optional_instrumentation() -> TestResult {
+    let workflow = workflow_text()?;
+    assert!(measurement_topology(&workflow).is_ok(), "current workflow topology is invalid");
+    let opt_in = workflow.replace(
+        "if: github.event_name == 'workflow_dispatch'",
+        "if: github.event_name == 'workflow_dispatch' && (inputs.cache_mode == 'isolated' || inputs.profiling == true)",
+    );
+    assert!(measurement_topology(&opt_in).is_err(), "optional-only validation was accepted");
+    let relocated = move_first_measurement_step_after_restore(&workflow)?;
+    assert!(measurement_topology(&relocated).is_err(), "late validation was accepted");
+
+    let root = codexy_runtime::paths::repository_root();
+    let shell = fs::read_to_string(root.join("scripts/prepare-rust-measurement.sh"))?;
+    assert!(shell.contains("test \"$(git rev-parse HEAD)\" = \"$head_sha\""));
+    assert!(shell.contains("if [[ \"$mode\" == isolated || \"$profiling\" == true ]]; then"));
+    assert!(shell.find("test \"$(git rev-parse HEAD)\"").unwrap() < shell.find("root=\"$runner_temp").unwrap());
+
+    let powershell = fs::read_to_string(root.join("scripts/prepare-rust-measurement.ps1"))?;
+    assert!(powershell.contains("(git rev-parse HEAD).Trim() -ne $headSha"));
+    assert!(powershell.contains("$instrumentationEnabled = $mode -eq \"isolated\" -or $profiling -eq \"true\""));
+    assert!(powershell.find("(git rev-parse HEAD)").unwrap() < powershell.find("$root = Join-Path").unwrap());
+    Ok(())
+}
+
+fn measurement_topology(workflow: &str) -> Result<(), String> {
+    let document: Value = serde_yaml::from_str(workflow).map_err(|error| error.to_string())?;
+    let jobs = document
+        .as_mapping()
+        .and_then(|mapping| mapping.get(Value::from("jobs")))
+        .and_then(Value::as_mapping)
+        .ok_or_else(|| "workflow has no jobs mapping".to_owned())?;
+    for job_id in ["rust-test", "windows-rust-test"] {
+        let steps = jobs
+            .get(Value::from(job_id))
+            .and_then(Value::as_mapping)
+            .and_then(|job| job.get(Value::from("steps")))
+            .and_then(Value::as_sequence)
+            .ok_or_else(|| format!("{job_id} has no steps"))?;
+        let position = |key: &str, value: &str| {
+            steps
+                .iter()
+                .position(|step| step_field(step, key) == Some(value))
+                .ok_or_else(|| format!("{job_id} is missing {key}={value}"))
+        };
+        let checkout = position("uses", "actions/checkout@v7")?;
+        let validate = position("name", "Validate and prepare measurement")?;
+        let clear = position("name", "Clear normal measurement cache paths")?;
+        let restore = position("id", "rust-cache")?;
+        if step_field(&steps[validate], "if") != Some("github.event_name == 'workflow_dispatch'") {
+            return Err(format!("{job_id} changed the validation condition"));
+        }
+        if validate != checkout + 1 || validate >= clear || validate >= restore {
+            return Err(format!("{job_id} validates after checkout/cache setup"));
+        }
+    }
+    Ok(())
+}
+
+fn step_field<'a>(step: &'a Value, key: &str) -> Option<&'a str> {
+    step.as_mapping()?.get(Value::from(key)).and_then(Value::as_str)
+}
+
+fn move_first_measurement_step_after_restore(workflow: &str) -> Result<String, String> {
+    let marker = "      - name: Validate and prepare measurement\n";
+    let start = workflow.find(marker).ok_or_else(|| "validation step not found".to_owned())?;
+    let next = workflow[start..]
+        .find("\n      - ")
+        .ok_or_else(|| "validation step end not found")?;
+    let end = start + next;
+    let block = workflow[start..end].to_owned();
+    let mut moved = workflow.to_owned();
+    moved.replace_range(start..end, "");
+    let verify = "      - name: Verify measurement cache result\n";
+    let insert = moved.find(verify).ok_or_else(|| "verification step not found".to_owned())?;
+    moved.insert_str(insert, &format!("{block}\n"));
+    Ok(moved)
 }
 
 #[test]
