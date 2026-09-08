@@ -112,9 +112,9 @@ codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
 ```
 
-This example pins the published `v1.6.3` release. The capability summary below
-describes the current source tree; it does not claim that source-only changes
-are available from that published pin before a matching release is published.
+This example selects pending candidate `v1.7.0`; use published `v1.6.3` for a
+released installation. The capability summary describes current source, not
+source-only changes available from the published pin before a matching release.
 
 ## What Codexy does
 

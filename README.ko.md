@@ -97,9 +97,10 @@ codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
 ```
 
-이 예시는 공개된 `v1.6.3` release에 고정합니다. 아래 기능 설명은 현재 source
-tree를 기준으로 하며, 일치하는 release가 나오기 전에는 source-only 변경이 이
-고정된 설치에 포함된다고 주장하지 않습니다.
+이 예시는 아직 공개되지 않은 `v1.7.0` 후보 ref를 선택합니다. 공개된 release를
+설치하려면 `v1.6.3` ref를 사용하세요. 아래 기능 설명은 현재 source tree를
+기준으로 하며, 일치하는 release가 나오기 전에는 source-only 변경이 공개된 고정
+버전 설치에 포함된다고 주장하지 않습니다.
 
 ## Codexy가 하는 일
 
