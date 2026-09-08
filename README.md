@@ -106,15 +106,15 @@ it when you need to install individual components directly, and install `core`
 first.
 
 ```sh
-codex plugin marketplace add eunsoogi/codexy --ref v1.6.3
+codex plugin marketplace add eunsoogi/codexy --ref v1.7.0
 codex plugin add codexy@codexy
 codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
 ```
 
-This example pins the published `v1.6.3` release. The capability summary below
-describes the current source tree; it does not claim that source-only changes
-are available from that published pin before a matching release is published.
+Use the release ref shown above. If it is not published, choose a tag from
+[Releases](https://github.com/eunsoogi/codexy/releases). The summary describes
+current source; install changes from a matching published release.
 
 ## What Codexy does
 

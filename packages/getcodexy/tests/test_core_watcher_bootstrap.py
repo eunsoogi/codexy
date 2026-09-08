@@ -26,18 +26,28 @@ REPOSITORY = "https://github.com/eunsoogi/codexy"
 VERSION = default_package_version()
 
 
-def write_bundle(path: Path) -> None:
+def declared_plugin_release(plugin: Path) -> str:
+    manifest = json.loads(
+        (plugin / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
+    )
+    release = manifest.get("version") if isinstance(manifest, dict) else None
+    if not isinstance(release, str) or not release:
+        raise AssertionError("copied plugin manifest must declare a release")
+    return release
+
+
+def write_bundle(path: Path, *, version: str) -> None:
     runtime = b'#!/bin/sh\nset -eu\nprintf \'%s\\n\' "$CODEXY_PLUGIN_ROOT" > "$CODEXY_EXECUTION_LOG"\nprintf \'%s\\n\' "$@" >> "$CODEXY_EXECUTION_LOG"\n'
     files = {
         "plugins/codexy/.codex-plugin/plugin.json": json.dumps(
-            {"name": "codexy", "repository": REPOSITORY, "version": VERSION}
+            {"name": "codexy", "repository": REPOSITORY, "version": version}
         ).encode(),
         "plugins/codexy/runtime/codexy-mcp-watcher-linux-x86_64.bin": runtime,
         "plugins/codexy-devtools/.codex-plugin/plugin.json": json.dumps(
             {
                 "name": "codexy-devtools",
                 "repository": REPOSITORY,
-                "version": VERSION,
+                "version": version,
             }
         ).encode(),
     }
@@ -73,7 +83,6 @@ class CoreWatcherBootstrapTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             archive = root / "bundle.tar.gz"
-            write_bundle(archive)
             result, plugin, source_log, execution_log = self.run_source_launcher(
                 root, archive, package_override=True
             )
@@ -95,7 +104,6 @@ class CoreWatcherBootstrapTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             archive = root / "bundle.tar.gz"
-            write_bundle(archive)
             result, plugin, source_log, execution_log = self.run_source_launcher(
                 root, archive, package_override=False
             )
@@ -122,6 +130,8 @@ class CoreWatcherBootstrapTests(unittest.TestCase):
         (package / "pyproject.toml").write_text("[project]\nname='getcodexy'\n")
         source_plugin = Path(__file__).parents[3] / "plugins/codexy"
         shutil.copytree(source_plugin, plugin)
+        plugin_version = declared_plugin_release(plugin)
+        write_bundle(archive, version=plugin_version)
         fake_bin = root / "bin"
         fake_bin.mkdir()
         source_log = root / "uvx-source.log"
@@ -157,7 +167,7 @@ class CoreWatcherBootstrapTests(unittest.TestCase):
                 "PYTHONPATH": str(Path(__file__).parents[1] / "src"),
                 "CODEXY_TEST_PYTHON": os.sys.executable,
                 "CODEXY_TEST_BUNDLE": str(archive),
-                "CODEXY_TEST_EXPECTED_URL": f"{REPOSITORY}/releases/download/v{VERSION}/{PUBLIC_BUNDLE_ASSET}",
+                "CODEXY_TEST_EXPECTED_URL": f"{REPOSITORY}/releases/download/v{plugin_version}/{PUBLIC_BUNDLE_ASSET}",
                 "CODEXY_UVX_SOURCE_LOG": str(source_log),
                 "CODEXY_EXECUTION_LOG": str(execution_log),
                 "CODEXY_RUNTIME_CACHE_DIR": str(root / "cache"),
