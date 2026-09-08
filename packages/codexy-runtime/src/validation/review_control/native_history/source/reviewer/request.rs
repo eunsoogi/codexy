@@ -48,27 +48,26 @@ pub(super) fn candidate(
         if let Some(review_start) = lower.find("review current exact pr") {
             let review_text = &text[review_start..];
             let review_lower = &lower[review_start..];
-            if let Some(head_offset) = review_lower.find("head") {
-                if let Some((head, sha_offset)) =
+            if let Some(head_offset) = review_lower.find("head")
+                && let Some((head, sha_offset)) =
                     find_sha(&review_text[head_offset + "head".len()..])
-                {
-                    let start = review_start + head_offset + "head".len() + sha_offset;
-                    merge(
-                        &mut result,
-                        "reviewed_head",
-                        Value::String(head.clone()),
-                        "review request reviewed head",
-                    )?;
-                    spans.insert(
-                        "reviewed_head".into(),
-                        json!({
-                            "source": format!("{base}.items[{index}].content"),
-                            "start": start,
-                            "end": start + 40,
-                            "coordinate": "utf8_bytes"
-                        }),
-                    );
-                }
+            {
+                let start = review_start + head_offset + "head".len() + sha_offset;
+                merge(
+                    &mut result,
+                    "reviewed_head",
+                    Value::String(head.clone()),
+                    "review request reviewed head",
+                )?;
+                spans.insert(
+                    "reviewed_head".into(),
+                    json!({
+                        "source": format!("{base}.items[{index}].content"),
+                        "start": start,
+                        "end": start + 40,
+                        "coordinate": "utf8_bytes"
+                    }),
+                );
             }
         }
     }

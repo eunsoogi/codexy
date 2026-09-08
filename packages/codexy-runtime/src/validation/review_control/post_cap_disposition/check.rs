@@ -44,10 +44,10 @@ pub(super) fn check(value: &Value) -> Result<(), String> {
             return Err("finding disposition ids must be unique".into());
         }
         let path = text(finding, "path", "finding disposition record")?;
-        if let Some(kind) = finding.get("kind") {
-            if kind.as_str().is_none_or(str::is_empty) {
-                return Err("finding disposition record kind must be non-empty".into());
-            }
+        if let Some(kind) = finding.get("kind")
+            && kind.as_str().is_none_or(str::is_empty)
+        {
+            return Err("finding disposition record kind must be non-empty".into());
         }
         if path.starts_with('/')
             || path.contains('\\')

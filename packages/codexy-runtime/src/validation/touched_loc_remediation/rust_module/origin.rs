@@ -76,10 +76,10 @@ fn default_package_roots(root: &Path, package_root: &Path) -> Vec<PathBuf> {
                 }
             } else if path.is_dir() {
                 let main = path.join("main.rs");
-                if main.is_file() {
-                    if let Ok(path) = main.strip_prefix(root) {
-                        roots.push(path.to_owned());
-                    }
+                if main.is_file()
+                    && let Ok(path) = main.strip_prefix(root)
+                {
+                    roots.push(path.to_owned());
                 }
             }
         }

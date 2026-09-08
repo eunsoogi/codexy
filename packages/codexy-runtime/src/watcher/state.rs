@@ -72,14 +72,10 @@ impl Store {
     }
 
     pub(super) fn reclaim_sessions(&self, now: u64) -> Result<()> {
+        let Some(_transition) = LockGuard::try_acquire(&self.transition_path())? else {
+            return Ok(());
+        };
         for directory in self.session_dirs()? {
-            let name = directory
-                .file_name()
-                .and_then(|name| name.to_str())
-                .context("watcher session id is not UTF-8")?;
-            let Some(_transition) = LockGuard::try_acquire(&self.transition_path(name))? else {
-                continue;
-            };
             let session_path = directory.join("session.json");
             if !session_path.exists() {
                 recovery::reclaim(&directory)?;
@@ -95,9 +91,9 @@ impl Store {
             let Some(wait_lock) = LockGuard::try_acquire(&directory.join("wait.lock"))? else {
                 continue;
             };
-            let quarantined = recovery::quarantine(&self.root, &directory)?;
             drop(wait_lock);
             drop(lock);
+            let quarantined = recovery::quarantine(&self.root, &directory)?;
             recovery::remove_directory(&quarantined)?;
         }
         Ok(())
@@ -122,8 +118,8 @@ impl Store {
         Ok(self.root.join(session_id))
     }
 
-    fn transition_path(&self, session_id: &str) -> PathBuf {
-        self.root.join(format!(".reclaim-{session_id}.lock"))
+    fn transition_path(&self) -> PathBuf {
+        self.root.join(".reclaim.lock")
     }
 
     fn load_session(&self, session_id: &str) -> Result<Session> {
@@ -141,7 +137,7 @@ impl Store {
 
     fn session_lock(&self, session_id: &str) -> Result<(LockGuard, LockGuard)> {
         let dir = self.session_dir(session_id)?;
-        let transition = LockGuard::acquire(&self.transition_path(session_id), LOCK_WAIT_MS)?;
+        let transition = LockGuard::acquire(&self.transition_path(), LOCK_WAIT_MS)?;
         reject_link(&dir)?;
         let metadata = fs::metadata(&dir)
             .with_context(|| format!("reading watcher session directory {}", dir.display()))?;
@@ -174,7 +170,7 @@ impl Store {
         &self,
         session_id: &str,
     ) -> Result<(Session, Vec<Event>)> {
-        let _lock = self.session_lock(session_id)?;
+        let (_transition, _state) = self.session_lock(session_id)?;
         let mut session = self.load_session(session_id)?;
         let events = self.reconcile_events(&mut session)?;
         Ok((session, events))

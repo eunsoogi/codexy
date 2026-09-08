@@ -78,10 +78,10 @@ pub(super) fn import(
     if count == 0 || usize::try_from(count).ok() != Some(events.len()) || events.len() > 2 {
         return Err("pre-PR history envelope has an invalid terminal event count".into());
     }
-    if let Some(bound) = current.get("reviewProfile").and_then(Value::as_str) {
-        if bound != profile_name {
-            return Err("pre-PR history profile disagrees with the current PR".into());
-        }
+    if let Some(bound) = current.get("reviewProfile").and_then(Value::as_str)
+        && bound != profile_name
+    {
+        return Err("pre-PR history profile disagrees with the current PR".into());
     }
     let current_head = snapshot::required_oid(
         current

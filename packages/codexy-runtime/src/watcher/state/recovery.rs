@@ -3,14 +3,14 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context as _, Result, bail};
 
-use super::super::io::{random_hex, reject_link};
+use super::super::io::random_hex;
 use crate::watcher::lock::LockGuard;
 
 const SESSION_TEMP_PREFIX: &str = ".session.json.tmp-";
 const SESSION_TEMP_HEX_BYTES: usize = 24;
 const QUARANTINE_PREFIX: &str = ".codexy-watcher-reclaim-";
 const QUARANTINE_HEX_BYTES: usize = 32;
-const MAX_QUARANTINE_CLEANUPS: usize = 16;
+const MAX_QUARANTINE_SCAN_ENTRIES: usize = 64;
 const OWNED_FILES: [&str; 6] = [
     "state.lock",
     "wait.lock",
@@ -59,9 +59,14 @@ pub(super) fn quarantine(root: &Path, path: &Path) -> Result<PathBuf> {
 }
 
 pub(super) fn recover_quarantines(root: &Path) -> Result<()> {
+    let Some(_transition) = LockGuard::try_acquire(&root.join(".reclaim.lock"))? else {
+        return Ok(());
+    };
     let parent = root.parent().context("watcher state root has no parent")?;
-    let mut cleanups = 0;
-    for entry in fs::read_dir(parent)? {
+    for (index, entry) in fs::read_dir(parent)?.enumerate() {
+        if index >= MAX_QUARANTINE_SCAN_ENTRIES {
+            break;
+        }
         let entry = entry?;
         let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
             continue;
@@ -69,36 +74,44 @@ pub(super) fn recover_quarantines(root: &Path) -> Result<()> {
         if !is_quarantine_name(&name) {
             continue;
         }
-        cleanups += 1;
-        if cleanups > MAX_QUARANTINE_CLEANUPS {
-            break;
-        }
         let path = entry.path();
         let file_type = entry.file_type()?;
-        if file_type.is_symlink() {
-            reject_link(&path)?;
-        }
         if !file_type.is_dir() {
             continue;
         }
-        let state_path = path.join("state.lock");
-        let wait_path = path.join("wait.lock");
-        if !regular_file(&state_path)? || !regular_file(&wait_path)? {
-            continue;
-        }
-        let Some(state_lock) = LockGuard::try_acquire(&state_path)? else {
-            continue;
-        };
-        let Some(wait_lock) = LockGuard::try_acquire(&wait_path)? else {
-            drop(state_lock);
-            continue;
-        };
-        owned_files(&path)?;
-        drop(wait_lock);
-        drop(state_lock);
-        remove_directory(&path)?;
+        recover_quarantine(&path)?;
     }
     Ok(())
+}
+
+fn recover_quarantine(path: &Path) -> Result<()> {
+    if owned_files_if_known(path)?.is_none() {
+        return Ok(());
+    }
+    let state_path = path.join("state.lock");
+    let state_lock = if regular_file(&state_path)? {
+        let Some(lock) = LockGuard::try_acquire(&state_path)? else {
+            return Ok(());
+        };
+        Some(lock)
+    } else {
+        None
+    };
+    let wait_path = path.join("wait.lock");
+    let wait_lock = if regular_file(&wait_path)? {
+        let Some(lock) = LockGuard::try_acquire(&wait_path)? else {
+            return Ok(());
+        };
+        Some(lock)
+    } else {
+        None
+    };
+    if owned_files_if_known(path)?.is_none() {
+        return Ok(());
+    }
+    drop(wait_lock);
+    drop(state_lock);
+    remove_directory(path)
 }
 
 pub(super) fn remove_directory(path: &Path) -> Result<()> {
@@ -118,9 +131,16 @@ pub(super) fn remove_directory(path: &Path) -> Result<()> {
 }
 
 fn owned_files(path: &Path) -> Result<Vec<PathBuf>> {
+    let Some(files) = owned_files_if_known(path)? else {
+        bail!("watcher quarantine contains an unknown entry");
+    };
+    Ok(files)
+}
+
+fn owned_files_if_known(path: &Path) -> Result<Option<Vec<PathBuf>>> {
     let entries = match fs::read_dir(path) {
         Ok(entries) => entries,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Some(Vec::new())),
         Err(error) => return Err(error.into()),
     };
     let mut files = Vec::new();
@@ -128,14 +148,14 @@ fn owned_files(path: &Path) -> Result<Vec<PathBuf>> {
         let entry = entry?;
         let name = entry.file_name();
         let Some(name) = name.to_str() else {
-            bail!("watcher quarantine contains an unknown entry");
+            return Ok(None);
         };
         if !entry.file_type()?.is_file() || !is_owned_file(name) {
-            bail!("watcher quarantine contains an unknown entry: {name}");
+            return Ok(None);
         }
         files.push(entry.path());
     }
-    Ok(files)
+    Ok(Some(files))
 }
 
 fn regular_file(path: &Path) -> Result<bool> {
@@ -144,9 +164,6 @@ fn regular_file(path: &Path) -> Result<bool> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
         Err(error) => return Err(error.into()),
     };
-    if metadata.file_type().is_symlink() {
-        reject_link(path)?;
-    }
     Ok(metadata.is_file())
 }
 
@@ -172,10 +189,5 @@ fn is_lower_hex(value: &str, length: usize) -> bool {
 
 fn is_session_temp(name: &str) -> bool {
     name.strip_prefix(SESSION_TEMP_PREFIX)
-        .is_some_and(|suffix| {
-            suffix.len() == SESSION_TEMP_HEX_BYTES
-                && suffix
-                    .bytes()
-                    .all(|byte| matches!(byte, b'0'..=b'9' | b'a'..=b'f'))
-        })
+        .is_some_and(|suffix| is_lower_hex(suffix, SESSION_TEMP_HEX_BYTES))
 }

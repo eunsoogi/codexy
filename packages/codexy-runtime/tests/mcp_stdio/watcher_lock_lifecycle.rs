@@ -1,5 +1,6 @@
 use super::*;
 use std::fs;
+use std::sync::{Arc, Barrier};
 use std::thread;
 use std::time::Duration;
 
@@ -85,14 +86,116 @@ fn startup_recovers_owned_quarantine_without_deleting_unknown_data(
     }
     let unknown = state.path().join(".codexy-watcher-reclaim-not-owned");
     fs::create_dir(&unknown)?;
-    let sentinel = unknown.join("preserve-me");
-    fs::write(&sentinel, b"unknown data")?;
+    let preserved = unknown.join("preserve-me");
+    fs::write(&preserved, b"unknown data")?;
 
     let mut client = watcher_client(state.path())?;
     initialize(&mut client)?;
     open_session(&mut client, "quarantine-recovery", 2)?;
     assert!(!quarantine.exists(), "owned quarantine was not recovered");
-    assert!(sentinel.is_file(), "unknown quarantine data was removed");
+    assert!(preserved.is_file(), "unknown quarantine data was removed");
+    Ok(())
+}
+
+#[test]
+fn startup_resumes_recovery_when_a_lock_was_deleted_before_restart(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let state = tempfile::tempdir()?;
+    let quarantine = state
+        .path()
+        .join(format!(".codexy-watcher-reclaim-{}", "1".repeat(32)));
+    fs::create_dir(&quarantine)?;
+    for name in ["wait.lock", "session.json", "health.json", "events.jsonl"] {
+        fs::write(quarantine.join(name), b"owned")?;
+    }
+
+    let mut client = watcher_client(state.path())?;
+    initialize(&mut client)?;
+    open_session(&mut client, "partial-quarantine", 2)?;
+    assert!(
+        !quarantine.exists(),
+        "recovery did not resume after state.lock was deleted"
+    );
+    Ok(())
+}
+
+#[test]
+fn startup_scans_past_invalid_quarantines_without_starving_later_cleanup(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let state = tempfile::tempdir()?;
+    let mut invalid = Vec::new();
+    for index in 0..24 {
+        let quarantine = state
+            .path()
+            .join(format!(".codexy-watcher-reclaim-{index:032x}"));
+        fs::create_dir(&quarantine)?;
+        fs::write(quarantine.join("preserve-me"), b"unknown data")?;
+        invalid.push(quarantine);
+    }
+    let valid = state
+        .path()
+        .join(format!(".codexy-watcher-reclaim-{}", "f".repeat(32)));
+    fs::create_dir(&valid)?;
+    for name in ["state.lock", "wait.lock", "session.json"] {
+        fs::write(valid.join(name), b"owned")?;
+    }
+
+    let mut client = watcher_client(state.path())?;
+    initialize(&mut client)?;
+    open_session(&mut client, "bounded-quarantine-scan", 2)?;
+    assert!(!valid.exists(), "later valid quarantine was starved");
+    for quarantine in invalid {
+        assert!(quarantine.join("preserve-me").is_file());
+    }
+    Ok(())
+}
+
+#[test]
+fn concurrent_startup_recovery_uses_one_bounded_transition_lock(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let state = tempfile::tempdir()?;
+    let mut quarantines = Vec::new();
+    for index in 0..4 {
+        let quarantine = state
+            .path()
+            .join(format!(".codexy-watcher-reclaim-{index:032x}"));
+        fs::create_dir(&quarantine)?;
+        for name in ["state.lock", "wait.lock", "session.json"] {
+            fs::write(quarantine.join(name), b"owned")?;
+        }
+        quarantines.push(quarantine);
+    }
+
+    let barrier = Arc::new(Barrier::new(2));
+    let mut workers = Vec::new();
+    for index in 0..2 {
+        let barrier = Arc::clone(&barrier);
+        let state = state.path().to_owned();
+        workers.push(thread::spawn(move || -> Result<(), String> {
+            barrier.wait();
+            let mut client = watcher_client(&state).map_err(|error| error.to_string())?;
+            initialize(&mut client).map_err(|error| error.to_string())?;
+            open_session(&mut client, &format!("concurrent-recovery-{index}"), index + 2)
+                .map_err(|error| error.to_string())?;
+            Ok(())
+        }));
+    }
+    for worker in workers {
+        worker
+            .join()
+            .map_err(|_| "recovery worker panicked")??;
+    }
+    for quarantine in quarantines {
+        assert!(!quarantine.exists(), "owned quarantine was not recovered");
+    }
+    let root = state.path().join("codexy-watcher");
+    assert!(root.join(".reclaim.lock").is_file());
+    assert!(!fs::read_dir(root)?.any(|entry| {
+        entry
+            .ok()
+            .and_then(|entry| entry.file_name().into_string().ok())
+            .is_some_and(|name| name.starts_with(".reclaim-"))
+    }));
     Ok(())
 }
 

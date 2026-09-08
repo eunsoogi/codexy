@@ -176,13 +176,12 @@ fn write_shared_frame(output: &SharedOutput, payload: &Value) -> Result<()> {
 }
 
 fn finish_request(calls: &CancellationMap, request_key: &str, token: &CancellationToken) {
-    if let Ok(mut active) = calls.lock() {
-        if active
+    if let Ok(mut active) = calls.lock()
+        && active
             .get(request_key)
             .is_some_and(|current| current.same_instance(token))
-        {
-            active.remove(request_key);
-        }
+    {
+        active.remove(request_key);
     }
 }
 

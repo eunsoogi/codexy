@@ -30,18 +30,19 @@ fn waiting_evidence_segments(text: &str, thread: &Value) -> Vec<String> {
     let mut segments = Vec::new();
     let mut carry = String::new();
     for segment in waiting_segments(text) {
-        if !carry.is_empty() && !thread_referenced(segment, thread) {
-            if let Some(reference_start) = first_review_reference_start(segment) {
-                let (prefix, suffix) = segment.split_at(reference_start);
-                if prefix.trim().is_empty() {
-                    segments.push(std::mem::take(&mut carry));
-                } else {
-                    segments.push(format!("{carry}{prefix}"));
-                    carry.clear();
-                }
-                segments.push(suffix.to_string());
-                continue;
+        if !carry.is_empty()
+            && !thread_referenced(segment, thread)
+            && let Some(reference_start) = first_review_reference_start(segment)
+        {
+            let (prefix, suffix) = segment.split_at(reference_start);
+            if prefix.trim().is_empty() {
+                segments.push(std::mem::take(&mut carry));
+            } else {
+                segments.push(format!("{carry}{prefix}"));
+                carry.clear();
             }
+            segments.push(suffix.to_string());
+            continue;
         }
         let candidate = format!("{carry}{segment}");
         let continues_waiting_clause = (segment.trim().is_empty()

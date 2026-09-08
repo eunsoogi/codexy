@@ -104,23 +104,23 @@ fn local_id_starts_before_outcome(text: &str, start: usize) -> Vec<usize> {
     if starts.is_empty() {
         return local_id_starts_in_following_list(text, start + boundary);
     }
-    if starts.len() > 1 {
-        if let Some(colon) = grouped_body_separator(text, start, start + boundary, &starts) {
-            let body_start = colon + 1;
-            let body = &text[body_start..start + boundary];
-            let ordinal_starts: Vec<_> = starts
-                .iter()
-                .enumerate()
-                .filter_map(|(index, id_start)| {
-                    let id = local_id_value(text, *id_start)?;
-                    find_word(body, &id)
-                        .or_else(|| ordinal_label(index).and_then(|word| find_word(body, word)))
-                        .map(|body_index| body_start + body_index)
-                })
-                .collect();
-            if ordinal_starts.len() == starts.len() {
-                return ordinal_starts;
-            }
+    if starts.len() > 1
+        && let Some(colon) = grouped_body_separator(text, start, start + boundary, &starts)
+    {
+        let body_start = colon + 1;
+        let body = &text[body_start..start + boundary];
+        let ordinal_starts: Vec<_> = starts
+            .iter()
+            .enumerate()
+            .filter_map(|(index, id_start)| {
+                let id = local_id_value(text, *id_start)?;
+                find_word(body, &id)
+                    .or_else(|| ordinal_label(index).and_then(|word| find_word(body, word)))
+                    .map(|body_index| body_start + body_index)
+            })
+            .collect();
+        if ordinal_starts.len() == starts.len() {
+            return ordinal_starts;
         }
     }
     starts

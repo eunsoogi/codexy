@@ -36,10 +36,9 @@ pub(super) fn with_mode(
         .get("reviewProfile")
         .and_then(Value::as_str)
         .filter(|value| !value.is_empty())
+        && bound_profile != selected
     {
-        if bound_profile != selected {
-            return Err("review control state profile disagrees with the selected profile".into());
-        }
+        return Err("review control state profile disagrees with the selected profile".into());
     }
     let profiles =
         policy::load(plugin_root).map_err(|_| "review profile policy is unavailable".to_owned())?;

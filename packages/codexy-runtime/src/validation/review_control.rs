@@ -58,10 +58,10 @@ pub(super) fn check_handoff(plugin_root: &Path, state: &Value) -> Vec<String> {
             if let Err(error) = external_finding::refresh_live(&mut control) {
                 return vec![error];
             }
-        } else if post_cap_disposition::requires_source(&control) {
-            if let Err(error) = post_cap_disposition::refresh_live(&mut control, Some(&state)) {
-                return vec![error];
-            }
+        } else if post_cap_disposition::requires_source(&control)
+            && let Err(error) = post_cap_disposition::refresh_live(&mut control, Some(&state))
+        {
+            return vec![error];
         }
         if control.get("final_disposition").is_some() {
             if let Err(error) = final_disposition::refresh_live(&mut control, None, &state) {
@@ -81,21 +81,21 @@ pub(super) fn check_handoff(plugin_root: &Path, state: &Value) -> Vec<String> {
     if let Err(error) = state::check_pr_state(plugin_root, &state, true) {
         return vec![error];
     }
-    if let Some(control) = state.get("reviewControl").and_then(Value::as_object) {
-        if control.get("final_disposition").is_some() {
-            let repository_root = match crate::paths::repo_root() {
-                Ok(root) => root,
-                Err(error) => {
-                    return vec![format!(
-                        "final disposition handoff repository root: {error}"
-                    )];
-                }
-            };
-            if let Err(error) =
-                final_disposition::check_handoff_repository(&repository_root, &state, control)
-            {
-                return vec![error];
+    if let Some(control) = state.get("reviewControl").and_then(Value::as_object)
+        && control.get("final_disposition").is_some()
+    {
+        let repository_root = match crate::paths::repo_root() {
+            Ok(root) => root,
+            Err(error) => {
+                return vec![format!(
+                    "final disposition handoff repository root: {error}"
+                )];
             }
+        };
+        if let Err(error) =
+            final_disposition::check_handoff_repository(&repository_root, &state, control)
+        {
+            return vec![error];
         }
     }
     Vec::new()

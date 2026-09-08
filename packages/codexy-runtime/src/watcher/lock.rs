@@ -7,6 +7,9 @@ use anyhow::{Context as _, Result, bail};
 
 use super::io::reject_link;
 
+// The file contents are opaque. Upgrades are coordinated: active processes
+// must use this OS-lock protocol together, and old sentinel owners must exit
+// before the new process starts. Mixed active protocols are unsupported.
 #[derive(Debug)]
 pub(super) struct LockGuard {
     file: File,
@@ -94,9 +97,7 @@ mod tests {
     #[test]
     fn preserves_the_native_cause_when_lock_open_fails() -> Result<()> {
         let temporary = tempfile::tempdir()?;
-        let parent = temporary.path().join("not-a-directory");
-        File::create(&parent)?;
-        let path = parent.join("state.lock");
+        let path = temporary.path().join("missing-parent/state.lock");
         let expected = OpenOptions::new()
             .read(true)
             .write(true)
@@ -106,7 +107,15 @@ mod tests {
             .expect_err("a file cannot be a lock parent");
 
         let error = LockGuard::try_acquire(&path).expect_err("lock opening should fail");
-        assert!(error.to_string().contains(&expected.to_string()));
+        let native = error
+            .downcast_ref::<std::io::Error>()
+            .context("lock error lost its native cause")?;
+        assert_eq!(native.raw_os_error(), expected.raw_os_error());
+        assert!(
+            error
+                .chain()
+                .any(|cause| cause.to_string() == expected.to_string())
+        );
         Ok(())
     }
 

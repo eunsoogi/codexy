@@ -236,12 +236,12 @@ fn check_enum(
     allowed: &[&str],
     errors: &mut Vec<String>,
 ) {
-    if let Some(value) = fields.get(key) {
-        if !value.as_str().is_some_and(|item| allowed.contains(&item)) {
-            errors.push(format!(
-                "{} mcp_servers.{name}.{key} has an unsupported value",
-                display_relative(path)
-            ));
-        }
+    if let Some(value) = fields.get(key)
+        && !value.as_str().is_some_and(|item| allowed.contains(&item))
+    {
+        errors.push(format!(
+            "{} mcp_servers.{name}.{key} has an unsupported value",
+            display_relative(path)
+        ));
     }
 }

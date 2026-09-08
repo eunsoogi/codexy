@@ -16,10 +16,10 @@ pub(super) fn has_false_label_value(text: &str, label: &str) -> bool {
         let end = start + label.len();
         if phrase_has_boundaries(text, start, end) {
             let suffix = text[end..].trim_start();
-            if let Some(value) = suffix.strip_prefix([':', '=', '-', '?']) {
-                if has_false_value(unquote_scalar(value.trim_start())) {
-                    return true;
-                }
+            if let Some(value) = suffix.strip_prefix([':', '=', '-', '?'])
+                && has_false_value(unquote_scalar(value.trim_start()))
+            {
+                return true;
             }
         }
         offset = end;

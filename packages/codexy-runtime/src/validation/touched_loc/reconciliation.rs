@@ -66,12 +66,11 @@ fn child_head(root: &Path, requested_base: &str) -> Result<String> {
     let head = resolve_commit(root, "HEAD")?;
     let requested_base = resolve_commit(root, requested_base)?;
     let parents = commit_parents(root, &head)?;
-    if parents.first() == Some(&requested_base) {
-        if let Some(child) = parents.get(1) {
-            if is_ancestor(root, &requested_base, child)? {
-                return Ok(child.clone());
-            }
-        }
+    if parents.first() == Some(&requested_base)
+        && let Some(child) = parents.get(1)
+        && is_ancestor(root, &requested_base, child)?
+    {
+        return Ok(child.clone());
     }
     Ok(head)
 }
