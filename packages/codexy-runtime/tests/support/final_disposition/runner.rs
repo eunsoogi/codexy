@@ -1,4 +1,4 @@
-use std::{fs, path::Path};
+use std::fs;
 
 use serde_json::{Value, json};
 
@@ -32,7 +32,7 @@ pub(crate) fn produce_with_states(
     previous: &Value,
     pull_request: u64,
 ) -> TestResult<Value> {
-    let result = run_producer_with_states(control, current, previous, pull_request, true, None)?;
+    let result = run_producer_with_states(control, current, previous, pull_request, true)?;
     if !result.status.success() {
         return Err(format!(
             "final disposition producer with native history failed: {}",
@@ -49,24 +49,7 @@ pub(crate) fn produce_with_recovered_predecessor(
     previous: &Value,
     pull_request: u64,
 ) -> TestResult<std::process::Output> {
-    run_producer_with_states(control, current, previous, pull_request, false, None)
-}
-
-pub(crate) fn produce_with_binary(
-    control: &Value,
-    current: &Value,
-    previous: &Value,
-    pull_request: u64,
-    binary: &Path,
-) -> TestResult<std::process::Output> {
-    run_producer_with_states(
-        control,
-        current,
-        previous,
-        pull_request,
-        true,
-        Some(binary),
-    )
+    run_producer_with_states(control, current, previous, pull_request, false)
 }
 
 pub(crate) fn produce_without_locator(
@@ -175,7 +158,6 @@ fn run_producer_with_states(
     previous: &Value,
     pull_request: u64,
     append_third_block_predecessor: bool,
-    binary: Option<&Path>,
 ) -> TestResult<std::process::Output> {
     let temporary = tempfile::tempdir()?;
     let repository = graph::SyntheticRepository::create(temporary.path())?;
@@ -215,9 +197,7 @@ fn run_producer_with_states(
             "previous_pr_state": previous_state
         }))?,
     )?;
-    let mut command = FixtureCommand::new(
-        binary.unwrap_or_else(|| Path::new(env!("CARGO_BIN_EXE_codexy-review-control"))),
-    );
+    let mut command = FixtureCommand::new(env!("CARGO_BIN_EXE_codexy-review-control"));
     fixture::configure(&mut command, &fixture);
     let mut result = command
         .args(["--produce-review-control", "--input"])
