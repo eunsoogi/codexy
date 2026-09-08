@@ -2,7 +2,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::contract::validate_contract;
 use super::inventory::files;
-use super::support::{contract, product, record, validate_import, SURFACE_SIDECARS};
+use super::support::{
+    contract, product, record, reject_unknown_wrapper_fields, validate_import, SURFACE_SIDECARS,
+};
 use crate::support::TestResult;
 
 fn assert_invalid(root: &std::path::Path, value: &serde_json::Value) {
@@ -101,6 +103,7 @@ fn core_and_devtools_packages_keep_developer_tool_surfaces_separate() -> TestRes
 #[test]
 fn product_boundary_contract_rejects_invalid_surface_records() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
+    reject_unknown_wrapper_fields(root)?;
     let contract = contract(root)?;
     let mut duplicate = contract.clone();
     duplicate["surfaceRecords"]
