@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use anyhow::{Context as _, Result, anyhow, bail};
 
-use super::io::{now_ms, random_hex, reject_link};
+use super::io::{now_ms, random_hex, reject_link_entry};
 
 const STALE_LOCK_MS: u64 = 120_000;
 
@@ -36,7 +36,7 @@ impl LockGuard {
         let mut file = match open_new_lock(path) {
             Ok(file) => file,
             Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
-                reject_lock_link(path)?;
+                reject_link_entry(path)?;
                 if stale(path) {
                     let _ = fs::remove_file(path);
                 }
@@ -59,28 +59,6 @@ impl LockGuard {
 
 fn open_new_lock(path: &Path) -> io::Result<File> {
     OpenOptions::new().write(true).create_new(true).open(path)
-}
-
-fn reject_lock_link(path: &Path) -> Result<()> {
-    let Some(parent) = path.parent() else {
-        return reject_link(path);
-    };
-    let Some(name) = path.file_name() else {
-        return reject_link(path);
-    };
-    for entry in fs::read_dir(parent)? {
-        let entry = entry?;
-        if entry.file_name().eq_ignore_ascii_case(name) {
-            if entry.file_type()?.is_symlink() {
-                bail!(
-                    "watcher state path must not be a symlink: {}",
-                    path.display()
-                );
-            }
-            break;
-        }
-    }
-    Ok(())
 }
 
 impl Drop for LockGuard {
@@ -184,6 +162,21 @@ mod tests {
 
         let error = LockGuard::try_acquire(&path).expect_err("lock creation should fail");
         assert!(error.to_string().contains(&expected.to_string()));
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rejects_a_symlinked_lock_entry() -> Result<()> {
+        use std::os::unix::fs::symlink;
+
+        let temporary = tempfile::tempdir()?;
+        let target = temporary.path().join("target");
+        File::create(&target)?;
+        let path = temporary.path().join("state.lock");
+        symlink(&target, &path)?;
+        let error = LockGuard::try_acquire(&path).expect_err("symlinked lock must be rejected");
+        assert!(error.to_string().contains("must not be a symlink"));
         Ok(())
     }
 
