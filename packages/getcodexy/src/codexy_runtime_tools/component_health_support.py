@@ -10,7 +10,14 @@ from .component_resolver import ComponentResolutionError, compare_versions
 
 
 SURFACE_PATHS = {
-    "core": ("agents/catalog.toml", "hooks/hooks.json", "skills/wiki/SKILL.md", ".mcp.json", "mcp/codexy-mcp-watcher", "mcp/codexy-mcp-watcher.cmd"),
+    "core": (
+        "agents/catalog.toml",
+        "hooks/hooks.json",
+        "skills/wiki/SKILL.md",
+        ".mcp.json",
+        "mcp/codexy-mcp-watcher.sh",
+        "mcp/codexy-mcp-watcher.cmd",
+    ),
     "github": ("agents/catalog.toml", "hooks/hooks.json"),
     "devtools": ("mcp/codexy-mcp-devtools", ".mcp.json"),
 }

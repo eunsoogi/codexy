@@ -4,7 +4,7 @@ use std::path::Path;
 
 use anyhow::{Context as _, Result, bail};
 
-use super::model::{Event, Session};
+use super::model::Event;
 use super::{EVENT_BYTES, MAX_EVENTS};
 use crate::watcher::io::{MAX_STATE_BYTES, reject_link, set_private_mode};
 
@@ -25,8 +25,8 @@ pub(super) fn append(root: &Path, session_id: &str, event: &Event) -> Result<()>
     Ok(())
 }
 
-pub(super) fn read(root: &Path, session: &Session) -> Result<Vec<Event>> {
-    let path = root.join(&session.session_id).join("events.jsonl");
+pub(super) fn read(root: &Path, session_id: &str) -> Result<Vec<Event>> {
+    let path = root.join(session_id).join("events.jsonl");
     if !path.exists() {
         return Ok(Vec::new());
     }
@@ -37,7 +37,7 @@ pub(super) fn read(root: &Path, session: &Session) -> Result<Vec<Event>> {
     }
     let text = std::str::from_utf8(&bytes).context("watcher event log is not UTF-8")?;
     let mut events = Vec::new();
-    let mut last_sequence = 0;
+    let mut last_sequence = 0_u64;
     let mut lines = text.split('\n').peekable();
     while let Some(line) = lines.next() {
         if line.is_empty() {
@@ -49,7 +49,7 @@ pub(super) fn read(root: &Path, session: &Session) -> Result<Vec<Event>> {
             Err(_) if trailing_partial => break,
             Err(error) => return Err(error).context("parsing watcher event log"),
         };
-        if event.sequence <= last_sequence || event.sequence > session.next_sequence {
+        if event.sequence != last_sequence.saturating_add(1) {
             bail!("watcher event log sequence is invalid");
         }
         if events

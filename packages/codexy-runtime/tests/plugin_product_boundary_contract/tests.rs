@@ -46,7 +46,7 @@ fn core_and_devtools_packages_keep_developer_tool_surfaces_separate() -> TestRes
         core.join(".mcp.json"),
     )?)?;
     assert_eq!(core_mcp["watcher"]["command"], "./mcp/codexy-mcp-watcher");
-    assert!(core.join("mcp/codexy-mcp-watcher").is_file());
+    assert!(core.join("mcp/codexy-mcp-watcher.sh").is_file());
     assert!(core.join("mcp/codexy-mcp-watcher.cmd").is_file());
     for absent in [
         ".codex/lsp-client.json",

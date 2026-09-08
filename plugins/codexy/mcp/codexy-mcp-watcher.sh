@@ -15,11 +15,7 @@ case "$(uname -s):$(uname -m)" in
   *) echo "codexy-mcp-watcher unsupported platform" >&2; exit 127 ;;
 esac
 
-case "$platform" in
-  darwin-arm64|linux-x86_64) runtime_extension=bin ;;
-  *) echo "codexy-mcp-watcher unsupported platform: $platform" >&2; exit 127 ;;
-esac
-runtime_name="codexy-mcp-watcher-$platform.$runtime_extension"
+runtime_name="codexy-mcp-watcher-$platform.bin"
 if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
   case "$CODEXY_RUNTIME_DIR" in
     /*) ;;

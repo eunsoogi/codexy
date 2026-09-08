@@ -22,6 +22,9 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
 
 fn check_inner(plugin_root: &Path) -> Result<()> {
     let manifest = super::manifest::load_manifest(plugin_root)?;
+    if manifest.get("name").and_then(Value::as_str) == Some("codexy") {
+        return super::core_mcp::check(plugin_root, &manifest);
+    }
     let path = super::manifest::mcp_config_path(plugin_root, &manifest)?;
     let data = load_json(&path)?;
     if data.get("mcpServers").is_some() {

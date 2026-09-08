@@ -1,11 +1,16 @@
+mod arguments;
+
 use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
 
 use crate::mcp::{CancellationToken, text_result};
 
 use super::state::{MAX_REPORTS, MAX_TTL_SECONDS, MAX_WAIT_MS, Store};
+use arguments::{
+    ensure_keys, event_field, identity, optional_cursor, optional_event_string, optional_event_u64,
+    optional_u64, required_string,
+};
 
-#[must_use]
 pub fn call_tool(name: &str, args: &Value) -> Result<Value> {
     call_tool_inner(name, args, None)
 }
@@ -127,7 +132,7 @@ fn call_tool_inner(
                 kind,
                 summary,
                 evidence,
-                event_id,
+                event_id.as_deref(),
                 observed,
                 state,
                 error,
@@ -146,9 +151,10 @@ fn call_tool_inner(
             )?;
             let session = required_string(args.get("sessionId"), "sessionId")?;
             let token = required_string(args.get("parentToken"), "parentToken")?;
-            let cursor = optional_u64(args.get("cursor"), "cursor")?.unwrap_or(0);
+            let cursor = optional_cursor(args.get("cursor"))?.unwrap_or(0);
             let max_reports =
-                optional_u64(args.get("maxReports"), "maxReports")?.unwrap_or(1) as usize;
+                usize::try_from(optional_u64(args.get("maxReports"), "maxReports")?.unwrap_or(1))
+                    .context("watcher maxReports is out of range")?;
             let timeout = optional_u64(args.get("timeoutMs"), "timeoutMs")?.unwrap_or(MAX_WAIT_MS);
             if max_reports == 0 || max_reports > MAX_REPORTS {
                 bail!("watcher maxReports must be between 1 and {MAX_REPORTS}");
@@ -184,67 +190,4 @@ fn call_tool_inner(
         _ => bail!("unknown watcher tool: {name}"),
     };
     Ok(text_result(&serde_json::to_string(&payload)?))
-}
-
-fn identity(args: &serde_json::Map<String, Value>, primary: &str, legacy: &str) -> Result<Value> {
-    if args.contains_key(primary) && args.contains_key(legacy) {
-        bail!("watcher identities must use only one of {primary} or {legacy}");
-    }
-    args.get(primary)
-        .or_else(|| args.get(legacy).map(|value| value))
-        .cloned()
-        .context(format!("watcher {primary} identity is required"))
-}
-
-fn ensure_keys(args: &serde_json::Map<String, Value>, allowed: &[&str]) -> Result<()> {
-    if let Some(key) = args.keys().find(|key| !allowed.contains(&key.as_str())) {
-        bail!("watcher argument is not supported: {key}");
-    }
-    Ok(())
-}
-
-fn required_string(value: Option<&Value>, label: &str) -> Result<String> {
-    let text = value
-        .and_then(Value::as_str)
-        .context(format!("watcher {label} must be a string"))?;
-    if text.is_empty() || text.len() > 128 || text.chars().any(char::is_control) {
-        bail!("watcher {label} is invalid");
-    }
-    Ok(text.to_owned())
-}
-
-fn optional_u64(value: Option<&Value>, label: &str) -> Result<Option<u64>> {
-    let Some(value) = value else {
-        return Ok(None);
-    };
-    let number = value
-        .as_u64()
-        .context(format!("watcher {label} must be an integer"))?;
-    Ok(Some(number))
-}
-fn event_field<'a>(
-    args: &'a serde_json::Map<String, Value>,
-    event: Option<&'a serde_json::Map<String, Value>>,
-    key: &str,
-) -> Option<&'a Value> {
-    event
-        .and_then(|object| object.get(key))
-        .or_else(|| args.get(key))
-}
-fn optional_event_string(
-    args: &serde_json::Map<String, Value>,
-    event: Option<&serde_json::Map<String, Value>>,
-    key: &str,
-) -> Result<Option<String>> {
-    event_field(args, event, key)
-        .map(|value| required_string(Some(value), key))
-        .transpose()
-}
-
-fn optional_event_u64(
-    args: &serde_json::Map<String, Value>,
-    event: Option<&serde_json::Map<String, Value>>,
-    key: &str,
-) -> Result<Option<u64>> {
-    optional_u64(event_field(args, event, key), key)
 }

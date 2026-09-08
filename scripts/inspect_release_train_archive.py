@@ -197,6 +197,11 @@ for _, plugin, package_root in inventory:
         admit_handoff(prefix, "core-owned")
         expected_directories.add(f"{package_root}/runtime")
     if plugin == "codexy" and core_watcher:
+        launcher = f"{prefix}mcp/codexy-mcp-watcher"
+        source_launcher = f"{prefix}mcp/codexy-mcp-watcher.sh"
+        if entries.get(launcher) != entries.get(source_launcher):
+            reject("core watcher generated launcher differs from its .sh source")
+        expected_entries.add(launcher)
         for binary in core_watcher["platforms"].values():
             name = f"{prefix}{binary['path']}"
             if hashlib.sha256(entries.get(name, b"")).hexdigest() != binary["sha256"]:

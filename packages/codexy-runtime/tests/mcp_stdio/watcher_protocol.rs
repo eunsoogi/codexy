@@ -60,6 +60,13 @@ fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
             "sessionId":session,"parentToken":parent_token,"timeoutMs":30000
         }}
     }))?;
+    let duplicate = client.send(&json!({
+        "jsonrpc":"2.0","id":4,"method":"tools/call",
+        "params":{"name":"watcher_health","arguments":{
+            "sessionId":session,"token":parent_token
+        }}
+    }))?;
+    assert_eq!(duplicate["error"]["code"], -32600);
     client.send_without_read(&json!({
         "jsonrpc":"2.0","method":"notifications/cancelled",
         "params":{"requestId":4,"reason":"user input"}
@@ -92,6 +99,16 @@ fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
     let waited = tool_payload(&waited)?;
     assert_eq!(waited["status"], "event");
     assert_eq!(waited["events"].as_array().ok_or("events")?.len(), 1);
+    let cursor = waited["nextCursor"].clone();
+    assert!(cursor.as_str().is_some(), "watcher cursors must round-trip as strings");
+    let empty = client.send(&json!({
+        "jsonrpc":"2.0","id":71,"method":"tools/call",
+        "params":{"name":"wait_watcher","arguments":{
+            "sessionId":session,"parentToken":parent_token,
+            "cursor":cursor,"timeoutMs":0
+        }}
+    }))?;
+    assert_eq!(tool_payload(&empty)?["status"], "timeout");
 
     let watcher_cancel = client.send(&json!({
         "jsonrpc":"2.0","id":8,"method":"tools/call",

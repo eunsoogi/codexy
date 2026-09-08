@@ -27,6 +27,7 @@ impl Store {
             bail!("watcher ttlSeconds must be between 1 and {MAX_TTL_SECONDS}");
         }
         let _lock = super::super::lock::LockGuard::acquire(&self.root.join(".open.lock"), 2_000)?;
+        self.reclaim_sessions(now_ms())?;
         if let Some(existing) = self.find_assignment(&assignment_id)? {
             if same_open(&existing, &parent, &watcher, &targets) {
                 return Ok(json!({
@@ -38,6 +39,7 @@ impl Store {
             }
             bail!("watcher assignmentId is already bound to another identity");
         }
+        self.ensure_session_capacity()?;
         let created_at = now_ms();
         let expires = created_at.saturating_add(ttl_seconds.saturating_mul(1_000));
         let (session, parent_token, watcher_token) = loop {
@@ -88,6 +90,7 @@ impl Store {
         }))
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn report(
         &self,
         session_id: &str,
@@ -96,7 +99,7 @@ impl Store {
         kind: Option<String>,
         summary: Option<String>,
         evidence: Vec<String>,
-        requested_event_id: Option<String>,
+        requested_event_id: Option<&str>,
         observed_at_ms: Option<u64>,
         watcher_state: Option<String>,
         last_error: Option<String>,
@@ -127,7 +130,7 @@ impl Store {
         let summary = summary.context("watcher material reports require summary")?;
         validate_text(&summary, "summary", 4_096)?;
         validate_evidence(&evidence)?;
-        let seed = if let Some(id) = requested_event_id.as_deref() {
+        let seed = if let Some(id) = requested_event_id {
             safe_id(id, "eventId")?;
             format!("client|{id}")
         } else {
@@ -151,7 +154,7 @@ impl Store {
             "observedAtMs": timestamp,
             "evidence": evidence,
         }))?);
-        let existing_events = events::read(&self.root, &session)?;
+        let existing_events = self.reconcile_events(&mut session)?;
         if let Some(previous) = existing_events
             .iter()
             .find(|event| event.event_id == event_id)

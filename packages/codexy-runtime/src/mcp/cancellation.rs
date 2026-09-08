@@ -79,6 +79,7 @@ where
 type CancellationMap = Arc<Mutex<HashMap<String, CancellationToken>>>;
 type SharedOutput = Arc<Mutex<io::Stdout>>;
 
+#[allow(clippy::too_many_arguments)]
 fn dispatch_message<F>(
     name: &str,
     version: &str,
@@ -119,6 +120,13 @@ where
     let token = CancellationToken::new();
     {
         let mut active = lock(calls)?;
+        if active.contains_key(&request_key) {
+            write_shared_frame(
+                output,
+                &error_response(&id, -32600, "MCP request id is already in flight"),
+            )?;
+            return Ok(());
+        }
         if active.len() >= MAX_IN_FLIGHT_REQUESTS {
             write_shared_frame(
                 output,
@@ -126,13 +134,7 @@ where
             )?;
             return Ok(());
         }
-        if active.insert(request_key.clone(), token.clone()).is_some() {
-            write_shared_frame(
-                output,
-                &error_response(&id, -32600, "MCP request id is already in flight"),
-            )?;
-            return Ok(());
-        }
+        active.insert(request_key.clone(), token.clone());
     }
     let params = message.get("params").cloned().unwrap_or(Value::Null);
     let tool_name = params
@@ -144,7 +146,6 @@ where
     let calls_for_worker = Arc::clone(calls);
     let output_for_worker = Arc::clone(output);
     let call_tool = Arc::clone(call_tool);
-    let id_for_response = id.clone();
     let worker = thread::Builder::new()
         .name(format!("codexy-mcp-{tool_name}"))
         .spawn(move || {
@@ -153,10 +154,10 @@ where
                 let response = match result {
                     Ok(result) => json!({
                         "jsonrpc": "2.0",
-                        "id": id_for_response,
+                        "id": id,
                         "result": result
                     }),
-                    Err(error) => error_response(&id_for_response, -32000, &error.to_string()),
+                    Err(error) => error_response(&id, -32000, &error.to_string()),
                 };
                 let _ = write_shared_frame(&output_for_worker, &response);
             }

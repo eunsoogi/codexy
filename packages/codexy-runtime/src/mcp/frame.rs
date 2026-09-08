@@ -147,13 +147,22 @@ fn content_length(header: &str) -> Result<usize> {
 
 #[cfg(test)]
 mod tests {
-    use super::{FrameParser, MAX_FRAME_BYTES};
+    use super::{FrameParser, MAX_BUFFER_BYTES, MAX_FRAME_BYTES};
     use serde_json::json;
 
     #[test]
     fn parser_rejects_oversized_newline_frame_before_buffer_growth() {
         let mut parser = FrameParser::default();
-        assert!(parser.extend(&vec![b'x'; MAX_FRAME_BYTES + 1]).is_err());
+        assert!(parser.extend(&vec![b'x'; MAX_BUFFER_BYTES + 1]).is_err());
+    }
+
+    #[test]
+    fn parser_rejects_a_newline_frame_over_the_payload_limit() {
+        let mut parser = FrameParser::default();
+        parser
+            .extend(&vec![b'x'; MAX_FRAME_BYTES + 1])
+            .expect("buffer limit includes header headroom");
+        assert!(parser.next_frame().is_err());
     }
 
     #[test]

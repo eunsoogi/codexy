@@ -7,7 +7,7 @@ mod wait;
 use std::fs;
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use serde_json::{Value, json};
 
 use self::model::{Event, Health, Session};
@@ -16,6 +16,7 @@ use super::lock::LockGuard;
 
 pub(crate) const MAX_TARGETS: usize = 8;
 pub(crate) const MAX_EVENTS: usize = 64;
+pub(crate) const MAX_SESSIONS: usize = 128;
 pub(crate) const MAX_REPORTS: usize = 8;
 pub(crate) const MAX_WAIT_MS: u64 = 30_000;
 pub(crate) const MAX_TTL_SECONDS: u64 = 86_400;
@@ -35,12 +36,8 @@ impl Store {
     }
 
     fn find_assignment(&self, assignment_id: &str) -> Result<Option<Session>> {
-        for entry in fs::read_dir(&self.root)?.take(128) {
-            let entry = entry?;
-            if !entry.file_type()?.is_dir() {
-                continue;
-            }
-            let path = entry.path().join("session.json");
+        for directory in self.session_dirs()? {
+            let path = directory.join("session.json");
             if path.is_file() {
                 let session: Session = read_json(&path, "session")?;
                 if session.assignment_id == assignment_id {
@@ -49,6 +46,63 @@ impl Store {
             }
         }
         Ok(None)
+    }
+
+    fn session_dirs(&self) -> Result<Vec<PathBuf>> {
+        let mut directories = Vec::new();
+        for entry in fs::read_dir(&self.root)? {
+            let entry = entry?;
+            let path = entry.path();
+            let file_type = entry.file_type()?;
+            if file_type.is_symlink() {
+                reject_link(&path)?;
+            }
+            if file_type.is_dir() {
+                let name = entry
+                    .file_name()
+                    .into_string()
+                    .map_err(|_| anyhow::anyhow!("watcher session id is not UTF-8"))?;
+                safe_id(&name, "sessionId")?;
+                directories.push(path);
+            }
+        }
+        Ok(directories)
+    }
+
+    pub(super) fn reclaim_sessions(&self, now: u64) -> Result<()> {
+        for directory in self.session_dirs()? {
+            let session_path = directory.join("session.json");
+            if !session_path.exists() {
+                if fs::read_dir(&directory)?.next().is_none() {
+                    fs::remove_dir(&directory)?;
+                    continue;
+                }
+                bail!("watcher session directory is incomplete");
+            }
+            let Some(lock) = LockGuard::try_acquire(&directory.join("state.lock"))? else {
+                continue;
+            };
+            let session: Session = read_json(&session_path, "session")?;
+            if session.status != "active" || now >= session.expires_at_ms {
+                remove_session_directory(&directory)?;
+            }
+            drop(lock);
+        }
+        Ok(())
+    }
+
+    pub(super) fn ensure_session_capacity(&self) -> Result<()> {
+        let count = self
+            .session_dirs()?
+            .into_iter()
+            .try_fold(0, |count, directory| {
+                let session = directory.join("session.json");
+                Ok::<_, anyhow::Error>(count + usize::from(session.is_file()))
+            })?;
+        if count >= MAX_SESSIONS {
+            bail!("watcher session storage is full; wait for expiry before opening another");
+        }
+        Ok(())
     }
 
     fn session_dir(&self, session_id: &str) -> Result<PathBuf> {
@@ -91,6 +145,32 @@ impl Store {
             &self.session_dir(session_id)?.join("health.json"),
             &serde_json::to_value(health)?,
         )
+    }
+
+    pub(in crate::watcher::state) fn consistent_snapshot(
+        &self,
+        session_id: &str,
+    ) -> Result<(Session, Vec<Event>)> {
+        let _lock = self.session_lock(session_id)?;
+        let mut session = self.load_session(session_id)?;
+        let events = self.reconcile_events(&mut session)?;
+        Ok((session, events))
+    }
+
+    pub(in crate::watcher::state) fn reconcile_events(
+        &self,
+        session: &mut Session,
+    ) -> Result<Vec<Event>> {
+        let events = events::read(&self.root, &session.session_id)?;
+        let last_sequence = events.last().map_or(0, |event| event.sequence);
+        if last_sequence > session.next_sequence {
+            session.next_sequence = last_sequence;
+            self.write_session(session)?;
+        }
+        if last_sequence != session.next_sequence {
+            bail!("watcher session and event log are inconsistent");
+        }
+        Ok(events)
     }
 
     fn wait_result(
@@ -143,4 +223,14 @@ impl Store {
             "expiresAtMs": session.expires_at_ms,
         }))
     }
+}
+
+fn remove_session_directory(path: &std::path::Path) -> Result<()> {
+    for entry in fs::read_dir(path)? {
+        let entry = entry?;
+        if entry.file_type()?.is_symlink() {
+            reject_link(&entry.path())?;
+        }
+    }
+    fs::remove_dir_all(path).map_err(Into::into)
 }

@@ -2,8 +2,10 @@
 
 import json
 import os
+from pathlib import Path
 import shlex
 import subprocess
+import time
 
 from .component_capability_observation import record_probe
 from .component_capability_probe_process import _probe_diagnostics
@@ -30,7 +32,7 @@ def probe_watcher(plugin, base):
     if not isinstance(command, str):
         return _failure(base, "capability-not-exposed")
     argv = _argv(command, plugin, server_config.get("args", ()))
-    assignment = f"getcodexy-health-{os.getpid()}"
+    assignment = _assignment_id()
     requests = [
         _request("initialize", 1, _INITIALIZE_PARAMS),
         _request("tools/list", 2),
@@ -129,10 +131,22 @@ def _request(method, identifier=None, params=None):
     return request
 
 
+def _assignment_id():
+    return f"getcodexy-health-{os.getpid()}-{time.monotonic_ns()}"
+
+
 def _argv(command, plugin, args=()):
     values = shlex.split(command.replace("${PLUGIN_ROOT}", str(plugin))) + [
         str(value) for value in (args if isinstance(args, list) else ())
     ]
+    if values and values[0].endswith("mcp/codexy-mcp-watcher"):
+        entrypoint = Path(values[0])
+        resolved = entrypoint if entrypoint.is_absolute() else plugin / entrypoint
+        if not resolved.is_file():
+            suffix = ".cmd" if os.name == "nt" else ".sh"
+            fallback = Path(f"{resolved}{suffix}")
+            if fallback.is_file():
+                values[0] = str(fallback)
     if (
         os.name == "nt"
         and values[0].lower().endswith((".bat", ".cmd"))

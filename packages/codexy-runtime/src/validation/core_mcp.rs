@@ -7,6 +7,7 @@ use crate::paths::display_relative;
 use crate::validation::{json_array_strings, load_json};
 
 const COMMAND: &[&str] = &["./mcp/codexy-mcp-watcher", "--stdio"];
+const SOURCE_LAUNCHER: &str = "mcp/codexy-mcp-watcher.sh";
 const WINDOWS_LAUNCHER: &str = "@echo off\n\"%~dp0..\\runtime\\codexy-mcp-watcher-windows-x86_64.exe\" %*\nexit /b %ERRORLEVEL%\n";
 
 pub(super) fn check(plugin_root: &Path, manifest: &Value) -> Result<()> {
@@ -53,7 +54,7 @@ pub(super) fn check(plugin_root: &Path, manifest: &Value) -> Result<()> {
             display_relative(&path)
         );
     }
-    let launcher = plugin_root.join("mcp/codexy-mcp-watcher");
+    let launcher = plugin_root.join(SOURCE_LAUNCHER);
     let metadata = std::fs::symlink_metadata(&launcher).with_context(|| {
         format!(
             "core watcher launcher is missing: {}",

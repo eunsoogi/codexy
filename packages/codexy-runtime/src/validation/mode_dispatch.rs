@@ -64,7 +64,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             errors.extend(github_labels::check_completion_handoff(&handoff, &pr_state));
             errors
         }
-        Mode::Mcp => mcp::check(&tooling_root(plugin_root)),
+        Mode::Mcp => mcp::check(&mcp_root(plugin_root)),
         Mode::Hooks => hooks::check(plugin_root),
         Mode::Roles => roles::check(plugin_root),
         Mode::RuntimeArtifacts => runtime::check_artifacts(plugin_root),
@@ -158,13 +158,18 @@ fn public_devtools_root(plugin_root: &Path) -> PathBuf {
 }
 
 fn tooling_root(plugin_root: &Path) -> PathBuf {
-    if !is_devtools(plugin_root)
-        && !plugin_root.join(".codex/lsp-client.json").is_file()
-        && !plugin_root.join(".mcp.json").is_file()
-    {
+    if !is_devtools(plugin_root) && !plugin_root.join(".codex/lsp-client.json").is_file() {
         return devtools_root(plugin_root);
     }
     plugin_root.to_path_buf()
+}
+
+fn mcp_root(plugin_root: &Path) -> PathBuf {
+    if is_devtools(plugin_root) || plugin_root.join(".mcp.json").is_file() {
+        plugin_root.to_path_buf()
+    } else {
+        devtools_root(plugin_root)
+    }
 }
 
 /// Runs plugin contract validation for the selected mode.

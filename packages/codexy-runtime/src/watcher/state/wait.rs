@@ -10,6 +10,7 @@ use super::validation::{authorize, authorize_parent, check_cancelled};
 use super::{MAX_REPORTS, MAX_WAIT_MS, Store};
 
 impl Store {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn wait_with_cancellation(
         &self,
         session_id: &str,
@@ -25,7 +26,7 @@ impl Store {
         if timeout_ms > MAX_WAIT_MS {
             bail!("watcher timeoutMs must be at most {MAX_WAIT_MS}");
         }
-        let session = self.load_session(session_id)?;
+        let (session, _) = self.consistent_snapshot(session_id)?;
         authorize_parent(&session, token)?;
         check_cancelled(cancellation)?;
         if cursor > session.next_sequence {
@@ -38,14 +39,13 @@ impl Store {
         let deadline = Instant::now() + Duration::from_millis(timeout_ms);
         loop {
             check_cancelled(cancellation)?;
-            let session = self.load_session(session_id)?;
+            let (session, events) = self.consistent_snapshot(session_id)?;
             if session.status == "cancelled" {
                 return self.wait_result("cancelled", cursor, &session, Vec::new());
             }
             if crate::watcher::io::now_ms() >= session.expires_at_ms {
                 return self.wait_result("expired", cursor, &session, Vec::new());
             }
-            let events = super::events::read(&self.root, &session)?;
             let pending = events
                 .into_iter()
                 .filter(|event| event.sequence > cursor)
@@ -63,7 +63,7 @@ impl Store {
     }
 
     pub(crate) fn health(&self, session_id: &str, token: &str) -> Result<Value> {
-        let session = self.load_session(session_id)?;
+        let (session, _) = self.consistent_snapshot(session_id)?;
         let actor = authorize(&session, token, false)?;
         let health = self.load_health(session_id)?;
         self.health_value(&session, &health, actor)
@@ -76,10 +76,10 @@ impl Store {
         if session.status == "cancelled" {
             return Ok(json!({ "status": "already_cancelled", "sessionId": session_id }));
         }
-        session.status = "cancelled".to_owned();
+        "cancelled".clone_into(&mut session.status);
         self.write_session(&session)?;
         let mut health = self.load_health(session_id)?;
-        health.watcher_state = "cancelled".to_owned();
+        "cancelled".clone_into(&mut health.watcher_state);
         self.write_health(session_id, &health)?;
         super::super::io::write_json(
             &self.session_dir(session_id)?.join("cancel.json"),

@@ -185,7 +185,7 @@ def valid_registration(plugin: Path, component: str) -> bool:
             ) == MCP and _executable(plugin / LAUNCHERS[component][0], plugin)
         core_mcp = component == "core" and json.loads(
             _text(plugin / ".mcp.json", plugin)
-        ) == CORE_MCP and _executable(plugin / "mcp/codexy-mcp-watcher", plugin)
+        ) == CORE_MCP and _executable(plugin / "mcp/codexy-mcp-watcher.sh", plugin)
         return (
             (component != "core" or core_mcp)
             and _text(plugin / "agents/catalog.toml", plugin) == CATALOGS[component]

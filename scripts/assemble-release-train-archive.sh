@@ -63,6 +63,11 @@ for _, plugin, package_root in expected:
             shutil.copy2(runtime_source / "runtime" / name, destination / "runtime" / name)
     if plugin == "codexy" and core_watcher:
         (destination / "runtime").mkdir(parents=True, exist_ok=True)
+        source_launcher = destination / "mcp/codexy-mcp-watcher.sh"
+        public_launcher = destination / "mcp/codexy-mcp-watcher"
+        if not source_launcher.is_file():
+            raise SystemExit("core watcher POSIX source launcher is missing")
+        shutil.copy2(source_launcher, public_launcher)
         for platform, binary in core_watcher["platforms"].items():
             source_binary = runtime_source / binary["path"]
             target_binary = destination / "runtime" / source_binary.name

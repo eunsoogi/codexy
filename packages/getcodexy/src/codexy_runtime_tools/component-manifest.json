@@ -38,7 +38,7 @@
           ".codex-plugin/plugin.json",
           "assets/codexy-icon.png",
           ".mcp.json",
-          "mcp/codexy-mcp-watcher",
+          "mcp/codexy-mcp-watcher.sh",
           "mcp/codexy-mcp-watcher.cmd",
           "skills/dreaming/scripts/resumable-context-capsule.sh",
           "skills/dreaming/scripts/resumable-context-capsule.cmd",
