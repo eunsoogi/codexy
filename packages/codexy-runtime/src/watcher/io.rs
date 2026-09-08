@@ -49,11 +49,15 @@ pub(super) fn ensure_dir(path: &Path) -> Result<()> {
 }
 
 pub(super) fn reject_link(path: &Path) -> Result<()> {
-    if fs::symlink_metadata(path)
-        .with_context(|| format!("inspecting watcher state path {}", path.display()))?
-        .file_type()
-        .is_symlink()
-    {
+    let metadata = match fs::symlink_metadata(path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => {
+            return Err(error)
+                .with_context(|| format!("inspecting watcher state path {}", path.display()));
+        }
+    };
+    if metadata.file_type().is_symlink() {
         bail!(
             "watcher state path must not be a symlink: {}",
             path.display()
