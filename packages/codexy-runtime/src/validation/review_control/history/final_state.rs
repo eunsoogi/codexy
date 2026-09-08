@@ -1,5 +1,6 @@
 use serde_json::Value;
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn check(
     value: Option<&Value>,
     history: &[Value],

@@ -20,6 +20,7 @@ pub(super) fn refresh(
     refresh::refresh(control, locator, current)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn check(
     disposition: &Map<String, Value>,
     history: &[Value],

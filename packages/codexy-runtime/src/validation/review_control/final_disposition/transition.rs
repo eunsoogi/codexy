@@ -2,6 +2,7 @@ use std::path::Path;
 
 use serde_json::{Map, Value};
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn check(
     repository_root: &Path,
     previous: &Value,

@@ -12,6 +12,7 @@ use fields::{finding_ids, oid, reject_unknown, section, section_ids, text};
 
 pub(super) const SCHEMA: &str = "codexy.review-control-final-disposition.v1";
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn check(
     value: &Value,
     history: &[Value],
@@ -218,6 +219,7 @@ fn section_ids_from_field(
     Ok(ids)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn check_transition(
     repository_root: &Path,
     previous: &Value,

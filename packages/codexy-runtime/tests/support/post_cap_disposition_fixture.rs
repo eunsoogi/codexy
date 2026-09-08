@@ -4,6 +4,10 @@ use serde_json::{Value, json};
 
 use crate::support::{TestResult, make_executable};
 
+#[cfg(windows)]
+#[path = "post_cap_disposition_fixture_windows.rs"]
+mod windows;
+
 pub(crate) struct CiSources {
     pub(crate) pull_request: Value,
     pub(crate) required_status_checks: Value,
@@ -103,6 +107,8 @@ esac
 "#,
     )?;
     make_executable(&gh)?;
+    #[cfg(windows)]
+    windows::write_gh_companion(&bin)?;
     let mut path = vec![bin];
     if let Some(existing) = std::env::var_os("PATH") {
         path.extend(std::env::split_paths(&existing));

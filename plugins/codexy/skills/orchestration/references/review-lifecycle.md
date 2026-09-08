@@ -126,13 +126,12 @@ owning issue, PR, base, current head, third review event, and finding set.
 Complete paginated review-thread evidence with zero unresolved threads remains
 required. This path does not permit synthetic `PASS` or `UNOBSERVABLE`, a fourth
 profile review, private evaluator inputs, or any waiver of ordinary tests,
-ownership, safety, LOC, connector-review, CI, or merge gates.
-Outside `final_disposition`, exact-head reviewer `PASS` and no unresolved
-reviewer findings, together with tests, validators, CI, review-thread,
-ownership, safety, LOC, and merge gates, remain required. With
-`final_disposition`, the reviewer projection remains the authentic third
-`BLOCK`; its live authority MUST still prove exact-head all-success CI and
-complete resolved review-thread evidence, while the same ordinary gates remain
-active. Both final-disposition forms waive only review four, which MUST NOT
-occur. Reviewer MUST NOT be messaged, interrupted, replaced, duplicated, or
-polled.
+ownership, safety, LOC, connector-review, CI, or merge gates. Outside
+`final_disposition`, exact-head reviewer `PASS` and no unresolved reviewer
+findings, together with tests, validators, CI, review-thread, ownership, safety,
+LOC, and merge gates, remain required. With `final_disposition`, the reviewer
+projection remains the authentic third `BLOCK`; its live authority MUST still
+prove exact-head all-success CI and complete resolved review-thread evidence,
+while the same ordinary gates remain active. Both final-disposition forms waive
+only review four, which MUST NOT occur. Reviewer MUST NOT be messaged,
+interrupted, replaced, duplicated, or polled.

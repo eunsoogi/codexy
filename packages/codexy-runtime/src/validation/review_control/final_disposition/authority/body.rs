@@ -41,7 +41,7 @@ pub(super) fn check(body: &str, expected: &Expected<'_>) -> Result<(), String> {
     let [heading] = headings.as_slice() else {
         return Err("final disposition authority comment must contain one bounded scope".into());
     };
-    if lines.get(..*heading) != Some(&[TITLE, "", PREAMBLE, ""].as_slice()) {
+    if lines.get(..*heading) != Some([TITLE, "", PREAMBLE, ""].as_slice()) {
         return Err("final disposition authority comment has an unsupported preamble".into());
     }
     let mut end = heading + 1;
@@ -53,7 +53,7 @@ pub(super) fn check(body: &str, expected: &Expected<'_>) -> Result<(), String> {
         || scoped
             .iter()
             .zip(PREFIXES)
-            .any(|(line, prefix)| !line.starts_with(&format!("- {prefix}")))
+            .any(|(line, prefix)| !line.starts_with(format!("- {prefix}").as_str()))
     {
         return Err("final disposition authority comment has an invalid scope".into());
     }

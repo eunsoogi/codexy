@@ -8,6 +8,7 @@ use crate::validation::review_thread_evidence;
 
 const COMMENT_SCHEMA: &str = "codexy.review-control-final-authority-comment.v1";
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn check_maintainer(
     value: &Value,
     authority: &Map<String, Value>,
@@ -191,12 +192,12 @@ fn check_comment(value: Option<&Value>, authority: &Map<String, Value>) -> Resul
         ],
         "final disposition authority comment",
     )?;
-    if text(comment, "id", "final disposition authority comment")? == ""
-        || text(comment, "url", "final disposition authority comment")?
-            != format!(
-                "https://github.com/{repository}/pull/{}#issuecomment-{database_id}",
-                number
-            )
+    text(comment, "id", "final disposition authority comment")?;
+    if text(comment, "url", "final disposition authority comment")?
+        != format!(
+            "https://github.com/{repository}/pull/{}#issuecomment-{database_id}",
+            number
+        )
         || !matches!(association, "OWNER" | "MEMBER")
         || author == "codexy-sentinel"
         || created != updated

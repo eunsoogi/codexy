@@ -15,10 +15,7 @@ pub(super) fn section<'a>(value: &'a Value, label: &str) -> Result<&'a Map<Strin
     Ok(object)
 }
 
-pub(super) fn section_ids<'a>(
-    object: &'a Map<String, Value>,
-    label: &str,
-) -> Result<Vec<String>, String> {
+pub(super) fn section_ids(object: &Map<String, Value>, label: &str) -> Result<Vec<String>, String> {
     let ids = object
         .get("finding_ids")
         .and_then(Value::as_array)

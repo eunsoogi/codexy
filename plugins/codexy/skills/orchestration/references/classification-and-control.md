@@ -155,15 +155,14 @@ For standard and strict profiles without `final_disposition`, the reviewer and
 `reviewed_head` MUST match the current PR state, `terminal_result` MUST be
 exactly `PASS`, `BLOCK`, or `UNOBSERVABLE`, and a readiness handoff MUST have
 `PASS`, no unresolved findings, one full review, and at most one delta review.
-The history MUST
-contain that one `full` event, optionally followed by one `delta` event, with
-unique review IDs, the selected reviewer on every event unless the exact
-versioned migration marker authorizes one supported exception, and a different
-reviewed head for each event. A migrated history MUST preserve actual tuples:
-normal direction uses the legacy reviewer before `history_boundary` and current
-policy thereafter; boundary-1 exception keeps current on `full` and legacy on
-`delta`. Its length MUST equal `terminal_review_count`; counters MUST equal
-kinds.
+The history MUST contain that one `full` event, optionally followed by one
+`delta` event, with unique review IDs, the selected reviewer on every event
+unless the exact versioned migration marker authorizes one supported exception,
+and a different reviewed head for each event. A migrated history MUST preserve
+actual tuples: normal direction uses the legacy reviewer before
+`history_boundary` and current policy thereafter; boundary-1 exception keeps
+current on `full` and legacy on `delta`. Its length MUST equal
+`terminal_review_count`; counters MUST equal kinds.
 
 The one bounded post-cap path is a third `required_current_head` event after the
 full and delta events. It MUST use the current policy reviewer, bind the current
@@ -175,21 +174,20 @@ delta head. It MUST also carry `qualifying_change.from_head`,
 `qualifying_change.to_head`, and `qualifying_change.evidence_commit`; those
 values MUST bind the delta head and current head, and the evidence commit MUST
 be in their Git ancestry. The current head MUST differ from that prior head.
-After an authentic third `BLOCK`, the sibling `final_disposition` MAY record
-one bounded parent/maintainer disposition while preserving the immutable
-three-event history, third `terminal_result = BLOCK`, and
-`terminal_review_count = 3`; it MUST NOT create a fourth review or synthetic
-`PASS`/`UNOBSERVABLE`. A repaired-head disposition MUST bind the third head
-through an ancestor evidence commit to the exact current head, with non-empty
-diffs limited to selected finding paths and retained in the final tree; a
-same-head correction MUST use evidence refresh without an artificial source
-edit. Its authority MUST be produced from the locator-only
-`authenticated_final_disposition_locator`, reread at producer, build, and
-handoff, and bind an immutable OWNER/MEMBER decision, exact-head all-success
-CI, and complete zero-unresolved review-thread evidence. Ordinary tests,
-ownership, safety, LOC, connector-review, CI, and merge gates remain active.
-Optional churn, a fourth event, a duplicate head or ID, a truncated/reordered
-history, and a marker on a non-third event MUST be rejected.
+After an authentic third `BLOCK`, the sibling `final_disposition` MAY record one
+bounded parent/maintainer disposition while preserving the immutable three-event
+history, third `terminal_result = BLOCK`, and `terminal_review_count = 3`; it
+MUST NOT create a fourth review or synthetic `PASS`/`UNOBSERVABLE`. A
+repaired-head disposition MUST bind the third head through an ancestor evidence
+commit to the exact current head, with non-empty diffs limited to selected
+finding paths and retained in the final tree; a same-head correction MUST use
+evidence refresh without an artificial source edit. Its authority MUST be
+produced from the locator-only `authenticated_final_disposition_locator`, reread
+at producer, build, and handoff, and bind an immutable OWNER/MEMBER decision,
+exact-head all-success CI, and complete zero-unresolved review-thread evidence.
+Ordinary tests, ownership, safety, LOC, connector-review, CI, and merge gates
+remain active. Optional churn, a fourth event, a duplicate head or ID, a
+truncated/reordered history, and a marker on a non-third event MUST be rejected.
 
 Every reviewer-backed transition MUST use authenticated current and previous PR
 snapshots from the canonical GitHub readback producer. Each snapshot MUST bind
@@ -219,8 +217,8 @@ integration evidence MUST descend from the current base. For
 delta MUST be `BLOCK` with non-empty findings, and
 `qualifying_change.finding_ids` MUST exactly identify those findings; its
 evidence diff MUST change every finding's recorded path. For
-`authenticated_external_finding_repair`, the base OID MUST remain unchanged,
-the prior delta MUST be a clean `PASS`, and the source MUST come from the
+`authenticated_external_finding_repair`, the base OID MUST remain unchanged, the
+prior delta MUST be a clean `PASS`, and the source MUST come from the
 locator-only `authenticated_external_finding_locator`. The producer MUST use a
 fixed-argument, host-authorized GraphQL read, reject command/GraphQL,
 pagination, and identity failures, persist raw plus deterministic projection,

@@ -2,6 +2,7 @@ use serde_json::{Map, Value};
 
 use super::super::fields::{reject_unknown, text};
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn check(
     authority: &Map<String, Value>,
     locator: &Value,
