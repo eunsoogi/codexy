@@ -162,6 +162,49 @@ flowchart TD
     review --> finish["PR, merge, or explicit handoff"]
 ```
 
+### Model roles and reasoning effort
+
+Codexy separates task ownership from bundled specialist roles. These are the
+project's role settings; installation does not change a host's default model or
+opt a user into another repository's GitHub policy.
+
+| Role                       | Model          | Reasoning effort | Responsibility                                                                                                                                                            |
+| -------------------------- | -------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Orchestrator / parent      | `gpt-6-astra`  | `medium`         | Assigns and follows Worker work, owns the overall task goal, corrects deviations, verifies reports, and accepts results.                                                  |
+| Watcher / `codexy-watcher` | `gpt-5.6-luna` | `max`            | Bounded native-subagent observation of assigned Workers through the core Watcher MCP; reports material events and never directs, edits, replaces, or accepts Worker work. |
+| Worker / ordinary child    | `gpt-5.6-luna` | `max`            | Separate app task that owns its implementation branch/worktree, verifies the issue, and returns results and evidence to the Orchestrator.                                 |
+
+Reporting flow: the Orchestrator summons the Watcher and assigns or corrects the
+Worker; the Worker returns results and evidence; the Watcher reports material
+events through `watcher_report`; the Orchestrator waits with `wait_watcher`,
+judges the report, and retains correction and acceptance authority. The MCP
+transports signals; it does not judge Worker state.
+Orchestrator-to-Worker/Watcher delivery uses `gpt-5.6-luna`/`max`;
+Worker/Watcher-to-Orchestrator delivery uses `gpt-6-astra`/`medium`.
+
+Goal boundary: the Orchestrator owns the overall task goal, the Watcher owns
+only a bounded observation assignment, and the Worker owns its finite execution
+goal. The Watcher cannot own or transfer the overall goal. These settings are
+bundled configuration, not proof of the model used by an already-running host;
+`low`, `medium`, `high`, `xhigh`, and `max` are reasoning-effort settings.
+
+### Packaged specialists
+
+The bundled catalog assigns each specialist its own model and reasoning effort;
+the optional `codexy-github` plugin supplies Weaver.
+
+| Component | Specialist            | Model           | Reasoning effort | Responsibility                                                 |
+| --------- | --------------------- | --------------- | ---------------- | -------------------------------------------------------------- |
+| core      | `codexy-architect`    | `gpt-6-astra`   | `high`           | Architecture and integration boundaries                        |
+| core      | `codexy-sentinel`     | `gpt-6-astra`   | `xhigh`          | Strict review                                                  |
+| core      | `codexy-warden`       | `gpt-6-astra`   | `xhigh`          | Safety and permission boundaries                               |
+| core      | `codexy-inspector`    | `gpt-5.6-sol`   | `medium`         | Standard review                                                |
+| core      | `codexy-auditor`      | `gpt-5.6-terra` | `medium`         | Acceptance and observable verification                         |
+| core      | `codexy-cartographer` | `gpt-5.6-luna`  | `low`            | Repository discovery                                           |
+| core      | `codexy-shipwright`   | `gpt-5.6-terra` | `high`           | Release and packaging                                          |
+| core      | `codexy-watcher`      | `gpt-5.6-luna`  | `max`            | Bounded native Worker observation through the core Watcher MCP |
+| github    | `codexy-weaver`       | `gpt-5.6-terra` | `medium`         | GitHub integration; supplied by the GitHub component           |
+
 ### Realtime voice mode
 
 The `realtime-voice-orchestration` skill adds a voice-specific routing and
@@ -180,9 +223,9 @@ unavailable, the limit is stated; #611 remains an external host dependency.
 ### Inventory and public boundaries
 
 The detailed [architecture guide](docs/architecture.md) is the source-aligned
-inventory of seven core specialists, Weaver, packaged skills, and the split
-Codegraph/LSP runtime. It also documents LSP batches (1–8 requests, 60 seconds),
-core hook timing (default off, four fields, 1 MiB cap), and doctor's
+inventory of bundled specialists, packaged skills, and the split Codegraph/LSP
+runtime. It also documents LSP batches (1–8 requests, 60 seconds), core hook
+timing (default off, four fields, 1 MiB cap), and doctor's
 configured/loaded/callable/verified states, where `unknown` remains non-proof
 for the observation.
 
