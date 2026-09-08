@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::io::{self, Read, Write};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread::{self, JoinHandle};
 
@@ -9,26 +8,11 @@ use serde_json::{Value, json};
 
 use super::{FrameParser, ToolDef, error_response, handle_control_message};
 
+#[path = "cancellation_token.rs"]
+mod cancellation_token;
+pub use cancellation_token::CancellationToken;
+
 const MAX_IN_FLIGHT_REQUESTS: usize = 16;
-
-/// Cooperative cancellation state for one in-flight MCP request.
-#[derive(Clone, Debug)]
-pub struct CancellationToken(Arc<AtomicBool>);
-
-impl CancellationToken {
-    #[must_use]
-    pub fn is_cancelled(&self) -> bool {
-        self.0.load(Ordering::Acquire)
-    }
-
-    fn new() -> Self {
-        Self(Arc::new(AtomicBool::new(false)))
-    }
-
-    fn cancel(&self) {
-        self.0.store(true, Ordering::Release);
-    }
-}
 
 /// Runs an MCP server whose tool calls can be cancelled by a subsequent
 /// `notifications/cancelled` message on the same stdio connection.
@@ -99,10 +83,10 @@ where
         .unwrap_or_default();
     if method == "notifications/cancelled" {
         if let Some(request_key) = cancellation_key(message) {
-            if let Ok(active) = calls.lock() {
-                if let Some(token) = active.get(&request_key) {
-                    token.cancel();
-                }
+            let token = lock(calls)?.get(&request_key).cloned();
+            if let Some(token) = token {
+                token.cancel();
+                token.wait_for_completion();
             }
         }
         return Ok(());
@@ -162,6 +146,7 @@ where
                 let _ = write_shared_frame(&output_for_worker, &response);
             }
             finish_request(&calls_for_worker, &request_key, &token);
+            token.complete();
         })
         .context("starting MCP tool worker")?;
     workers.push(worker);
@@ -194,7 +179,7 @@ fn finish_request(calls: &CancellationMap, request_key: &str, token: &Cancellati
     if let Ok(mut active) = calls.lock() {
         if active
             .get(request_key)
-            .is_some_and(|current| Arc::ptr_eq(&current.0, &token.0))
+            .is_some_and(|current| current.same_instance(token))
         {
             active.remove(request_key);
         }

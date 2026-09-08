@@ -44,6 +44,43 @@ class RuntimeCliTests(RuntimeGitInstallCases, unittest.TestCase):
             "lsp", Path("/tmp/plugin root").resolve(), ["--stdio"]
         )
 
+    def test_cli_accepts_watcher_server(self) -> None:
+        argv = [
+            "codexy-mcp-runtime",
+            "watcher",
+            "--plugin-root",
+            "/tmp/plugin root",
+            "--",
+            "--stdio",
+        ]
+        with (
+            mock.patch.object(sys, "argv", argv),
+            mock.patch.object(runtime.Configuration, "load") as load,
+            mock.patch.object(runtime, "run"),
+        ):
+            runtime.main()
+
+        load.assert_called_once_with(
+            "watcher", Path("/tmp/plugin root").resolve(), ["--stdio"]
+        )
+
+    def test_watcher_uses_windows_runtime_name(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = root / ".codex-plugin/plugin.json"
+            manifest.parent.mkdir()
+            manifest.write_text(
+                '{"name":"codexy","repository":"https://github.com/eunsoogi/codexy","version":"1.6.3"}',
+                encoding="utf-8",
+            )
+            with mock.patch.dict(
+                "os.environ", {"CODEXY_RUNTIME_PLATFORM": "windows-x86_64"}, clear=True
+            ):
+                config = runtime.Configuration.load("watcher", root, ["--stdio"])
+
+        self.assertIn("windows-x86_64", runtime.SUPPORTED_PLATFORMS)
+        self.assertEqual(config.runtime_name, "codexy-mcp-watcher-windows-x86_64.exe")
+
     def test_github_token_policy_uses_environment_then_cli_on_trusted_api(self) -> None:
         api = "https://api.github.com/repos/eunsoogi/codexy/actions/artifacts"
         with (

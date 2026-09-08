@@ -10,6 +10,9 @@ use sha2::{Digest as _, Sha256};
 
 use super::super::canonical;
 
+#[path = "fixture/core_wrappers.rs"]
+mod core_wrappers;
+
 const WRAPPERS: [&str; 2] = [
     "plugins/codexy-devtools/mcp/codexy-mcp-lsp",
     "plugins/codexy-devtools/mcp/codexy-mcp-codegraph",
@@ -137,6 +140,7 @@ impl Fixture {
                 ),
             )?;
         }
+        core_wrappers::write(&root, &prior_runtime_version)?;
         let receipt = root.join("receipt.json");
         fs::write(&receipt, serde_json::to_string(&receipt_value())?)?;
         Ok(Self {
@@ -153,7 +157,10 @@ impl Fixture {
     }
 
     pub(super) fn wrappers(&self) -> impl Iterator<Item = PathBuf> + '_ {
-        WRAPPERS.into_iter().map(|path| self.root.join(path))
+        WRAPPERS
+            .into_iter()
+            .chain(core_wrappers::PATHS)
+            .map(|path| self.root.join(path))
     }
 
     pub(super) fn prior_runtime_release(&self) -> &str {

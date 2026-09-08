@@ -36,5 +36,15 @@ bundled_runtime="$plugin_root/runtime/$runtime_name"
 if [ -x "$bundled_runtime" ]; then
 	exec "$bundled_runtime" "$@"
 fi
-echo "codexy-mcp-watcher bundled runtime is missing; reinstall the Codexy core package" >&2
-exit 127
+if ! command -v uvx >/dev/null 2>&1; then
+	echo "codexy-mcp-watcher requires uvx on PATH; install uv or provide a bundled runtime" >&2
+	exit 127
+fi
+repo_root=
+if repo_root=$(CDPATH='' cd -- "$plugin_root/../.." 2>/dev/null && pwd); then
+	runtime_source="$repo_root/packages/getcodexy"
+	if [ -f "$runtime_source/pyproject.toml" ]; then
+		exec uvx --from "$runtime_source" codexy-mcp-runtime watcher --plugin-root "$plugin_root" -- "$@"
+	fi
+fi
+exec uvx --from getcodexy==1.6.3 codexy-mcp-runtime watcher --plugin-root "$plugin_root" -- "$@"

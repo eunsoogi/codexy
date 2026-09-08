@@ -134,3 +134,50 @@ fn complete_event_without_final_newline_is_preserved_before_append() -> Result<(
     }
     Ok(())
 }
+
+#[test]
+fn incomplete_session_with_known_atomic_temp_is_reclaimed() -> Result<(), String> {
+    let state = tempfile::tempdir().map_err(|error| error.to_string())?;
+    let orphan = state.path().join("codexy-watcher/orphan");
+    std::fs::create_dir_all(&orphan).map_err(|error| error.to_string())?;
+    let temporary = orphan.join(format!(".session.json.tmp-{}", "a".repeat(24)));
+    std::fs::write(&temporary, b"partial session").map_err(|error| error.to_string())?;
+
+    let mut client = watcher_client(state.path()).map_err(|error| error.to_string())?;
+    initialize(&mut client).map_err(|error| error.to_string())?;
+    let opened = open_session(&mut client, "reclaim-known-temp", 2)
+        .map_err(|error| error.to_string())?;
+    if temporary.exists() || orphan.exists() || opened.0.is_empty() {
+        return Err("known atomic temporary was not reclaimed".to_owned());
+    }
+    Ok(())
+}
+
+#[test]
+fn incomplete_session_with_unknown_file_is_preserved_and_rejected() -> Result<(), String> {
+    let state = tempfile::tempdir().map_err(|error| error.to_string())?;
+    let orphan = state.path().join("codexy-watcher/orphan");
+    std::fs::create_dir_all(&orphan).map_err(|error| error.to_string())?;
+    let lock = orphan.join("state.lock");
+    std::fs::write(&lock, b"user-owned lock").map_err(|error| error.to_string())?;
+
+    let mut client = watcher_client(state.path()).map_err(|error| error.to_string())?;
+    initialize(&mut client).map_err(|error| error.to_string())?;
+    let response = client
+        .send(&serde_json::json!({
+            "jsonrpc":"2.0","id":2,"method":"tools/call",
+            "params":{"name":"watcher_open","arguments":{
+                "assignmentId":"reject-unknown","parent":{"id":"parent"},
+                "watcher":{"id":"watcher"},"targets":[{"threadId":"target"}],
+                "ttlSeconds":60
+            }}
+        }))
+        .map_err(|error| error.to_string())?;
+    if response["error"]["message"] != "watcher session directory is incomplete" {
+        return Err(format!("unknown incomplete session was not rejected: {response}"));
+    }
+    if !lock.exists() {
+        return Err("unknown incomplete-session file was removed".to_owned());
+    }
+    Ok(())
+}

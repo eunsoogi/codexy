@@ -146,14 +146,17 @@ impl Store {
             "evt-{}",
             hash_text(&format!("{}|{seed}", session.session_id))
         );
-        let fingerprint = hash_text(&canonical_text(&json!({
+        let mut fingerprint_value = json!({
             "eventId": event_id,
             "kind": kind,
             "target": target,
             "summary": summary,
-            "observedAtMs": timestamp,
             "evidence": evidence,
-        }))?);
+        });
+        if requested_event_id.is_none() || observed_at_ms.is_some() {
+            fingerprint_value["observedAtMs"] = json!(timestamp);
+        }
+        let fingerprint = hash_text(&canonical_text(&fingerprint_value)?);
         let existing_events = self.reconcile_events(&mut session)?;
         if let Some(previous) = existing_events
             .iter()

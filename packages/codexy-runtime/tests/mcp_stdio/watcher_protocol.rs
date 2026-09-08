@@ -1,4 +1,6 @@
 use super::*;
+use std::thread;
+use std::time::Duration;
 use std::process::Stdio;
 
 fn watcher_client(
@@ -67,10 +69,33 @@ fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
         }}
     }))?;
     assert_eq!(duplicate["error"]["code"], -32600);
+    let mut waiting = false;
+    for request_id in 40..140 {
+        let health = client.send(&json!({
+            "jsonrpc":"2.0","id":request_id,"method":"tools/call",
+            "params":{"name":"watcher_health","arguments":{
+                "sessionId":session,"token":parent_token
+            }}
+        }))?;
+        waiting = tool_payload(&health)?["waiting"].as_bool().unwrap_or(false);
+        if waiting {
+            break;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert!(waiting, "waiter did not acquire wait.lock before cancellation");
+    thread::sleep(Duration::from_millis(2));
     client.send_without_read(&json!({
         "jsonrpc":"2.0","method":"notifications/cancelled",
         "params":{"requestId":4,"reason":"user input"}
     }))?;
+    let replacement = client.send(&json!({
+        "jsonrpc":"2.0","id":41,"method":"tools/call",
+        "params":{"name":"wait_watcher","arguments":{
+            "sessionId":session,"parentToken":parent_token,"cursor":0,"timeoutMs":0
+        }}
+    }))?;
+    assert_eq!(tool_payload(&replacement)?["status"], "timeout");
     client.send_without_read(&json!({
         "jsonrpc":"2.0","id":5,"method":"tools/call",
         "params":{"name":"watcher_health","arguments":{
@@ -89,6 +114,24 @@ fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
         }}
     }))?;
     assert_eq!(tool_payload(&reported)?["status"], "accepted");
+    let duplicate_report = client.send(&json!({
+        "jsonrpc":"2.0","id":61,"method":"tools/call",
+        "params":{"name":"watcher_report","arguments":{
+            "sessionId":session,"watcherToken":watcher_token,
+            "target":{"threadId":"target-thread"},"eventId":"after-interrupt",
+            "kind":"gate_ready","summary":"event after cancelled wait"
+        }}
+    }))?;
+    assert_eq!(tool_payload(&duplicate_report)?["status"], "duplicate");
+    let conflict = client.send(&json!({
+        "jsonrpc":"2.0","id":62,"method":"tools/call",
+        "params":{"name":"watcher_report","arguments":{
+            "sessionId":session,"watcherToken":watcher_token,
+            "target":{"threadId":"target-thread"},"eventId":"after-interrupt",
+            "kind":"gate_ready","summary":"changed material event"
+        }}
+    }))?;
+    assert_eq!(conflict["error"]["message"], "watcher eventId conflicts with an existing report");
 
     let waited = client.send(&json!({
         "jsonrpc":"2.0","id":7,"method":"tools/call",

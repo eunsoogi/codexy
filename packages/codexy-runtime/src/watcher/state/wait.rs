@@ -58,7 +58,11 @@ impl Store {
             if timeout_ms == 0 || Instant::now() >= deadline {
                 return self.wait_result("timeout", cursor, &session, Vec::new());
             }
-            thread::sleep(Duration::from_millis(25));
+            if let Some(cancellation) = cancellation {
+                cancellation.wait(Duration::from_millis(25));
+            } else {
+                thread::sleep(Duration::from_millis(25));
+            }
         }
     }
 

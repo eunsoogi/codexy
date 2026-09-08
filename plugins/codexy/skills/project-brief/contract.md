@@ -1,7 +1,8 @@
 # Project Brief Contract
 
 This file is the readable output contract and deterministic corpus for the
-`project-brief` skill. It replaces the former machine-oriented references.
+`project-brief` skill. Its v1 schema describes the explicit machine receipt; the
+default human response is a natural-language summary.
 
 ## Contract identity
 
@@ -12,6 +13,8 @@ This file is the readable output contract and deterministic corpus for the
 
 ## Output fields
 
+These fields apply to machine receipt mode only.
+
 - `objective`, `owner`, `verified_phase`, `decision_required`, `next_action`,
   and `done_when`: nonempty strings
 - `changes_since_touch` and `evidence_handle`: lists with at least one nonempty
@@ -21,7 +24,20 @@ This file is the readable output contract and deterministic corpus for the
 - The result contains exactly the eight fields above in the stated order.
 - The projection copies recorded values only. It keeps proof, merge,
   publication, public verification, and milestone closure as distinct phases.
-- Repository, GitHub, task, release, and proof state remain unchanged.
+- `verified_phase` is one opaque nonempty string copied exactly as recorded.
+  Separately recorded `result` or `uncertainty` values are not v1 output fields
+  and MUST NOT be folded into, split from, or used to rewrite `verified_phase`.
+
+## Mode selection
+
+- A natural-language status request MUST select a concise human summary by
+  default.
+- An explicit machine/receipt request or an existing machine consumer MUST
+  select the eight fields above, in the stated order, without a prose wrapper.
+- Both modes MUST use the same current recorded facts and uncertainty. Human
+  mode MUST render separately recorded `result` and `uncertainty` values
+  verbatim; machine mode MUST copy `verified_phase` exactly as recorded. Neither
+  mode changes repository, GitHub, task, release, or proof state.
 
 ## Boundary responses
 
@@ -34,11 +50,13 @@ This file is the readable output contract and deterministic corpus for the
 
 ## Corpus
 
-The corpus contains exactly ten positive and ten negative cases.
+The corpus has ten positive and ten negative cases; PB-P01-P10 use machine mode.
+Human mode renders recorded facts verbatim and omits unrecorded fields.
 
 ### PB-P01 | POSITIVE
 
 - scenario: return after inactivity with all eight recorded fields
+- mode: machine
 - recorded: objective=`ship task`; owner=`lane owner`;
   verified_phase=`local proof passed`; changes_since_touch=`head is abc123`;
   decision_required=`approve review`; evidence_handle=`PR #12`;
@@ -55,6 +73,7 @@ The corpus contains exactly ten positive and ten negative cases.
 ### PB-P02 | POSITIVE
 
 - scenario: branch head changed since last touch
+- mode: machine
 - recorded: changes_since_touch=`branch head is def456`
 - expected_objective: `unavailable`
 - expected_owner: `unavailable`
@@ -68,6 +87,7 @@ The corpus contains exactly ten positive and ten negative cases.
 ### PB-P03 | POSITIVE
 
 - scenario: recorded owner changed
+- mode: machine
 - recorded: owner=`current owner`
 - expected_objective: `unavailable`
 - expected_owner: `current owner`
@@ -81,7 +101,9 @@ The corpus contains exactly ten positive and ten negative cases.
 ### PB-P04 | POSITIVE
 
 - scenario: proof completed after last touch
-- recorded: verified_phase=`integration proof passed`;
+- mode: machine
+- recorded: result=`pass`; uncertainty=`none`;
+  verified_phase=`integration proof passed`;
   changes_since_touch=`integration proof completed`
 - expected_objective: `unavailable`
 - expected_owner: `unavailable`
@@ -95,6 +117,7 @@ The corpus contains exactly ten positive and ten negative cases.
 ### PB-P05 | POSITIVE
 
 - scenario: explicit decision is pending
+- mode: machine
 - recorded: decision_required=`choose rollback window`
 - expected_objective: `unavailable`
 - expected_owner: `unavailable`
@@ -108,6 +131,7 @@ The corpus contains exactly ten positive and ten negative cases.
 ### PB-P06 | POSITIVE
 
 - scenario: next_action absent
+- mode: machine
 - recorded: none
 - expected_objective: `unavailable`
 - expected_owner: `unavailable`
@@ -121,6 +145,7 @@ The corpus contains exactly ten positive and ten negative cases.
 ### PB-P07 | POSITIVE
 
 - scenario: done_when absent
+- mode: machine
 - recorded: none
 - expected_objective: `unavailable`
 - expected_owner: `unavailable`
@@ -134,6 +159,7 @@ The corpus contains exactly ten positive and ten negative cases.
 ### PB-P08 | POSITIVE
 
 - scenario: merge complete, publication pending
+- mode: machine
 - recorded: verified_phase=`merge complete; publication pending`
 - expected_objective: `unavailable`
 - expected_owner: `unavailable`
@@ -147,6 +173,7 @@ The corpus contains exactly ten positive and ten negative cases.
 ### PB-P09 | POSITIVE
 
 - scenario: publication complete, public verification pending
+- mode: machine
 - recorded: verified_phase=`publication complete; public verification pending`
 - expected_objective: `unavailable`
 - expected_owner: `unavailable`
@@ -160,6 +187,7 @@ The corpus contains exactly ten positive and ten negative cases.
 ### PB-P10 | POSITIVE
 
 - scenario: stale memory conflicts with current PR
+- mode: machine
 - recorded: owner=`current PR owner`; evidence_handle=`current PR #12`
 - stale_memory: owner=`old owner`; evidence_handle=`closed PR #8`
 - expected_objective: `unavailable`

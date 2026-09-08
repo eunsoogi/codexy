@@ -1,14 +1,15 @@
 use crate::support;
 
 use crate::support::FixtureCommand as Command;
+use std::path::Path;
 
 use support::{WrapperFixture, make_executable, run_wrapper_command};
 
 fn install_fake_uvx(
-    fixture: &WrapperFixture,
+    bin: &Path,
     log: &std::path::Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let uvx = fixture.cargo_bin.join("uvx");
+    let uvx = bin.join("uvx");
     std::fs::write(
         &uvx,
         format!(
@@ -40,7 +41,7 @@ fn wrappers_dispatch_only_the_pinned_uvx_contract() -> Result<(), Box<dyn std::e
     let temp = tempfile::tempdir()?;
     let fixture = WrapperFixture::new(temp.path())?;
     let log = temp.path().join("uvx-args.log");
-    install_fake_uvx(&fixture, &log)?;
+    install_fake_uvx(&fixture.cargo_bin, &log)?;
 
     let mut command = Command::new(fixture.plugin_root.join(format!("mcp/codexy-mcp-{server}")));
     command
@@ -86,5 +87,62 @@ fn wrappers_report_missing_uvx() -> Result<(), Box<dyn std::error::Error>> {
         .output()?;
     assert_eq!(output.status.code(), Some(127));
     assert!(String::from_utf8_lossy(&output.stderr).contains("requires uvx"));
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn core_source_launcher_bootstraps_watcher_without_bundled_runtime()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let plugin_root = temp.path().join("core plugin");
+    support::copy_dir(
+        codexy_runtime::paths::repository_root().join("plugins/codexy"),
+        &plugin_root,
+    )?;
+    let fake_bin = temp.path().join("fake-bin");
+    std::fs::create_dir_all(&fake_bin)?;
+    let log = temp.path().join("core-uvx-args.log");
+    install_fake_uvx(&fake_bin, &log)?;
+
+    let mut command = Command::new(plugin_root.join("mcp/codexy-mcp-watcher.sh"));
+    command
+        .env("PATH", format!("{}:/usr/bin:/bin", fake_bin.display()))
+        .env_remove("CODEXY_RUNTIME_DIR")
+        .args(["--stdio", "value with spaces", "--literal=--"]);
+    assert!(run_wrapper_command(&mut command)?.status.success());
+    let plugin_root = support::fixture_path_text(&plugin_root)?;
+    let selected_version = selected_runtime_version()?;
+    assert_eq!(
+        std::fs::read_to_string(log)?.lines().map(str::to_owned).collect::<Vec<_>>(),
+        vec![
+            "--from".to_owned(),
+            format!("getcodexy=={selected_version}"),
+            "codexy-mcp-runtime".to_owned(),
+            "watcher".to_owned(),
+            "--plugin-root".to_owned(),
+            plugin_root,
+            "--".to_owned(),
+            "value with spaces".to_owned(),
+            "--literal=--".to_owned(),
+        ]
+    );
+    Ok(())
+}
+
+#[test]
+fn core_windows_launcher_keeps_the_same_bootstrap_contract()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = codexy_runtime::paths::repository_root();
+    let launcher = std::fs::read_to_string(root.join("plugins/codexy/mcp/codexy-mcp-watcher.cmd"))?;
+    let version = selected_runtime_version()?;
+    for expected in [
+        "codexy-mcp-watcher-windows-x86_64.exe",
+        "uvx --from",
+        &format!("getcodexy=={version}"),
+        "codexy-mcp-runtime watcher",
+    ] {
+        assert!(launcher.contains(expected), "launcher omitted {expected:?}");
+    }
     Ok(())
 }

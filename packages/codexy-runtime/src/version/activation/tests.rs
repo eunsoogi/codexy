@@ -20,7 +20,7 @@ fn activation_promotes_the_authenticated_source_selected_runtime_pointer() -> Re
     let fixture = new_fixture()?;
     assert_eq!(
         activate(&fixture.root, candidate_version(), &fixture.receipt)?,
-        6
+        8
     );
     let release: Value = serde_json::from_slice(&fs::read(
         fixture.path("plugins/codexy-devtools/runtime-release.json"),
@@ -73,6 +73,14 @@ fn activation_promotes_the_authenticated_source_selected_runtime_pointer() -> Re
     let non_matching_runtime = next_patch_version(candidate_version())?;
     assert!(!wrapper.contains(&format!("getcodexy=={non_matching_runtime}")));
     assert!(wrapper.contains("bundled_platforms=\"darwin-arm64 linux-x86_64\""));
+    for relative in [
+        "plugins/codexy/mcp/codexy-mcp-watcher.sh",
+        "plugins/codexy/mcp/codexy-mcp-watcher.cmd",
+    ] {
+        let wrapper = fs::read_to_string(fixture.path(relative))?;
+        assert!(wrapper.contains(&format!("getcodexy=={}", candidate_version())));
+        assert!(!wrapper.contains(&format!("getcodexy=={non_matching_runtime}")));
+    }
     let manifest: Value = serde_json::from_str(&fs::read_to_string(
         fixture.path("plugins/codexy-devtools/.codex-plugin/plugin.json"),
     )?)?;
@@ -96,7 +104,7 @@ fn activation_updates_the_publication_identity_without_repointing_runtime() -> R
     let fixture = new_fixture()?;
     assert_eq!(
         activate(&fixture.root, candidate_version(), &fixture.receipt)?,
-        6
+        8
     );
     let publish: Value = serde_json::from_str(&fs::read_to_string(
         fixture.path(".agents/plugins/release-publish-contract.json"),

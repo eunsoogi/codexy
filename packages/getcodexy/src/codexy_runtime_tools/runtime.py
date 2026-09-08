@@ -14,7 +14,7 @@ from .runtime_configuration import REPOSITORY, Configuration
 from .source import ExplicitRuntimeSource, RuntimeSourceIdentity
 
 
-SUPPORTED_PLATFORMS = ("darwin-arm64", "linux-x86_64")
+SUPPORTED_PLATFORMS = ("darwin-arm64", "linux-x86_64", "windows-x86_64")
 PROTOCOL = "stdio-newline-v1"
 
 
@@ -120,6 +120,7 @@ def _execute(config: Configuration, path: Path) -> NoReturn:
 
 
 def run(config: Configuration) -> NoReturn:
+    installed_name = f"codexy-mcp-{config.server}{'.exe' if config.runtime_name.endswith('.exe') else ''}"
     runtime_dir = _absolute_env_path("CODEXY_RUNTIME_DIR")
     if runtime_dir:
         runtime = runtime_dir / config.runtime_name
@@ -175,7 +176,7 @@ def run(config: Configuration) -> NoReturn:
         ],
     )
     install_root = _cache_root(config.server) / key
-    installed = install_root / "bin" / f"codexy-mcp-{config.server}"
+    installed = install_root / "bin" / installed_name
     marker = install_root / "runtime-marker.json"
     if executable(installed):
         matches, _ = _manifest_check(config, install_root)
@@ -223,7 +224,7 @@ def run(config: Configuration) -> NoReturn:
     git_key = git_identity.cache_key(platform=config.platform, server=config.server)
     assert git_key is not None
     git_root = _cache_root(config.server) / git_key
-    git_installed = git_root / "bin" / f"codexy-mcp-{config.server}"
+    git_installed = git_root / "bin" / installed_name
     git_marker = git_root / "runtime-marker.json"
     if _marker_valid(git_identity, git_marker, config, git_installed):
         _execute(config, git_installed)
@@ -241,7 +242,7 @@ def run(config: Configuration) -> NoReturn:
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="codexy-mcp-runtime")
-    parser.add_argument("server", choices=("lsp", "codegraph"))
+    parser.add_argument("server", choices=("lsp", "codegraph", "watcher"))
     parser.add_argument("--plugin-root", type=Path, required=True)
     parsed, arguments = parser.parse_known_args()
     arguments = arguments[1:] if arguments[:1] == ["--"] else arguments

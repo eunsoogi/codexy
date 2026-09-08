@@ -18,6 +18,8 @@ pub(super) const VERSION_FIXTURE_PATHS: &[&str] = &[
     "plugins/codexy/.codex-plugin/plugin.json",
     "plugins/codexy-devtools/.codex-plugin/plugin.json",
     "plugins/codexy-devtools/mcp/codexy-mcp-devtools",
+    "plugins/codexy/mcp/codexy-mcp-watcher.sh",
+    "plugins/codexy/mcp/codexy-mcp-watcher.cmd",
     "plugins/codexy-github/.codex-plugin/plugin.json",
     "README.md",
     "README.ko.md",

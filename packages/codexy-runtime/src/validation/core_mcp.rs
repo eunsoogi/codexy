@@ -8,7 +8,6 @@ use crate::validation::{json_array_strings, load_json};
 
 const COMMAND: &[&str] = &["./mcp/codexy-mcp-watcher", "--stdio"];
 const SOURCE_LAUNCHER: &str = "mcp/codexy-mcp-watcher.sh";
-const WINDOWS_LAUNCHER: &str = "@echo off\n\"%~dp0..\\runtime\\codexy-mcp-watcher-windows-x86_64.exe\" %*\nexit /b %ERRORLEVEL%\n";
 
 pub(super) fn check(plugin_root: &Path, manifest: &Value) -> Result<()> {
     let path = super::manifest::mcp_config_path(plugin_root, manifest)?;
@@ -84,12 +83,41 @@ pub(super) fn check(plugin_root: &Path, manifest: &Value) -> Result<()> {
             display_relative(&windows)
         );
     }
+    let version = manifest
+        .get("version")
+        .and_then(Value::as_str)
+        .context("core plugin manifest version must be a string")?;
+    let expected = format!(
+        concat!(
+            "@echo off\n",
+            "set \"plugin_root=%~dp0..\"\n",
+            "set \"bundled_runtime=%plugin_root%\\runtime\\codexy-mcp-watcher-windows-x86_64.exe\"\n",
+            "if exist \"%bundled_runtime%\" goto bundled_runtime\n",
+            "where uvx >nul 2>&1\n",
+            "if errorlevel 1 (\n",
+            "  echo codexy-mcp-watcher requires uvx on PATH; install uv or provide a bundled runtime 1>&2\n",
+            "  exit /b 127\n",
+            ")\n",
+            "set \"repo_root=%plugin_root%\\..\\..\"\n",
+            "set \"runtime_source=%repo_root%\\packages\\getcodexy\"\n",
+            "if exist \"%runtime_source%\\pyproject.toml\" goto local_source\n",
+            "uvx --from getcodexy=={version} codexy-mcp-runtime watcher --plugin-root \"%plugin_root%\" -- %*\n",
+            "exit /b %ERRORLEVEL%\n\n",
+            ":local_source\n",
+            "uvx --from \"%runtime_source%\" codexy-mcp-runtime watcher --plugin-root \"%plugin_root%\" -- %*\n",
+            "exit /b %ERRORLEVEL%\n\n",
+            ":bundled_runtime\n",
+            "\"%bundled_runtime%\" %*\n",
+            "exit /b %ERRORLEVEL%\n"
+        ),
+        version = version
+    );
     if std::fs::read_to_string(&windows)
         .with_context(|| format!("reading {}", display_relative(&windows)))?
-        != WINDOWS_LAUNCHER
+        != expected
     {
         bail!(
-            "{} core watcher Windows launcher must be the exact bundled runtime delegate",
+            "{} core watcher Windows launcher must preserve the bundled and source bootstrap contract",
             display_relative(&windows)
         );
     }

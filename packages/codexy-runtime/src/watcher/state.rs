@@ -1,6 +1,7 @@
 mod events;
 mod model;
 mod operations;
+mod recovery;
 mod validation;
 mod wait;
 
@@ -73,11 +74,8 @@ impl Store {
         for directory in self.session_dirs()? {
             let session_path = directory.join("session.json");
             if !session_path.exists() {
-                if fs::read_dir(&directory)?.next().is_none() {
-                    fs::remove_dir(&directory)?;
-                    continue;
-                }
-                bail!("watcher session directory is incomplete");
+                recovery::reclaim(&directory)?;
+                continue;
             }
             let Some(lock) = LockGuard::try_acquire(&directory.join("state.lock"))? else {
                 continue;
