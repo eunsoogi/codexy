@@ -205,7 +205,9 @@ for _, plugin, package_root in inventory:
         for binary in core_watcher["platforms"].values():
             name = f"{prefix}{binary['path']}"
             if hashlib.sha256(entries.get(name, b"")).hexdigest() != binary["sha256"]:
-                reject(f"core-owned watcher binary differs from activated class identity")
+                reject(
+                    f"core-owned watcher binary differs from activated class identity"
+                )
             expected_entries.add(name)
         windows_binary = core_watcher["platforms"].get("windows-x86_64")
         if windows_binary:

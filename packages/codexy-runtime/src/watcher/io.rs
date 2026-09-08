@@ -162,11 +162,11 @@ pub(super) fn canonical_text(value: &Value) -> Result<String> {
     serde_json::to_string(&canonical(value)).context("serializing canonical watcher value")
 }
 
-pub(super) fn set_private_mode(path: &Path, mode: u32) -> Result<()> {
+pub(super) fn set_private_mode(_path: &Path, _mode: u32) -> Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt as _;
-        fs::set_permissions(path, fs::Permissions::from_mode(mode))?;
+        fs::set_permissions(_path, fs::Permissions::from_mode(_mode))?;
     }
     Ok(())
 }

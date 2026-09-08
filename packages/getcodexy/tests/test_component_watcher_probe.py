@@ -15,9 +15,7 @@ class WatcherProbeTests(unittest.TestCase):
             launcher = plugin / "mcp/codexy-mcp-watcher.sh"
             launcher.parent.mkdir()
             launcher.write_text("#!/bin/sh\n", encoding="utf-8")
-            values = probe._argv(
-                "./mcp/codexy-mcp-watcher", plugin, ["--stdio"]
-            )
+            values = probe._argv("./mcp/codexy-mcp-watcher", plugin, ["--stdio"])
         self.assertEqual(values, [str(launcher), "--stdio"])
 
     def test_windows_prefers_native_binary_over_extensionless_launcher(self) -> None:

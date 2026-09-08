@@ -35,7 +35,8 @@ Codex's native custom-agent location by the registration bootstrap.
 | `codexy-shipwright`   | `gpt-5.6-terra` | `high`           | Prepares version, manifest, marketplace, artifact, tag, release, and rollback readiness.                                                            |
 | `codexy-warden`       | `gpt-6-astra`   | `xhigh`          | Reviews workflows, shell commands, credentials, remote MCPs, untrusted input, permissions, and state mutation.                                      |
 
-| `codexy-watcher`      | `gpt-5.6-luna`  | `max`           | Performs bounded native read-only Worker observation and reports material events through the core Watcher MCP. |
+| `codexy-watcher` | `gpt-5.6-luna` | `max` | Performs bounded native read-only
+Worker observation and reports material events through the core Watcher MCP. |
 
 These model assignments come directly from the packaged TOMLs. A named custom
 agent's TOML is authoritative for its model and reasoning effort; callers should

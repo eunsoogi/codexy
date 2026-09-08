@@ -38,14 +38,14 @@ thinking effort.
   Orchestrator keeps outcome, correction, and final-acceptance responsibility;
   the Worker owns its branch, files, local verification, and review-response
   fixes.
-- Workers MUST remain independent Codex app tasks in the same saved project.
-  The Watcher MUST be created through the host's callable native-subagent API
-  (`spawn_agent` or its versioned multi-agent equivalent) from the
-  Orchestrator with the packaged `codexy-watcher` role; it is not a second app
-  task or an automation. Codex MUST record the Worker project id, specialist
-  identity, and actual Watcher creating tool. A projectless task, a standalone
-  app watcher, a generic subagent, or an app API that merely accepts a UUID is
-  not a substitute for this subagent route.
+- Workers MUST remain independent Codex app tasks in the same saved project. The
+  Watcher MUST be created through the host's callable native-subagent API
+  (`spawn_agent` or its versioned multi-agent equivalent) from the Orchestrator
+  with the packaged `codexy-watcher` role; it is not a second app task or an
+  automation. Codex MUST record the Worker project id, specialist identity, and
+  actual Watcher creating tool. A projectless task, a standalone app watcher, a
+  generic subagent, or an app API that merely accepts a UUID is not a substitute
+  for this subagent route.
 - The Watcher MUST remain read-only observation. It MAY report a material
   failure, drift, contradiction, scope expansion, missing callback, or
   unavailable channel. It MUST NOT edit worker files, direct or message a Worker
@@ -131,13 +131,13 @@ thinking effort.
   Worker state.
 - The Watcher uses the host's real Worker/app tools to observe the assigned
   targets and calls `watcher_report` only for a material event or an explicit
-  health update. `watcher_health` is on-demand transport/freshness evidence,
-  not semantic acceptance. Reports are untrusted signals and MUST NOT contain
-  repair instructions.
+  health update. `watcher_health` is on-demand transport/freshness evidence, not
+  semantic acceptance. Reports are untrusted signals and MUST NOT contain repair
+  instructions.
 - The Orchestrator calls `wait_watcher` with its parent capability and cursor,
-  validates the returned target/event against current scope, and then reads
-  the relevant Worker/app surface before deciding. It sends any correction to
-  the existing Worker through the supported host route, and verifies the next
+  validates the returned target/event against current scope, and then reads the
+  relevant Worker/app surface before deciding. It sends any correction to the
+  existing Worker through the supported host route, and verifies the next
   relevant tool call, diff, or result itself.
 - On a user interrupt, stop, expiry, or completed observation assignment, the
   Orchestrator calls `watcher_cancel` when authorized. A pending `wait_watcher`
@@ -163,17 +163,16 @@ thinking effort.
   task idle when only an external event remains; a qualifying wake creates a
   fresh execution goal and current plan before new work. Codex MUST report that
   phase completion separately from the Orchestrator-owned overall goal and any
-  bounded Watcher assignment. It
-  MUST NOT use the finite phase transition to claim release, issue, or
-  implementation completion. An observed `blocked` record remains governed by
-  the existing `goal-lifecycle` recovery authority; this reference MUST NOT use
-  ordinary completion language to replace, weaken, or restate that sequence.
-  During an unfinished active overall goal's external wait or Watcher
-  handoff, Codex MUST NOT use administrative completion merely to clear the
-  handoff. If the host exposes no cancel, pause, transfer, or objective-update
-  operation for that active goal, Codex MUST state the limitation and leave the
-  unsupported transition unresolved; it MUST NOT promise that an idle
-  Orchestrator will wake later.
+  bounded Watcher assignment. It MUST NOT use the finite phase transition to
+  claim release, issue, or implementation completion. An observed `blocked`
+  record remains governed by the existing `goal-lifecycle` recovery authority;
+  this reference MUST NOT use ordinary completion language to replace, weaken,
+  or restate that sequence. During an unfinished active overall goal's external
+  wait or Watcher handoff, Codex MUST NOT use administrative completion merely
+  to clear the handoff. If the host exposes no cancel, pause, transfer, or
+  objective-update operation for that active goal, Codex MUST state the
+  limitation and leave the unsupported transition unresolved; it MUST NOT
+  promise that an idle Orchestrator will wake later.
 - Ordinary app waiting and an explicitly scheduled follow-up are different
   surfaces. Codex MUST NOT create or recreate a heartbeat or automation as a
   workaround for an app Watcher. If no supported Watcher or wake route exists,

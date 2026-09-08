@@ -209,13 +209,10 @@ def _validate_candidate(
             candidate_classes = validate_classes(
                 candidate.get("classes"), inventory, release_source
             )
-            if (
-                candidate_classes["coreHandoff"] != release.classes["coreHandoff"]
-                or (
-                    "coreWatcherMcp" in release.classes
-                    and candidate_classes.get("coreWatcherMcp")
-                    != release.classes["coreWatcherMcp"]
-                )
+            if candidate_classes["coreHandoff"] != release.classes["coreHandoff"] or (
+                "coreWatcherMcp" in release.classes
+                and candidate_classes.get("coreWatcherMcp")
+                != release.classes["coreWatcherMcp"]
             ):
                 raise ValueError(
                     "source-selected core runtime class identity does not match candidate"

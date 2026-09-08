@@ -9,6 +9,7 @@ from itertools import groupby
 from pathlib import Path
 
 from inspect_release_archive_helpers import fail_if, print_handoff
+from inspect_release_archive_shell import shell_scan
 
 PUBLIC_PLATFORMS = ["darwin-arm64", "linux-x86_64"]
 ALL_PLATFORMS = [*PUBLIC_PLATFORMS, "windows-x86_64"]
@@ -16,10 +17,6 @@ SERVERS = ("lsp", "codegraph")
 MUTATORS = set("declare export local readonly typeset unset read".split())
 SOURCE_WRAPPER = 'bundled_platforms="darwin-arm64 linux-x86_64"'
 CANDIDATE_WRAPPER = 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64"'
-HEREDOC_PATTERN = re.compile(
-    r"<<(?P<strip>-)?[ \t]*(?P<quote>['\"]?)(?P<delimiter>[^ \t;|&<>()]+)(?P=quote)(?=$|[ \t;|&<>()])"
-)
-SHELL_LITERAL_PATTERN = re.compile(r"'(?:[^']*)'|\"(?:\\.|[^\"])*\"|\\.")
 
 
 def wrapper_declarations(lines: list[str], allowed: tuple[str, ...]) -> list[int]:
@@ -91,19 +88,6 @@ def logical_commands(source: str) -> list[list[str]]:
         )
         if not separator
     ]
-
-
-def shell_scan(line: str) -> tuple[bool, list[tuple[str, bool]]]:
-    masked = SHELL_LITERAL_PATTERN.sub(lambda match: "_" * len(match[0]), line)
-    if comment := re.search(r"(?<!\S)#", masked):
-        masked = masked[: comment.start()]
-    delimiters = []
-    for match in re.finditer(r"<<", masked):
-        heredoc = HEREDOC_PATTERN.match(line, match.start())
-        if not heredoc:
-            raise ValueError("invalid heredoc")
-        delimiters.append((heredoc["delimiter"], bool(heredoc["strip"])))
-    return bool(re.search(r"(?<!\\)(?:\\\\)*\\$", masked)), delimiters
 
 
 def wrapper_paths(root: Path) -> tuple[Path, ...]:
@@ -236,8 +220,12 @@ def main() -> None:
             if "coreWatcherMcp" in release["classes"]:
                 for platform in expected:
                     extension = "exe" if platform == "windows-x86_64" else "bin"
-                    path = root / "runtime" / f"codexy-mcp-watcher-{platform}.{extension}"
-                    fail_if(not path.is_file(), f"missing core watcher runtime: {path.name}")
+                    path = (
+                        root / "runtime" / f"codexy-mcp-watcher-{platform}.{extension}"
+                    )
+                    fail_if(
+                        not path.is_file(), f"missing core watcher runtime: {path.name}"
+                    )
                     print(f"runtime/{path.name}")
         return
     raise SystemExit("unknown archive mode")

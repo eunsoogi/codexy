@@ -41,10 +41,10 @@ liveness-only goal-status messages MUST remain internal. Only an actual
 lifecycle transition, unresolved drift or failure requiring Orchestrator action,
 missing terminal delivery, or a ready external gate may be reported.
 
-The Orchestrator MUST keep the overall goal active and owned by itself while
-the Watcher subagent observes. It MAY use `wait_watcher` with the parent token
-and cursor for bounded waiting; a user input or host cancellation MUST release
-that wait immediately. The Watcher has no long-lived release goal. If the host
+The Orchestrator MUST keep the overall goal active and owned by itself while the
+Watcher subagent observes. It MAY use `wait_watcher` with the parent token and
+cursor for bounded waiting; a user input or host cancellation MUST release that
+wait immediately. The Watcher has no long-lived release goal. If the host
 exposes a finite goal for the subagent, that goal MUST cover only the bounded
 observation assignment and MUST NOT be treated as issue or release completion.
 The Orchestrator MUST inspect the relevant Worker/app surface after a material
@@ -112,19 +112,19 @@ defined in `goal-transition-reporting.md`, complete the finite execution phase,
 and leave the task idle without claiming issue, implementation, transfer, or
 release completion. This finite phase is distinct from the Orchestrator's
 overall goal and a Watcher's bounded observation assignment; neither a phase
-completion nor a Watcher report proves release completion. A qualifying event MUST create a fresh
-short-lived execution goal and current plan before any edit, proof, review
-response, publication, or merge work. The awakened owner MUST first read the
-actual lifecycle state and MUST continue a matching active objective; if the
-state is null or complete, it MAY create the fresh goal and MUST read back
-`active`. A different unfinished objective requires a supported lifecycle
-disposition and MUST NOT be overwritten. An observed `blocked` state remains
-governed by the existing `goal-lifecycle` recovery authority; this reference
-MUST NOT replace or restate that recovery sequence. The awakened owner MUST
-consume the event in the same turn and MUST delete or disable the heartbeat when
-no further observation is required. It MUST record the resulting lifecycle state
-in the compact lane delta. When cleanup is needed, the owner MUST delete the
-heartbeat by id or disable it with a paused status and the heartbeat's full
+completion nor a Watcher report proves release completion. A qualifying event
+MUST create a fresh short-lived execution goal and current plan before any edit,
+proof, review response, publication, or merge work. The awakened owner MUST
+first read the actual lifecycle state and MUST continue a matching active
+objective; if the state is null or complete, it MAY create the fresh goal and
+MUST read back `active`. A different unfinished objective requires a supported
+lifecycle disposition and MUST NOT be overwritten. An observed `blocked` state
+remains governed by the existing `goal-lifecycle` recovery authority; this
+reference MUST NOT replace or restate that recovery sequence. The awakened owner
+MUST consume the event in the same turn and MUST delete or disable the heartbeat
+when no further observation is required. It MUST record the resulting lifecycle
+state in the compact lane delta. When cleanup is needed, the owner MUST delete
+the heartbeat by id or disable it with a paused status and the heartbeat's full
 update fields; it MUST record which terminal action occurred.
 
 ## Unavailable And Sentinel Boundaries

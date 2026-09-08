@@ -47,7 +47,7 @@ pub(super) fn open_session(
             "parent": {"id": "parent"},
             "watcher": {"id": "watcher"},
             "targets": [{"threadId": "target"}],
-            "ttlSeconds": 60
+            "ttlSeconds": 600
         }}
     }))?;
     let payload = tool_payload(&response)?;

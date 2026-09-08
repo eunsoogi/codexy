@@ -80,12 +80,12 @@ MUST use this flow after compaction and before handoff:
    fatal/gate/final callbacks, PR creation, a required external check-state
    change, actionable review feedback, or review-thread resolution. Watchers
    MUST send their own compact deltas for observation-channel failure or
-   actionable drift, and selected reviewers MUST send their verdicts.
-   A Watcher drift event is qualifying only when its report is grounded in a
-   changed artifact, diff, or relevant actual tool call, identifies the
-   conflicting current scope, ownership, or user constraint without a repair
-   directive, and requires an Orchestrator decision; relayed Worker or
-   Orchestrator findings MUST remain distinct from Watcher-first detection.
+   actionable drift, and selected reviewers MUST send their verdicts. A Watcher
+   drift event is qualifying only when its report is grounded in a changed
+   artifact, diff, or relevant actual tool call, identifies the conflicting
+   current scope, ownership, or user constraint without a repair directive, and
+   requires an Orchestrator decision; relayed Worker or Orchestrator findings
+   MUST remain distinct from Watcher-first detection.
 3. **Validate stable event identity**: every event MUST use a deterministic
    `<kind>|<lane>|<subject>` identity. The ledger MUST reject a repeated
    identity before it changes counters or next actions.
@@ -165,10 +165,10 @@ changes its plan. The awakened owner MUST consume a material event in the same
 turn and MUST delete or disable its heartbeat when no further observation is
 required. A successfully registered heartbeat is runtime-owned waiting. The
 heartbeat route is not the ordinary app-thread Watcher: do not create or
-recreate a heartbeat as a substitute for the bounded native-subagent
-observation route. The Orchestrator retains the active overall goal while the
-Watcher observes; neither an idle turn nor a Watcher assignment proves transfer
-or completion. Record the Orchestrator goal and bounded Watcher assignment
+recreate a heartbeat as a substitute for the bounded native-subagent observation
+route. The Orchestrator retains the active overall goal while the Watcher
+observes; neither an idle turn nor a Watcher assignment proves transfer or
+completion. Record the Orchestrator goal and bounded Watcher assignment
 separately. This does not remove ordinary Worker finite-goal closure or
 `blocked` recovery.
 

@@ -61,11 +61,17 @@ if public_release:
             platform, extension = watcher_match.groups()
             expected_extension = "exe" if platform == "windows-x86_64" else "bin"
             if extension != expected_extension or platform in watcher_inventory:
-                raise SystemExit(f"public core-watcher inventory is invalid: {path.name}")
+                raise SystemExit(
+                    f"public core-watcher inventory is invalid: {path.name}"
+                )
             watcher_inventory[platform] = {
                 "path": f"runtime/{path.name}",
                 "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-                "kind": {"darwin-arm64": "mach-o", "linux-x86_64": "elf", "windows-x86_64": "pe"}[platform],
+                "kind": {
+                    "darwin-arm64": "mach-o",
+                    "linux-x86_64": "elf",
+                    "windows-x86_64": "pe",
+                }[platform],
             }
             continue
         if handoff_match:
@@ -111,21 +117,25 @@ if public_release:
             "public runtime inventory must contain lsp and codegraph per platform"
         )
     handoff_manifest = staged / "handoff-runtime.json"
-    core_aware = bool(handoff_inventory) or handoff_manifest.exists() or bool(watcher_inventory)
-    if core_aware and (
-        set(handoff_inventory) != set(inventory)
-        or not handoff_manifest.is_file()
-        or set(watcher_inventory) != set(inventory)
+    handoff_aware = bool(handoff_inventory) or handoff_manifest.exists()
+    if handoff_aware and (
+        set(handoff_inventory) != set(inventory) or not handoff_manifest.is_file()
     ):
         raise SystemExit(
             "public runtime inventory must contain core-handoff per platform"
+        )
+    if watcher_inventory and (
+        not handoff_aware or set(watcher_inventory) != set(inventory)
+    ):
+        raise SystemExit(
+            "public core-watcher inventory must contain core-handoff per platform"
         )
     candidate = {
         "source": {"commit": os.environ["STAGING_SOURCE_COMMIT"]},
         "artifact": {"stagingRunId": staging_run_id},
         "platforms": inventory,
     }
-    if core_aware:
+    if handoff_aware:
         handoff = json.loads(handoff_manifest.read_text())
         if handoff.get("platforms") != handoff_inventory:
             raise SystemExit(
@@ -134,7 +144,6 @@ if public_release:
         candidate["source"]["tree"] = handoff.get("source", {}).get("tree")
         candidate["classes"] = {
             "devtoolsMcp": {"platforms": inventory},
-            "coreWatcherMcp": {"platforms": watcher_inventory},
             "coreHandoff": {
                 "manifest": {
                     "path": "handoff-runtime.json",
@@ -143,6 +152,8 @@ if public_release:
                 "platforms": handoff_inventory,
             },
         }
+        if watcher_inventory:
+            candidate["classes"]["coreWatcherMcp"] = {"platforms": watcher_inventory}
 else:
     record = json.loads(Path(os.environ["ACTIVATION_RECORD"]).read_text())
     candidate = record["candidate"]
@@ -193,8 +204,10 @@ for binary in core.get("platforms", {}).values():
     if hashlib.sha256(path.read_bytes()).hexdigest() != binary["sha256"]:
         raise SystemExit(f"selected core-handoff digest mismatch: {binary['path']}")
 watcher = classes.get("coreWatcherMcp", {})
-if core and set(watcher.get("platforms", {})) != set(candidate["platforms"]):
-    raise SystemExit("selected core-watcher inventory does not cover candidate platforms")
+if watcher and set(watcher.get("platforms", {})) != set(candidate["platforms"]):
+    raise SystemExit(
+        "selected core-watcher inventory does not cover candidate platforms"
+    )
 for binary in watcher.get("platforms", {}).values():
     path = staged / binary["path"]
     if hashlib.sha256(path.read_bytes()).hexdigest() != binary["sha256"]:

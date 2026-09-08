@@ -11,11 +11,15 @@ def validate_watcher(value: Any) -> dict[str, Any]:
         raise ValueError("runtime release core watcher has unknown or missing fields")
     binaries = object(watcher.get("platforms"), "core watcher platforms")
     if set(binaries) != CANDIDATE_PLATFORMS:
-        raise ValueError("runtime release core watcher must cover all candidate platforms")
+        raise ValueError(
+            "runtime release core watcher must cover all candidate platforms"
+        )
     for platform, binary in binaries.items():
         binary = object(binary, f"core watcher platforms.{platform}")
         if set(binary) != {"path", "sha256", "kind"}:
-            raise ValueError("runtime release core watcher binary has unknown or missing fields")
+            raise ValueError(
+                "runtime release core watcher binary has unknown or missing fields"
+            )
         extension = "exe" if platform == "windows-x86_64" else "bin"
         if binary.get("path") != f"runtime/codexy-mcp-watcher-{platform}.{extension}":
             raise ValueError("runtime release core watcher path is not canonical")

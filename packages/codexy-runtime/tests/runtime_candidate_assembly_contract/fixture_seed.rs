@@ -66,6 +66,7 @@ pub(super) fn candidate_fixture_seed() -> Result<PathBuf, Box<dyn std::error::Er
             "assemble-runtime-candidate",
             "inspect-release-archive-contract.py",
             "inspect_release_archive_helpers.py",
+            "inspect_release_archive_shell.py",
         ] {
             fs::copy(
                 repository.join("scripts").join(name),

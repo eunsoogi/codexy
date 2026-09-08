@@ -96,7 +96,10 @@ def probe_watcher(plugin, base):
     cancel_request = _request(
         "tools/call",
         5,
-        {"name": "watcher_cancel", "arguments": {"sessionId": session, "parentToken": token}},
+        {
+            "name": "watcher_cancel",
+            "arguments": {"sessionId": session, "parentToken": token},
+        },
     )
     for request in (health_request, cancel_request):
         response = rpc.request(request)
