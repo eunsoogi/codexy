@@ -7,12 +7,6 @@ of truth remains the packaged files linked below; being packaged or configured
 does not by itself guarantee that a particular Codex host exposes the surface in
 an already-running session.
 
-The root README files are the complete public product overview for first-time
-and returning readers. This guide carries the detailed architecture: package
-boundaries, inventories, specialist and skill contracts, MCP/LSP registration,
-runtime exposure, and the verification rules that keep those descriptions
-source-aligned.
-
 The frozen target ownership for the future core, GitHub, and developer-tools
 products is defined in the
 [three-plugin product boundary](plugin-product-boundary.md).
@@ -21,9 +15,9 @@ products is defined in the
 
 The packaged catalog lists one TOML file per specialist. The plugin interface in
 [`agents/openai.yaml`](../plugins/codexy/agents/openai.yaml) starts Codexy
-itself; it is not another specialist. Agent files are discovered through
-[`catalog.toml`](../plugins/codexy/agents/catalog.toml) and projected into
-Codex's native custom-agent location by the registration bootstrap.
+itself; [`catalog.toml`](../plugins/codexy/agents/catalog.toml) and the
+registration bootstrap discover and project the specialist files into Codex's
+native location.
 
 | Agent                 | Model           | Reasoning effort | Role                                                                                                                                                |
 | --------------------- | --------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -38,15 +32,14 @@ Codex's native custom-agent location by the registration bootstrap.
 | `codexy-watcher` | `gpt-5.6-luna` | `max` | Performs bounded native read-only
 Worker observation and reports material events through the core Watcher MCP. |
 
-These model assignments come directly from the packaged TOMLs. A named custom
-agent's TOML is authoritative for its model and reasoning effort; callers should
-not silently override it.
+These model assignments come directly from the packaged TOMLs, which are
+authoritative for a named custom agent's model and reasoning effort. Callers
+should not silently override them.
 
 The optional `codexy-github` plugin separately packages `codexy-weaver` for
-GitHub integration after that plugin is installed.
+GitHub integration after installation.
 
-The role-equivalence boundary records why the removed roles are not aliases and
-describes Inspector as a distinct profile-bound reviewer: see
+Removed-role rationale and the Inspector distinction are in
 [`specialist-role-equivalence.md`](specialist-role-equivalence.md).
 
 ## Packaged skills
@@ -123,14 +116,10 @@ That file registers two plugin-local stdio servers; core Codexy registers none.
 Registration tells a host how to resolve a server; runtime startup and tool
 exposure still belong to the host and the current session.
 
-| Server      | Registration                                                                       | Runtime boundary                                                                                                                                     | Capabilities and tools                                                                                                                                                                                        |
-| ----------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `codegraph` | `{"command":"./mcp/codexy-mcp-devtools","args":["codegraph","--stdio"],"cwd":"."}` | A bootstrapped Codexy runtime binary runs as a plugin-relative local stdio child process.                                                            | `codegraph_overview`, `codegraph_search`, `codegraph_neighbors`, `codegraph_index`, `codegraph_reverse_deps`, and `codegraph_neighborhood` provide bounded repository maps and dependency-oriented discovery. |
-| `lsp`       | `{"command":"./mcp/codexy-mcp-devtools","args":["lsp","--stdio"],"cwd":"."}`       | A plugin-relative local stdio server reads the packaged client config, then starts a matching language server only when its executable is installed. | `lsp_list_servers`, `lsp_for_path`, `lsp_status`, `lsp_document_symbols`, `lsp_definition`, `lsp_references`, and `lsp_diagnostics` cover discovery, readiness, and language-aware requests.                  |
-
-Registration cells reproduce the complete JSON object so argument boundaries and
-simultaneously configured fields remain source-verifiable rather than being
-flattened into command-line prose.
+| Server      | Registration                                                                       | Runtime boundary                                                                                                                                     | Capabilities and tools                                                                                                                                                                                                     |
+| ----------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `codegraph` | `{"command":"./mcp/codexy-mcp-devtools","args":["codegraph","--stdio"],"cwd":"."}` | A bootstrapped Codexy runtime binary runs as a plugin-relative local stdio child process.                                                            | `codegraph_overview`, `codegraph_search`, `codegraph_neighbors`, `codegraph_index`, `codegraph_reverse_deps`, and `codegraph_neighborhood` provide bounded repository maps and dependency-oriented discovery.              |
+| `lsp`       | `{"command":"./mcp/codexy-mcp-devtools","args":["lsp","--stdio"],"cwd":"."}`       | A plugin-relative local stdio server reads the packaged client config, then starts a matching language server only when its executable is installed. | `lsp_list_servers`, `lsp_for_path`, `lsp_status`, `lsp_document_symbols`, `lsp_definition`, `lsp_references`, `lsp_diagnostics`, and `lsp_batch` cover discovery, readiness, language-aware requests, and bounded batches. |
 
 For LSP, [`lsp-client.json`](../plugins/codexy-devtools/.codex/lsp-client.json)
 is the machine-readable client registration and
@@ -147,6 +136,21 @@ published every tool into the active callable surface. A fresh session may be
 required after installation or update. When a registered server is missing from
 the actual tool surface, Codexy treats that mismatch as evidence to record, not
 as permission to claim the server worked.
+
+### Runtime constraints
+
+- `lsp_batch` accepts 1–8 requests that resolve to one server and workspace,
+  with a shared deadline of at most 60,000 ms. Per-request timeouts are also
+  capped at 60,000 ms; an unavailable language server returns readiness and
+  install hints.
+- Core hook timing is opt-in through `CODEXY_CORE_HOOK_TIMING_FILE`. When
+  enabled, JSONL records contain only `event`, `concern`, `elapsed`, and
+  `decision`, and the file is capped at 1 MiB. Timing failures never change hook
+  policy.
+- `getcodexy doctor` keeps `configured`, `loaded`, `callable`, and `verified`
+  separate. A direct plugin-subprocess probe can establish the first three, but
+  `verified` remains `unknown` without host/session evidence; `unknown` is
+  non-proof for that observation and does not by itself classify overall health.
 
 ## Implemented orchestration
 
@@ -193,38 +197,18 @@ flowchart TD
     end
 ```
 
-The owning lane keeps review-response fixes on the same branch;
-`PENDING`/`RUNNING` retain the reviewer, while `BLOCK` starts a fresh proof and
-one same-reviewer delta recheck. Once full and delta are consumed, one
-`required_current_head` re-review may consume the third/final verdict only when
-mandatory base integration or an in-scope contract/root repair moved the head;
-typed reason, prior delta head, qualifying heads, and ancestry evidence stay in
-direct control state. The validator uses authenticated current/previous
-snapshots from canonical GitHub readback, derives the predecessor only from
-previous `reviewControl`, and preserves current head/base identity. Base
-integration must change/prove base ancestry; root repair must retain base,
-follow a prior `BLOCK` with findings, bind evidence to those IDs, and show that
-the evidence diff changes every finding's recorded path. Churn,
-duplicate/unchanged heads, and review four remain blocked. `UNOBSERVABLE` is not
-approval; opening a PR is terminal only when explicitly requested.
-
-The one bounded exception is a genesis import for a complete pre-PR reviewer
-receipt. A trusted Codex host adapter may normalize an actual `read_thread`
-result, or its exact original host record when a completed turn exposes no
-items, into `codexy.review-control-pre-pr-history.v1`. The runtime keeps the
-original thread, turn, final-message, order, reviewer, verdict, and findings
-references, checks the owning issue and Git ancestry, and appends the facts to
-the existing ordered terminal history. It never fabricates a historical PR
-snapshot or treats an authenticated flag, signature, or caller-provided verdict
-as independent credential proof. The current PR's number, URL, base, and head
-remain authoritative; an imported older PASS is not current-head readiness, and
-its immutable `pre_pr_import` marker must survive later ordinary transitions.
+The owning lane keeps review-response fixes on the same branch. `PENDING` and
+`RUNNING` retain the reviewer; `BLOCK` gets a fresh proof and same-reviewer
+delta check. Current-head identity, authenticated GitHub snapshots, ancestry,
+and findings remain authoritative. `UNOBSERVABLE` is not approval, and opening a
+PR is terminal only when explicitly requested. An imported pre-PR reviewer PASS
+must come from an exact native host record and never proves current-head
+readiness.
 
 ## Plugin and runtime discovery
 
-This second workflow is useful because configuration, installation, process
-startup, and active-session exposure are distinct states. It also shows where
-LSP resolution can legitimately stop without making a language-aware request.
+This workflow separates configuration, installation, process startup, and
+active-session exposure, including the point where LSP resolution can stop.
 
 ```mermaid
 flowchart LR
@@ -262,8 +246,7 @@ omitted or duplicate entries and stale agent model/reasoning values. Run:
 cargo test --manifest-path packages/codexy-runtime/Cargo.toml --test suite_system architecture_docs_inventory
 ```
 
-The broader plugin validator checks manifest, agent catalog, skill frontmatter,
-MCP, and LSP configuration integrity:
+The plugin validator checks manifest, agents, skills, MCP, and LSP integrity:
 
 ```sh
 scripts/validate-plugin-config.sh --check

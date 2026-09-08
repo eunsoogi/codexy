@@ -2,20 +2,28 @@
 
 This is the public product boundary for the approved three-plugin line. It
 freezes target ownership and records completed scoped extractions. It does not
-publish or operate extension packages. The machine-readable inventory in
-[`plugin-product-boundary.json`](plugin-product-boundary.json) is the executable
-and sole source for current-path ownership. Its `surfaceRecords` carry a stable
-logical-surface ID, concrete source path or registration, target, and
-disposition. There is no parallel category-wide ownership map: the contract test
-discovers every governed current surface and requires exact, non-overlapping
-coverage by these records.
+publish or operate extension packages. The machine-readable contract is composed
+of the metadata in
+[`plugin-product-boundary.json`](plugin-product-boundary.json) and four
+responsibility sidecars:
+[`plugin-product-boundary-core.json`](plugin-product-boundary-core.json),
+[`plugin-product-boundary-github.json`](plugin-product-boundary-github.json),
+[`plugin-product-boundary-devtools.json`](plugin-product-boundary-devtools.json),
+and
+[`plugin-product-boundary-repository.json`](plugin-product-boundary-repository.json).
+The contract test reads those exact files into one logical inventory, which is
+the executable and sole source for current-path ownership. Its `surfaceRecords`
+carry a stable logical-surface ID, concrete source path or registration, target,
+and disposition. There is no parallel category-wide ownership map: the contract
+test discovers every governed current surface and requires exact,
+non-overlapping coverage by these records.
 
 ## Public products and packaging
 
 | Product           | Public name     | Package root              | Responsibility                                                                                                                                                     |
 | ----------------- | --------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `codexy`          | Codexy          | `plugins/codexy`          | Core orchestration, evidence, shared specialist and skill contracts, instruction enforcement, engineering, dreaming, Wiki, and the required Watcher MCP transport. |
-| `codexy-github`   | Codexy GitHub   | `plugins/codexy-github`   | GitHub issues, pull requests, reviews, and repository integration using published core contracts.                                                                  |
+| `codexy-github`   | Codexy GitHub   | `plugins/codexy-github`   | Optional GitHub workflow context, narrow title checks, and captured-state diagnostics using published core contracts.                                              |
 | `codexy-devtools` | Codexy Devtools | `plugins/codexy-devtools` | Local developer-tool, editor, CLI, and diagnostic integration using published core contracts.                                                                      |
 
 `codexy` remains the approved core identity: its manifest name, current package
@@ -46,6 +54,47 @@ dependency on either extension. The required core Watcher MCP is explicitly
 owned by `codexy`; Codegraph and LSP remain devtools-owned. A future extraction
 MUST promote any needed core capability into an explicitly documented public
 contract rather than importing a private path across product roots.
+
+### Optional GitHub behavior
+
+Installing `codexy-github` does not grant GitHub access or consent to a
+repository process. Ordinary issue, pull-request, review, and merge operations
+continue through the host, connector, GitHub credentials, and branch
+protections. The distributed component does not block, rewrite, or require a
+body template, review quota, fixed approval phrase, or exclusive command route
+for a general authorized mutation.
+
+Three narrow checks remain effective on their supported hook paths: issue-title,
+PR-title, and squash-subject validation. They check only the captured title or
+merge subject and do not become an operation allowlist.
+
+Retained hook checks:
+
+| Hook check        | Question it answers                                                                  | Unsupported-source limit                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| Issue or PR title | Does the captured title satisfy the retained narrow title contract?                  | A title alone says nothing about authorization, body content, review, labels, or merge permission. |
+| Squash subject    | Does the captured merge subject satisfy the retained title-derived subject contract? | It does not authorize, perform, or prove a merge.                                                  |
+
+Optional captured-state diagnostics:
+
+The optional `codexy-github-check` command can evaluate captured title,
+PR-state, and merge-message data; running it is not a prerequisite for ordinary
+GitHub work.
+
+| Diagnostic                 | Question it answers                                                                                                | Deliberate use                                                                  | Unsupported-source limit                                                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Captured issue or PR title | Does the captured title satisfy the retained narrow title contract?                                                | As a local preflight or when a repository-selected procedure asks for evidence. | A title alone says nothing about authorization, body content, review, labels, or merge permission.                          |
+| Captured PR labels         | Does captured open-PR state contain repository label taxonomy and label application evidence?                      | When a repository-selected readiness procedure asks for that evidence.          | Missing or unsupported PR-state fields remain unavailable; the check does not decide whether a label policy is appropriate. |
+| Captured merge message     | Does the captured subject use the validated PR title and expected PR suffix, with the selected issue closing line? | When a repository-selected merge-message procedure asks for that evidence.      | It does not authorize, perform, or prove a merge.                                                                           |
+
+PR bodies remain free-form unless the repository owner selects a template. A
+useful optional recommendation is `Summary`, `Rationale`, `Changed Areas`,
+`Verification`, `Evidence`, `Not Run`, and `Follow-ups`; add a final
+`Fixes
+#<issue>` line only when the selected repository contract needs that
+linkage. If a source lacks the fields needed for a selected diagnostic, report
+it as unsupported or unknown rather than fabricating `PASS` or adding a new
+global permission barrier.
 
 ## Target destinations and dispositions
 

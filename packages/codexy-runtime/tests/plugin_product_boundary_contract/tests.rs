@@ -2,7 +2,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::contract::validate_contract;
 use super::inventory::files;
-use super::support::{contract, product, record, validate_import};
+use super::support::{
+    contract, product, record, reject_unknown_wrapper_fields, validate_import, SURFACE_SIDECARS,
+};
 use crate::support::TestResult;
 
 fn assert_invalid(root: &std::path::Path, value: &serde_json::Value) {
@@ -31,6 +33,37 @@ fn product_boundary_contract_owns_each_current_surface_once() -> TestResult {
             "Target destinations and dispositions"
         ])
     );
+    Ok(())
+}
+
+#[test]
+fn product_boundary_contract_loads_responsibility_sidecars() -> TestResult {
+    let root = codexy_runtime::paths::repository_root();
+    let contract = contract(root)?;
+    let records = contract["surfaceRecords"]
+        .as_array()
+        .ok_or("composed surfaceRecords must be an array")?;
+    let mut counts = BTreeMap::new();
+    for record in records {
+        *counts.entry(record["target"].as_str().ok_or("missing record target")?)
+            .or_insert(0) += 1;
+    }
+    assert_eq!(
+        counts,
+        BTreeMap::from([
+            ("codexy", 9),
+            ("codexy-devtools", 11),
+            ("codexy-github", 3),
+            ("repository-only", 7),
+        ])
+    );
+    for (path, target) in SURFACE_SIDECARS {
+        let sidecar: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+            root.join(path),
+        )?)?;
+        assert_eq!(sidecar["target"].as_str(), Some(target));
+        assert!(!sidecar["surfaceRecords"].as_array().unwrap().is_empty());
+    }
     Ok(())
 }
 
@@ -75,6 +108,7 @@ fn core_and_devtools_packages_keep_developer_tool_surfaces_separate() -> TestRes
 #[test]
 fn product_boundary_contract_rejects_invalid_surface_records() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
+    reject_unknown_wrapper_fields(root)?;
     let contract = contract(root)?;
     let mut duplicate = contract.clone();
     duplicate["surfaceRecords"]
