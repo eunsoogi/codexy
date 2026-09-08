@@ -40,7 +40,7 @@ impl LockGuard {
             Ok(file) => file,
             Err(error)
                 if error.kind() == io::ErrorKind::AlreadyExists
-                    || is_transient_lock_contention(path, &error) =>
+                    || is_transient_lock_contention(&error) =>
             {
                 if stale(path) {
                     let _ = fs::remove_file(path);
@@ -63,47 +63,17 @@ impl LockGuard {
 }
 
 fn open_new_lock(path: &Path) -> io::Result<File> {
-    let mut options = OpenOptions::new();
-    options.write(true).create_new(true);
-    #[cfg(windows)]
-    {
-        use std::os::windows::fs::OpenOptionsExt as _;
-        // Keep delete/rename from entering a Windows delete-pending state while owned.
-        const FILE_SHARE_READ: u32 = 0x0000_0001;
-        const FILE_SHARE_WRITE: u32 = 0x0000_0002;
-        options.share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE);
-    }
-    options.open(path)
+    OpenOptions::new().write(true).create_new(true).open(path)
 }
 
 #[cfg(windows)]
-fn is_transient_lock_contention(path: &Path, error: &io::Error) -> bool {
-    const ERROR_ACCESS_DENIED: i32 = 5;
+fn is_transient_lock_contention(error: &io::Error) -> bool {
     const ERROR_SHARING_VIOLATION: i32 = 32;
-    match error.raw_os_error() {
-        Some(ERROR_SHARING_VIOLATION) => true,
-        Some(ERROR_ACCESS_DENIED) => lock_entry_is_visible(path),
-        _ => false,
-    }
-}
-
-#[cfg(windows)]
-fn lock_entry_is_visible(path: &Path) -> bool {
-    let Some(parent) = path.parent() else {
-        return false;
-    };
-    let Some(name) = path.file_name() else {
-        return false;
-    };
-    fs::read_dir(parent).is_ok_and(|entries| {
-        entries
-            .flatten()
-            .any(|entry| entry.file_name().as_os_str() == name)
-    })
+    error.raw_os_error() == Some(ERROR_SHARING_VIOLATION)
 }
 
 #[cfg(not(windows))]
-const fn is_transient_lock_contention(_path: &Path, _error: &io::Error) -> bool {
+const fn is_transient_lock_contention(_error: &io::Error) -> bool {
     false
 }
 
@@ -158,7 +128,7 @@ fn process_alive(pid: u32) -> bool {
     result == 0 || std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM)
 }
 
-#[cfg(not(unix))]
+#[cfg(all(not(unix), not(windows)))]
 fn process_alive(_pid: u32) -> bool {
     false
 }
@@ -213,18 +183,57 @@ mod tests {
 
     #[cfg(windows)]
     #[test]
-    fn only_visible_windows_lock_entries_turn_access_denied_into_contention() -> Result<()> {
+    fn treats_a_real_windows_sharing_violation_as_contention() -> Result<()> {
+        use std::os::windows::fs::OpenOptionsExt as _;
+
         let temporary = tempfile::tempdir()?;
         let path = temporary.path().join("state.lock");
-        File::create(&path)?;
-        assert!(is_transient_lock_contention(
-            &path,
-            &io::Error::from_raw_os_error(5)
-        ));
-        assert!(!is_transient_lock_contention(
-            &temporary.path().join("missing.lock"),
-            &io::Error::from_raw_os_error(5)
-        ));
+        let blocker = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .share_mode(0)
+            .open(&path)?;
+        let native = open_new_lock(&path).expect_err("the held lock must deny sharing");
+        assert_eq!(native.raw_os_error(), Some(32));
+        assert!(is_transient_lock_contention(&native));
+        assert!(LockGuard::try_acquire(&path)?.is_none());
+        drop(blocker);
+        fs::remove_file(path)?;
+        Ok(())
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn preserves_a_real_windows_access_denied_as_an_error() -> Result<()> {
+        use std::process::Command;
+
+        let temporary = tempfile::tempdir()?;
+        let blocked = temporary.path().join("denied");
+        fs::create_dir(&blocked)?;
+        let icacls = std::env::var_os("SystemRoot")
+            .map(|root| PathBuf::from(root).join("System32/icacls.exe"))
+            .unwrap_or_else(|| PathBuf::from("icacls"));
+        let denied = Command::new(&icacls)
+            .arg(&blocked)
+            .args(["/inheritance:r", "/deny", "*S-1-1-0:(OI)(CI)(W)"])
+            .status()?;
+        if !denied.success() {
+            bail!("icacls could not deny writes to {}", blocked.display());
+        }
+        let path = blocked.join("state.lock");
+        let native = open_new_lock(&path);
+        let actual = LockGuard::try_acquire(&path);
+        let reset = Command::new(&icacls)
+            .arg(&blocked)
+            .args(["/reset", "/T", "/C"])
+            .status()?;
+        if !reset.success() {
+            bail!("icacls could not restore {}", blocked.display());
+        }
+        let native = native.expect_err("denied creation must fail");
+        assert_eq!(native.raw_os_error(), Some(5));
+        let actual = actual.expect_err("access denial must not become contention")?;
+        assert!(actual.to_string().contains(&native.to_string()));
         Ok(())
     }
 }
