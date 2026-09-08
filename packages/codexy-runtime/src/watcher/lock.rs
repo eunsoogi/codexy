@@ -1,10 +1,10 @@
 use std::fs::{self, File, OpenOptions};
-use std::io::Write;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
 
-use anyhow::{Context as _, Result, bail};
+use anyhow::{Context as _, Result, anyhow, bail};
 
 use super::io::{now_ms, random_hex, reject_link};
 
@@ -36,16 +36,19 @@ impl LockGuard {
             reject_link(path)?;
         }
         let owner = format!("{}:{}:{}", std::process::id(), now_ms(), random_hex(8)?);
-        let mut file = match OpenOptions::new().write(true).create_new(true).open(path) {
+        let mut file = match open_new_lock(path) {
             Ok(file) => file,
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+            Err(error)
+                if error.kind() == io::ErrorKind::AlreadyExists
+                    || is_transient_lock_contention(path, &error) =>
+            {
                 if stale(path) {
                     let _ = fs::remove_file(path);
                 }
                 return Ok(None);
             }
             Err(error) => {
-                return Err(error).with_context(|| format!("creating lock {}", path.display()));
+                return Err(anyhow!("creating lock {}: {error}", path.display()));
             }
         };
         file.write_all(owner.as_bytes())
@@ -59,6 +62,51 @@ impl LockGuard {
     }
 }
 
+fn open_new_lock(path: &Path) -> io::Result<File> {
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt as _;
+        // Keep delete/rename from entering a Windows delete-pending state while owned.
+        const FILE_SHARE_READ: u32 = 0x0000_0001;
+        const FILE_SHARE_WRITE: u32 = 0x0000_0002;
+        options.share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE);
+    }
+    options.open(path)
+}
+
+#[cfg(windows)]
+fn is_transient_lock_contention(path: &Path, error: &io::Error) -> bool {
+    const ERROR_ACCESS_DENIED: i32 = 5;
+    const ERROR_SHARING_VIOLATION: i32 = 32;
+    match error.raw_os_error() {
+        Some(ERROR_SHARING_VIOLATION) => true,
+        Some(ERROR_ACCESS_DENIED) => lock_entry_is_visible(path),
+        _ => false,
+    }
+}
+
+#[cfg(windows)]
+fn lock_entry_is_visible(path: &Path) -> bool {
+    let Some(parent) = path.parent() else {
+        return false;
+    };
+    let Some(name) = path.file_name() else {
+        return false;
+    };
+    fs::read_dir(parent).is_ok_and(|entries| {
+        entries
+            .flatten()
+            .any(|entry| entry.file_name().as_os_str() == name)
+    })
+}
+
+#[cfg(not(windows))]
+const fn is_transient_lock_contention(_path: &Path, _error: &io::Error) -> bool {
+    false
+}
+
 impl Drop for LockGuard {
     fn drop(&mut self) {
         drop(self.file.take());
@@ -69,6 +117,12 @@ impl Drop for LockGuard {
     }
 }
 
+#[cfg(windows)]
+fn stale(path: &Path) -> bool {
+    older_than_stale(path)
+}
+
+#[cfg(not(windows))]
 fn stale(path: &Path) -> bool {
     let Ok(contents) = fs::read_to_string(path) else {
         return older_than_stale(path);
@@ -141,6 +195,36 @@ mod tests {
         assert!(path.exists());
         drop(guard);
         assert!(!path.exists());
+        Ok(())
+    }
+
+    #[test]
+    fn preserves_the_native_cause_when_lock_creation_fails() -> Result<()> {
+        let temporary = tempfile::tempdir()?;
+        let parent = temporary.path().join("not-a-directory");
+        File::create(&parent)?;
+        let path = parent.join("state.lock");
+        let expected = open_new_lock(&path).expect_err("a file cannot be a lock parent");
+
+        let error = LockGuard::try_acquire(&path).expect_err("lock creation should fail");
+        assert!(error.to_string().contains(&expected.to_string()));
+        Ok(())
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn only_visible_windows_lock_entries_turn_access_denied_into_contention() -> Result<()> {
+        let temporary = tempfile::tempdir()?;
+        let path = temporary.path().join("state.lock");
+        File::create(&path)?;
+        assert!(is_transient_lock_contention(
+            &path,
+            &io::Error::from_raw_os_error(5)
+        ));
+        assert!(!is_transient_lock_contention(
+            &temporary.path().join("missing.lock"),
+            &io::Error::from_raw_os_error(5)
+        ));
         Ok(())
     }
 }
