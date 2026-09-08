@@ -19,10 +19,11 @@ from codexy_runtime_tools.runtime_configuration import (
     PUBLIC_BUNDLE_ASSET,
     Configuration,
 )
+from codexy_runtime_tools.version_lock import default_package_version
 
 
 REPOSITORY = "https://github.com/eunsoogi/codexy"
-VERSION = "1.6.3"
+VERSION = default_package_version()
 
 
 def write_bundle(path: Path) -> None:
@@ -63,7 +64,7 @@ class CoreWatcherBootstrapTests(unittest.TestCase):
             with mock.patch.dict(os.environ, {}, clear=True):
                 config = Configuration.load("watcher", root, ["--stdio"])
             self.assertTrue(
-                config.package_url.endswith("/v1.6.3/codexy-marketplace-bundle.tar.gz")
+                config.package_url.endswith(f"/v{VERSION}/{PUBLIC_BUNDLE_ASSET}")
             )
             self.assertTrue(config.allow_mixed_plugin_roots)
             self.assertEqual(config.source_identity.package_plugin_root(), "codexy")
