@@ -7,6 +7,8 @@ pub(crate) fn write_gh_companion(bin: &Path) -> TestResult<()> {
         bin.join("gh.cmd"),
         r#"@echo off
 setlocal EnableExtensions DisableDelayedExpansion
+set "arguments=%*"
+set "endpoint=%~2"
 if /I "%~1 %~2"=="pr view" (
   type "%CODEXY_TEST_CI_RESPONSE%"
   exit /b 0
@@ -16,20 +18,17 @@ if /I "%~2"=="graphql" (
   exit /b 0
 )
 if /I "%~1"=="api" if /I "%~2"=="--paginate" (
-  echo(%*| findstr.exe /L /C:"check-runs" >nul
-  if not errorlevel 1 (
+  if not "%arguments:check-runs=%"=="%arguments%" (
     type "%CODEXY_TEST_EXPECTED_CHECKS_RESPONSE%"
     exit /b 0
   )
-  echo(%*| findstr.exe /L /C:"check-suites" >nul
-  if not errorlevel 1 (
+  if not "%arguments:check-suites=%"=="%arguments%" (
     type "%CODEXY_TEST_CHECK_SUITES_RESPONSE%"
     exit /b 0
   )
 )
 if /I "%~1"=="api" (
-  echo(%~2| findstr.exe /C:"/protection" >nul
-  if not errorlevel 1 (
+  if not "%endpoint:/protection=%"=="%endpoint%" (
     type "%CODEXY_TEST_REQUIRED_STATUS_RESPONSE%"
     exit /b 0
   )
