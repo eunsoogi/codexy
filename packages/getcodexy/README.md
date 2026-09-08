@@ -1,12 +1,11 @@
 # Codexy
 
-Codexy is a component-aware Codex harness for owned work, specialist help, and
-proof-driven completion.
+Codexy is a Codex harness for coordinating agents through planning,
+implementation, verification, and review.
 
-It gives Codex a disciplined path from a broad repository request to an owned
-implementation, observable verification, bounded review, and a safe finish.
-Codexy keeps the scope, owner, current evidence, and next action visible while
-work moves through planning, implementation, verification, review, and handoff.
+It helps Codex turn a broad repository request into an owned plan, divide work
+among agents, implement changes, verify actual outcomes, and keep the next
+handoff tied to current evidence.
 
 ## Components
 
@@ -53,7 +52,7 @@ the installed plugins, skills, agents, hooks, and MCP servers.
 ## Maintain and check Codexy
 
 Keep the installer and installed component selection current, inspect health, or
-remove an optional component with the same component-aware lifecycle:
+remove an optional component:
 
 ```sh
 uv tool upgrade getcodexy
