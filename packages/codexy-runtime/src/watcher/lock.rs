@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use anyhow::{Context as _, Result, bail};
 
-use super::io::reject_link_entry;
+use super::io::reject_link;
 
 #[derive(Debug)]
 pub(super) struct LockGuard {
@@ -14,10 +14,11 @@ pub(super) struct LockGuard {
 
 impl LockGuard {
     pub(super) fn acquire(path: &Path, wait_ms: u64) -> Result<Self> {
+        let file = Self::open(path)?;
         let deadline = std::time::Instant::now() + Duration::from_millis(wait_ms);
         loop {
-            if let Some(lock) = Self::try_acquire(path)? {
-                return Ok(lock);
+            if Self::try_lock(&file, path)? {
+                return Ok(Self { file });
             }
             if std::time::Instant::now() >= deadline {
                 bail!("watcher state lock is busy: {}", path.display());
@@ -27,17 +28,25 @@ impl LockGuard {
     }
 
     pub(super) fn try_acquire(path: &Path) -> Result<Option<Self>> {
-        reject_link_entry(path)?;
-        let file = OpenOptions::new()
+        let file = Self::open(path)?;
+        Ok(Self::try_lock(&file, path)?.then_some(Self { file }))
+    }
+
+    fn open(path: &Path) -> Result<File> {
+        reject_link(path)?;
+        OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
             .truncate(false)
             .open(path)
-            .with_context(|| format!("opening watcher lock {}", path.display()))?;
+            .with_context(|| format!("opening watcher lock {}", path.display()))
+    }
+
+    fn try_lock(file: &File, path: &Path) -> Result<bool> {
         match file.try_lock() {
-            Ok(()) => Ok(Some(Self { file })),
-            Err(std::fs::TryLockError::WouldBlock) => Ok(None),
+            Ok(()) => Ok(true),
+            Err(std::fs::TryLockError::WouldBlock) => Ok(false),
             Err(std::fs::TryLockError::Error(error)) => {
                 Err(error).with_context(|| format!("locking watcher lock {}", path.display()))
             }
@@ -53,6 +62,8 @@ impl Drop for LockGuard {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use super::*;
 
     #[test]
@@ -90,11 +101,25 @@ mod tests {
             .read(true)
             .write(true)
             .create(true)
+            .truncate(false)
             .open(&path)
             .expect_err("a file cannot be a lock parent");
 
         let error = LockGuard::try_acquire(&path).expect_err("lock opening should fail");
         assert!(error.to_string().contains(&expected.to_string()));
+        Ok(())
+    }
+
+    #[test]
+    fn treats_legacy_sentinel_bytes_as_opaque() -> Result<()> {
+        let temporary = tempfile::tempdir()?;
+        let path = temporary.path().join("state.lock");
+        let legacy = b"1234:1700000000000:deadbeef";
+        fs::write(&path, legacy)?;
+
+        let guard = LockGuard::try_acquire(&path)?.context("lock was not acquired")?;
+        assert_eq!(fs::read(&path)?, legacy);
+        drop(guard);
         Ok(())
     }
 
@@ -105,11 +130,53 @@ mod tests {
 
         let temporary = tempfile::tempdir()?;
         let target = temporary.path().join("target");
-        File::create(&target)?;
+        fs::write(&target, b"target remains untouched")?;
         let path = temporary.path().join("state.lock");
         symlink(&target, &path)?;
         let error = LockGuard::try_acquire(&path).expect_err("symlinked lock must be rejected");
         assert!(error.to_string().contains("must not be a symlink"));
+        assert_eq!(fs::read_link(&path)?, target);
+        assert_eq!(fs::read(&target)?, b"target remains untouched");
+        Ok(())
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn preserves_a_real_windows_access_denied_as_an_error() -> Result<()> {
+        use std::process::Command;
+
+        let temporary = tempfile::tempdir()?;
+        let blocked = temporary.path().join("denied");
+        fs::create_dir(&blocked)?;
+        let icacls = std::env::var_os("SystemRoot")
+            .map(|root| std::path::PathBuf::from(root).join("System32/icacls.exe"))
+            .unwrap_or_else(|| std::path::PathBuf::from("icacls"));
+        let denied = Command::new(&icacls)
+            .arg(&blocked)
+            .args(["/inheritance:r", "/deny", "*S-1-1-0:(OI)(CI)(W)"])
+            .status()?;
+        if !denied.success() {
+            bail!("icacls could not deny writes to {}", blocked.display());
+        }
+        let path = blocked.join("state.lock");
+        let native = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(&path);
+        let actual = LockGuard::try_acquire(&path);
+        let reset = Command::new(&icacls)
+            .arg(&blocked)
+            .args(["/reset", "/T", "/C"])
+            .status()?;
+        if !reset.success() {
+            bail!("icacls could not restore {}", blocked.display());
+        }
+        let native = native.expect_err("denied creation must fail");
+        assert_eq!(native.raw_os_error(), Some(5));
+        let actual = actual.expect_err("access denial must not become contention");
+        assert!(actual.to_string().contains(&native.to_string()));
         Ok(())
     }
 }

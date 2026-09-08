@@ -33,6 +33,7 @@ impl Store {
     pub(crate) fn new() -> Result<Self> {
         let root = state_root()?;
         ensure_dir(&root)?;
+        recovery::recover_quarantines(&root)?;
         Ok(Self { root })
     }
 
@@ -72,6 +73,13 @@ impl Store {
 
     pub(super) fn reclaim_sessions(&self, now: u64) -> Result<()> {
         for directory in self.session_dirs()? {
+            let name = directory
+                .file_name()
+                .and_then(|name| name.to_str())
+                .context("watcher session id is not UTF-8")?;
+            let Some(_transition) = LockGuard::try_acquire(&self.transition_path(name))? else {
+                continue;
+            };
             let session_path = directory.join("session.json");
             if !session_path.exists() {
                 recovery::reclaim(&directory)?;
@@ -114,6 +122,10 @@ impl Store {
         Ok(self.root.join(session_id))
     }
 
+    fn transition_path(&self, session_id: &str) -> PathBuf {
+        self.root.join(format!(".reclaim-{session_id}.lock"))
+    }
+
     fn load_session(&self, session_id: &str) -> Result<Session> {
         let dir = self.session_dir(session_id)?;
         reject_link(&dir)?;
@@ -127,15 +139,17 @@ impl Store {
         )
     }
 
-    fn session_lock(&self, session_id: &str) -> Result<LockGuard> {
+    fn session_lock(&self, session_id: &str) -> Result<(LockGuard, LockGuard)> {
         let dir = self.session_dir(session_id)?;
+        let transition = LockGuard::acquire(&self.transition_path(session_id), LOCK_WAIT_MS)?;
         reject_link(&dir)?;
         let metadata = fs::metadata(&dir)
             .with_context(|| format!("reading watcher session directory {}", dir.display()))?;
         if !metadata.is_dir() {
             bail!("watcher session path is not a directory: {}", dir.display());
         }
-        LockGuard::acquire(&dir.join("state.lock"), LOCK_WAIT_MS)
+        let state = LockGuard::acquire(&dir.join("state.lock"), LOCK_WAIT_MS)?;
+        Ok((transition, state))
     }
 
     fn load_health(&self, session_id: &str) -> Result<Health> {

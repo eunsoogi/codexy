@@ -68,28 +68,6 @@ pub(super) fn reject_link(path: &Path) -> Result<()> {
     Ok(())
 }
 
-pub(super) fn reject_link_entry(path: &Path) -> Result<()> {
-    let Some(parent) = path.parent() else {
-        return reject_link(path);
-    };
-    let Some(name) = path.file_name() else {
-        return reject_link(path);
-    };
-    for entry in fs::read_dir(parent)? {
-        let entry = entry?;
-        if entry.file_name().eq_ignore_ascii_case(name) {
-            if entry.file_type()?.is_symlink() {
-                bail!(
-                    "watcher state path must not be a symlink: {}",
-                    path.display()
-                );
-            }
-            break;
-        }
-    }
-    Ok(())
-}
-
 pub(super) fn safe_id(value: &str, label: &str) -> Result<()> {
     if value.is_empty() || value.len() > 128 || value.contains('/') || value.contains('\\') {
         bail!("watcher {label} is invalid");
