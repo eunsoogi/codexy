@@ -13,7 +13,7 @@ if ($headSha -notmatch '^[0-9a-f]{40}$' -or (git rev-parse HEAD).Trim() -ne $hea
     throw "checked out source commit does not match workflow input"
 }
 if ($condition -notmatch '^(cold|warm)$') { throw "unsupported measurement condition" }
-if ($repeatId -notmatch '^[A-Za-z0-9._-]{1,64}$' -or $cacheIdentity -notmatch '^[A-Za-z0-9._-]{1,64}$') {
+if ($repeatId -notmatch '\A[A-Za-z0-9._-]{1,64}\z' -or $cacheIdentity -notmatch '\A[A-Za-z0-9._-]{1,64}\z') {
     throw "measurement identities must use 1-64 letters, digits, dot, underscore, or hyphen"
 }
 if ($profiling -notmatch '^(true|false)$') { throw "unsupported profiling flag" }

@@ -14,10 +14,20 @@ fn measurement_validation_accepts_native_modes_and_rejects_invalid_inputs() -> T
         ("mismatched exact head", "0000000000000000000000000000000000000000".to_owned(), "normal", "false", false),
         ("malformed repeat", head.clone(), "normal", "false", false),
         ("malformed cache identity", head.clone(), "normal", "false", false),
+        ("trailing LF repeat", head.clone(), "normal", "false", false),
+        ("trailing LF cache identity", head.clone(), "normal", "false", false),
     ];
     for (name, candidate, mode, profiling, expected_success) in cases {
-        let repeat = if name == "malformed repeat" { "normal cold" } else { "normal-cold-1" };
-        let identity = if name == "malformed cache identity" { "normal pair" } else { "normal-pair" };
+        let repeat = match name {
+            "malformed repeat" => "normal cold",
+            "trailing LF repeat" => "normal-cold-1\n",
+            _ => "normal-cold-1",
+        };
+        let identity = match name {
+            "malformed cache identity" => "normal pair",
+            "trailing LF cache identity" => "normal-pair\n",
+            _ => "normal-pair",
+        };
         let temp = tempfile::tempdir()?;
         let env_file = temp.path().join("github_env");
         let output = run_helper(root, temp.path(), &env_file, &candidate, mode, profiling, repeat, identity)?;
