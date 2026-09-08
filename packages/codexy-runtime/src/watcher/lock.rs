@@ -232,7 +232,7 @@ mod tests {
         }
         let native = native.expect_err("denied creation must fail");
         assert_eq!(native.raw_os_error(), Some(5));
-        let actual = actual.expect_err("access denial must not become contention")?;
+        let actual = actual.expect_err("access denial must not become contention");
         assert!(actual.to_string().contains(&native.to_string()));
         Ok(())
     }
