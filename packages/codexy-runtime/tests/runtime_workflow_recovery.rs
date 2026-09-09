@@ -27,6 +27,9 @@ mod ci_dispatch;
 #[cfg(unix)]
 #[path = "runtime_workflow_recovery/ci_dispatch_behavior.rs"]
 mod ci_dispatch_behavior;
+#[cfg(unix)]
+#[path = "runtime_workflow_recovery/activation_retry_behavior.rs"]
+mod activation_retry_behavior;
 
 #[test]
 fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()
@@ -130,12 +133,12 @@ fn activation_pr_creation_reuses_an_existing_verified_staging_branch()
         "resumable activation pull request",
         &[
             "git ls-remote --exit-code --heads origin \"$branch\"",
-            "scripts/verify-runtime-activation-branch \"$branch\" origin/main \"$BOOTSTRAP_VERSION\" \"$RUNNER_TEMP/codexy-runtime-staging/runtime-staging-receipt.json\"",
+            "\"$trusted/scripts/verify-runtime-activation-branch\" \"$branch\" \"$existing_base\" \"$BOOTSTRAP_VERSION\" \"$RUNNER_TEMP/codexy-runtime-staging/runtime-staging-receipt.json\"",
             "codexy/runtime-activation-v${BOOTSTRAP_VERSION}",
         ],
     );
     let creation = run(&activation, "open-activation-pr", "Create exactly one activation pull request")?;
-    support::assert_structured_literals(creation, "activation PR reuse", &["gh pr list --head \"$branch\" --state open", "activation branch differs from verified contract"]);
+    support::assert_structured_literals(creation, "activation PR reuse", &["gh pr list --head \"$branch\" --state open", "git rev-parse -q --verify MERGE_HEAD"]);
     Ok(())
 }
 
@@ -160,7 +163,7 @@ fn activation_new_and_retry_paths_share_post_transform_tree_verification()
 
     let stage_run = steps[stage]["run"].as_str().ok_or("stage run")?;
     assert!(stage_run.contains("git add -A -- ."));
-    assert!(stage_run.contains("scripts/verify-runtime-activation-branch \"$branch\" origin/main \"$BOOTSTRAP_VERSION\" \"$RUNNER_TEMP/codexy-runtime-staging/runtime-staging-receipt.json\""));
+    assert!(stage_run.contains("\"$RUNNER_TEMP/codexy-runtime-contract/scripts/verify-runtime-activation-branch\" \"$branch\" \"$GITHUB_SHA\" \"$BOOTSTRAP_VERSION\" \"$RUNNER_TEMP/codexy-runtime-staging/runtime-staging-receipt.json\""));
     assert!(!stage_run.contains("git add .agents/plugins"));
 
     let create_run = steps[create]["run"].as_str().ok_or("create run")?;

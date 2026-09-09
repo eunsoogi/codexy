@@ -89,7 +89,7 @@ fn publication_phases_are_separate_and_explicitly_gated() -> TestResult {
             "open-activation-pr",
             "Apply verified activation and version-selection contract"
         )?
-        .contains("scripts/sync-plugin-version.sh --version \"$BOOTSTRAP_VERSION\"")
+        .contains("--apply-from")
     );
     let activation_proof = run(
         &activation,

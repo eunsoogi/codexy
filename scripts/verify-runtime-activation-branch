@@ -1,5 +1,6 @@
 #!/bin/sh
 set -eu
+apply_from=''
 
 verify_case() {
   branch="${1:?branch is required}"
@@ -67,6 +68,14 @@ verify_case() {
   GIT_INDEX_FILE="$expected_index" git read-tree "$base"
   GIT_INDEX_FILE="$expected_index" GIT_WORK_TREE="$expected_root" git add -A -- .
   expected_tree="$(GIT_INDEX_FILE="$expected_index" git write-tree)"
+  if test -n "$apply_from"; then
+    test "$(git rev-parse "$apply_from^{tree}")" = "$apply_from"
+    if test "$(git write-tree)" != "$apply_from" || ! git diff --quiet; then
+      printf '%s\n' "activation input tree changed after verification" >&2
+      exit 1
+    fi
+    git restore --source="$expected_tree" --staged --worktree -- .
+  fi
   if git diff --cached --quiet; then
     actual_tree="$(git rev-parse "$branch^{tree}")"
   else
@@ -143,5 +152,6 @@ verify_batch() {
 
 case "${1:-}" in
   --batch) shift; verify_batch "$@" ;;
+  --apply-from) apply_from="${2:?verified input tree is required}"; shift 2; verify_case "$@" ;;
   *) verify_case "$@" ;;
 esac

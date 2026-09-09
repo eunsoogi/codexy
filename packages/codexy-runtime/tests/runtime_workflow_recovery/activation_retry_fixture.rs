@@ -1,0 +1,139 @@
+use super::receipt::receipt;
+use serde_json::Value;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::{Command, Output},
+};
+
+#[path = "activation_retry_setup.rs"]
+mod setup;
+
+pub(super) struct Fixture {
+    root: tempfile::TempDir,
+    pub(super) repo: PathBuf,
+    pub(super) branch: String,
+    version: String,
+    main: String,
+    receipt: PathBuf,
+    bin: PathBuf,
+    mutation: String,
+}
+
+impl Fixture {
+    pub(super) fn new(mutation: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        setup::prepare(mutation)
+    }
+
+    pub(super) fn remote_head(&self) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(git(
+            &self.repo,
+            &[
+                "ls-remote",
+                "origin",
+                &format!("refs/heads/{}", self.branch),
+            ],
+        )?
+        .split_whitespace()
+        .next()
+        .ok_or("remote head")?
+        .to_owned())
+    }
+
+    pub(super) fn run(&self, attempt: &str) -> Result<Output, Box<dyn std::error::Error>> {
+        git(&self.repo, &["checkout", "main"])?;
+        let temporary = self.root.path().join(attempt);
+        fs::create_dir(&temporary)?;
+        fs::create_dir(temporary.join("codexy-runtime-staging"))?;
+        fs::copy(
+            &self.receipt,
+            temporary.join("codexy-runtime-staging/runtime-staging-receipt.json"),
+        )?;
+        let workflow = super::super::workflow("runtime-activation.yml")?;
+        let mut body = String::from("set -euo pipefail\n");
+        for step in [
+            "Prepare one version-selection branch",
+            "Apply verified activation and version-selection contract",
+            "Stage and verify activation branch",
+            "Create exactly one activation pull request",
+        ] {
+            body.push_str(super::super::run(&workflow, "open-activation-pr", step)?);
+            body.push('\n');
+            if self.mutation == "late-index" && step == "Prepare one version-selection branch" {
+                body.push_str(
+                    "printf tampered > retry-main-marker.txt\ngit add retry-main-marker.txt\n",
+                );
+            }
+        }
+        Ok(Command::new("bash")
+            .args(["-c", &body])
+            .current_dir(&self.repo)
+            .env(
+                "PATH",
+                format!("{}:{}", self.bin.display(), std::env::var("PATH")?),
+            )
+            .env("RUNNER_TEMP", &temporary)
+            .env("GITHUB_SHA", &self.main)
+            .env("PR_STATE_FILE", self.root.path().join("pr-state"))
+            .env("GITHUB_WORKSPACE", &self.repo)
+            .env("BOOTSTRAP_VERSION", &self.version)
+            .env("CODEXY_TEST_MODE", "1")
+            .env(
+                "CODEXY_TEST_ACTIVATE_RUNTIME_BINARY",
+                env!("CARGO_BIN_EXE_codexy-activate-runtime"),
+            )
+            .env(
+                "CODEXY_TEST_SYNC_VERSION_BINARY",
+                env!("CARGO_BIN_EXE_codexy-sync-version"),
+            )
+            .output()?)
+    }
+
+    pub(super) fn prepare_next_attempt(&self) -> Result<(), Box<dyn std::error::Error>> {
+        git(&self.repo, &["checkout", "main"])?;
+        git(&self.repo, &["branch", "-D", &self.branch])?;
+        Ok(())
+    }
+}
+
+pub(super) fn git(repo: &Path, args: &[&str]) -> Result<String, Box<dyn std::error::Error>> {
+    let output = Command::new("git").args(args).current_dir(repo).output()?;
+    success(output)
+}
+
+fn commit(repo: &Path, message: &str) -> Result<(), Box<dyn std::error::Error>> {
+    git(repo, &["add", "-A"])?;
+    git(repo, &["commit", "-m", message])?;
+    Ok(())
+}
+
+pub(super) fn success(output: Output) -> Result<String, Box<dyn std::error::Error>> {
+    if !output.status.success() {
+        return Err(format!(
+            "stdout: {}\nstderr: {}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        )
+        .into());
+    }
+    Ok(String::from_utf8(output.stdout)?.trim().to_owned())
+}
+
+const GH: &str = r#"#!/bin/sh
+set -eu
+case "$*" in
+  'pr list '*'--json state '*) if test "$(cat "$PR_STATE_FILE")" = 1; then printf '%s\n' OPEN; fi ;;
+  'pr list '*'--json number '*) cat "$PR_STATE_FILE" ;;
+  'pr list '*'--json headRefOid '*) git rev-parse HEAD ;;
+  'pr create '*) test "$(cat "$PR_STATE_FILE")" = 0; printf 1 > "$PR_STATE_FILE" ;;
+  *) echo "unexpected GitHub mutation: $*" >&2; exit 98 ;;
+esac
+"#;
+
+const CARGO: &str = r#"#!/bin/sh
+set -eu
+case "$*" in *'--bin codexy-sync-version -- '*) ;; *) exit 99 ;; esac
+while test "$1" != --; do shift; done
+shift
+exec "$CODEXY_TEST_SYNC_VERSION_BINARY" "$@"
+"#;
