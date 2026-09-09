@@ -8,8 +8,8 @@ description: MUST use before claiming work is done, handing off, opening or merg
 ## Purpose
 
 Completion is a current-state claim. MUST map every requirement to evidence that
-proves it on the authoritative surface, and MUST stop when proof is absent,
-stale, too weak, or contradictory.
+proves it on the authoritative surface, and MUST stop the completion/readiness
+claim when proof is absent, stale, too weak, or contradictory.
 
 ## Audit
 
@@ -77,7 +77,9 @@ stale, too weak, or contradictory.
   protection, credentials, and independent local-destructive protections. When a
   repository-selected check, review, or publication/install state is required,
   MUST prove it on its authentic surface; a missing requirement MUST keep that
-  claim unproved and MUST NOT keep unrelated work open.
+  claim unproved and MUST NOT keep unrelated work open. An authorized,
+  reversible next action MAY collect the missing evidence; the gap is not by
+  itself a new permission request.
 
 ## Completion Report
 
