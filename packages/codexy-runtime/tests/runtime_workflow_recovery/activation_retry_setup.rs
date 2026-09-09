@@ -88,11 +88,11 @@ pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Err
     )?;
     fs::write(repo.join("retry-main-marker.txt"), "new main contract\n")?;
     if mutation == "conflict" {
-        let path = repo.join("packages/codexy-runtime/src/version/bootstrap.rs");
+        let source = git(&repo, &["rev-parse", "HEAD^"])?;
+        let tree = git(&repo, &["rev-parse", &format!("{source}^{{tree}}")])?;
         fs::write(
-            &path,
-            fs::read_to_string(&path)?
-                .replace("const VERSION: &str =", "const VERSION: &'static str ="),
+            repo.join(".agents/plugins/runtime-activation.json"),
+            serde_json::to_vec_pretty(&receipt(&source, &tree))?,
         )?;
     }
     commit(&repo, "advance main contract")?;

@@ -9,7 +9,10 @@ from unittest.mock import patch
 from codexy_runtime_tools.component_inspection import doctor, status
 from codexy_runtime_tools.component_registration_health import valid_registration
 from packages.getcodexy.tests.capability_probe_cases import materialize
-from packages.getcodexy.tests.component_lifecycle_support import fixture
+from packages.getcodexy.tests.component_lifecycle_support import VERSION, fixture
+from packages.getcodexy.tests.component_hook_registration_fixture import (
+    hook_rows as _hook_rows,
+)
 
 
 class ComponentHookActivationInspectionTests(unittest.TestCase):
@@ -139,7 +142,7 @@ class ComponentHookActivationInspectionTests(unittest.TestCase):
         with fixture({"core"}) as state:
             materialize(state, "core")
             plugin = state.marketplace / "plugins/codexy"
-            cache = state.home / "plugins/cache/codexy/codexy/1.6.3"
+            cache = state.home / "plugins/cache/codexy/codexy" / VERSION
             shutil.copytree(plugin, cache)
             rows = [
                 {
@@ -206,44 +209,6 @@ class ComponentHookActivationInspectionTests(unittest.TestCase):
             materialize(state, "github")
             plugin = state.marketplace / "plugins/codexy-github"
             self.assertTrue(valid_registration(plugin, "github"))
-
-
-def _hook_rows(plugin: Path) -> list[dict[str, object]]:
-    events = {
-        "PreToolUse": "preToolUse",
-        "PermissionRequest": "permissionRequest",
-        "UserPromptSubmit": "userPromptSubmit",
-    }
-    event_keys = {
-        "PreToolUse": "pre_tool_use",
-        "PermissionRequest": "permission_request",
-        "UserPromptSubmit": "user_prompt_submit",
-    }
-    value = json.loads((plugin / "hooks/hooks.json").read_text(encoding="utf-8"))
-    path = plugin / "hooks/hooks.json"
-    rows = []
-    for event, groups in value["hooks"].items():
-        for group_index, group in enumerate(groups):
-            for hook_index, hook in enumerate(group["hooks"]):
-                command = hook["command"].replace("${PLUGIN_ROOT}", str(plugin))
-                rows.append(
-                    {
-                        "key": f"codexy@codexy:hooks/hooks.json:{event_keys[event]}:{group_index}:{hook_index}",
-                        "eventName": events[event],
-                        "handlerType": "command",
-                        "command": command,
-                        "async": hook.get("async", False),
-                        "matcher": group.get("matcher"),
-                        "timeoutSec": hook.get("timeout", 600),
-                        "sourcePath": str(path),
-                        "pluginId": "codexy@codexy",
-                        "enabled": True,
-                        "isManaged": False,
-                        "currentHash": "sha256:fixture",
-                        "trustStatus": "trusted",
-                    }
-                )
-    return rows
 
 
 if __name__ == "__main__":
