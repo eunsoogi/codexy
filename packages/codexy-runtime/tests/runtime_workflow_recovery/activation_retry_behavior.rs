@@ -110,3 +110,28 @@ fn activation_new_branch_uses_the_same_tree_contract_and_reuses_its_pr() -> Test
     assert_eq!(fixture.remote_head()?, head);
     Ok(())
 }
+
+#[test]
+fn activation_verifier_step_authentication_is_scoped_and_required() -> TestResult {
+    for step in [
+        "Apply verified activation and version-selection contract",
+        "Stage and verify activation branch",
+    ] {
+        let fixture = Fixture::new("valid")?;
+        let before = fixture.remote_head()?;
+        let output = fixture.run_with_omitted_token("missing-token", Some(step))?;
+        assert_eq!(output.status.code(), Some(4), "{step}");
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("verifier GitHub query requires GH_TOKEN"),
+            "{step}"
+        );
+        assert!(String::from_utf8_lossy(&output.stderr).contains(step));
+        assert_eq!(
+            fixture.remote_head()?,
+            before,
+            "{step} changed remote state"
+        );
+    }
+    Ok(())
+}
