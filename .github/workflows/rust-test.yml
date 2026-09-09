@@ -122,7 +122,13 @@ jobs:
           path: &rust-cache-path |
             ~/.cargo/registry
             packages/codexy-runtime/target
-            ${{ runner.os == 'Windows' && format('~/{0}', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
+            ${{ runner.os == 'Windows' && format('~/{0}/*', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
+            ${{ runner.os == 'Windows' && format('!~/{0}/lib', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
+            ${{ runner.os == 'Windows' && format('~/{0}/lib/*', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
+            ${{ runner.os == 'Windows' && format('!~/{0}/lib/rustlib', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
+            ${{ runner.os == 'Windows' && format('~/{0}/lib/rustlib/*', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
+            ${{ runner.os == 'Windows' && format('!~/{0}/lib/rustlib/i686-pc-windows-msvc', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
+            ${{ runner.os == 'Windows' && format('!~/{0}/lib/rustlib/x86_64-pc-windows-gnu', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
           key: &rust-cache-key >-
             ${{ github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' &&
             inputs.cache_mode == 'normal' &&
