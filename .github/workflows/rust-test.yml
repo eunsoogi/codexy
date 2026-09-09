@@ -122,13 +122,6 @@ jobs:
           path: &rust-cache-path |
             ~/.cargo/registry
             packages/codexy-runtime/target
-            ${{ runner.os == 'Windows' && format('~/{0}/*', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
-            ${{ runner.os == 'Windows' && format('!~/{0}/lib', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
-            ${{ runner.os == 'Windows' && format('~/{0}/lib/*', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
-            ${{ runner.os == 'Windows' && format('!~/{0}/lib/rustlib', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
-            ${{ runner.os == 'Windows' && format('~/{0}/lib/rustlib/*', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
-            ${{ runner.os == 'Windows' && format('!~/{0}/lib/rustlib/i686-pc-windows-msvc', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
-            ${{ runner.os == 'Windows' && format('!~/{0}/lib/rustlib/x86_64-pc-windows-gnu', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
           key: &rust-cache-key >-
             ${{ github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' &&
             inputs.cache_mode == 'normal' &&
@@ -161,7 +154,7 @@ jobs:
         run: CODEXY_MEASUREMENT_CONDITION='${{ inputs.condition }}' scripts/prepare-rust-measurement-toolchain.sh
       - run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}
       - &rust-cache-save
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'normal' && inputs.condition == 'cold') && steps.rust-cache.outputs.cache-hit != 'true' && success()
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' && inputs.run_mode == 'ci' || github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'normal' && inputs.condition == 'cold') && steps.rust-cache.outputs.cache-hit != 'true' && success()
         uses: actions/cache/save@v5
         with:
           path: *rust-cache-path

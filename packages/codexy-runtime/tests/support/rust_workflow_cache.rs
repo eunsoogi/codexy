@@ -8,7 +8,7 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 const WINDOWS_TOOLCHAIN_CACHE_SUBPATH: &str = ".rustup/toolchains/stable-x86_64-pc-windows-msvc";
 const RUST_CACHE_RESTORE_IF: &str = "github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal'";
-const RUST_CACHE_SAVE_IF: &str = "(github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'normal' && inputs.condition == 'cold') && steps.rust-cache.outputs.cache-hit != 'true' && success()";
+const RUST_CACHE_SAVE_IF: &str = "(github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' && inputs.run_mode == 'ci' || github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'normal' && inputs.condition == 'cold') && steps.rust-cache.outputs.cache-hit != 'true' && success()";
 const MEASUREMENT_CACHE_RESTORE_IF: &str = "github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'isolated' && inputs.condition == 'warm'";
 const MEASUREMENT_CACHE_SAVE_IF: &str = "github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'isolated' && inputs.condition == 'cold' && success()";
 
@@ -30,7 +30,7 @@ fn rust_workflow_rejects_obvious_shell_success_masking() -> TestResult {
 }
 
 #[test]
-fn rust_workflow_shares_a_bounded_windows_toolchain_cache_path() -> TestResult {
+fn rust_workflow_keeps_normal_cache_paths_to_registry_and_target() -> TestResult {
     let workflow = workflow_text()?;
     let toolchain = toolchain_text()?;
     let channel = toolchain
@@ -45,17 +45,7 @@ fn rust_workflow_shares_a_bounded_windows_toolchain_cache_path() -> TestResult {
     )));
     assert!(workflow.contains("path: &rust-cache-path |"));
     assert!(workflow.contains("path: *rust-cache-path"));
-    for pattern in [
-        "format('~/{0}/*', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH)",
-        "format('!~/{0}/lib', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH)",
-        "format('~/{0}/lib/*', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH)",
-        "format('!~/{0}/lib/rustlib', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH)",
-        "format('~/{0}/lib/rustlib/*', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH)",
-        "format('!~/{0}/lib/rustlib/i686-pc-windows-msvc', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH)",
-        "format('!~/{0}/lib/rustlib/x86_64-pc-windows-gnu', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH)",
-    ] {
-        assert!(workflow.contains(pattern), "Windows cache path lost pattern: {pattern}");
-    }
+    assert!(!workflow.contains("format('~/{0}"));
     assert!(workflow.contains(
         "Join-Path $HOME $env:CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH"
     ));
@@ -86,6 +76,21 @@ fn rust_workflow_shares_a_bounded_windows_toolchain_cache_path() -> TestResult {
     assert!(workflow.contains("steps.rust-cache.outputs.cache-hit != 'true' && success()"));
     assert!(!workflow.contains("RUSTUP_HOME"));
     assert!(!workflow.contains(".rustup/toolchains/*"));
+
+    let workflow: Value = serde_yaml::from_str(&workflow_text()?)?;
+    let jobs = super::mapping_field(workflow.as_mapping(), "jobs", "workflow")?;
+    let expected_path = "~/.cargo/registry\npackages/codexy-runtime/target\n";
+    for job_id in ["rust-test", "windows-rust-test"] {
+        let job = super::mapping_field(Some(jobs), job_id, "jobs")?;
+        let steps = super::step_mappings(job).collect::<Vec<_>>();
+        for uses in ["actions/cache/restore@v5", "actions/cache/save@v5"] {
+            let step = steps
+                .iter()
+                .find(|step| step.get("uses").and_then(Value::as_str) == Some(uses))
+                .ok_or_else(|| format!("{job_id} is missing {uses}"))?;
+            assert_eq!(cache_path(step), Some(expected_path), "{job_id} changed normal cache paths");
+        }
+    }
     Ok(())
 }
 
