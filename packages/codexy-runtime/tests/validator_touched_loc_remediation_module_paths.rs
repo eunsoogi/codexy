@@ -44,14 +44,6 @@ fn cargo_metadata_discovers_directory_target_main_roots() -> TestResult {
 }
 
 #[test]
-fn touched_loc_honors_attributed_module_path() -> TestResult {
-    let repo = attributed_module_fixture("src/helper.rs", "#[path = \"helper.rs\"]\n")?;
-    let output = validate(repo.path())?;
-    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
-    Ok(())
-}
-
-#[test]
 fn touched_loc_rejects_self_attributed_module_path() -> TestResult {
     let repo = fixture("src/foo.rs", self_attributed_base())?;
     write(

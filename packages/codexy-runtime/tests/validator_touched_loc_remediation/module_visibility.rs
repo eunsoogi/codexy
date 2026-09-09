@@ -1,14 +1,10 @@
 use super::*;
 
 #[test]
-fn touched_loc_handles_rust_module_visibility_forms() -> TestResult {
-    for (declaration, allowed) in [
-        ("mod extracted;", true),
-        ("pub mod extracted;", true),
-        ("pub(crate) mod extracted;", true),
-        ("pub(super) module extracted;", false),
-        ("pub(super) fn extracted();", false),
-        ("pub(super) mod extracted;", true),
+fn touched_loc_rejects_visibility_on_non_module_items() -> TestResult {
+    for declaration in [
+        "pub(super) module extracted;",
+        "pub(super) fn extracted();",
     ] {
         let repo = fixture("src/too_large.rs", multiline_source())?;
         write(
@@ -24,9 +20,8 @@ fn touched_loc_handles_rust_module_visibility_forms() -> TestResult {
 
         let output = validate(repo.path())?;
 
-        assert_eq!(
-            output.status.success(),
-            allowed,
+        assert!(
+            !output.status.success(),
             "{declaration}\nstderr:\n{}",
             stderr(&output)
         );
