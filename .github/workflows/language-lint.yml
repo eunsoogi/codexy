@@ -1,9 +1,16 @@
 name: Language lint
+run-name: CI ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
 on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      head_sha:
+        description: Exact commit to lint
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -30,7 +37,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
+      - name: Verify exact checked-out head
+        shell: bash
+        env:
+          EXPECTED_HEAD_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$EXPECTED_HEAD_SHA" = "$(git rev-parse HEAD)"
       - uses: actions/setup-python@v7
         if: matrix.language == 'Python'
         with:

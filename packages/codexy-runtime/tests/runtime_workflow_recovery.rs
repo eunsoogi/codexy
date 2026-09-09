@@ -22,6 +22,14 @@ mod legacy_public_assembly;
 mod exact_pr_head_admission;
 #[path = "runtime_workflow_recovery/windows_smoke.rs"]
 mod windows_smoke;
+#[path = "runtime_workflow_recovery/ci_dispatch.rs"]
+mod ci_dispatch;
+#[cfg(unix)]
+#[path = "runtime_workflow_recovery/ci_dispatch_behavior.rs"]
+mod ci_dispatch_behavior;
+#[cfg(unix)]
+#[path = "runtime_workflow_recovery/activation_retry_behavior.rs"]
+mod activation_retry_behavior;
 
 #[test]
 fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()
@@ -41,7 +49,7 @@ fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()
             "getcodexy==${BOOTSTRAP_VERSION}",
             "local-bootstrap/bin/codexy-mcp-runtime",
             "--help",
-            "scripts/download-runtime-staging-artifact staging",
+            "scripts/download-runtime-staging-artifact",
         ],
     );
     let download = script("download-runtime-staging-artifact")?;
@@ -105,7 +113,7 @@ fn activation_requires_a_successful_authenticated_staging_binding()
         "open-activation-pr",
         "Build local candidate bootstrap and prove authenticated staging identity",
     )?;
-    assert!(proof.contains("scripts/download-runtime-staging-artifact staging"));
+    assert!(proof.contains("scripts/download-runtime-staging-artifact"));
     let download = script("download-runtime-staging-artifact")?;
     support::assert_structured_literals(
         &download,
@@ -125,12 +133,50 @@ fn activation_pr_creation_reuses_an_existing_verified_staging_branch()
         "resumable activation pull request",
         &[
             "git ls-remote --exit-code --heads origin \"$branch\"",
-            "scripts/verify-runtime-activation-branch \"$branch\" origin/main \"$BOOTSTRAP_VERSION\" \"$GITHUB_WORKSPACE/staging/runtime-staging-receipt.json\"",
+            "\"$trusted/scripts/verify-runtime-activation-branch\" \"$branch\" \"$existing_base\" \"$BOOTSTRAP_VERSION\" \"$RUNNER_TEMP/codexy-runtime-staging/runtime-staging-receipt.json\"",
             "codexy/runtime-activation-v${BOOTSTRAP_VERSION}",
         ],
     );
     let creation = run(&activation, "open-activation-pr", "Create exactly one activation pull request")?;
-    support::assert_structured_literals(creation, "activation PR reuse", &["gh pr list --head \"$branch\" --state open", "activation branch differs from verified contract"]);
+    support::assert_structured_literals(creation, "activation PR reuse", &["gh pr list --head \"$branch\" --state open", "git rev-parse -q --verify MERGE_HEAD"]);
+    Ok(())
+}
+
+#[test]
+fn activation_new_and_retry_paths_share_post_transform_tree_verification()
+-> Result<(), Box<dyn std::error::Error>> {
+    let activation = workflow("runtime-activation.yml")?;
+    let job = activation["jobs"]["open-activation-pr"]
+        .as_mapping()
+        .ok_or("activation job")?;
+    let steps = job["steps"].as_sequence().ok_or("activation steps")?;
+    let prepare = step_index(steps, "Prepare one version-selection branch")?;
+    let apply = step_index(steps, "Apply verified activation and version-selection contract")?;
+    let stage = step_index(steps, "Stage and verify activation branch")?;
+    let create = step_index(steps, "Create exactly one activation pull request")?;
+    assert!(prepare < apply && apply < stage && stage < create);
+
+    let prepare_run = steps[prepare]["run"].as_str().ok_or("prepare run")?;
+    assert!(prepare_run.contains("state_file=\"$RUNNER_TEMP/codexy-runtime-activation-state\""));
+    assert!(prepare_run.contains("printf '%s\\n' existing > \"$state_file\""));
+    assert!(prepare_run.contains("printf '%s\\n' new > \"$state_file\""));
+
+    let stage_run = steps[stage]["run"].as_str().ok_or("stage run")?;
+    assert!(stage_run.contains("git add -A -- ."));
+    assert!(stage_run.contains("\"$RUNNER_TEMP/codexy-runtime-contract/scripts/verify-runtime-activation-branch\" \"$branch\" \"$GITHUB_SHA\" \"$BOOTSTRAP_VERSION\" \"$RUNNER_TEMP/codexy-runtime-staging/runtime-staging-receipt.json\""));
+    assert!(!stage_run.contains("git add .agents/plugins"));
+
+    let create_run = steps[create]["run"].as_str().ok_or("create run")?;
+    assert!(create_run.contains("state_file=\"$RUNNER_TEMP/codexy-runtime-activation-state\""));
+    assert!(!create_run.contains("git add .agents/plugins"));
+    assert!(create_run.contains("git diff --cached --quiet"));
+    assert!(create_run.contains("git commit -m \"feat(runtime): activate v${BOOTSTRAP_VERSION}\""));
+    assert!(create_run.contains("git push origin \"$branch\""));
+    assert!(create_run.contains("head_sha=\"$(git rev-parse HEAD)\""));
+    assert!(create_run.contains("git ls-remote --exit-code origin \"refs/heads/$branch\""));
+    assert!(create_run.contains("--json headRefOid"));
+    assert!(!create_run.contains("--allow-empty"));
+    assert!(!create_run.contains("git commit --amend"));
     Ok(())
 }
 
