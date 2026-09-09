@@ -34,6 +34,8 @@ mod watcher_lock_lifecycle;
 mod watcher_recovery;
 #[path = "mcp_stdio/watcher_state.rs"]
 mod watcher_state;
+#[path = "mcp_stdio/watcher_deterministic.rs"]
+mod watcher_deterministic;
 
 use client::{InstalledPlugin, McpClient, TempRuntimeDir};
 use fixtures::{installed_plugin_copy, installed_plugin_under_rust_host, temp_runtime_dir};
