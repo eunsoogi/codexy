@@ -80,3 +80,24 @@ fn activation_dispatch_preserves_latest_failure_instead_of_older_success_or_reru
     assert!(fixture.dispatched()?.is_empty());
     Ok(())
 }
+
+#[test]
+fn activation_dispatch_excludes_unstarted_pr_runs_but_never_accepts_action_required() -> TestResult
+{
+    let fixture = Fixture::new()?;
+    for workflow in WORKFLOWS {
+        fixture.change(workflow, |runs| {
+            runs[0]["displayTitle"] = json!("feat(runtime): activate v1.7.0");
+            runs[0]["conclusion"] = json!("action_required");
+        })?;
+    }
+    assert_result(fixture.run()?, true);
+    assert_eq!(fixture.dispatched()?, WORKFLOWS);
+    let denied = Fixture::new()?;
+    denied.change("rust-test.yml", |runs| {
+        runs[0]["conclusion"] = json!("action_required")
+    })?;
+    assert_result(denied.run()?, false);
+    assert!(denied.dispatched()?.is_empty());
+    Ok(())
+}

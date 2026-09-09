@@ -50,6 +50,11 @@ impl Fixture {
         omitted_step: Option<&str>,
     ) -> Result<Output, Box<dyn std::error::Error>> {
         git(&self.repo, &["checkout", "main"])?;
+        if self.mutation == "push-failure" {
+            let hook = self.root.path().join("remote.git/hooks/pre-receive");
+            fs::write(&hook, "#!/bin/sh\nexit 1\n")?;
+            crate::support::make_executable(&hook)?;
+        }
         let temporary = self.root.path().join(attempt);
         fs::create_dir(&temporary)?;
         fs::create_dir(temporary.join("codexy-runtime-staging"))?;
@@ -95,6 +100,8 @@ impl Fixture {
             )
             .env("RUNNER_TEMP", &temporary)
             .env("GITHUB_SHA", &self.main)
+            .env("PR_READBACK_MODE", &self.mutation)
+            .env("PR_READBACK_ATTEMPT", temporary.join("pr-readback-attempt"))
             .env("PR_STATE_FILE", self.root.path().join("pr-state"))
             .env("GITHUB_WORKSPACE", &self.repo)
             .env("BOOTSTRAP_VERSION", &self.version)
@@ -146,7 +153,18 @@ test "${GH_TOKEN:-}" = fixture-github-token || { echo "verifier GitHub query req
 case "$*" in
   'pr list '*'--json state '*) if test "$(cat "$PR_STATE_FILE")" = 1; then printf '%s\n' OPEN; fi ;;
   'pr list '*'--json number '*) cat "$PR_STATE_FILE" ;;
-  'pr list '*'--json headRefOid '*) git rev-parse HEAD ;;
+  'pr list '*'--json headRefOid '*)
+    attempt=0
+    test ! -f "$PR_READBACK_ATTEMPT" || attempt=$(cat "$PR_READBACK_ATTEMPT")
+    attempt=$((attempt + 1)); printf '%s' "$attempt" > "$PR_READBACK_ATTEMPT"
+    head=$(git rev-parse HEAD); count=$(cat "$PR_STATE_FILE")
+    case "$PR_READBACK_MODE" in
+      readback-delay) if test "$attempt" -lt 3; then head=$(git rev-parse HEAD^); fi ;;
+      readback-wrong) head=$(git rev-parse HEAD^) ;;
+      readback-missing) head=missing; count=0 ;;
+      readback-duplicate) count=2 ;;
+    esac
+    case "$*" in *'@tsv'*) printf '%s\t%s\n' "$count" "$head" ;; *) printf '%s\n' "$head" ;; esac ;;
   'pr create '*) test "$(cat "$PR_STATE_FILE")" = 0; printf 1 > "$PR_STATE_FILE" ;;
   *) echo "unexpected GitHub mutation: $*" >&2; exit 98 ;;
 esac
