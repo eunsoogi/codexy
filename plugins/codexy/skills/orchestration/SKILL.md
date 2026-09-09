@@ -11,7 +11,38 @@ additional guidance (for example, app-thread workers, a watcher, or delegated
 goal ownership), the agent MUST load that reference when the condition applies
 and MUST NOT add it to unrelated routes. Progressive disclosure does not require
 loading every reference. A GitHub surface alone does not select review-specific
-references. Compaction: current wins; missing proof MUST NOT permit action.
+references. Compaction: current state MUST win. Missing proof MUST NOT authorize
+a completion/readiness claim or the specific action whose effect requires that
+proof; it MAY require evidence collection or leave authorized reversible work in
+progress, but it MUST NOT by itself require a new approval to continue that
+work.
+
+### Permission boundary
+
+- Before asking for approval, MUST identify the next action and test whether it
+  changes scope, target, risk, authority, or external state. MUST complete
+  independent authorized preparation first, so any request is tied to a
+  concrete, reviewable result. Ordinary execution, implementation choices,
+  read-only investigation, evidence collection, reviewable preparation, and
+  in-scope reversible work MUST NOT require a new approval when the current
+  request, its reasonable implied scope, or prior authorization covers them.
+- Missing proof, an unavailable diagnostic, uncertainty about an implementation
+  detail, a parent correction, or a changed internal record MUST NOT by itself
+  become a permission gate. It MAY require more evidence or MAY withhold a
+  completion/readiness claim.
+- Quoted, historical, or negated text MUST be classified by its source and
+  operative scope: a quoted prior statement or example MUST NOT be treated as a
+  new user decision, while an explicit current-user prohibition MUST remain
+  binding.
+- MUST ask only when the next action has a concrete material user decision or
+  requires authority not already provided, including external/destructive
+  authority. The request MUST name the precise decision or missing authority and
+  why it is required. The agent MUST NOT infer issue authorization for every
+  merge, publication, external message, or destructive action.
+- When host, credential, branch, or environment authority is denied or
+  unavailable, the agent MUST report the exact constraint and MUST identify the
+  action or owner needed to resolve it; a repeated approval question MUST NOT
+  substitute for missing access or a protection rule.
 
 ### Classify and route
 

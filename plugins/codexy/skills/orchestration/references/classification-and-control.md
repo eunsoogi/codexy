@@ -43,8 +43,8 @@ ownership, or authoritative stop condition, rebuild the evidence before editing.
 ## Child Execution Discipline
 
 Child implementation threads assigned a non-trivial lane MUST run their own
-execution loop instead of treating the parent handoff as permission for ad hoc
-edits.
+execution loop instead of treating the parent handoff as permission for
+unassigned or out-of-scope edits.
 
 - MUST use real goal tools when available. MUST use `create_goal`, `get_goal`,
   and `update_goal` for lane state; prose-only `Goal:` text is fallback

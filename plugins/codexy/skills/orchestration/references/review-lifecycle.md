@@ -9,6 +9,13 @@ reauthorization, and route resets. Full remains one review and delta remains at
 most one recheck; the counters and history MUST not be reset or silently
 discarded.
 
+Missing historical evidence MUST be treated as a limitation on the review or
+readiness result, not automatically as a limitation on all authorized work. The
+agent MUST preserve the actual unknown, `UNOBSERVABLE`, `not_attested`, or
+`not_admitted` state and MUST NOT turn it into a new approval request. The agent
+MUST continue only the next action already covered by the current request or
+authorization and MUST withhold claims the evidence cannot support.
+
 Every reviewer-backed state transition MUST use authenticated current and
 previous PR snapshots from the canonical GitHub readback producer. The snapshots
 MUST bind the same repository, PR number, URL, base branch, and capture

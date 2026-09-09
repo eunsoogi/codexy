@@ -87,3 +87,9 @@ even when the snapshot contains an authenticated=true field. Only the existing
 authenticated producer and transition consumers may admit state. Recovery MUST
 preserve an existing direct history and MUST NOT mark findings resolved, waive
 quotas, dispatch another review, or authorize completion.
+
+An absent or empty host history MUST be treated as an evidence limitation, not a
+new user decision. The agent MUST preserve the source's actual unavailable,
+`not_attested`, `not_admitted`, or unknown result and MUST NOT fabricate history
+or approval. Its collection MAY proceed as authorized preparation, while
+readiness MUST remain unproved until the authentic required source is available.
