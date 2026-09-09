@@ -2,13 +2,18 @@
 
 MUST also follow [Plain-Language User Replies](plain-language-user-replies.md)
 for the shared English and Korean boundary around unexplained workflow terms.
-MUST use this contract when a Codexy skill produces a Korean user-facing update,
-answer, blocker, or completion summary. MUST keep workflow control and proof
-exact in their own evidence surfaces while making the main reply useful to a
-general user.
+MUST use this contract for every Korean assistant-authored message a user may
+see, including parent replies, task/agent prompts, delegated instructions,
+progress and callback messages, handoffs, and tool prompt fields. MUST keep
+workflow control and proof exact in their own evidence surfaces while making the
+main reply useful to a general user.
 
 ## User Summary
 
+- Korean text MUST use normal spacing, grammar, punctuation, sentence
+  boundaries, and readable paragraphs. Concision MUST remove repetition and
+  irrelevant detail; it MUST NOT join words or drop particles, endings,
+  punctuation, or sentence breaks.
 - MUST lead with the outcome, problem, or next action in natural Korean word
   order.
 - The user summary MUST use context-appropriate honorific tone without sounding
