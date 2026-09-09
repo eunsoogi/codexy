@@ -25,7 +25,7 @@ if test -n "$actual_paths"; then
 			test -x "$path"
 			test "$(git hash-object "$path")" = "$(git rev-parse "$GITHUB_SHA:scripts/finalize-verified-release")"
 			;;
-		scripts/smoke-public-getcodexy-release.sh)
+		scripts/smoke-public-getcodexy-release.sh | scripts/fake_public_codex_host.py)
 			git checkout "$GITHUB_SHA" -- "$path"
 			test -x "$path"
 			test "$(git hash-object "$path")" = "$(git rev-parse "$GITHUB_SHA:$path")"
