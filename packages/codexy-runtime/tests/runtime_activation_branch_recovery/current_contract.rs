@@ -121,6 +121,7 @@ fn initialize_repository(
     watcher_case: WatcherCase,
 ) -> Result<(), Box<dyn std::error::Error>> {
     git(repo, &["init", "-b", "main"])?;
+    git(repo, &["config", "core.autocrlf", "false"])?;
     git(repo, &["config", "user.name", "test"])?;
     git(repo, &["config", "user.email", "test@example.com"])?;
     for relative in STATIC_PATHS {
