@@ -201,26 +201,17 @@ jobs:
           PROFILE_ENABLED: ${{ inputs.profiling && 'true' || 'false' }}
           SHARD_INDEX: ${{ strategy.job-index }}
         run: scripts/prepare-rust-measurement.ps1
-      - name: Identify runner Rust toolchain
-        if: github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal'
-        id: rust_toolchain_identity
-        shell: pwsh
-        run: |
-          $metadata = @(& rustc -vV)
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $metadataText = $metadata -join "`n"
-          $release = [regex]::Match($metadataText, '(?m)^release:\s+(\S+)$').Groups[1].Value
-          $targetHost = [regex]::Match($metadataText, '(?m)^host:\s+(\S+)$').Groups[1].Value
-          if ([string]::IsNullOrWhiteSpace($release) -or [string]::IsNullOrWhiteSpace($targetHost)) { throw "rustc -vV must report release and host" }
-          $expectedHead = '${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}'; if ((git rev-parse HEAD).Trim() -ne $expectedHead) { throw "checked out source commit does not match requested head" }
-          "identity=$release-$targetHost" >> $env:GITHUB_OUTPUT
-          .github/scripts/report-rust-cache-docs.ps1 '${{ matrix.target.name }}' -Phase runner
       - name: Clear normal measurement cache paths
         if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'normal' && inputs.condition == 'cold'
         shell: pwsh
         run: |
           $toolchainCachePath = Join-Path $HOME $env:CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH
           Remove-Item -LiteralPath "$HOME/.cargo/registry", "packages/codexy-runtime/target", $toolchainCachePath -Recurse -Force -ErrorAction SilentlyContinue
+      - name: Prepare and identify Rust cache toolchain
+        if: github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal'
+        id: rust_toolchain_identity
+        shell: pwsh
+        run: .github/scripts/prepare-windows-rust-cache.ps1 -Suite '${{ matrix.target.name }}' -ExpectedHead '${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}'
       - *rust-cache-restore
       - *measurement-cache-restore
       - name: Verify measurement cache result
@@ -236,7 +227,7 @@ jobs:
         run: scripts/install-windows-test-prerequisites.ps1
       - shell: pwsh
         if: github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal'
-        run: scripts/ensure-rust-toolchain.ps1; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; .github/scripts/report-rust-cache-docs.ps1 '${{ matrix.target.name }}' -Phase prepared
+        run: .github/scripts/prepare-windows-rust-cache.ps1 -Suite '${{ matrix.target.name }}' -ExpectedIdentity '${{ steps.rust_toolchain_identity.outputs.identity }}'
       - name: Prepare opt-in measurement toolchain
         if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'isolated'
         shell: pwsh
