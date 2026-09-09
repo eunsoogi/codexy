@@ -10,6 +10,12 @@ repeat large unchanged artifacts.
 This skill is not a shortcut around `$proof-driven-completion`. It changes how
 evidence is summarized and refreshed, not which gates are required.
 
+Task-to-task prompts, progress and callback messages, handoffs, and tool prompt
+fields MUST be treated as user-visible and MUST follow the shared
+[plain-language message rule](plain-language-user-replies.md). Use IDs and
+structured fields to remove repetition while keeping surrounding prose and
+protected technical text intact.
+
 Live Sentinel observation MUST be read-only and event-driven. Generic child and
 ledger polling remains permitted. The Watcher MUST NOT directly observe, read,
 wait on, or poll a native Sentinel; its observation targets MUST remain limited
@@ -151,6 +157,9 @@ next action: <one action>
 
 When no qualifying event arrived, MUST NOT wake the implementation lane. The
 Orchestrator MAY retain its compact ledger without re-reading old details.
+
+The event shape keeps evidence compact; its explanatory fields MUST follow the
+shared message rule.
 
 ## Runtime Heartbeats
 
