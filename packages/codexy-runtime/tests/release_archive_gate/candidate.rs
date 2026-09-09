@@ -3,13 +3,15 @@ use std::path::Path;
 use super::*;
 use crate::support::FixtureCommand;
 use sha2::{Digest as _, Sha256};
+#[path = "candidate_watchers.rs"]
+mod watchers;
 
 #[test]
 fn archive_gate_accepts_a_complete_candidate_proven_windows_package() {
     let root = tempdir().expect("candidate package root");
     let plugin_root = complete_plugin_fixture(root.path()).expect("candidate plugin fixture");
     let archive = root.path().join("candidate-proven-windows.tar.gz");
-    make_core_aware_candidate_proven_windows_package(&plugin_root);
+    make_candidate_proven_windows_package_with_core(&plugin_root, true);
     create_archive(root.path(), &archive).expect("candidate archive");
     let output = run_candidate_gate(root.path(), &archive, &plugin_root);
     assert!(
@@ -96,9 +98,6 @@ pub(super) fn run_source_projection(plugin_root: &Path) -> std::process::Output 
 }
 pub(super) fn make_candidate_proven_windows_package(plugin_root: &Path) {
     make_candidate_proven_windows_package_with_core(plugin_root, false);
-}
-fn make_core_aware_candidate_proven_windows_package(plugin_root: &Path) {
-    make_candidate_proven_windows_package_with_core(plugin_root, true);
 }
 fn copy_candidate_source(relative: &str, repo_root: &Path) {
     let source = codexy_runtime::paths::repository_root().join(relative);
@@ -232,6 +231,7 @@ fn make_candidate_proven_windows_package_with_core(plugin_root: &Path, core_awar
             },
             "platforms": handoff["platforms"].clone(),
         });
+        watchers::materialize(plugin_root, &mut release);
         candidate["classes"] = release["classes"].clone();
     }
     let candidate_path = plugin_root.join("runtime-candidate.json");
