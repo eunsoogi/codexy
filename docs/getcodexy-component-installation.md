@@ -1,7 +1,7 @@
 # getcodexy component installation contract
 
-This is the public contract for the current 1.6.3 component-installation CLI.
-The executable component source is the packaged
+This document defines the public contract for the getcodexy
+component-installation CLI. The executable component source is the packaged
 `codexy_runtime_tools/component-manifest.json`; the public contract references
 that resource from
 `packages/getcodexy/contracts/component-installation-contract.json`. Examples

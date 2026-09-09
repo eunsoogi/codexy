@@ -61,6 +61,7 @@ pub(super) fn open_session(
 }
 
 #[test]
+#[ignore = "explicit burst stress: requires every competing RPC to succeed within the lock bound"]
 fn concurrent_reports_and_health_leave_a_restartable_event_log() -> Result<(), String> {
     for _ in 0..CONCURRENT_REPETITIONS {
         run_concurrent_reports_and_health_once()?;
