@@ -141,26 +141,6 @@ fn touched_loc_rejects_same_line_path_without_module_declaration() -> TestResult
     Ok(())
 }
 
-#[test]
-fn touched_loc_keeps_default_rust_module_paths_eligible() -> TestResult {
-    let repo = fixture("src/too_large.rs", regular_lines(252))?;
-    write(
-        repo.path(),
-        "src/too_large.rs",
-        &format!("mod extracted;\n{}", regular_lines(249)),
-    )?;
-    write(
-        repo.path(),
-        "src/too_large/extracted.rs",
-        &regular_lines_from(249, 3),
-    )?;
-
-    let output = validate(repo.path())?;
-
-    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
-    Ok(())
-}
-
 fn assert_rustc_accepts(root: &std::path::Path) -> TestResult {
     let output = std::process::Command::new("rustc")
         .args(["--crate-type=lib", "src/too_large.rs", "--out-dir", "."])

@@ -58,13 +58,10 @@ fn cargo_metadata_discovers_workspace_custom_target_without_lockfile() -> TestRe
         stderr(&metadata)
     );
     assert!(!lockfile.exists());
-    assert!(
-        !include_str!("../src/validation/touched_loc_remediation/rust_module/origin.rs")
-            .contains("\"--locked\"")
-    );
 
     let output = validate(repo.path())?;
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    assert!(!lockfile.exists(), "validation must not create a lockfile");
     Ok(())
 }
 

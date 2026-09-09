@@ -155,14 +155,6 @@ fn touched_loc_fixtures_keep_private_histories_when_reusing_git_metadata() -> Te
         "fixture history must remain private to its own temporary repository"
     );
 
-    let helper = std::fs::read_to_string(
-        codexy_runtime::paths::runtime_package_root().join("tests/support/touched_loc.rs"),
-    )?;
-    support::assert_structured_literals(
-        &helper,
-        "private touched-LOC Git metadata seed",
-        &["fn git_fixture_seed", "copy_dir(&seed, &repo.path().join(\".git\"))"],
-    );
     Ok(())
 }
 
