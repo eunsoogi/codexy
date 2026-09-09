@@ -1,4 +1,5 @@
 name: Verify selected marketplace runtime package
+run-name: CI ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
 on:
   pull_request:
@@ -18,6 +19,12 @@ on:
       - ".agents/plugins/**"
       - "scripts/**"
       - ".github/workflows/plugin-runtime-binaries.yml"
+  workflow_dispatch:
+    inputs:
+      head_sha:
+        description: Exact commit to verify
+        required: true
+        type: string
 
 permissions:
   actions: read
@@ -38,7 +45,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
+      - name: Verify exact checked-out head
+        shell: bash
+        env:
+          EXPECTED_HEAD_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$EXPECTED_HEAD_SHA" = "$(git rev-parse HEAD)"
       - uses: astral-sh/setup-uv@v7
       - name: Prove exact-head native handoff bridge
         run: |
@@ -114,7 +129,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
+      - name: Verify exact checked-out head
+        shell: pwsh
+        env:
+          EXPECTED_HEAD_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if ($env:EXPECTED_HEAD_SHA -notmatch '^[0-9a-f]{40}$' -or (git rev-parse HEAD).Trim() -ne $env:EXPECTED_HEAD_SHA) { throw "checked out source commit does not match requested head" }
       - uses: astral-sh/setup-uv@v7
       - name: Prove exact-head PE bridge, installed CMD, and reparse negatives
         shell: pwsh

@@ -1,7 +1,18 @@
 name: Touched LOC gate
+run-name: CI ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }} base ${{ github.event_name == 'workflow_dispatch' && inputs.base_sha || github.event.pull_request.base.sha }}
 
 on:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      head_sha:
+        description: Exact commit to validate
+        required: true
+        type: string
+      base_sha:
+        description: Exact base commit for the touched-file diff
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -14,10 +25,20 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Fetch base branch
-        run: git fetch origin "${{ github.base_ref }}"
+      - name: Verify exact head and base commits
+        env:
+          HEAD_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.base_sha || github.event.pull_request.base.sha }}
+        run: |
+          test "$HEAD_SHA" = "$(git rev-parse HEAD)"
+          git fetch --no-tags origin "$BASE_SHA"
+          test "$(git rev-parse "$BASE_SHA^{commit}")" = "$BASE_SHA"
 
       - name: Validate touched implementation LOC
-        run: scripts/validate-plugin-config.sh --check-touched-loc --base-ref "origin/${{ github.base_ref }}"
+        env:
+          BASE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.base_sha || github.event.pull_request.base.sha }}
+        run: scripts/validate-plugin-config.sh --check-touched-loc --base-ref "$BASE_SHA"

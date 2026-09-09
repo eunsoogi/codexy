@@ -17,6 +17,14 @@ proof; it MAY require evidence collection or leave authorized reversible work in
 progress, but it MUST NOT by itself require a new approval to continue that
 work.
 
+### Readable communication boundary
+
+All assistant-authored text that a person may see MUST follow the shared
+[plain-language message rule](references/plain-language-user-replies.md). This
+includes parent replies, task/agent prompts, delegated instructions, progress
+and callback messages, handoffs, and tool prompt fields. Concision and protected
+technical text MUST follow that contract.
+
 ### Permission boundary
 
 - Before asking for approval, MUST identify the next action and test whether it
@@ -91,7 +99,8 @@ work.
   repairing from, or handing off a reviewer result.
 - MUST read
   [plain-language user replies](references/plain-language-user-replies.md) when
-  writing a user-facing progress, blocker, or completion update.
+  writing any user-visible message, including task/agent prompts, callbacks,
+  handoffs, and tool prompt fields.
 - MUST read
   [natural Korean user replies](references/natural-korean-responses.md) when the
-  user-facing update is in Korean.
+  user-visible message is in Korean.

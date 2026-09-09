@@ -72,59 +72,49 @@ fn publication_phases_are_separate_and_explicitly_gated() -> TestResult {
         "open-activation-pr",
         "Apply verified activation and version-selection contract",
     )?;
+    let stage = step_index(
+        &activation,
+        "open-activation-pr",
+        "Stage and verify activation branch",
+    )?;
     let pr = step_index(
         &activation,
         "open-activation-pr",
         "Create exactly one activation pull request",
     )?;
-    assert!(proof < apply && apply < pr);
+    assert!(proof < apply && apply < stage && stage < pr);
     assert!(
         run(
             &activation,
             "open-activation-pr",
             "Apply verified activation and version-selection contract"
         )?
-        .contains("scripts/sync-plugin-version.sh --version \"$BOOTSTRAP_VERSION\"")
+        .contains("--apply-from")
     );
     let activation_proof = run(
         &activation,
         "open-activation-pr",
         "Build local candidate bootstrap and prove authenticated staging identity",
     )?;
-    assert!(activation_proof.contains("scripts/download-runtime-staging-artifact staging"));
+    assert!(activation_proof.contains("scripts/download-runtime-staging-artifact"));
     assert!(super::command_present(
         activation_proof,
         &["gh", "attestation", "verify"]
     ));
+    let activation_stage = run(
+        &activation,
+        "open-activation-pr",
+        "Stage and verify activation branch",
+    )?;
+    assert!(activation_stage.contains("git add -A -- ."));
+    assert!(activation_stage.contains("scripts/verify-runtime-activation-branch"));
     let activation_pr = run(
         &activation,
         "open-activation-pr",
         "Create exactly one activation pull request",
     )?;
-    assert!(lines(activation_pr).any(|line| {
-        line.starts_with("git add ")
-            && line
-                .split_ascii_whitespace()
-                .any(|word| word == "plugins/codexy-devtools")
-    }));
-    assert!(lines(activation_pr).any(|line| {
-        line.starts_with("git add ")
-            && line
-                .split_ascii_whitespace()
-                .any(|word| word == ".agents/plugins")
-    }));
-    assert!(lines(activation_pr).any(|line| {
-        line.starts_with("git add ")
-            && line.split_ascii_whitespace().any(|word| {
-                word == "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json"
-            })
-    }));
-    assert!(lines(activation_pr).any(|line| {
-        line.starts_with("git add ")
-            && line
-                .split_ascii_whitespace()
-                .any(|word| word == "packages/getcodexy/uv.lock")
-    }));
+    assert!(activation_pr.contains("git diff --cached --quiet"));
+    assert!(!activation_pr.contains("git add .agents/plugins"));
     crate::support::assert_structured_literals(
         activation_pr,
         "activation pull request metadata",
