@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+report_smoke_failure() {
+	local status="$1" command="$2" receipt
+	printf 'Public smoke failed (exit %s): %s\n' "$status" "$command" >&2
+	for receipt in public-install.json public-status.json public-doctor.json \
+		public-upgrade.json public-upgrade-status.json public-upgrade-doctor.json; do
+		if [[ -f "$receipt" ]]; then
+			printf '%s\n' "--- $receipt ---" >&2
+			cat -- "$receipt" >&2
+		fi
+	done
+	exit "$status"
+}
+trap 'report_smoke_failure "$?" "$BASH_COMMAND"' ERR
+
 : "${TARGET_VERSION:?}"
 : "${RUNNER_TEMP:?}"
 

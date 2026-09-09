@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Minimal Codex plugin host used only by the public release smoke proof."""
 
+import hashlib
 import json
 import os
 import sys
@@ -19,6 +20,82 @@ state = (
 )
 state.setdefault("versions", {})
 command = sys.argv[1:]
+
+
+EVENTS = {
+    "PreToolUse": ("preToolUse", "pre_tool_use"),
+    "PermissionRequest": ("permissionRequest", "permission_request"),
+    "UserPromptSubmit": ("userPromptSubmit", "user_prompt_submit"),
+}
+
+
+def hook_rows() -> list[dict[str, object]]:
+    rows = []
+    for name, component in plugins.items():
+        if component not in state["selection"] or component == "devtools":
+            continue
+        plugin = (root / "plugins" / name).resolve()
+        path = plugin / "hooks/hooks.json"
+        content = path.read_bytes()
+        definitions = json.loads(content)["hooks"]
+        for event, groups in definitions.items():
+            event_name, event_key = EVENTS[event]
+            for group_index, group in enumerate(groups):
+                for hook_index, hook in enumerate(group["hooks"]):
+                    if hook["type"] != "command":
+                        raise ValueError("unsupported hook handler")
+                    command_key = "commandWindows" if os.name == "nt" else "command"
+                    rows.append(
+                        {
+                            "key": f"{name}@codexy:hooks/hooks.json:{event_key}:{group_index}:{hook_index}",
+                            "eventName": event_name,
+                            "handlerType": "command",
+                            "command": hook[command_key].replace(
+                                "${PLUGIN_ROOT}", str(plugin)
+                            ),
+                            "async": hook.get("async", False),
+                            "matcher": group.get("matcher"),
+                            "timeoutSec": hook.get("timeout", 600),
+                            "sourcePath": str(path),
+                            "pluginId": f"{name}@codexy",
+                            "enabled": True,
+                            "isManaged": False,
+                            "currentHash": "sha256:"
+                            + hashlib.sha256(content).hexdigest(),
+                            "trustStatus": "trusted",
+                        }
+                    )
+    return rows
+
+
+def app_server() -> None:
+    for line in sys.stdin:
+        request = json.loads(line)
+        identifier = request.get("id")
+        if identifier is None:
+            continue
+        response = {"jsonrpc": "2.0", "id": identifier}
+        try:
+            if request.get("method") == "initialize":
+                result = {"userAgent": "public-smoke-host", "codexHome": str(home)}
+            elif request.get("method") == "hooks/list":
+                result = {
+                    "data": [
+                        {"cwd": cwd, "hooks": hook_rows(), "warnings": [], "errors": []}
+                        for cwd in request["params"]["cwds"]
+                    ]
+                }
+            else:
+                raise ValueError("unsupported app-server method")
+            response["result"] = result
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            response["error"] = {"code": -32603, "message": str(error)}
+        print(json.dumps(response), flush=True)
+
+
+if command == ["app-server", "--listen", "stdio://"]:
+    app_server()
+    raise SystemExit(0)
 
 
 def installed(name: str) -> dict[str, object]:
