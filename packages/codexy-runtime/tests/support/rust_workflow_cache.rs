@@ -45,9 +45,17 @@ fn rust_workflow_shares_a_bounded_windows_toolchain_cache_path() -> TestResult {
     )));
     assert!(workflow.contains("path: &rust-cache-path |"));
     assert!(workflow.contains("path: *rust-cache-path"));
-    assert!(workflow.contains(
-        "format('~/{0}', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH)"
-    ));
+    for pattern in [
+        "format('~/{0}/*', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH)",
+        "format('!~/{0}/lib', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH)",
+        "format('~/{0}/lib/*', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH)",
+        "format('!~/{0}/lib/rustlib', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH)",
+        "format('~/{0}/lib/rustlib/*', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH)",
+        "format('!~/{0}/lib/rustlib/i686-pc-windows-msvc', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH)",
+        "format('!~/{0}/lib/rustlib/x86_64-pc-windows-gnu', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH)",
+    ] {
+        assert!(workflow.contains(pattern), "Windows cache path lost pattern: {pattern}");
+    }
     assert!(workflow.contains(
         "Join-Path $HOME $env:CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH"
     ));
