@@ -162,6 +162,13 @@ fn activation_new_and_retry_paths_share_post_transform_tree_verification()
     assert!(create_run.contains("state_file=\"$RUNNER_TEMP/codexy-runtime-activation-state\""));
     assert!(!create_run.contains("git add .agents/plugins"));
     assert!(create_run.contains("git diff --cached --quiet"));
+    assert!(create_run.contains("git commit -m \"feat(runtime): activate v${BOOTSTRAP_VERSION}\""));
+    assert!(create_run.contains("git push origin \"$branch\""));
+    assert!(create_run.contains("head_sha=\"$(git rev-parse HEAD)\""));
+    assert!(create_run.contains("git ls-remote --exit-code origin \"refs/heads/$branch\""));
+    assert!(create_run.contains("--json headRefOid"));
+    assert!(!create_run.contains("--allow-empty"));
+    assert!(!create_run.contains("git commit --amend"));
     Ok(())
 }
 

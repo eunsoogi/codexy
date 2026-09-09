@@ -130,6 +130,9 @@ jobs:
             git commit -m "feat(runtime): activate v${BOOTSTRAP_VERSION}"
             git push origin "$branch"
           fi
+          head_sha="$(git rev-parse HEAD)"
+          remote_head="$(git ls-remote --exit-code origin "refs/heads/$branch" | cut -f1)"
+          test "$remote_head" = "$head_sha"
           test "$(gh pr list --head "$branch" --state open --json number --jq 'length')" -le 1
           if ! gh pr list --head "$branch" --state open --json number --jq 'length' | grep -Fqx 1; then
             {
@@ -137,3 +140,5 @@ jobs:
             } > pr-body.md
             gh pr create --base main --head "$branch" --title "feat(runtime): activate v${BOOTSTRAP_VERSION}" --label type/feature --label type/ci --label status/review --label priority/high --label area/plugin --label area/release --label area/qa --body-file pr-body.md
           fi
+          pr_head="$(gh pr list --head "$branch" --state open --json headRefOid --jq '.[0].headRefOid')"
+          test "$pr_head" = "$head_sha"

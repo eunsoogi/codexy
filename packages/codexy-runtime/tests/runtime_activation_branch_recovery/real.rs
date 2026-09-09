@@ -6,6 +6,13 @@ mod real_source_pointer;
 mod receipt;
 mod shell_runner;
 
+#[path = "real_future_transitions.rs"]
+mod future_transitions;
+#[path = "real_future_build.rs"]
+mod future_build;
+#[path = "real_future_fixture.rs"]
+mod future_fixture;
+
 use real_fixture::Fixture;
 
 #[test]
