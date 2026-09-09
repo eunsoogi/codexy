@@ -13,22 +13,34 @@ pub(super) struct MaterializedFixture {
     pub(super) candidate: String,
 }
 
-const PREPARED_PATHS: [&str; 19] = [
+// Keep only files that the activation and validation contracts read. The
+// verifier archives this fixture four times, so recursive source trees multiply
+// Windows filesystem work without adding an oracle.
+const PREPARED_PATHS: [&str; 28] = [
     ".agents/plugins",
     ".gitattributes",
     ".github/workflows/plugin-runtime-binaries.yml",
     "README.md",
     "README.ko.md",
     "docs/getcodexy-component-installation.md",
-    "packages/codexy-runtime",
+    "packages/codexy-runtime/Cargo.lock",
+    "packages/codexy-runtime/Cargo.toml",
+    "packages/codexy-runtime/schemas/handoff-runtime.schema.json",
+    "packages/codexy-runtime/src/version/bootstrap.rs",
     "packages/getcodexy/contracts/component-installation-contract.json",
     "packages/getcodexy/pyproject.toml",
     "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
     "packages/getcodexy/tests/fixtures/component-installation-cases.json",
     "packages/getcodexy/uv.lock",
-    "plugins/codexy",
+    "plugins/codexy/.codex-plugin/plugin.json",
+    "plugins/codexy/mcp/codexy-mcp-watcher.cmd",
+    "plugins/codexy/mcp/codexy-mcp-watcher.sh",
+    "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd",
+    "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh",
+    "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py",
     "plugins/codexy-devtools",
-    "plugins/codexy-github",
+    "plugins/codexy-github/.codex-plugin/plugin.json",
+    "plugins/codexy-github/skills/git-workflow/SKILL.md",
     "scripts/activate-runtime-contract.sh",
     "scripts/download-selected-runtime-package.sh",
     "scripts/sync-plugin-version.sh",
