@@ -5,6 +5,8 @@ mod real;
 mod fixture_matrix;
 #[path = "runtime_activation_branch_recovery/fixture_matrix_batch.rs"]
 mod fixture_matrix_batch;
+#[path = "runtime_activation_branch_recovery/current_contract.rs"]
+mod current_contract;
 
 use std::process::Command;
 

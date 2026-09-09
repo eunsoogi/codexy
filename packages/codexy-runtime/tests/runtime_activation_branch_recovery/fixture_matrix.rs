@@ -95,6 +95,13 @@ impl FixtureMatrix {
             write(&seed_repo, path, format!("base:{path}\n").as_bytes())?;
             write(&expected, path, format!("derived:{path}\n").as_bytes())?;
         }
+        // The current candidate already matches the base package version, so the
+        // activation verifier must leave the lockfile out of the branch diff.
+        write(
+            &expected,
+            "packages/getcodexy/uv.lock",
+            b"base:packages/getcodexy/uv.lock\n",
+        )?;
         write(
             &seed_repo,
             "packages/getcodexy/pyproject.toml",
