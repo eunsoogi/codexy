@@ -135,3 +135,55 @@ fn activation_verifier_step_authentication_is_scoped_and_required() -> TestResul
     }
     Ok(())
 }
+
+#[test]
+fn activation_post_push_pr_readback_accepts_bounded_metadata_delay() -> TestResult {
+    let fixture = Fixture::new("readback-delay")?;
+    let old = fixture.remote_head()?;
+    let output = success(fixture.run("delayed")?)?;
+    assert_ne!(fixture.remote_head()?, old);
+    assert!(output.contains("PR readback attempt=3"), "{output}");
+    Ok(())
+}
+
+#[test]
+fn activation_post_push_pr_readback_rejects_wrong_missing_or_duplicate_prs() -> TestResult {
+    for mode in ["readback-wrong", "readback-missing", "readback-duplicate"] {
+        let fixture = Fixture::new(mode)?;
+        let old = fixture.remote_head()?;
+        let output = fixture.run("rejected-readback")?;
+        assert!(!output.status.success(), "{mode}");
+        let text = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(text.contains("expected="), "{mode}: {text}");
+        assert!(
+            text.contains(if mode == "readback-duplicate" {
+                "duplicate activation PRs"
+            } else {
+                "activation PR readback exhausted"
+            }),
+            "{mode}: {text}"
+        );
+        assert_eq!(
+            text.matches("PR readback attempt=").count(),
+            if mode == "readback-duplicate" { 1 } else { 6 }
+        );
+        assert_ne!(fixture.remote_head()?, old, "push did not happen");
+    }
+    Ok(())
+}
+
+#[test]
+fn activation_readback_does_not_retry_or_hide_a_rejected_push() -> TestResult {
+    let fixture = Fixture::new("push-failure")?;
+    let old = fixture.remote_head()?;
+    let output = fixture.run("push-rejected")?;
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("activation branch push failed"));
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("PR readback attempt="));
+    assert_eq!(fixture.remote_head()?, old);
+    Ok(())
+}
