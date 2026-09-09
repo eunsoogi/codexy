@@ -57,6 +57,8 @@ impl Fixture {
                 "plugins/codexy",
                 "plugins/codexy-devtools",
                 "plugins/codexy-github",
+                "README.md",
+                "README.ko.md",
                 "packages/getcodexy/pyproject.toml",
                 "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
                 "packages/getcodexy/uv.lock",

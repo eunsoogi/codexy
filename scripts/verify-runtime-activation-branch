@@ -4,17 +4,27 @@ set -eu
 verify_case() {
   branch="${1:?branch is required}"
   base="${2:-origin/main}"
-	bootstrap_version="${3:?bootstrap version is required}"
-	receipt="${4:?candidate receipt is required}"
-	base_package_version="$(git show "$base:packages/getcodexy/pyproject.toml" | sed -n 's/^version = "\(.*\)"/\1/p' | head -n 1)"
-	component_manifest=packages/getcodexy/src/codexy_runtime_tools/component-manifest.json
-	 preserved="$(printf '%s\n' \
+  bootstrap_version="${3:?bootstrap version is required}"
+  receipt="${4:?candidate receipt is required}"
+  preserved="$(printf '%s\n' \
     plugins/codexy-devtools/mcp/codexy-mcp-codegraph \
     plugins/codexy-devtools/mcp/codexy-mcp-lsp)"
+  head_branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  test "$head_branch" = "$branch" || {
+    printf '%s\n' "activation verifier must run on the requested branch" >&2
+    exit 1
+  }
   git diff --quiet
-  git diff --cached --quiet
+  untracked="$(git ls-files --others --exclude-standard)"
+  test -z "$untracked" || {
+    printf '%s\n%s\n' "untracked activation files:" "$untracked" >&2
+    exit 1
+  }
+
   expected_root="$(mktemp -d)"
-  trap 'rm -rf "$expected_root"' EXIT HUP INT TERM
+  index_root="$(mktemp -d)"
+  expected_index="$index_root/index"
+  trap 'rm -rf "$expected_root" "$index_root"' EXIT HUP INT TERM
   git archive "$base" | tar -x -C "$expected_root"
   if test -n "${CODEXY_TEST_ACTIVATE_RUNTIME:-}"; then
     test "${CODEXY_TEST_MODE:-}" = 1 || {
@@ -50,57 +60,28 @@ verify_case() {
       exit 1
     }
     CODEXY_REPO_ROOT="$expected_root" "$CODEXY_TEST_SYNC_VERSION_BINARY" --version "$bootstrap_version"
-	else
-		"$sync_version" --version "$bootstrap_version"
-	fi
-	component_manifest_reconstructed=0
-	base_component_manifest="$expected_root/.component-manifest.base"
-	git show "$base:$component_manifest" >"$base_component_manifest"
-	if ! cmp -s "$base_component_manifest" "$expected_root/$component_manifest"; then
-		component_manifest_reconstructed=1
-	fi
-	expected_paths() {
-		printf '%s\n' \
-			packages/codexy-runtime/Cargo.lock \
-			packages/codexy-runtime/Cargo.toml \
-			.agents/plugins/marketplace.json \
-			.agents/plugins/release-publish-contract.json \
-			.agents/plugins/runtime-activation.json \
-			plugins/codexy/.codex-plugin/plugin.json \
-			plugins/codexy-devtools/.codex-plugin/plugin.json \
-			plugins/codexy-github/.codex-plugin/plugin.json \
-			packages/codexy-runtime/src/version/bootstrap.rs \
-			plugins/codexy-devtools/mcp/codexy-mcp-devtools \
-			plugins/codexy-devtools/runtime-release.json
-		if test "$component_manifest_reconstructed" -eq 1; then
-			printf '%s\n' "$component_manifest"
-		fi
-		if test -n "$base_package_version" && test "$bootstrap_version" != "$base_package_version"; then
-			printf '%s\n' \
-				packages/getcodexy/pyproject.toml \
-				packages/getcodexy/uv.lock
-		fi
-		for path in \
-			plugins/codexy/mcp/codexy-mcp-watcher.cmd \
-			plugins/codexy/mcp/codexy-mcp-watcher.sh; do
-			if test -f "$expected_root/$path" &&
-				git show "$base:$path" | cmp -s - "$expected_root/$path"; then
-				continue
-			fi
-			if test -f "$expected_root/$path"; then
-				printf '%s\n' "$path"
-			fi
-		done
-	}
-	expected="$(expected_paths | LC_ALL=C sort)"
-	actual="$(git diff --name-only "$base...HEAD" | LC_ALL=C sort)"
-	test "$actual" = "$expected" || {
-		printf '%s\n%s\n' "expected:" "$expected" >&2
-		printf '%s\n%s\n' "actual:" "$actual" >&2
-		printf '%s\n' "activation branch differs from verified contract" >&2
-		exit 1
-	}
-	for path in $expected $preserved; do
+  else
+    "$sync_version" --version "$bootstrap_version"
+  fi
+
+  GIT_INDEX_FILE="$expected_index" git read-tree "$base"
+  GIT_INDEX_FILE="$expected_index" GIT_WORK_TREE="$expected_root" git add -A -- .
+  expected_tree="$(GIT_INDEX_FILE="$expected_index" git write-tree)"
+  if git diff --cached --quiet; then
+    actual_tree="$(git rev-parse "$branch^{tree}")"
+  else
+    actual_tree="$(git write-tree)"
+  fi
+  if test "$actual_tree" != "$expected_tree"; then
+    expected="$(git diff --name-status "$base" "$expected_tree" | LC_ALL=C sort)"
+    actual="$(git diff --name-status "$base" "$actual_tree" | LC_ALL=C sort)"
+    printf '%s\n%s\n' "expected:" "$expected" >&2
+    printf '%s\n%s\n' "actual:" "$actual" >&2
+    git diff --summary "$expected_tree" "$actual_tree" >&2 || true
+    printf '%s\n' "activation branch differs from verified contract" >&2
+    exit 1
+  fi
+  for path in $preserved; do
     test -f "$path" && test ! -L "$path"
     test -f "$expected_root/$path" && test ! -L "$expected_root/$path"
     cmp "$expected_root/$path" "$path"

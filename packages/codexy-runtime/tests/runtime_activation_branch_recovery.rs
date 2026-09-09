@@ -54,7 +54,7 @@ fn existing_activation_branch_authenticates_exact_derived_tree_and_pr_state()
     assert_output(&results[3], ".agents/plugins/release-publish-contract.json");
     assert_output(&results[4], "packages/codexy-runtime/Cargo.toml");
     assert_diagnostic(&results[5], "activation branch differs from verified contract");
-    assert_diagnostic(&results[6], ".agents/plugins/runtime-activation.json: No such file or directory");
+    assert_output(&results[6], ".agents/plugins/runtime-activation.json");
     assert_diagnostic(&results[7], "activation branch has a closed or ambiguous pull request");
     assert_diagnostic(&results[8], "activation branch has a closed or ambiguous pull request");
     assert_diagnostic(&results[9], "test activator override requires CODEXY_TEST_MODE=1");
@@ -118,6 +118,10 @@ fn assert_diagnostic(result: &fixture_matrix_batch::BatchResult, expected: &str)
 }
 
 fn assert_output(result: &fixture_matrix_batch::BatchResult, expected: &str) {
-    let stdout = String::from_utf8_lossy(&result.stdout);
-    assert!(stdout.contains(expected), "missing {expected:?} in batch stdout: {stdout}");
+    let diagnostics = format!(
+        "{}{}",
+        String::from_utf8_lossy(&result.stdout),
+        String::from_utf8_lossy(&result.stderr),
+    );
+    assert!(diagnostics.contains(expected), "missing {expected:?} in batch output: {diagnostics}");
 }

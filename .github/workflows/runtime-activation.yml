@@ -57,8 +57,9 @@ jobs:
           python -m venv "$RUNNER_TEMP/local-bootstrap"
           "$RUNNER_TEMP/local-bootstrap/bin/python" -m pip install --no-index --find-links "$RUNNER_TEMP/local-bootstrap-dist" "getcodexy==${BOOTSTRAP_VERSION}"
           "$RUNNER_TEMP/local-bootstrap/bin/codexy-mcp-runtime" --help
-          scripts/download-runtime-staging-artifact staging
-          receipt=staging/runtime-staging-receipt.json
+          staging_root="$RUNNER_TEMP/codexy-runtime-staging"
+          scripts/download-runtime-staging-artifact "$staging_root"
+          receipt="$staging_root/runtime-staging-receipt.json"
           test "$(jq -r .schema "$receipt")" = codexy-runtime-candidate-receipt/v1
           test "$(jq -r .candidate.source.commit "$receipt")" = "$SOURCE_COMMIT"
           jq -e '.candidate.source.tree | test("^[0-9a-f]{40}$")' "$receipt" >/dev/null
@@ -70,50 +71,60 @@ jobs:
             jq -e --arg platform "$platform" '.candidate.classes.coreWatcherMcp.platforms[$platform].sha256 | test("^[0-9a-f]{64}$")' "$receipt" >/dev/null
           done
           test "$(jq -r .candidate.artifact.stagingRunId "$receipt")" = "$STAGING_RUN_ID"
-          test "$(jq -r .candidate.artifact.stagingRunAttempt "$receipt")" = "$(jq -r .run_attempt staging/runtime-staging-run.json)"
+          test "$(jq -r .candidate.artifact.stagingRunAttempt "$receipt")" = "$(jq -r .run_attempt "$staging_root/runtime-staging-run.json")"
           test "$(jq -r .provenance.runId "$receipt")" = "$STAGING_RUN_ID"
-          test "$(jq -r .provenance.runAttempt "$receipt")" = "$(jq -r .run_attempt staging/runtime-staging-run.json)"
-          jq -cS .provenance "$receipt" | tr -d '\n' > receipt-provenance.json
-          jq -cS . staging/runtime-staging-provenance.json | tr -d '\n' > staged-provenance.json
-          cmp receipt-provenance.json staged-provenance.json
-          sha256sum staging/codexy-marketplace-plugin.tar.gz | grep "$(jq -r .artifact.sha256 "$receipt")"
-          mkdir -p staged-plugin
-          tar -xzf staging/codexy-marketplace-plugin.tar.gz -C staged-plugin
-          core=staged-plugin/plugins/codexy-devtools
+          test "$(jq -r .provenance.runAttempt "$receipt")" = "$(jq -r .run_attempt "$staging_root/runtime-staging-run.json")"
+          jq -cS .provenance "$receipt" | tr -d '\n' > "$RUNNER_TEMP/receipt-provenance.json"
+          jq -cS . "$staging_root/runtime-staging-provenance.json" | tr -d '\n' > "$RUNNER_TEMP/staged-provenance.json"
+          cmp "$RUNNER_TEMP/receipt-provenance.json" "$RUNNER_TEMP/staged-provenance.json"
+          sha256sum "$staging_root/codexy-marketplace-plugin.tar.gz" | grep "$(jq -r .artifact.sha256 "$receipt")"
+          staged_plugin="$RUNNER_TEMP/codexy-runtime-staged-plugin"
+          mkdir -p "$staged_plugin"
+          tar -xzf "$staging_root/codexy-marketplace-plugin.tar.gz" -C "$staged_plugin"
+          core="$staged_plugin/plugins/codexy-devtools"
           scripts/handoff_runtime_contract.py "$core/handoff-runtime.json" "$core"
           sha256sum "$core/handoff-runtime.json" | grep "$(jq -r .candidate.classes.coreHandoff.manifest.sha256 "$receipt")"
-          gh attestation verify staging/codexy-marketplace-plugin.tar.gz --repo "$GITHUB_REPOSITORY"
+          gh attestation verify "$staging_root/codexy-marketplace-plugin.tar.gz" --repo "$GITHUB_REPOSITORY"
       - name: Prepare one version-selection branch
         env:
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
           GH_TOKEN: ${{ github.token }}
         run: |
           branch="codexy/runtime-activation-v${BOOTSTRAP_VERSION}"
+          state_file="$RUNNER_TEMP/codexy-runtime-activation-state"
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
             git fetch origin main "$branch"
             git switch --track -c "$branch" "origin/$branch"
-            scripts/verify-runtime-activation-branch "$branch" origin/main "$BOOTSTRAP_VERSION" "$GITHUB_WORKSPACE/staging/runtime-staging-receipt.json"
-            printf '%s\n' existing > activation-branch-state
+            scripts/verify-runtime-activation-branch "$branch" origin/main "$BOOTSTRAP_VERSION" "$RUNNER_TEMP/codexy-runtime-staging/runtime-staging-receipt.json"
+            printf '%s\n' existing > "$state_file"
           else
             git switch -c "$branch"
-            printf '%s\n' new > activation-branch-state
+            printf '%s\n' new > "$state_file"
           fi
       - name: Apply verified activation and version-selection contract
         env:
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
         run: |
-          scripts/activate-runtime-contract.sh --repo-root "$GITHUB_WORKSPACE" --bootstrap-version "$BOOTSTRAP_VERSION" --candidate-receipt "$GITHUB_WORKSPACE/staging/runtime-staging-receipt.json"
+          scripts/activate-runtime-contract.sh --repo-root "$GITHUB_WORKSPACE" --bootstrap-version "$BOOTSTRAP_VERSION" --candidate-receipt "$RUNNER_TEMP/codexy-runtime-staging/runtime-staging-receipt.json"
           scripts/sync-plugin-version.sh --version "$BOOTSTRAP_VERSION"
+      - name: Stage and verify activation branch
+        env:
+          BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
+        run: |
+          branch="codexy/runtime-activation-v${BOOTSTRAP_VERSION}"
+          git add -A -- .
+          scripts/verify-runtime-activation-branch "$branch" origin/main "$BOOTSTRAP_VERSION" "$RUNNER_TEMP/codexy-runtime-staging/runtime-staging-receipt.json"
       - name: Create exactly one activation pull request
         env:
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
           GH_TOKEN: ${{ github.token }}
         run: |
           branch="codexy/runtime-activation-v${BOOTSTRAP_VERSION}"
+          state_file="$RUNNER_TEMP/codexy-runtime-activation-state"
+          test -f "$state_file"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .agents/plugins plugins/codexy plugins/codexy-github plugins/codexy-devtools packages/getcodexy/src/codexy_runtime_tools/component-manifest.json packages/getcodexy/uv.lock packages/codexy-runtime/src/version/bootstrap.rs packages/codexy-runtime/Cargo.toml packages/codexy-runtime/Cargo.lock
-          if test "$(cat activation-branch-state)" = existing; then
+          if test "$(cat "$state_file")" = existing; then
             git diff --cached --quiet || { echo "activation branch differs from verified contract" >&2; exit 1; }
           else
             git commit -m "feat(runtime): activate v${BOOTSTRAP_VERSION}"
