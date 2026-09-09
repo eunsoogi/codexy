@@ -122,7 +122,10 @@ jobs:
           path: &rust-cache-path |
             ~/.cargo/registry
             packages/codexy-runtime/target
-            ${{ runner.os == 'Windows' && format('~/{0}', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
+            ${{ runner.os == 'Windows' && format('~/{0}/*', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
+            ${{ runner.os == 'Windows' && format('!~/{0}/share', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
+            ${{ runner.os == 'Windows' && format('~/{0}/share/*', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
+            ${{ runner.os == 'Windows' && format('!~/{0}/share/doc', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
           key: &rust-cache-key >-
             ${{ github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' &&
             inputs.cache_mode == 'normal' &&
@@ -235,7 +238,7 @@ jobs:
         run: scripts/install-windows-test-prerequisites.ps1
       - shell: pwsh
         if: github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal'
-        run: scripts/ensure-rust-toolchain.ps1
+        run: scripts/ensure-rust-toolchain.ps1; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; .github/scripts/report-rust-cache-docs.ps1 '${{ matrix.target.name }}'
       - name: Prepare opt-in measurement toolchain
         if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'isolated'
         shell: pwsh
