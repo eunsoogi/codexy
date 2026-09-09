@@ -114,12 +114,14 @@ jobs:
       - name: Apply verified activation and version-selection contract
         env:
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           branch="codexy/runtime-activation-v${BOOTSTRAP_VERSION}"
           "$RUNNER_TEMP/codexy-runtime-contract/scripts/verify-runtime-activation-branch" --apply-from "$(cat "$RUNNER_TEMP/codexy-runtime-activation-tree")" "$branch" "$GITHUB_SHA" "$BOOTSTRAP_VERSION" "$RUNNER_TEMP/codexy-runtime-staging/runtime-staging-receipt.json"
       - name: Stage and verify activation branch
         env:
           BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           branch="codexy/runtime-activation-v${BOOTSTRAP_VERSION}"
           git add -A -- .

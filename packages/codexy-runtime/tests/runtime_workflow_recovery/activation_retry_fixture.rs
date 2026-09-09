@@ -41,6 +41,14 @@ impl Fixture {
     }
 
     pub(super) fn run(&self, attempt: &str) -> Result<Output, Box<dyn std::error::Error>> {
+        self.run_with_omitted_token(attempt, None)
+    }
+
+    pub(super) fn run_with_omitted_token(
+        &self,
+        attempt: &str,
+        omitted_step: Option<&str>,
+    ) -> Result<Output, Box<dyn std::error::Error>> {
         git(&self.repo, &["checkout", "main"])?;
         let temporary = self.root.path().join(attempt);
         fs::create_dir(&temporary)?;
@@ -57,6 +65,18 @@ impl Fixture {
             "Stage and verify activation branch",
             "Create exactly one activation pull request",
         ] {
+            let definition = workflow["jobs"]["open-activation-pr"]["steps"]
+                .as_sequence()
+                .ok_or("workflow steps")?
+                .iter()
+                .find(|definition| definition["name"] == step)
+                .ok_or("workflow step")?;
+            body.push_str("(\nunset GH_TOKEN GITHUB_TOKEN\n");
+            body.push_str(&format!("export CODEXY_FIXTURE_STEP='{step}'\n"));
+            if definition["env"]["GH_TOKEN"] == "${{ github.token }}" && omitted_step != Some(step)
+            {
+                body.push_str("export GH_TOKEN=fixture-github-token\n");
+            }
             body.push_str(super::super::run(&workflow, "open-activation-pr", step)?);
             body.push('\n');
             if self.mutation == "late-index" && step == "Prepare one version-selection branch" {
@@ -64,6 +84,7 @@ impl Fixture {
                     "printf tampered > retry-main-marker.txt\ngit add retry-main-marker.txt\n",
                 );
             }
+            body.push_str(")\n");
         }
         Ok(Command::new("bash")
             .args(["-c", &body])
@@ -121,6 +142,7 @@ pub(super) fn success(output: Output) -> Result<String, Box<dyn std::error::Erro
 
 const GH: &str = r#"#!/bin/sh
 set -eu
+test "${GH_TOKEN:-}" = fixture-github-token || { echo "verifier GitHub query requires GH_TOKEN: $CODEXY_FIXTURE_STEP" >&2; exit 4; }
 case "$*" in
   'pr list '*'--json state '*) if test "$(cat "$PR_STATE_FILE")" = 1; then printf '%s\n' OPEN; fi ;;
   'pr list '*'--json number '*) cat "$PR_STATE_FILE" ;;
