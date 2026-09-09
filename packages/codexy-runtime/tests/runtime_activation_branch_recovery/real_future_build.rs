@@ -6,6 +6,9 @@ use std::{
 
 use super::command;
 
+#[path = "real_future_dependency_cache.rs"]
+mod dependency_cache;
+
 pub(super) struct Binaries {
     pub(super) activator: PathBuf,
     pub(super) sync: PathBuf,
@@ -28,8 +31,10 @@ impl BinaryBuilder {
             .arg(&source);
         command::run(&mut clone)?;
         git(&source, &["checkout", "--detach", "HEAD"])?;
+        let target = temp.path().join("cargo-target");
+        dependency_cache::seed(&target)?;
         Ok(Self {
-            target: temp.path().join("cargo-target"),
+            target,
             _temp: temp,
             source,
         })
@@ -47,12 +52,15 @@ impl BinaryBuilder {
         fs::write(path, source)?;
         let manifest = self.source.join("packages/codexy-runtime/Cargo.toml");
         let output = Command::new("cargo")
-            .args(["build", "--locked", "--quiet", "--manifest-path"])
+            .args(["build", "--locked", "--quiet", "--profile", "test", "--manifest-path"])
             .arg(&manifest)
             .args(["--target-dir"])
             .arg(&self.target)
             .args(["--bin", "codexy-activate-runtime", "--bin", "codexy-sync-version"])
             .current_dir(&self.source)
+            // Match outer dependency artifacts; incremental state stays private
+            // and speeds up the second version of the actual runtime crate.
+            .env("CARGO_PROFILE_TEST_INCREMENTAL", "true")
             .output()?;
         if !output.status.success() {
             return Err(format!(
