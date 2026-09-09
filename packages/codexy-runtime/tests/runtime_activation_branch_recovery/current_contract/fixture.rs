@@ -11,6 +11,10 @@ use crate::support::{
 
 const CANDIDATE_VERSION: &str = "1.7.0";
 const SYNC_PATHS: &[&str] = &["README.md", "README.ko.md"];
+const PACKAGE_PATHS: &[&str] = &[
+    "packages/getcodexy/pyproject.toml",
+    "packages/getcodexy/uv.lock",
+];
 const STATIC_PATHS: &[&str] = &[
     ".agents/plugins/marketplace.json",
     ".agents/plugins/release-publish-contract.json",
@@ -122,12 +126,12 @@ fn initialize_repository(
         write(repo, relative, format!("base:{relative}\n"))?;
         write(expected, relative, format!("derived:{relative}\n"))?;
     }
-    for relative in ["packages/getcodexy/pyproject.toml", "packages/getcodexy/uv.lock"] {
+    for relative in PACKAGE_PATHS {
         write(repo, relative, format!("version = \"{base_version}\"\n"))?;
         write(expected, relative, format!("version = \"{CANDIDATE_VERSION}\"\n"))?;
     }
     if base_version == CANDIDATE_VERSION {
-        for relative in ["packages/getcodexy/pyproject.toml", "packages/getcodexy/uv.lock"] {
+        for relative in PACKAGE_PATHS {
             write(expected, relative, format!("version = \"{base_version}\"\n"))?;
         }
     }
@@ -150,15 +154,15 @@ fn initialize_repository(
             "add",
             "-f",
             "--",
-            "packages/getcodexy/pyproject.toml",
-            "packages/getcodexy/uv.lock",
+            PACKAGE_PATHS[0],
+            PACKAGE_PATHS[1],
         ],
     )?;
     git(repo, &["commit", "-m", "base"])?;
     git(repo, &["switch", "-c", "activation"])?;
     for relative in STATIC_PATHS
         .iter()
-        .chain(["packages/getcodexy/pyproject.toml", "packages/getcodexy/uv.lock"].iter())
+        .chain(PACKAGE_PATHS.iter())
         .chain(SYNC_PATHS.iter())
         .chain(WATCHER_PATHS.iter())
     {
@@ -175,11 +179,21 @@ fn initialize_repository(
     git(
         repo,
         &[
+            "update-index",
+            "--force-remove",
+            "--",
+            PACKAGE_PATHS[0],
+            PACKAGE_PATHS[1],
+        ],
+    )?;
+    git(
+        repo,
+        &[
             "add",
             "-f",
             "--",
-            "packages/getcodexy/pyproject.toml",
-            "packages/getcodexy/uv.lock",
+            PACKAGE_PATHS[0],
+            PACKAGE_PATHS[1],
         ],
     )?;
     git(repo, &["commit", "-m", "activation"])?;
@@ -195,7 +209,7 @@ fn copy_fixture_script(sync: bool) -> String {
     }
     for relative in STATIC_PATHS
         .iter()
-        .chain(["packages/getcodexy/pyproject.toml", "packages/getcodexy/uv.lock"].iter())
+        .chain(PACKAGE_PATHS.iter())
         .chain(SYNC_PATHS.iter())
         .chain(WATCHER_PATHS.iter())
     {
