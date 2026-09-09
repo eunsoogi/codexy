@@ -45,9 +45,9 @@ records, create call, create result, and active `get_goal` readback MUST match
 exactly. This derived record is evidence of the existing assignment, not a
 second authorization phrase or an authority to broaden the objective.
 
-A changed implementation detail or internal transition is not a new user
-decision. A fresh goal or receipt for the same assignment MUST NOT ask for
-permission again unless the next action adds material scope or requires
+A changed implementation detail or internal transition MUST NOT be treated as a
+new user decision. A fresh goal or receipt for the same assignment MUST NOT ask
+for permission again unless the next action adds material scope or requires
 authority not already provided, including external/destructive authority.
 
 ## Runtime Polling Boundary

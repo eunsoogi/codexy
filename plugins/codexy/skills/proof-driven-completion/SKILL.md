@@ -78,8 +78,8 @@ claim when proof is absent, stale, too weak, or contradictory.
   repository-selected check, review, or publication/install state is required,
   MUST prove it on its authentic surface; a missing requirement MUST keep that
   claim unproved and MUST NOT keep unrelated work open. An authorized,
-  reversible next action MAY collect the missing evidence; the gap is not by
-  itself a new permission request.
+  reversible next action MAY collect the missing evidence; the gap MUST NOT by
+  itself become a new permission request.
 
 ## Completion Report
 
