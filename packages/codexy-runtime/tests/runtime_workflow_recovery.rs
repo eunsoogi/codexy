@@ -24,6 +24,9 @@ mod exact_pr_head_admission;
 mod windows_smoke;
 #[path = "runtime_workflow_recovery/ci_dispatch.rs"]
 mod ci_dispatch;
+#[cfg(unix)]
+#[path = "runtime_workflow_recovery/ci_dispatch_behavior.rs"]
+mod ci_dispatch_behavior;
 
 #[test]
 fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()

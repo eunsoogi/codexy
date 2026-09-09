@@ -7,10 +7,10 @@ use super::{workflow_failures, workflow_text, CARGO_COMMAND};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 const WINDOWS_TOOLCHAIN_CACHE_SUBPATH: &str = ".rustup/toolchains/stable-x86_64-pc-windows-msvc";
-const RUST_CACHE_RESTORE_IF: &str = "github.event_name != 'workflow_dispatch' || inputs.cache_mode == 'normal'";
-const RUST_CACHE_SAVE_IF: &str = "(github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'normal' && inputs.condition == 'cold') && steps.rust-cache.outputs.cache-hit != 'true' && success()";
-const MEASUREMENT_CACHE_RESTORE_IF: &str = "github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated' && inputs.condition == 'warm'";
-const MEASUREMENT_CACHE_SAVE_IF: &str = "github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated' && inputs.condition == 'cold' && success()";
+const RUST_CACHE_RESTORE_IF: &str = "github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal'";
+const RUST_CACHE_SAVE_IF: &str = "(github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'normal' && inputs.condition == 'cold') && steps.rust-cache.outputs.cache-hit != 'true' && success()";
+const MEASUREMENT_CACHE_RESTORE_IF: &str = "github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'isolated' && inputs.condition == 'warm'";
+const MEASUREMENT_CACHE_SAVE_IF: &str = "github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'isolated' && inputs.condition == 'cold' && success()";
 
 #[test]
 fn rust_workflow_rejects_obvious_shell_success_masking() -> TestResult {
@@ -56,7 +56,7 @@ fn rust_workflow_shares_a_bounded_windows_toolchain_cache_path() -> TestResult {
     ));
     assert!(workflow.contains("id: rust_toolchain_identity"));
     assert!(workflow.contains(
-        "if: github.event_name != 'workflow_dispatch' || inputs.cache_mode == 'normal'"
+        "if: github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal'"
     ));
     assert!(workflow.contains("rustc -vV"));
     assert!(workflow.contains("GITHUB_OUTPUT"));
@@ -177,7 +177,7 @@ fn measurement_topology(workflow: &str) -> Result<(), String> {
         let validate = position("name", "Validate and prepare measurement")?;
         let clear = position("name", "Clear normal measurement cache paths")?;
         let restore = position("id", "rust-cache")?;
-        if step_field(&steps[validate], "if") != Some("github.event_name == 'workflow_dispatch'") {
+        if step_field(&steps[validate], "if") != Some("github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement'") {
             return Err(format!("{job_id} changed the validation condition"));
         }
         if validate != checkout + 1 || validate >= clear || validate >= restore {

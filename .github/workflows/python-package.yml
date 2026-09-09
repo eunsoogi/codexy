@@ -1,4 +1,5 @@
 name: Check getcodexy bootstrap package
+run-name: CI ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
 on:
   pull_request:
@@ -133,7 +134,7 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $env:PYTHONPATH = "packages/getcodexy/src;packages/getcodexy/tests"
-          python -m unittest packages/getcodexy/tests/test_github_pre_session_install.py packages/getcodexy/tests/test_public_activation_contract.py packages/getcodexy/tests/test_version_lock.py
+          python -m unittest packages/getcodexy/tests/test_github_pre_session_install.py packages/getcodexy/tests/test_public_activation_contract.py packages/getcodexy/tests/test_windows_activation_contract.py packages/getcodexy/tests/test_version_lock.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip install --disable-pip-version-check build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
