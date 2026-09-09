@@ -80,7 +80,7 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
             "git checkout \"$GITHUB_SHA\" -- \"$path\"",
             "git hash-object \"$verifier\"",
             "git rev-parse \"$GITHUB_SHA:scripts/finalize-verified-release\"",
-            "scripts/smoke-public-getcodexy-release.sh)",
+            "scripts/smoke-public-getcodexy-release.sh | scripts/fake_public_codex_host.py)",
             "git hash-object \"$path\"",
             "git rev-parse \"$GITHUB_SHA:$path\"",
         ],
@@ -133,6 +133,6 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
         ],
     );
     #[cfg(unix)]
-    assert_projection_cases(&projection)?;
+    assert_projection_cases(&projection, &[source, public])?;
     Ok(())
 }
