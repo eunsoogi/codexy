@@ -34,7 +34,12 @@ on:
         description: Cache identity shared by cold and warm repeats
         required: true
         type: string
-
+      run_mode:
+        description: Mode
+        required: true
+        default: measurement
+        type: choice
+        options: [measurement, ci]
 permissions:
   contents: read
 
@@ -77,13 +82,14 @@ jobs:
           - name: archive suite
             args: --test suite_archive
     steps:
-      - uses: actions/checkout@v7
+      - &rust-checkout
+        uses: actions/checkout@v7
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Validate and prepare measurement
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement'
         env:
           HEAD_SHA: ${{ inputs.head_sha }}
           CONDITION: ${{ inputs.condition }}
@@ -94,21 +100,21 @@ jobs:
           SHARD_INDEX: ${{ strategy.job-index }}
         run: scripts/prepare-rust-measurement.sh
       - name: Identify runner Rust toolchain
-        if: github.event_name != 'workflow_dispatch' || inputs.cache_mode == 'normal'
+        if: github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal'
         id: rust_toolchain_identity
         shell: bash
         run: |
           metadata="$(rustc -vV)"
-          printf '%s\n' "$metadata"
+          expected_head='${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}'; test "$(git rev-parse HEAD)" = "$expected_head"
           release="$(printf '%s\n' "$metadata" | awk '$1 == "release:" { print $2 }')"
           target_host="$(printf '%s\n' "$metadata" | awk '$1 == "host:" { print $2 }')"
           test -n "$release" && test -n "$target_host"
           printf 'identity=%s-%s\n' "$release" "$target_host" >> "$GITHUB_OUTPUT"
       - name: Clear normal measurement cache paths
-        if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'normal' && inputs.condition == 'cold'
+        if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'normal' && inputs.condition == 'cold'
         run: rm -rf -- "$HOME/.cargo/registry" "packages/codexy-runtime/target"
       - &rust-cache-restore
-        if: github.event_name != 'workflow_dispatch' || inputs.cache_mode == 'normal'
+        if: github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal'
         id: rust-cache
         uses: actions/cache/restore@v5
         with:
@@ -117,12 +123,12 @@ jobs:
             packages/codexy-runtime/target
             ${{ runner.os == 'Windows' && format('~/{0}', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
           key: &rust-cache-key >-
-            ${{ github.event_name == 'workflow_dispatch' &&
+            ${{ github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' &&
             inputs.cache_mode == 'normal' &&
             format('codexy-rust-normal-measurement-rustup-toolchain-v3-{0}-{1}-{2}-{3}-profile-test-{4}-{5}-{6}-{7}', runner.os, runner.arch, hashFiles('packages/codexy-runtime/rust-toolchain.toml'), hashFiles('packages/codexy-runtime/Cargo.lock'), matrix.target.name, inputs.head_sha, inputs.cache_identity, steps.rust_toolchain_identity.outputs.identity) ||
             format('codexy-rust-rustup-toolchain-v3-{0}-{1}-{2}-{3}-profile-test-{4}-{5}', runner.os, runner.arch, hashFiles('packages/codexy-runtime/rust-toolchain.toml'), hashFiles('packages/codexy-runtime/Cargo.lock'), matrix.target.name, steps.rust_toolchain_identity.outputs.identity) }}
       - &measurement-cache-restore
-        if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated' && inputs.condition == 'warm'
+        if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'isolated' && inputs.condition == 'warm'
         id: measurement-cache
         uses: actions/cache/restore@v5
         with:
@@ -132,7 +138,7 @@ jobs:
             ${{ runner.temp }}/codexy-rust-measurement/target
           key: codexy-rust-measurement-${{ runner.os }}-${{ inputs.head_sha }}-${{ inputs.cache_identity }}-${{ strategy.job-index }}
       - name: Verify measurement cache result
-        if: github.event_name == 'workflow_dispatch' && always()
+        if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && always()
         shell: bash
         env:
           CODEXY_MEASUREMENT_MODE: ${{ inputs.cache_mode }}
@@ -144,17 +150,17 @@ jobs:
         if: matrix.target.name == 'archive suite'
         run: sudo apt-get update && sudo apt-get install --yes ripgrep
       - name: Prepare opt-in measurement toolchain
-        if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated'
+        if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'isolated'
         run: CODEXY_MEASUREMENT_CONDITION='${{ inputs.condition }}' scripts/prepare-rust-measurement-toolchain.sh
       - run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}
       - &rust-cache-save
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'normal' && inputs.condition == 'cold') && steps.rust-cache.outputs.cache-hit != 'true' && success()
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'normal' && inputs.condition == 'cold') && steps.rust-cache.outputs.cache-hit != 'true' && success()
         uses: actions/cache/save@v5
         with:
           path: *rust-cache-path
           key: *rust-cache-key
       - &measurement-cache-save
-        if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated' && inputs.condition == 'cold' && success()
+        if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'isolated' && inputs.condition == 'cold' && success()
         uses: actions/cache/save@v5
         with:
           path: |
@@ -162,8 +168,9 @@ jobs:
             ${{ runner.temp }}/codexy-rust-measurement/rustup
             ${{ runner.temp }}/codexy-rust-measurement/target
           key: codexy-rust-measurement-${{ runner.os }}-${{ inputs.head_sha }}-${{ inputs.cache_identity }}-${{ strategy.job-index }}
-      - name: Upload opt-in measurement artifacts
-        if: github.event_name == 'workflow_dispatch' && (inputs.cache_mode == 'isolated' || inputs.profiling == true) && always()
+      - &measurement-upload
+        name: Upload opt-in measurement artifacts
+        if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && (inputs.cache_mode == 'isolated' || inputs.profiling == true) && always()
         uses: actions/upload-artifact@v7
         with:
           name: rust-ci-cost-${{ github.run_id }}-${{ runner.os }}-${{ strategy.job-index }}-${{ inputs.head_sha }}-${{ inputs.condition }}-${{ inputs.repeat_id }}-${{ inputs.profiling }}-${{ inputs.cache_identity }}
@@ -180,13 +187,9 @@ jobs:
       matrix:
         target: *rust-targets
     steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event.pull_request.head.sha }}
-          fetch-depth: 0
-          persist-credentials: false
+      - *rust-checkout
       - name: Validate and prepare measurement
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement'
         shell: pwsh
         env:
           HEAD_SHA: ${{ inputs.head_sha }}
@@ -198,7 +201,7 @@ jobs:
           SHARD_INDEX: ${{ strategy.job-index }}
         run: scripts/prepare-rust-measurement.ps1
       - name: Identify runner Rust toolchain
-        if: github.event_name != 'workflow_dispatch' || inputs.cache_mode == 'normal'
+        if: github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal'
         id: rust_toolchain_identity
         shell: pwsh
         run: |
@@ -208,10 +211,10 @@ jobs:
           $release = [regex]::Match($metadataText, '(?m)^release:\s+(\S+)$').Groups[1].Value
           $targetHost = [regex]::Match($metadataText, '(?m)^host:\s+(\S+)$').Groups[1].Value
           if ([string]::IsNullOrWhiteSpace($release) -or [string]::IsNullOrWhiteSpace($targetHost)) { throw "rustc -vV must report release and host" }
-          $metadata
+          $expectedHead = '${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}'; if ((git rev-parse HEAD).Trim() -ne $expectedHead) { throw "checked out source commit does not match requested head" }
           "identity=$release-$targetHost" >> $env:GITHUB_OUTPUT
       - name: Clear normal measurement cache paths
-        if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'normal' && inputs.condition == 'cold'
+        if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'normal' && inputs.condition == 'cold'
         shell: pwsh
         run: |
           $toolchainCachePath = Join-Path $HOME $env:CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH
@@ -219,7 +222,7 @@ jobs:
       - *rust-cache-restore
       - *measurement-cache-restore
       - name: Verify measurement cache result
-        if: github.event_name == 'workflow_dispatch' && always()
+        if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && always()
         shell: pwsh
         env:
           CODEXY_MEASUREMENT_MODE: ${{ inputs.cache_mode }}
@@ -230,21 +233,14 @@ jobs:
       - shell: pwsh
         run: scripts/install-windows-test-prerequisites.ps1
       - shell: pwsh
-        if: github.event_name != 'workflow_dispatch' || inputs.cache_mode == 'normal'
+        if: github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal'
         run: scripts/ensure-rust-toolchain.ps1
       - name: Prepare opt-in measurement toolchain
-        if: github.event_name == 'workflow_dispatch' && inputs.cache_mode == 'isolated'
+        if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'isolated'
         shell: pwsh
         run: $env:CODEXY_MEASUREMENT_CONDITION = '${{ inputs.condition }}'; scripts/prepare-rust-measurement-toolchain.ps1
       - shell: pwsh
         run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - *rust-cache-save
       - *measurement-cache-save
-      - name: Upload opt-in measurement artifacts
-        if: github.event_name == 'workflow_dispatch' && (inputs.cache_mode == 'isolated' || inputs.profiling == true) && always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: rust-ci-cost-${{ github.run_id }}-${{ runner.os }}-${{ strategy.job-index }}-${{ inputs.head_sha }}-${{ inputs.condition }}-${{ inputs.repeat_id }}-${{ inputs.profiling }}-${{ inputs.cache_identity }}
-          path: ${{ runner.temp }}/codexy-rust-measurement/metrics
-          if-no-files-found: warn
-          retention-days: 14
+      - *measurement-upload

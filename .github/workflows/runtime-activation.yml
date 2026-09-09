@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  actions: read
+  actions: write
   contents: write
   pull-requests: write
 
@@ -142,3 +142,82 @@ jobs:
           fi
           pr_head="$(gh pr list --head "$branch" --state open --json headRefOid --jq '.[0].headRefOid')"
           test "$pr_head" = "$head_sha"
+      - name: Dispatch required CI for exact activation head
+        env:
+          BOOTSTRAP_VERSION: ${{ inputs.bootstrap_version }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          branch="codexy/runtime-activation-v${BOOTSTRAP_VERSION}"
+          head_sha="$(git rev-parse HEAD)"
+          test "$(git ls-remote --exit-code origin "refs/heads/$branch" | cut -f1)" = "$head_sha"
+          pr_number="$(gh pr list --repo "$GH_REPO" --head "$branch" --state open --json number --jq 'if length == 1 then .[0].number else empty end')"
+          test -n "$pr_number"
+          pr_head="$(gh pr view "$pr_number" --repo "$GH_REPO" --json headRefOid --jq .headRefOid)"
+          base_sha="$(gh pr view "$pr_number" --repo "$GH_REPO" --json baseRefOid --jq .baseRefOid)"
+          test "$pr_head" = "$head_sha"
+          test "$base_sha" = "$(git rev-parse "$base_sha^{commit}")"
+          changed_paths="$(gh api --repo "$GH_REPO" --paginate "repos/$GH_REPO/pulls/$pr_number/files?per_page=100" --jq '.[].filename')"
+          plugin_needed=false
+          python_needed=false
+          while IFS= read -r path; do
+            case "$path" in
+              plugins/codexy/*|plugins/codexy-devtools/*|.codex/*|.agents/plugins/*|scripts/*|.github/workflows/plugin-runtime-binaries.yml) plugin_needed=true ;;
+            esac
+            case "$path" in
+              packages/getcodexy/*|plugins/codexy/*|plugins/codexy-github/*|plugins/codexy-devtools/*|.agents/plugins/marketplace.json|docs/getcodexy-component-installation.md|.github/workflows/python-package.yml|.github/workflows/bootstrap-package.yml) python_needed=true ;;
+            esac
+          done <<< "$changed_paths"
+          workflows=(rust-test.yml language-lint.yml touched-loc-gate.yml)
+          $plugin_needed && workflows+=(plugin-runtime-binaries.yml)
+          $python_needed && workflows+=(python-package.yml)
+          report="$RUNNER_TEMP/codexy-runtime-activation-ci.tsv"
+          printf 'workflow\trun_id\tevent\thead_sha\thead_branch\tstatus\tconclusion\n' > "$report"
+          trap 'cat "$report"' EXIT
+          workflow_runs() {
+            gh run list --repo "$GH_REPO" --workflow "$1" --branch "$branch" --limit 100 --json databaseId,event,headSha,headBranch,status,conclusion,workflowName
+          }
+          run_for_workflow() {
+            local workflow="$1" runs run_id failed
+            runs="$(workflow_runs "$workflow")"
+            run_id="$(jq -r --arg sha "$head_sha" --arg branch "$branch" '[.[] | select(.headSha == $sha and .headBranch == $branch and (.event == "pull_request" or .event == "workflow_dispatch")) | select(.conclusion == "success" or .status != "completed")] | sort_by(.databaseId) | reverse | .[0].databaseId // empty' <<< "$runs")"
+            if test -z "$run_id"; then
+              failed="$(jq -r --arg sha "$head_sha" --arg branch "$branch" '[.[] | select(.headSha == $sha and .headBranch == $branch and (.event == "pull_request" or .event == "workflow_dispatch") and .status == "completed" and .conclusion != "success")] | length' <<< "$runs")"
+              if test "$failed" -gt 0; then
+                echo "refusing to rerun failed $workflow for exact head $head_sha" >&2
+                return 1
+              fi
+              case "$workflow" in
+                rust-test.yml) gh workflow run "$workflow" --repo "$GH_REPO" --ref "$branch" -f head_sha="$head_sha" -f run_mode=ci -f condition=warm -f cache_mode=normal -f repeat_id=runtime-activation -f profiling=false -f cache_identity=runtime-activation ;;
+                touched-loc-gate.yml) gh workflow run "$workflow" --repo "$GH_REPO" --ref "$branch" -f head_sha="$head_sha" -f base_sha="$base_sha" ;;
+                *) gh workflow run "$workflow" --repo "$GH_REPO" --ref "$branch" -f head_sha="$head_sha" ;;
+              esac
+              for _ in $(seq 1 30); do
+                runs="$(workflow_runs "$workflow")"
+                run_id="$(jq -r --arg sha "$head_sha" --arg branch "$branch" '[.[] | select(.headSha == $sha and .headBranch == $branch and (.event == "pull_request" or .event == "workflow_dispatch"))] | sort_by(.databaseId) | reverse | .[0].databaseId // empty' <<< "$runs")"
+                test -n "$run_id" && break
+                sleep 5
+              done
+            fi
+            test -n "$run_id"
+            local run_json event actual_sha actual_branch status conclusion
+            run_json="$(gh run view "$run_id" --repo "$GH_REPO" --json databaseId,event,headSha,headBranch,status,conclusion,workflowName)"
+            status="$(jq -r .status <<< "$run_json")"
+            if test "$status" != completed; then
+              if ! timeout 30m gh run watch "$run_id" --repo "$GH_REPO" --exit-status; then echo "$workflow run $run_id did not complete successfully" >&2; fi
+            fi
+            run_json="$(gh run view "$run_id" --repo "$GH_REPO" --json databaseId,event,headSha,headBranch,status,conclusion,workflowName)"
+            event="$(jq -r .event <<< "$run_json")"
+            actual_sha="$(jq -r .headSha <<< "$run_json")"
+            actual_branch="$(jq -r .headBranch <<< "$run_json")"
+            status="$(jq -r .status <<< "$run_json")"
+            conclusion="$(jq -r .conclusion <<< "$run_json")"
+            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$workflow" "$(jq -r .databaseId <<< "$run_json")" "$event" "$actual_sha" "$actual_branch" "$status" "$conclusion" >> "$report"
+            test "$event" = pull_request || test "$event" = workflow_dispatch
+            test "$actual_sha" = "$head_sha"
+            test "$actual_branch" = "$branch"
+            test "$status" = completed
+            test "$conclusion" = success
+          }
+          for workflow in "${workflows[@]}"; do run_for_workflow "$workflow"; done

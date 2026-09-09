@@ -22,6 +22,8 @@ mod legacy_public_assembly;
 mod exact_pr_head_admission;
 #[path = "runtime_workflow_recovery/windows_smoke.rs"]
 mod windows_smoke;
+#[path = "runtime_workflow_recovery/ci_dispatch.rs"]
+mod ci_dispatch;
 
 #[test]
 fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()
