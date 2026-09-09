@@ -1,8 +1,19 @@
 # Plain-Language User Replies
 
-MUST use this contract for Codexy user-facing progress updates, blockers,
-completion summaries, and next actions in English or Korean. MUST keep exact
-workflow control and proof in their separate evidence surfaces.
+MUST use this contract for every assistant-authored message a user may see:
+parent replies, task/agent prompts, delegated instructions, progress and
+callback messages, handoffs, and tool prompt fields. MUST keep exact workflow
+control and proof in their separate evidence surfaces.
+
+## Shared message rule
+
+- MUST use normal word spacing, grammar, punctuation, sentence boundaries, and
+  readable paragraphs in Korean and English.
+- MUST make messages concise by selecting relevant facts and removing
+  repetition. MUST NOT join ordinary words, drop grammar or punctuation, or
+  collapse sentences into pseudo-identifiers to save tokens.
+- A no-space value is protected only when it is the exact identifier or
+  machine-readable value; MUST NOT create one by joining surrounding prose.
 
 ## User Summary
 

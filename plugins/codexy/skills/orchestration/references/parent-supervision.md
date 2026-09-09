@@ -32,6 +32,15 @@ delivery, and Watcher use `gpt-5.6-luna`/`max`; the configured inspector uses
 `gpt-5.6-sol`/`medium`. Every applicable app delivery MUST name its model and
 thinking effort.
 
+## Message visibility and style
+
+Task-to-task prompts, delegated instructions, callbacks, progress updates,
+corrections, and handoffs, including their tool prompt fields, MUST be treated
+as user-visible and MUST follow the shared
+[plain-language message rule](plain-language-user-replies.md). Keep compactness
+in fact selection and repetition removal; MUST NOT alter ordinary prose or
+protected technical text.
+
 ## Ownership and task surfaces
 
 - Codex MUST keep exactly one implementation owner per issue-sized lane. The
