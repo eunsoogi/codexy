@@ -10,10 +10,17 @@ fn specialist_model_contract_is_not_a_public_api() -> support::TestResult {
 }
 
 #[test]
-fn privacy_contract_check_reuses_the_workspace_target() {
+fn privacy_contract_check_reuses_the_running_test_target() {
     assert_eq!(
         support::public_contract_target_dir(),
-        codexy_runtime::paths::repository_root().join("target")
+        std::env::current_exe()
+            .expect("test executable")
+            .parent()
+            .expect("dependency directory")
+            .parent()
+            .expect("profile directory")
+            .parent()
+            .expect("target directory")
     );
 }
 

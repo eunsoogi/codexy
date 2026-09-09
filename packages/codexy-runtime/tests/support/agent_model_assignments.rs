@@ -58,31 +58,110 @@ pub(crate) fn validate_catalog_replacement(
 pub(crate) fn public_contract_import_check() -> TestResult<Output> {
     let temp = tempfile::tempdir()?;
     let runtime_root = codexy_runtime::paths::runtime_package_root();
+    // Cargo identifies the exact library artifact, including its compiler and
+    // feature fingerprint. A glob could silently select a stale cached rlib.
+    let mut cargo = Command::new(env!("CARGO"));
+    cargo.args([
+        "build",
+        "--locked",
+        "--profile",
+        "test",
+        "--lib",
+        "--message-format=json",
+        "--no-default-features",
+    ]);
+    // Keep the feature set of this integration test, including explicit
+    // --no-default-features callers, instead of rebuilding the default library.
+    for (enabled, feature) in [
+        (cfg!(feature = "default"), "default"),
+        (cfg!(feature = "runtime-activation"), "runtime-activation"),
+    ] {
+        if enabled {
+            cargo.args(["--features", feature]);
+        }
+    }
+    let build = cargo
+        .arg("--manifest-path")
+        .arg(runtime_root.join("Cargo.toml"))
+        .env("CARGO_TARGET_DIR", public_contract_target_dir())
+        .current_dir(&runtime_root)
+        .output()?;
+    if !build.status.success() {
+        return Err(format!(
+            "privacy artifact lookup failed: {}",
+            String::from_utf8_lossy(&build.stderr)
+        )
+        .into());
+    }
+    let mut libraries = Vec::new();
+    for line in String::from_utf8(build.stdout)?.lines() {
+        let message: serde_json::Value = serde_json::from_str(line)?;
+        if message["reason"] == "compiler-artifact"
+            && message["target"]["name"] == "codexy_runtime"
+            && message["manifest_path"].as_str().map(Path::new)
+                == Some(runtime_root.join("Cargo.toml").as_path())
+        {
+            if message["fresh"] != true {
+                return Err("privacy check must reuse the already-built runtime library".into());
+            }
+            for filename in message["filenames"]
+                .as_array()
+                .ok_or("artifact filenames")?
+            {
+                let path = PathBuf::from(filename.as_str().ok_or("artifact filename")?);
+                if path
+                    .extension()
+                    .is_some_and(|extension| extension == "rlib")
+                {
+                    libraries.push(path);
+                }
+            }
+        }
+    }
+    let [library] = libraries.as_slice() else {
+        return Err("privacy check requires exactly one current runtime rlib".into());
+    };
+    if library.parent() != std::env::current_exe()?.parent().and_then(Path::parent) {
+        return Err("privacy artifact must belong to the running test profile".into());
+    }
+    let source = temp.path().join("main.rs");
     std::fs::write(
-        temp.path().join("Cargo.toml"),
-        format!(
-            "[package]\nname = \"contract-privacy\"\nversion = \"0.0.0\"\nedition = \"2024\"\n\n[dependencies]\ncodexy-runtime = {{ path = {:?} }}\n",
-            runtime_root
-        ),
-    )?;
-    std::fs::copy(
-        runtime_root.join("Cargo.lock"),
-        temp.path().join("Cargo.lock"),
-    )?;
-    std::fs::create_dir(temp.path().join("src"))?;
-    std::fs::write(
-        temp.path().join("src/main.rs"),
+        &source,
         "use codexy_runtime::validation::agent_model_contract::SPECIALIST_MODEL_CONTRACTS;\nfn main() { let _ = SPECIALIST_MODEL_CONTRACTS; }\n",
     )?;
-    Ok(Command::new("cargo")
-        .args(["check", "--quiet"])
-        .env("CARGO_TARGET_DIR", public_contract_target_dir())
-        .current_dir(temp.path())
-        .output()?)
+    Ok(
+        Command::new(std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into()))
+            .args(["--edition=2024", "--emit=metadata", "--extern"])
+            .arg(format!("codexy_runtime={}", library.display()))
+            .arg("-L")
+            .arg(format!(
+                "dependency={}",
+                library
+                    .parent()
+                    .ok_or("rlib parent")?
+                    .join("deps")
+                    .display()
+            ))
+            .arg(source)
+            .arg("--out-dir")
+            .arg(temp.path())
+            .current_dir(&runtime_root)
+            .output()?,
+    )
 }
 
 pub(crate) fn public_contract_target_dir() -> PathBuf {
-    codexy_runtime::paths::repository_root().join("target")
+    // Integration tests run from <target>/<profile>/deps. Reuse that target,
+    // including an explicit CARGO_TARGET_DIR, instead of creating another tree.
+    std::env::current_exe()
+        .expect("integration test executable")
+        .parent()
+        .expect("test dependency directory")
+        .parent()
+        .expect("test profile directory")
+        .parent()
+        .expect("test target directory")
+        .to_path_buf()
 }
 
 pub(crate) fn assert_privacy_diagnostic(output: &Output) -> TestResult {
