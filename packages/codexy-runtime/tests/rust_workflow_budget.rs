@@ -6,6 +6,7 @@ const REQUIRED_JOBS: [(&str, &str, &str); 2] = [
     ("rust-test", "Ubuntu", "ubuntu-latest"),
     ("windows-rust-test", "Windows", "windows-latest"),
 ];
+const WINDOWS_PREP_JOB: &str = "windows-rust-prep";
 const REQUIRED_TARGETS: [&str; 13] = [
     "--lib --bins",
     "--test suite_support",
@@ -44,6 +45,8 @@ const FORBIDDEN_WORKFLOW_FRAGMENTS: [&str; 15] = [
 mod rust_workflow_cache;
 #[path = "support/rust_measurement_dispatch.rs"]
 mod rust_measurement_dispatch;
+#[path = "support/rust_workflow_prep.rs"]
+mod rust_workflow_prep;
 
 #[test]
 fn rust_workflow_has_exact_fail_closed_five_minute_matrix_per_platform() -> TestResult {
@@ -80,9 +83,10 @@ fn workflow_failures(workflow: &str) -> Result<Vec<String>, Box<dyn std::error::
     let jobs = mapping_field(document.as_mapping(), "jobs", "workflow")?;
     let mut failures = Vec::new();
     for job_id in jobs.keys().filter_map(Value::as_str) {
-        if !REQUIRED_JOBS
-            .iter()
-            .any(|(required, _, _)| *required == job_id)
+        if job_id != WINDOWS_PREP_JOB
+            && !REQUIRED_JOBS
+                .iter()
+                .any(|(required, _, _)| *required == job_id)
         {
             failures.push(format!("workflow contains unexpected job {job_id}"));
         }

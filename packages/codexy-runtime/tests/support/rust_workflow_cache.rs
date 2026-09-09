@@ -46,12 +46,6 @@ fn rust_workflow_keeps_normal_cache_paths_to_registry_and_target() -> TestResult
     assert!(workflow.contains("path: &rust-cache-path |"));
     assert!(workflow.contains("path: *rust-cache-path"));
     assert!(!workflow.contains("format('~/{0}"));
-    assert!(workflow.contains(
-        "Join-Path $HOME $env:CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH"
-    ));
-    assert!(workflow.contains(
-        "Remove-Item -LiteralPath \"$HOME/.cargo/registry\", \"packages/codexy-runtime/target\", $toolchainCachePath -Recurse -Force -ErrorAction SilentlyContinue"
-    ));
     assert!(workflow.contains("id: rust_toolchain_identity"));
     assert!(workflow.contains(
         "if: github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal'"

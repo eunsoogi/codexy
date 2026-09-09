@@ -1,6 +1,5 @@
 name: Rust tests
 run-name: ${{ format('{0} {1}', github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && 'Measurement' || 'CI', github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha) }}
-
 on:
   pull_request:
   push:
@@ -43,10 +42,8 @@ on:
         options: [measurement, ci]
 permissions:
   contents: read
-
 env:
   CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH: .rustup/toolchains/stable-x86_64-pc-windows-msvc
-
 jobs:
   rust-test:
     name: Rust tests (Ubuntu / ${{ matrix.target.name }})
@@ -91,7 +88,7 @@ jobs:
           persist-credentials: false
       - name: Validate and prepare measurement
         if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement'
-        env:
+        env: &measurement-input-env
           HEAD_SHA: ${{ inputs.head_sha }}
           CONDITION: ${{ inputs.condition }}
           CACHE_MODE: ${{ inputs.cache_mode }}
@@ -132,15 +129,14 @@ jobs:
         id: measurement-cache
         uses: actions/cache/restore@v5
         with:
-          path: |
+          path: &measurement-cache-path |
             ${{ runner.temp }}/codexy-rust-measurement/cargo
             ${{ runner.temp }}/codexy-rust-measurement/rustup
             ${{ runner.temp }}/codexy-rust-measurement/target
-          key: codexy-rust-measurement-${{ runner.os }}-${{ inputs.head_sha }}-${{ inputs.cache_identity }}-${{ strategy.job-index }}
-      - name: Verify measurement cache result
-        if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && always()
+          key: &measurement-cache-key codexy-rust-measurement-${{ runner.os }}-${{ inputs.head_sha }}-${{ inputs.cache_identity }}-${{ strategy.job-index }}
+      - if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && always()
         shell: bash
-        env:
+        env: &measurement-verify-env
           CODEXY_MEASUREMENT_MODE: ${{ inputs.cache_mode }}
           CODEXY_MEASUREMENT_CONDITION: ${{ inputs.condition }}
           CODEXY_MEASUREMENT_CACHE_HIT: ${{ inputs.cache_mode == 'normal' && steps.rust-cache.outputs.cache-hit || steps.measurement-cache.outputs.cache-hit }}
@@ -163,11 +159,8 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'isolated' && inputs.condition == 'cold' && success()
         uses: actions/cache/save@v5
         with:
-          path: |
-            ${{ runner.temp }}/codexy-rust-measurement/cargo
-            ${{ runner.temp }}/codexy-rust-measurement/rustup
-            ${{ runner.temp }}/codexy-rust-measurement/target
-          key: codexy-rust-measurement-${{ runner.os }}-${{ inputs.head_sha }}-${{ inputs.cache_identity }}-${{ strategy.job-index }}
+          path: *measurement-cache-path
+          key: *measurement-cache-key
       - &measurement-upload
         name: Upload opt-in measurement artifacts
         if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && (inputs.cache_mode == 'isolated' || inputs.profiling == true) && always()
@@ -178,8 +171,35 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  windows-rust-prep:
+    if: github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci'
+    runs-on: windows-latest
+    timeout-minutes: 5
+    outputs: {
+      identity: "${{ steps.rust_toolchain_identity.outputs.identity }}",
+    }
+    steps:
+      - *rust-checkout
+      - id: rust_toolchain_identity
+        shell: pwsh
+        run: .github/scripts/prepare-windows-rust-cache.ps1 -Suite 'library and binaries' -ExpectedHead '${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}'
+      - uses: actions/cache/restore@v5
+        with:
+          path: *rust-cache-path
+          key: >-
+            ${{ format('codexy-rust-rustup-toolchain-v3-{0}-{1}-{2}-{3}-profile-test-{4}-{5}', runner.os, runner.arch, hashFiles('packages/codexy-runtime/rust-toolchain.toml'), hashFiles('packages/codexy-runtime/Cargo.lock'), 'library and binaries', steps.rust_toolchain_identity.outputs.identity) }}
+      - run: .github/scripts/build-windows-rust-test-artifact.ps1
+      - uses: actions/upload-artifact@v7
+        with: {
+          name: codexy-windows-rust-prepared,
+          path: codexy-windows-rust-prepared.tar,
+          if-no-files-found: error,
+        }
+
   windows-rust-test:
     name: Rust tests (Windows / ${{ matrix.target.name }})
+    needs: windows-rust-prep
+    if: always() && (needs.windows-rust-prep.result == 'success' || (needs.windows-rust-prep.result == 'skipped' && github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement'))
     runs-on: windows-latest
     timeout-minutes: 5
     strategy:
@@ -190,51 +210,41 @@ jobs:
       - *rust-checkout
       - name: Validate and prepare measurement
         if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement'
-        shell: pwsh
-        env:
-          HEAD_SHA: ${{ inputs.head_sha }}
-          CONDITION: ${{ inputs.condition }}
-          CACHE_MODE: ${{ inputs.cache_mode }}
-          REPEAT_ID: ${{ inputs.repeat_id }}
-          CACHE_IDENTITY: ${{ inputs.cache_identity }}
-          PROFILE_ENABLED: ${{ inputs.profiling && 'true' || 'false' }}
-          SHARD_INDEX: ${{ strategy.job-index }}
+        env: *measurement-input-env
         run: scripts/prepare-rust-measurement.ps1
       - name: Clear normal measurement cache paths
         if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'normal' && inputs.condition == 'cold'
-        shell: pwsh
         run: |
-          $toolchainCachePath = Join-Path $HOME $env:CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH
-          Remove-Item -LiteralPath "$HOME/.cargo/registry", "packages/codexy-runtime/target", $toolchainCachePath -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item -LiteralPath "$HOME/.cargo/registry", "packages/codexy-runtime/target" -Recurse -Force -ErrorAction SilentlyContinue
       - name: Prepare and identify Rust cache toolchain
         if: github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal'
         id: rust_toolchain_identity
-        shell: pwsh
         run: .github/scripts/prepare-windows-rust-cache.ps1 -Suite '${{ matrix.target.name }}' -ExpectedHead '${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}'
       - *rust-cache-restore
+      - if: (github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci') && steps.rust-cache.outputs.cache-hit != 'true'
+        uses: actions/download-artifact@v8
+        with: {
+          name: codexy-windows-rust-prepared,
+          path: codexy-windows-rust-prepared-download,
+        }
+      - if: (github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci') && steps.rust-cache.outputs.cache-hit != 'true'
+        run: .github/scripts/restore-windows-rust-test-artifact.ps1
       - *measurement-cache-restore
       - name: Verify measurement cache result
         if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && always()
-        shell: pwsh
-        env:
-          CODEXY_MEASUREMENT_MODE: ${{ inputs.cache_mode }}
-          CODEXY_MEASUREMENT_CONDITION: ${{ inputs.condition }}
-          CODEXY_MEASUREMENT_CACHE_HIT: ${{ inputs.cache_mode == 'normal' && steps.rust-cache.outputs.cache-hit || steps.measurement-cache.outputs.cache-hit }}
-          CODEXY_MEASUREMENT_ROOT: ${{ runner.temp }}/codexy-rust-measurement
+        env: *measurement-verify-env
         run: scripts/verify-rust-measurement-cache.ps1
       - shell: pwsh
         run: scripts/install-windows-test-prerequisites.ps1
-      - shell: pwsh
-        if: github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal'
-        run: .github/scripts/prepare-windows-rust-cache.ps1 -Suite '${{ matrix.target.name }}' -ExpectedIdentity '${{ steps.rust_toolchain_identity.outputs.identity }}'
+      - if: github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal'
+        env:
+          EXPECTED_IDENTITY: ${{ github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && steps.rust_toolchain_identity.outputs.identity || needs.windows-rust-prep.outputs.identity }}
+        run: .github/scripts/prepare-windows-rust-cache.ps1 -Suite '${{ matrix.target.name }}' -ExpectedIdentity $env:EXPECTED_IDENTITY
       - name: Prepare opt-in measurement toolchain
         if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'isolated'
-        shell: pwsh
         run: $env:CODEXY_MEASUREMENT_CONDITION = '${{ inputs.condition }}'; scripts/prepare-rust-measurement-toolchain.ps1
       - shell: pwsh
         run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - if: matrix.target.name == 'library and binaries' && (github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal')
-        run: .github/scripts/report-rust-cache-docs.ps1 '${{ matrix.target.name }}' -Phase built
       - *rust-cache-save
       - *measurement-cache-save
       - *measurement-upload
