@@ -122,10 +122,7 @@ jobs:
           path: &rust-cache-path |
             ~/.cargo/registry
             packages/codexy-runtime/target
-            ${{ runner.os == 'Windows' && format('~/{0}/*', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
-            ${{ runner.os == 'Windows' && format('!~/{0}/share', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
-            ${{ runner.os == 'Windows' && format('~/{0}/share/*', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
-            ${{ runner.os == 'Windows' && format('!~/{0}/share/doc', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
+            ${{ runner.os == 'Windows' && format('~/{0}', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH) || '' }}
           key: &rust-cache-key >-
             ${{ github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' &&
             inputs.cache_mode == 'normal' &&
@@ -217,6 +214,7 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($release) -or [string]::IsNullOrWhiteSpace($targetHost)) { throw "rustc -vV must report release and host" }
           $expectedHead = '${{ github.event_name == 'workflow_dispatch' && inputs.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}'; if ((git rev-parse HEAD).Trim() -ne $expectedHead) { throw "checked out source commit does not match requested head" }
           "identity=$release-$targetHost" >> $env:GITHUB_OUTPUT
+          .github/scripts/report-rust-cache-docs.ps1 '${{ matrix.target.name }}' -Phase runner
       - name: Clear normal measurement cache paths
         if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'normal' && inputs.condition == 'cold'
         shell: pwsh
@@ -238,13 +236,15 @@ jobs:
         run: scripts/install-windows-test-prerequisites.ps1
       - shell: pwsh
         if: github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal'
-        run: scripts/ensure-rust-toolchain.ps1; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; .github/scripts/report-rust-cache-docs.ps1 '${{ matrix.target.name }}'
+        run: scripts/ensure-rust-toolchain.ps1; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; .github/scripts/report-rust-cache-docs.ps1 '${{ matrix.target.name }}' -Phase prepared
       - name: Prepare opt-in measurement toolchain
         if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'isolated'
         shell: pwsh
         run: $env:CODEXY_MEASUREMENT_CONDITION = '${{ inputs.condition }}'; scripts/prepare-rust-measurement-toolchain.ps1
       - shell: pwsh
         run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - if: matrix.target.name == 'library and binaries' && (github.event_name != 'workflow_dispatch' || inputs.run_mode == 'ci' || inputs.cache_mode == 'normal')
+        run: .github/scripts/report-rust-cache-docs.ps1 '${{ matrix.target.name }}' -Phase built
       - *rust-cache-save
       - *measurement-cache-save
       - *measurement-upload

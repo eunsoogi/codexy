@@ -45,11 +45,9 @@ fn rust_workflow_shares_a_bounded_windows_toolchain_cache_path() -> TestResult {
     )));
     assert!(workflow.contains("path: &rust-cache-path |"));
     assert!(workflow.contains("path: *rust-cache-path"));
-    for pattern in ["~/{0}/*", "!~/{0}/share", "~/{0}/share/*", "!~/{0}/share/doc"] {
-        assert!(workflow.contains(&format!(
-            "format('{pattern}', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH)"
-        )));
-    }
+    assert!(workflow.contains(
+        "format('~/{0}', env.CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH)"
+    ));
     assert!(workflow.contains(
         "Join-Path $HOME $env:CODEXY_WINDOWS_TOOLCHAIN_CACHE_SUBPATH"
     ));
