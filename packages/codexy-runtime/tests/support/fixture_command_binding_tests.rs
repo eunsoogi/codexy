@@ -2,22 +2,41 @@ use std::{io::ErrorKind, process::Command};
 
 use crate::support::{
     FixtureCommand, write_posix_fixture_command, write_posix_fixture_shell_runner,
+    write_posix_fixture_shell_runner_with_scrub,
 };
 
 #[test]
 fn shell_runner_rejects_unsafe_function_identifiers_before_writing()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
-    for identifier in ["", "9git", "git-name", "if"] {
-        let runner = temp.path().join(format!("{identifier}.sh"));
-        let error = write_posix_fixture_shell_runner(
-            &runner,
-            "CODEXY_FIXTURE_TARGET",
-            &[(identifier, "CODEXY_FIXTURE_GIT")],
-        )
-        .expect_err("unsafe shell function identifier must fail closed");
-        assert_eq!(error.kind(), ErrorKind::InvalidInput, "{identifier:?}");
-        assert!(!runner.exists(), "{identifier:?} wrote a runner");
+    for identifier in ["", "9git", "git-name", "if", "git; touch poison"] {
+        for slot in 0..6 {
+            let runner = temp.path().join(format!("{slot}-{identifier}.sh"));
+            let names = std::array::from_fn::<_, 6, _>(|index| {
+                if index == slot {
+                    identifier
+                } else {
+                    "SAFE_NAME"
+                }
+            });
+            let error = write_posix_fixture_shell_runner_with_scrub(
+                &runner,
+                names[0],
+                &[(names[1], names[2])],
+                &[names[3]],
+                &[(names[4], names[5])],
+            )
+            .expect_err("unsafe shell identifier must fail closed in every position");
+            assert_eq!(
+                error.kind(),
+                ErrorKind::InvalidInput,
+                "slot={slot}: {identifier:?}"
+            );
+            assert!(
+                !runner.exists(),
+                "slot={slot}: {identifier:?} wrote a runner"
+            );
+        }
     }
     Ok(())
 }

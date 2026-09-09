@@ -21,24 +21,37 @@ pub(crate) fn write_posix_fixture_shell_runner_with_scrub(
     rebound_environment: &[(&str, &str)],
 ) -> io::Result<()> {
     let mut source = String::from("#!/bin/sh\nset -eu\n");
+    let mut identifier_probe = String::new();
     for name in scrubbed_environment {
-        validate_identifier(name)?;
+        validate_identifier(name, &mut identifier_probe)?;
         source.push_str(&format!("unset {name}\n"));
     }
     for (name, value_environment) in rebound_environment {
-        validate_identifier(name)?;
-        validate_identifier(value_environment)?;
+        validate_identifier(name, &mut identifier_probe)?;
+        validate_identifier(value_environment, &mut identifier_probe)?;
         source.push_str(&format!("{name}=\"${value_environment}\"\nexport {name}\n"));
     }
     for (command, payload_environment) in bindings {
-        validate_identifier(command)?;
-        validate_identifier(payload_environment)?;
+        validate_identifier(command, &mut identifier_probe)?;
+        validate_identifier(payload_environment, &mut identifier_probe)?;
         source.push_str(&format!(
             "{command}() {{ sh \"${payload_environment}\" \"$@\"; }}\n"
         ));
     }
-    validate_identifier(target_environment)?;
+    validate_identifier(target_environment, &mut identifier_probe)?;
     source.push_str(&format!(". \"${target_environment}\" \"$@\"\n"));
+    // Keep the actual shell keyword oracle, with one parser process per runner.
+    let parser_accepts = Command::new("sh")
+        .args(["-n", "-c", &identifier_probe])
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false);
+    if !parser_accepts {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "fixture shell identifier",
+        ));
+    }
     crate::support::write_executable_fixture(path, source)
 }
 
@@ -51,19 +64,17 @@ pub(crate) fn write_single_posix_fixture_shell_runner(
     write_posix_fixture_shell_runner(path, target_environment, &[(command, payload_environment)])
 }
 
-fn validate_identifier(value: &str) -> io::Result<()> {
+fn validate_identifier(value: &str, probe: &mut String) -> io::Result<()> {
     let mut characters = value.chars();
     let starts_identifier = matches!(characters.next(), Some('_' | 'a'..='z' | 'A'..='Z'));
     let continues_identifier =
         characters.all(|character| character == '_' || character.is_ascii_alphanumeric());
-    let parser_accepts = starts_identifier
-        && continues_identifier
-        && Command::new("sh")
-            .args(["-n", "-c", &format!("{value}() {{ :; }}")])
-            .output()
-            .map(|output| output.status.success())
-            .unwrap_or(false);
-    parser_accepts
-        .then_some(())
-        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "fixture shell identifier"))
+    if !starts_identifier || !continues_identifier {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "fixture shell identifier",
+        ));
+    }
+    probe.push_str(&format!("{value}() {{ :; }}\n"));
+    Ok(())
 }
