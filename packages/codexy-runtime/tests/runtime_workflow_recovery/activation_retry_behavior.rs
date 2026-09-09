@@ -73,6 +73,14 @@ fn activation_retry_rejects_unexpected_changes_provenance_and_merge_conflicts() 
             }),
             "{mutation}: {diagnostics}"
         );
+        if mutation == "conflict" {
+            let unmerged = git(&fixture.repo, &["diff", "--name-only", "--diff-filter=U"])?;
+            assert_eq!(unmerged, ".agents/plugins/runtime-activation.json");
+            assert!(
+                !diagnostics.contains("selected bootstrap metadata"),
+                "{diagnostics}"
+            );
+        }
         assert_eq!(
             fixture.remote_head()?,
             old_head,
