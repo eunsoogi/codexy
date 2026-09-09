@@ -11,7 +11,7 @@ mod workflow_yaml;
 
 pub(super) fn formatting_only_error(
     root: &Path,
-    change_base_ref: &str,
+    changed_paths: &[PathBuf],
     baseline_ref: &str,
     path: &Path,
     current_lines: usize,
@@ -40,7 +40,7 @@ pub(super) fn formatting_only_error(
         )?
         && !has_test_target_split(
             root,
-            change_base_ref,
+            changed_paths,
             baseline_ref,
             path,
             &base_text,
@@ -63,7 +63,7 @@ pub(super) fn formatting_only_error(
 
 fn has_test_target_split(
     root: &Path,
-    change_base_ref: &str,
+    changed_paths: &[PathBuf],
     baseline_ref: &str,
     path: &Path,
     base: &str,
@@ -86,14 +86,14 @@ fn has_test_target_split(
             .and_modify(|count| *count = count.saturating_sub(1));
     }
     let mut added = std::collections::HashMap::<String, usize>::new();
-    for candidate in super::touched_loc::changed_files(root, change_base_ref)? {
-        if candidate == path
+    for candidate in changed_paths {
+        if candidate.as_path() == path
             || candidate.parent() != path.parent()
             || candidate
                 .extension()
                 .and_then(|extension| extension.to_str())
                 != Some("rs")
-            || read_base_text(root, baseline_ref, &candidate)?.is_some()
+            || read_base_text(root, baseline_ref, candidate)?.is_some()
         {
             continue;
         }

@@ -36,6 +36,9 @@ impl IntegrationScope {
         path: &Path,
         locally_changed: bool,
     ) -> Result<Option<String>> {
+        if self.reconciliations.is_empty() {
+            return Ok(Some(requested_base.to_owned()));
+        }
         let mut baseline = None;
         let mut child_changed = false;
         for commit in path_history(root, requested_base, &self.head, path)? {

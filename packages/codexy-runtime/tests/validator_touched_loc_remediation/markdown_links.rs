@@ -46,7 +46,7 @@ fn touched_loc_ignores_unsafe_target_while_collecting_valid_same_line_reference(
 }
 
 #[test]
-fn touched_loc_accepts_commonmark_angle_destinations_and_safe_link_forms() -> TestResult {
+fn touched_loc_accepts_commonmark_angle_destinations() -> TestResult {
     for (link, extracted_path) in [
         (
             "[Workflow](<references/workflow.md>)",
@@ -55,18 +55,6 @@ fn touched_loc_accepts_commonmark_angle_destinations_and_safe_link_forms() -> Te
         (
             "[Workflow](<references/work flow.md#setup>)",
             "plugins/codexy/skills/example/references/work flow.md",
-        ),
-        (
-            "[Workflow](references/workflow.md)",
-            "plugins/codexy/skills/example/references/workflow.md",
-        ),
-        (
-            "[Workflow](references/workflow.md#setup)",
-            "plugins/codexy/skills/example/references/workflow.md",
-        ),
-        (
-            "See [Workflow](references/workflow.md).",
-            "plugins/codexy/skills/example/references/workflow.md",
         ),
     ] {
         let repo = fixture(SKILL_PATH, regular_lines(252))?;

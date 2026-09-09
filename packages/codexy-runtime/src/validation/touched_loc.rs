@@ -40,7 +40,12 @@ pub(super) fn diagnostics_at(root: &Path, base_ref: &str) -> Result<Vec<String>>
             "{EXCEPTIONS_PATH} is not supported; every governed file must stay at or below {LOC_LIMIT} lines"
         ));
     }
-    for file in changes::scoped(root, base_ref)? {
+    let changed = changes::scoped(root, base_ref)?;
+    let changed_paths = changed
+        .iter()
+        .map(|file| file.path.clone())
+        .collect::<Vec<_>>();
+    for file in changed {
         if !is_governed_path(&file.path) {
             continue;
         }
@@ -51,7 +56,7 @@ pub(super) fn diagnostics_at(root: &Path, base_ref: &str) -> Result<Vec<String>>
         let line_count = count_lines(&path)?;
         if let Some(error) = touched_loc_remediation::formatting_only_error(
             root,
-            base_ref,
+            &changed_paths,
             &file.baseline,
             &file.path,
             line_count,
@@ -87,13 +92,6 @@ fn git_top_level() -> Result<PathBuf> {
     Ok(PathBuf::from(
         String::from_utf8_lossy(&output.stdout).trim(),
     ))
-}
-
-pub(super) fn changed_files(root: &Path, base_ref: &str) -> Result<Vec<PathBuf>> {
-    Ok(changes::scoped(root, base_ref)?
-        .into_iter()
-        .map(|file| file.path)
-        .collect())
 }
 
 fn count_lines(path: &Path) -> Result<usize> {
