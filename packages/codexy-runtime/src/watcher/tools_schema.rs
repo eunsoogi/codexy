@@ -41,10 +41,6 @@ pub fn tools() -> Vec<ToolDef> {
             "watcher_wait",
             "Wait for bounded material Watcher reports from a durable cross-process queue for up to 60 minutes. A same-connection MCP cancellation notification releases the wait when the host propagates it; a host/task message or outer wait termination may leave it active. If host cancellation is unavailable, use authorized watcher_cancel to end the session, then open a new assignment/session for a fresh observation. If the session TTL expires, returns status=expired with empty events and the unchanged nextCursor; the wait does not consume or modify the durable event log.",
         ),
-        wait_tool(
-            "wait_watcher",
-            "Compatibility alias for watcher_wait; it uses the same bounded wait contract and cancellation behavior.",
-        ),
         ToolDef::new(
             "watcher_health",
             "Return transport and native-observation freshness metadata; health is not semantic acceptance proof.",

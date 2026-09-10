@@ -71,22 +71,22 @@ MUST use this flow after compaction and before handoff:
    Reserve heartbeat scheduling for scheduled monitoring or unavailable
    `wait_threads`. For a native Watcher route, only the assigned Watcher MAY
    call `wait_threads` for its Worker/task targets. The Orchestrator MUST await
-   canonical `watcher_wait` or compatibility `wait_watcher`; new callers MUST
-   use `watcher_wait` and MUST NOT directly wait on those assigned targets.
-   Fallback, unavailable, or host-transition branches MUST report the actual
-   limitation, recover the supported Watcher route, and MUST NOT authorize
-   direct parent polling or unbounded `read_thread`. After an actionable Watcher
-   report, one bounded authoritative Worker/app readback for
-   judgement/correction is allowed; it is not an observation wait. An
-   implementation Worker or child MUST NOT open, wait on, report to, cancel, or
-   reuse a parent-owned Watcher session or token; session visibility and parent
-   transcript access are not capability grants. The Watcher MUST NOT create or
-   own the Orchestrator goal. A Watcher callback or observation is material only
-   when its event identity is new and Orchestrator action is required. Unchanged
-   active-goal reads, routine pre/post/continuation receipts, liveness-only
-   goal-status messages, normal progress, intermediate successful tests,
-   resolved command mistakes, commits, and queued CI MUST remain internal; they
-   MUST NOT wake the Orchestrator. For absence classifications, apply
+   `watcher_wait`; new callers MUST use `watcher_wait` and MUST NOT directly
+   wait on those assigned targets. Fallback, unavailable, or host-transition
+   branches MUST report the actual limitation, recover the supported Watcher
+   route, and MUST NOT authorize direct parent polling or unbounded
+   `read_thread`. After an actionable Watcher report, one bounded authoritative
+   Worker/app readback for judgement/correction is allowed; it is not an
+   observation wait. An implementation Worker or child MUST NOT open, wait on,
+   report to, cancel, or reuse a parent-owned Watcher session or token; session
+   visibility and parent transcript access are not capability grants. The
+   Watcher MUST NOT create or own the Orchestrator goal. A Watcher callback or
+   observation is material only when its event identity is new and Orchestrator
+   action is required. Unchanged active-goal reads, routine
+   pre/post/continuation receipts, liveness-only goal-status messages, normal
+   progress, intermediate successful tests, resolved command mistakes, commits,
+   and queued CI MUST remain internal; they MUST NOT wake the Orchestrator. For
+   absence classifications, apply
    [observation-evidence.md](observation-evidence.md). Workers MUST send compact
    deltas for terminal child state, their fatal/gate/final callbacks, PR
    creation, a required external check-state change, actionable review feedback,

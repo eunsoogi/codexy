@@ -25,6 +25,21 @@ fn lifecycle_audit_recognizes_exact_pass_and_block() -> TestResult {
 }
 
 #[test]
+fn lifecycle_audit_keeps_a_running_review_pending() -> TestResult {
+    let record = r#"{"schema":"codexy.review-control-state.v1","reviewed_head":"head","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"},"status":"RUNNING","unresolved_findings":[]}"#;
+    let evidence = format!(
+        "Lane ownership: child-owned\nSource thread id: parent-725\nNonterminal wait handoff: state fingerprint=fp-725; producer state=ci-queued; wake route=resume; ownership=retained; goal state=active; plan state=active; goal transition=none; return control=confirmed\n{record}\n"
+    );
+    let output = crate::support::validator_child_lane_ownership(&evidence)?;
+    assert!(
+        output.status.success(),
+        "a running review must remain pending instead of becoming a lifecycle error: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn lifecycle_audit_rejects_lowercase_terminal_results() -> TestResult {
     let record = r#"{"issue_number":725,"reviewed_head":"head","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"},"terminal_result":"pass","unresolved_findings":[],"full_review_count":1,"delta_review_count":0,"terminal_review_count":1,"terminal_review_limit":3,"terminal_review_history":[{"id":"strict-full-1","kind":"full","reviewer":{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"},"reviewed_head":"head","terminal_result":"pass","unresolved_findings":[]}] }"#;
     let output = crate::support::validator_child_lane_ownership(&child_audit_evidence(record))?;

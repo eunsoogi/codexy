@@ -153,10 +153,10 @@ fn main() -> Result<()> {
             cli.review_control_state_file
                 .ok_or_else(|| anyhow::anyhow!("--review-control-state-file is required"))?,
         )?;
-        let previous = fs::read_to_string(
-            cli.previous_pr_state_file
-                .ok_or_else(|| anyhow::anyhow!("--previous-pr-state-file is required"))?,
-        )?;
+        let previous = match cli.previous_pr_state_file {
+            Some(path) => fs::read_to_string(path)?,
+            None => "{}".to_owned(),
+        };
         let output = cli
             .output
             .ok_or_else(|| anyhow::anyhow!("--output is required"))?;

@@ -38,18 +38,22 @@ fn watcher_wait_is_released_by_mcp_cancellation_without_consuming_later_events(
     let names = list["result"]["tools"]
         .as_array()
         .ok_or("watcher tools must be an array")?;
-    let canonical = names
-        .iter()
-        .find(|tool| tool["name"] == "watcher_wait")
-        .ok_or("canonical watcher_wait tool is missing")?;
-    let compatibility = names
-        .iter()
-        .find(|tool| tool["name"] == "wait_watcher")
-        .ok_or("wait_watcher compatibility tool is missing")?;
-    assert_eq!(canonical["inputSchema"], compatibility["inputSchema"]);
-    assert!(compatibility["description"]
-        .as_str()
-        .is_some_and(|description| description.contains("Compatibility alias")));
+    assert_eq!(
+        names
+            .iter()
+            .filter(|tool| tool["name"] == "watcher_wait")
+            .count(),
+        1,
+        "watcher_wait must be exposed exactly once"
+    );
+    assert!(
+        names.iter().all(|tool| {
+            tool["name"]
+                .as_str()
+                .is_some_and(|name| name.starts_with("watcher_"))
+        }),
+        "all Watcher tools must use watcher_* names"
+    );
 
     let opened = client.send(&json!({
         "jsonrpc":"2.0","id":3,"method":"tools/call",
@@ -179,53 +183,5 @@ fn watcher_wait_is_released_by_mcp_cancellation_without_consuming_later_events(
         }}
     }))?;
     assert_eq!(tool_payload(&cancelled)?["status"], "cancelled");
-    Ok(())
-}
-
-#[test]
-fn watcher_wait_and_legacy_alias_return_the_same_payload(
-) -> Result<(), Box<dyn std::error::Error>> {
-    let state = tempfile::tempdir()?;
-    let mut client = watcher_client(state.path())?;
-    client.send(&json!({
-        "jsonrpc":"2.0","id":1,"method":"initialize","params":{}
-    }))?;
-    let opened = client.send(&json!({
-        "jsonrpc":"2.0","id":2,"method":"tools/call",
-        "params":{"name":"watcher_open","arguments":{
-            "assignmentId":"alias-result-test",
-            "parent":{"id":"parent-task"},
-            "watcher":{"id":"native-watcher"},
-            "targets":[{"threadId":"target-thread"}],
-            "ttlSeconds":60
-        }}
-    }))?;
-    let opened = tool_payload(&opened)?;
-    let session = opened["sessionId"].as_str().ok_or("session id")?.to_owned();
-    let parent_token = opened["parentToken"].as_str().ok_or("parent token")?.to_owned();
-    let watcher_token = opened["watcherToken"].as_str().ok_or("watcher token")?.to_owned();
-    let reported = client.send(&json!({
-        "jsonrpc":"2.0","id":3,"method":"tools/call",
-        "params":{"name":"watcher_report","arguments":{
-            "sessionId":session,"watcherToken":watcher_token,
-            "target":{"threadId":"target-thread"},"eventId":"same-payload",
-            "kind":"gate_ready","summary":"same payload"
-        }}
-    }))?;
-    assert_eq!(tool_payload(&reported)?["status"], "accepted");
-
-    let arguments = json!({
-        "sessionId":session,"parentToken":parent_token,
-        "cursor":"0","maxReports":1,"timeoutMs":0
-    });
-    let canonical = client.send(&json!({
-        "jsonrpc":"2.0","id":4,"method":"tools/call",
-        "params":{"name":"watcher_wait","arguments":arguments}
-    }))?;
-    let compatibility = client.send(&json!({
-        "jsonrpc":"2.0","id":5,"method":"tools/call",
-        "params":{"name":"wait_watcher","arguments":arguments}
-    }))?;
-    assert_eq!(tool_payload(&canonical)?, tool_payload(&compatibility)?);
     Ok(())
 }
