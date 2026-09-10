@@ -69,17 +69,17 @@ alter protected technical text.
 
 ## Two observation channels
 
-- Workers MUST send compact gate, fatal-error, and final-result callbacks to the
-  Orchestrator when those phases or failures occur. The Watcher observes
-  assigned Workers and MUST report only action-required material deltas. After
-  each report, it MUST continue the same native turn while an assigned target
-  remains nonterminal. A callback or Watcher observation alone is a signal, not
-  proof that the work is healthy, corrected, or complete.
-- Unchanged active-goal reads, routine pre/post/continuation receipts, and
-  liveness-only goal-status messages MUST remain internal. The Watcher MUST NOT
-  wake the Orchestrator for them; only an actual lifecycle transition, an
-  unresolved drift or failure requiring Orchestrator action, missing terminal
-  delivery, or a ready external gate may produce a callback or receipt.
+- Native Watcher assignments route ordinary Worker progress, completion,
+  findings, and attention reports to the exact assigned Watcher task through the
+  host task-message route supplied by the Orchestrator. The Watcher observes,
+  deduplicates unchanged identities, and relays only material changes or
+  required decisions through `watcher_report`; goal-transition receipts remain
+  direct-parent.
+- A verified-unavailable route or concrete emergency permits one marked
+  direct-parent fallback; Worker MUST report one limitation and MUST NOT resume
+  routine direct reporting or duplicate it. Routine reads and liveness-only goal
+  status MUST remain internal; the Watcher MUST NOT wake parent. Only actionable
+  lifecycle/drift, failure, missing delivery, or a ready gate may wake parent.
 - New or changed evidence alone is not notification-eligible. Normal progressing
   work, intermediate successful tests, resolved command mistakes, commits, and
   queued CI MUST remain internal while the Workers are actively progressing. A

@@ -53,6 +53,20 @@ reuse a parent-owned Watcher session or token. Visibility of a session, token,
 or parent transcript does not grant that capability. Ordinary Worker and
 non-Watcher routes retain their explicitly defined wait behavior.
 
+### Native Watcher report route
+
+During that assignment, the Worker MUST send ordinary progress, completion,
+finding, and attention reports to the exact Watcher task supplied by the
+Orchestrator through the host's supported task-message route. The Watcher MUST
+deduplicate unchanged reports and relay only meaningful changes or required
+decisions through `watcher_report`; the Orchestrator sends implementation
+directions to the Worker and retains judgement, correction, and acceptance. If
+the message route is verified unavailable or a concrete emergency occurs, the
+Worker may use one marked direct-parent fallback and MUST report the limitation
+once; it MUST NOT resume routine parent reporting or duplicate both routes.
+Goal-transition and terminal handoff receipts remain direct-parent control-plane
+messages.
+
 ### Permission boundary
 
 - Before asking for approval, MUST identify the next action and test whether it

@@ -49,17 +49,25 @@ callbacks and task state, and MUST report action-required drift or an
 unavailable channel through `watcher_report`. It MUST remain read-only: it MUST
 NOT edit, direct or message a Worker, supply a repair directive, correct,
 accept, verify a correction, replace, or recruit. A Watcher report is a signal,
-not acceptance, and repeated unchanged observations MUST be suppressed.
-Unchanged active-goal reads, routine pre/post/continuation receipts, and
-liveness-only goal-status messages MUST remain internal. Only an actual
-lifecycle transition, unresolved drift or failure requiring Orchestrator action,
-missing terminal delivery, or a ready external gate may be reported.
+not acceptance, and repeated unchanged observations MUST be suppressed. During
+the assignment, Workers MUST send ordinary progress, completion, findings, and
+attention reports to the exact Watcher task supplied by the Orchestrator through
+the host's supported task-message route. The Watcher deduplicates unchanged
+reports and relays only meaningful changes or required decisions through
+`watcher_report`; implementation directions still go from the Orchestrator to
+the Worker. A verified unavailable message route or concrete emergency permits
+one marked direct-parent fallback, not routine duplicate reporting. Unchanged
+active-goal reads, routine pre/post/continuation receipts, and liveness-only
+goal-status messages MUST remain internal. Only an actual lifecycle transition,
+unresolved drift or failure requiring Orchestrator action, missing terminal
+delivery, or a ready external gate may be reported.
 
 The Orchestrator MUST keep the overall goal active and owned by itself while the
 Watcher subagent observes. It MAY use canonical `watcher_wait`, or legacy
 `wait_watcher`, with the parent token and cursor for bounded waiting; a user
-input or host cancellation MUST release that wait immediately. The Watcher has
-no long-lived release goal. If the host exposes a finite goal for the subagent,
+input or host cancellation MUST release that wait immediately while preserving
+the Watcher session, cursor, and queued Worker reports. The Watcher has no
+long-lived release goal. If the host exposes a finite goal for the subagent,
 that goal MUST cover only the bounded observation assignment and MUST NOT be
 treated as issue or release completion. The Watcher MUST keep its native turn
 active after each report and return to its `wait_threads` loop while an assigned

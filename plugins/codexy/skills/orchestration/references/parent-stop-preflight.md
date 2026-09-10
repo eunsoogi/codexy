@@ -48,3 +48,8 @@ branch, worktree, PR, durable child context, or review-response ownership:
    report the actual limitation and recover the supported Watcher route; they
    MUST NOT authorize direct parent polling. Ordinary non-Watcher routes retain
    their explicitly defined wait behavior.
+10. Before implementation starts, the Orchestrator MUST give the Worker the
+    exact Watcher task and supported task-message route for ordinary reports.
+    The Worker MUST NOT receive a Watcher session token or call Watcher MCP
+    transport tools. A verified unavailable route or concrete emergency permits
+    one marked direct-parent fallback, not routine duplicate reporting.
