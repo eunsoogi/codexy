@@ -17,6 +17,23 @@ not copy the sender settings. Parent-to-generic-child delivery MUST use
 `medium`. Both fields MUST be explicit. Unsupported or mismatched recipient
 settings MUST fail closed instead of falling back to the sender route.
 
+## Review routing
+
+For a child-owned implementation lane, the owning child MUST delegate the
+profile-selected internal reviewer after local proof when the selected profile
+requires one. The parent MUST consume that evidence and MUST NOT invoke the
+internal reviewer or tell the child not to invoke it. This is distinct from a
+repository-required external `@codex review`, which the parent requests when
+applicable; the child MUST NOT request that external review.
+
+Author self-review is forbidden, but delegating the independent packaged
+reviewer is not self-review. The nonrecursive prohibition for a helper or
+reviewer
+(`MUST NOT spawn, delegate to, or create any additional agent, helper,
+reviewer, task, or thread.`)
+applies to that recipient and MUST NOT be copied into an owning-child assignment
+as a ban on the child's required review.
+
 Control-plane receipts and status handoffs MUST carry a stable `transition key`,
 `event id`, or `state fingerprint` as applicable. Pre-delivery and post-result
 receipts MUST use `transition key`. A completed delivery with the same
