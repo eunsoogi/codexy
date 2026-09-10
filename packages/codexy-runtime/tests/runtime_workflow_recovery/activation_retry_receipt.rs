@@ -2,6 +2,15 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
 pub(super) fn receipt(source: &str, tree: &str) -> Value {
+    receipt_with_identity(source, tree, 42, 1)
+}
+
+pub(crate) fn receipt_with_identity(
+    source: &str,
+    tree: &str,
+    staging_run_id: u64,
+    staging_run_attempt: u64,
+) -> Value {
     let mut devtools = json!({});
     let mut handoff = json!({});
     let mut watcher = json!({});
@@ -28,7 +37,7 @@ pub(super) fn receipt(source: &str, tree: &str) -> Value {
     let candidate = json!({
         "schema": "codexy-runtime-candidate/v1",
         "source": {"repository": "https://github.com/eunsoogi/codexy", "commit": source, "tree": tree},
-        "artifact": {"stagingRunId": 42, "stagingRunAttempt": 1},
+        "artifact": {"stagingRunId": staging_run_id, "stagingRunAttempt": staging_run_attempt},
         "compatibility": {"bootstrapApi": 1, "pluginRuntimeApi": 1, "transport": "stdio-newline-v1", "mcpProtocol": "2024-11-05"},
         "platforms": devtools,
         "classes": {
@@ -40,7 +49,7 @@ pub(super) fn receipt(source: &str, tree: &str) -> Value {
     json!({
         "schema": "codexy-runtime-candidate-receipt/v1", "candidate": candidate,
         "artifact": {"sha256": "f".repeat(64), "payloadManifestSha256": format!("{:x}", Sha256::digest(serde_json::to_vec(&canonical(candidate.clone())).unwrap()))},
-        "provenance": {"repositoryId": 1269350143, "workflowPath": ".github/workflows/runtime-candidate.yml", "runId": 42, "runAttempt": 1, "workflowRunUrl": "https://github.com/eunsoogi/codexy/actions/runs/42"},
+        "provenance": {"repositoryId": 1269350143, "workflowPath": ".github/workflows/runtime-candidate.yml", "runId": staging_run_id, "runAttempt": staging_run_attempt, "workflowRunUrl": format!("https://github.com/eunsoogi/codexy/actions/runs/{staging_run_id}")},
     })
 }
 
