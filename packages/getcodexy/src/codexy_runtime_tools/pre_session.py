@@ -18,7 +18,10 @@ from .plugin_resolution import (
     official_marketplace as _official_marketplace,
     preflight_install as _preflight,
 )
-from .component_watcher_materialization import materialize_watcher
+from .component_watcher_materialization import (
+    materialize_watcher,
+    materialize_watcher_cache,
+)
 from .updater import SyncResult, _absolute, _validate_real_path, sync_agents
 from .version_lock import default_package_version
 
@@ -95,6 +98,7 @@ def run_pre_session(
         marketplace_root,
         target_version,
     )
+    materialize_watcher_cache(home, version)
     current = synchronize(plugin, home, "check")
     if current.status == "ready":
         return PreSessionResult(plugin, version, False)

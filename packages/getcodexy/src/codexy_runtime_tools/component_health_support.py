@@ -6,8 +6,12 @@ from pathlib import Path
 
 from .component_manifest import ComponentManifest
 from .component_registration_health import valid_registration
-from .component_watcher_materialization import watcher_entrypoint
 from .component_resolver import ComponentResolutionError, compare_versions
+from .component_watcher_materialization import (
+    valid_watcher_cache,
+    watcher_cache_plugin,
+    watcher_entrypoint,
+)
 
 
 SURFACE_PATHS = {
@@ -25,7 +29,15 @@ SURFACE_PATHS = {
 AUTHORITY_KEYS = ("authority", "artifact_authority", "artifactAuthority")
 
 
-def _legacy_state(manifest, component, actual, records, admission_error, host_error):
+def _legacy_state(
+    manifest,
+    component,
+    actual,
+    records,
+    admission_error,
+    host_error,
+    codex_home=None,
+):
     record = records.get(component)
     if admission_error or host_error:
         return "incompatible"
@@ -34,8 +46,8 @@ def _legacy_state(manifest, component, actual, records, admission_error, host_er
     relation = version_relation(manifest, record)
     if relation != 0:
         return "stale" if relation < 0 else "incompatible"
-    plugin = _plugin_root(record)
-    if plugin is None or not _required_files(manifest, component, plugin):
+    plugin = _health_plugin(manifest, component, record, codex_home)
+    if plugin is None or not _required_files(manifest, component, plugin, codex_home):
         return "stale"
     if not manifest_is_valid(
         plugin, manifest.component(component).plugin, record_version(record)
@@ -55,13 +67,30 @@ def _legacy_state(manifest, component, actual, records, admission_error, host_er
     return "healthy"
 
 
-def _required_files(manifest, component, plugin):
+def _required_files(manifest, component, plugin, codex_home=None):
     paths = (
         manifest.component(component).asset.required_paths + SURFACE_PATHS[component]
     )
     return all(
-        (plugin / path).is_file() and not (plugin / path).is_symlink() for path in paths
-    ) and (component != "core" or watcher_entrypoint(plugin).is_file())
+        (plugin / path).is_file() and not (plugin / path).is_symlink()
+        for path in paths
+    ) and (
+        component != "core"
+        or (
+            watcher_entrypoint(plugin).is_file()
+            and valid_watcher_cache(codex_home, manifest.version)
+        )
+    )
+
+
+def _health_plugin(manifest, component, record, codex_home=None):
+    plugin = _plugin_root(record)
+    if component != "core" or codex_home is None:
+        return plugin
+    cache_root = codex_home / "plugins" / "cache"
+    if cache_root.is_symlink() or not cache_root.is_dir():
+        return plugin
+    return watcher_cache_plugin(codex_home, manifest.version)
 
 
 def _plugin_root(record):

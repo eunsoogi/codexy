@@ -12,13 +12,14 @@ from .component_capability_observation import component_observations
 from .component_hook_activation import ACTIVATION_STATES
 from .component_health_support import (
     _authority_valid,
+    _health_plugin,
     _legacy_state,
     _observed,
-    _plugin_root,
     manifest_is_valid,
     record_version,
     version_relation,
 )
+from .component_watcher_materialization import valid_watcher_cache
 from .component_manifest import ComponentManifest
 from .component_registration_health import valid_registration
 
@@ -31,6 +32,7 @@ def health(
     admission_error: str | None,
     host_error: bool,
     activation: dict[str, str] | None = None,
+    codex_home=None,
 ) -> list[dict[str, object]]:
     expected = set(recorded or ()) | set(actual)
     return [
@@ -42,6 +44,7 @@ def health(
             admission_error,
             host_error,
             activation,
+            codex_home,
         )
         for component in manifest.component_ids
         if component in expected
@@ -56,10 +59,11 @@ def _component_health(
     admission_error,
     host_error,
     activation,
+    codex_home,
 ):
     record = records.get(component)
     installed = component in actual
-    plugin = _plugin_root(record)
+    plugin = _health_plugin(manifest, component, record, codex_home)
     configured = bool(
         installed
         and plugin
@@ -67,11 +71,21 @@ def _component_health(
             plugin, manifest.component(component).plugin, record_version(record)
         )
         and valid_registration(plugin, component)
+        and (
+            component != "core"
+            or valid_watcher_cache(codex_home, manifest.version)
+        )
     )
     result = dict(
         component=component,
         state=_legacy_state(
-            manifest, component, actual, records, admission_error, host_error
+            manifest,
+            component,
+            actual,
+            records,
+            admission_error,
+            host_error,
+            codex_home,
         ),
         installed=installed,
         configured=configured,

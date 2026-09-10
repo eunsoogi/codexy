@@ -12,7 +12,10 @@ from typing import Callable
 
 from .component_integrity import frozen_component, verify_component
 from .component_registration_health import valid_registration
-from .component_watcher_materialization import materialize_watcher
+from .component_watcher_materialization import (
+    materialize_watcher,
+    materialize_watcher_cache,
+)
 from .activation_transaction import ActivationSnapshot
 from .plugin_resolution import (
     official_named_install,
@@ -82,6 +85,7 @@ def run_github_pre_session(
         )
         if core_version != github_version:
             raise ValueError("Codexy core and GitHub plugin versions must match")
+        materialize_watcher_cache(home, core_version)
         verify_component(core_root, "codexy", core_version)
         with (
             frozen_component(core_root, "codexy", core_version) as trusted_core,

@@ -138,6 +138,13 @@ def _human(command: str, receipt: dict[str, object]) -> str:
             )
             or "none",
         )
+    if command in {"install", "update", "remove", "bootstrap"} and receipt.get(
+        "outcome"
+    ) in {"completed", "pending-action"}:
+        return (
+            f"getcodexy {command}: {receipt['outcome']}; "
+            "start a fresh Codex task to refresh installed plugins and MCP tools"
+        )
     if command == "doctor":
         health = receipt.get("component_health", [])
         summary = (
