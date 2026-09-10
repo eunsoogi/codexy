@@ -84,6 +84,8 @@ MUST use this flow after compaction and before handoff:
    pre/post/continuation receipts, liveness-only goal-status messages, normal
    progress, intermediate successful tests, resolved command mistakes, commits,
    and queued CI MUST remain internal and MUST NOT wake the Orchestrator.
+   For absence classifications, apply
+   [observation-evidence.md](observation-evidence.md).
    Workers MUST send compact deltas for terminal child state, their
    fatal/gate/final callbacks, PR creation, a required external check-state
    change, actionable review feedback, or review-thread resolution. Watchers
