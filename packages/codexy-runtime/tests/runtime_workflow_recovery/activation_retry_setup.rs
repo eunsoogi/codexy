@@ -111,7 +111,7 @@ pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Err
     let main = git(&repo, &["rev-parse", "HEAD"])?;
     git(&repo, &["push", "origin", "main"])?;
     git(&repo, &["branch", "-D", &legacy_branch])?;
-    if matches!(mutation, "new" | "merged-deleted") {
+    if matches!(mutation, "new" | "merged-deleted" | "fork-competing") {
         git(&repo, &["push", "origin", "--delete", &legacy_branch])?;
     }
     if mutation == "source" {
@@ -131,12 +131,13 @@ pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Err
     }
     let open_branch = match mutation {
         "competing" => format!("codexy/runtime-activation-v{version}-staging-99-1"),
+        "fork-competing" => format!("codexy/runtime-activation-v{version}-staging-99-1"),
         "adjacent-version" => "codexy/runtime-activation-v1.7.10-staging-99-1".to_owned(),
         _ => branch.clone(),
     };
     fs::write(
         root.path().join("pr-state"),
-        if matches!(mutation, "new" | "merged-deleted" | "retained") {
+        if matches!(mutation, "new" | "merged-deleted" | "retained" | "fork-competing") {
             "0"
         } else {
             "1"

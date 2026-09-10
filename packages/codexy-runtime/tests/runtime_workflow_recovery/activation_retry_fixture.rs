@@ -64,6 +64,7 @@ impl Fixture {
             )
             .env("GH_TOKEN", "fixture-github-token")
             .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
+            .env("ACTIVATION_BRANCH", &self.branch)
             .env("CODEXY_FIXTURE_STEP", "direct-selector")
             .env("PR_STATE_FILE", self.root.path().join("pr-state"))
             .env("OPEN_ACTIVATION_BRANCH", &self.open_branch)

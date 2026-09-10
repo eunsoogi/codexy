@@ -153,7 +153,7 @@ fn activation_pr_creation_reuses_an_existing_verified_staging_branch()
         creation,
         "activation PR reuse",
         &[
-            "gh pr list --head \"$branch\" --state open",
+            "\"$RUNNER_TEMP/codexy-runtime-contract/scripts/select-runtime-activation-branch.sh\" --open-pr \"$GITHUB_REPOSITORY\" \"$branch\"",
             "git rev-parse -q --verify MERGE_HEAD",
         ],
     );
@@ -195,7 +195,7 @@ fn activation_new_and_retry_paths_share_post_transform_tree_verification()
     assert!(create_run.contains("git push origin \"$branch\""));
     assert!(create_run.contains("head_sha=\"$(git rev-parse HEAD)\""));
     assert!(create_run.contains("git ls-remote --exit-code origin \"refs/heads/$branch\""));
-    assert!(create_run.contains("--json headRefOid"));
+    assert!(create_run.contains("--open-pr"));
     assert!(!create_run.contains("--allow-empty"));
     assert!(!create_run.contains("git commit --amend"));
     Ok(())

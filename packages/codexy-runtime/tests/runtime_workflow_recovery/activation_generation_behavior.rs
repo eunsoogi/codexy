@@ -20,6 +20,39 @@ fn activation_generation_blocks_a_competing_open_owner_before_push() -> TestResu
 }
 
 #[test]
+fn activation_generation_ignores_a_fork_competing_pr() -> TestResult {
+    let fixture = Fixture::new("fork-competing")?;
+    success(fixture.run("fork-owner")?)?;
+    assert_ne!(fixture.remote_head()?, fixture.main);
+    Ok(())
+}
+
+#[test]
+fn activation_generation_rejects_a_same_repository_wrong_base_pr() -> TestResult {
+    let fixture = Fixture::new("wrong-base")?;
+    let before = fixture.remote_head()?;
+    let output = fixture.run("wrong-base")?;
+    assert!(!output.status.success());
+    let diagnostics = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(diagnostics.contains("activation pull request targets non-main base: release"));
+    assert_eq!(fixture.remote_head()?, before);
+    Ok(())
+}
+
+#[test]
+fn activation_generation_accepts_a_same_repository_main_pr() -> TestResult {
+    let fixture = Fixture::new("valid")?;
+    let before = fixture.remote_head()?;
+    success(fixture.run("same-main")?)?;
+    assert_ne!(fixture.remote_head()?, before);
+    Ok(())
+}
+
+#[test]
 fn activation_generation_distinguishes_receipt_attempts() -> TestResult {
     let fixture = Fixture::new("new")?;
     let source = git(&fixture.repo, &["rev-parse", "main"])?;

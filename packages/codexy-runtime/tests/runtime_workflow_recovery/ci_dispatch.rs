@@ -19,8 +19,7 @@ fn activation_dispatches_reusable_ci_for_the_frozen_pr_head()
         dispatch,
         "exact-head CI dispatcher",
         &[
-            "gh pr view \"$pr_number\" --repo \"$GH_REPO\" --json headRefOid",
-            "--json baseRefOid",
+            "\"$RUNNER_TEMP/codexy-runtime-contract/scripts/select-runtime-activation-branch.sh\" --open-pr \"$GH_REPO\" \"$branch\"",
             "gh api --paginate",
             "gh run list --repo \"$GH_REPO\" --workflow \"$1\" --branch \"$branch\"",
             "select(.headSha == $sha and .headBranch == $branch",
@@ -32,6 +31,8 @@ fn activation_dispatches_reusable_ci_for_the_frozen_pr_head()
             "base_sha",
         ],
     );
+    assert!(!dispatch.contains("gh pr list --head"));
+    assert!(!dispatch.contains("gh pr view \"$pr_number\""));
     assert!(!dispatch.contains("gh run rerun"));
     assert!(!dispatch.contains("git commit"));
     assert!(
