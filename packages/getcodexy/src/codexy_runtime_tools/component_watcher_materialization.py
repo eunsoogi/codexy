@@ -10,7 +10,7 @@ from pathlib import Path
 
 from .installer import executable, install_package
 from .runtime_configuration import Configuration
-from .updater import _validate_real_path
+from .updater import _absolute, _validate_real_path
 
 
 WATCHER_COMMAND = Path("mcp/codexy-mcp-watcher")
@@ -83,10 +83,10 @@ def _install_windows_runtime(plugin: Path, target: Path, home: Path | None) -> N
 
 def _publish(source: Path, target: Path) -> None:
     _require_executable(source, "Watcher runtime source")
-    _validate_real_path(target.parent, require_exists=False)
+    _validate_real_path(_absolute(target.parent), require_exists=False)
     target.parent.mkdir(parents=True, exist_ok=True)
     temporary = target.with_name(f".{target.name}.{os.getpid()}.tmp")
-    _validate_real_path(temporary, require_exists=False)
+    _validate_real_path(_absolute(temporary), require_exists=False)
     try:
         shutil.copyfile(source, temporary)
         temporary.chmod(stat.S_IMODE(source.stat().st_mode) & 0o777)
