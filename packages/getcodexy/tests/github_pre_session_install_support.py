@@ -1,9 +1,11 @@
 """Fixtures for GitHub pre-session installation cases."""
 
 import json
+import os
 import shutil
 from pathlib import Path
 
+from component_watcher_fixture import install_watcher_runtime
 from codexy_runtime_tools.updater import SyncResult
 
 OFFICIAL = "https://github.com/eunsoogi/codexy.git"
@@ -20,6 +22,8 @@ def marketplace(root: Path) -> dict[str, object]:
 
 def plugin(root: Path, name: str) -> Path:
     shutil.copytree(REPOSITORY / "plugins" / name, root)
+    if name == "codexy" and os.name == "nt":
+        install_watcher_runtime(root)
     return root
 
 
