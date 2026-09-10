@@ -1,9 +1,10 @@
 use std::fs;
 #[path = "activation_retry_fixture.rs"]
-mod fixture;
+pub(super) mod fixture;
 #[path = "activation_retry_receipt.rs"]
-mod receipt;
-use fixture::{Fixture, git, success};
+pub(super) mod receipt;
+pub(super) use fixture::{Fixture, git, success};
+pub(super) use receipt::receipt_with_identity;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
@@ -46,6 +47,7 @@ fn activation_retry_integrates_advanced_main_preserving_artifact_and_same_pr() -
         integrated,
         "retry created an unnecessary commit"
     );
+    assert!(!git(&fixture.repo, &["diff", "--name-only", "main", &integrated],)?.is_empty());
     Ok(())
 }
 
