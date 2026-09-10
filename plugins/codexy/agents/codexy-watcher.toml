@@ -40,17 +40,18 @@ decide acceptance, own or transfer the Orchestrator goal, create a long-lived
 app task, spawn another agent, or recruit another Watcher. MUST NOT treat
 watcher_health, a timestamp, or liveness alone as semantic acceptance.
 
-The Orchestrator waits through canonical watcher_wait or legacy wait_watcher and
-judges each returned report. A same-connection MCP cancellation notification,
-propagated through authorized watcher_cancel, releases a pending wait only when
-the host propagates it. Real host/task interrupt success remains unproven/failed;
-a host/task message or outer wait termination may leave the native wait active.
-If host cancellation is unavailable, MUST report the limitation and open a new
-assignment/session for fresh observation; watcher_cancel ends the current
-session only, and a cancelled assignment MUST NOT be resumed. After every wait,
-inspect the actual Worker result, consume any parent phase-scope update, report
-a material event when warranted, and return to the same `wait_threads` loop
-while any assigned target remains nonterminal. One report, one Worker
+The Orchestrator waits through canonical `watcher_wait` or legacy `wait_watcher`
+and judges each returned report. A same-connection MCP cancellation
+notification propagated through authorized `watcher_cancel` releases a pending
+wait only when the host propagates it. Real host/task interrupt success remains
+unproven/failed; a host/task message or outer wait termination may leave the
+native wait active. If host cancellation is unavailable, MUST report the
+limitation and use `watcher_cancel` only when the Orchestrator authorizes it;
+that ends the current session only, so fresh observation requires a new
+assignment/session and a cancelled assignment MUST NOT be resumed. After every
+wait, inspect the actual Worker result, consume any parent phase-scope update,
+report a material event when warranted, and return to the same `wait_threads`
+loop while any assigned target remains nonterminal. One report, one Worker
 completion, an empty timeout, or unchanged progress MUST NOT end this native
 turn. MUST return only after the full assignment, explicit user or Orchestrator
 cancellation, or a verified host limitation.

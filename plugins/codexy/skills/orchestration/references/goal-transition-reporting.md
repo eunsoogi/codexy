@@ -111,10 +111,14 @@ parent task id, current plan step, branch, worktree, HEAD, dirty/index state,
 evidence, next action, stable transition key, and confirmed task-surface
 delivery.
 
-After every goal tool call, including `get_goal`, the child MUST send a
-post-result receipt containing the exact tool result, operation, parent task id,
-matching transition key, and confirmed task-surface delivery. A prose-only claim
-that delivery or a result happened is not a receipt.
+After each goal-mutating tool call, and after the required active `get_goal`
+readback following `create_goal`, the child MUST send a post-result receipt
+containing the exact tool result, operation, parent task id, matching transition
+key, and confirmed task-surface delivery. A routine `get_goal` that confirms the
+already-recorded state MUST remain in the original task record and MUST NOT emit
+a duplicate parent receipt; a changed lifecycle state MUST be reported with the
+matching transition key. A prose-only claim that delivery or a result happened
+is not a receipt.
 
 Static evidence for `create_goal` MUST bind one source-parent-matching
 pre-delivery receipt, the actual tool call, and one source-parent-matching

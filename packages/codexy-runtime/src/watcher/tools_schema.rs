@@ -1,3 +1,4 @@
+use super::state::{DEFAULT_WAIT_MS, MAX_WAIT_MS};
 use serde_json::json;
 
 use crate::mcp::ToolDef;
@@ -26,10 +27,10 @@ pub fn tools() -> Vec<ToolDef> {
         ),
         ToolDef::new(
             "wait_watcher",
-            "Wait for bounded material Watcher reports from a durable cross-process queue; host cancellation releases the wait immediately.",
+            "Wait for bounded material Watcher reports from a durable cross-process queue for up to 60 minutes. A same-connection MCP cancellation notification releases the wait when the host propagates it; a host/task message or outer wait termination may leave it active. If host cancellation is unavailable, use authorized watcher_cancel to end the session, then open a new assignment/session for a fresh observation. If the session TTL expires, returns status=expired with empty events and the unchanged nextCursor; the wait does not consume or modify the durable event log.",
             json!({
                 "type":"object", "additionalProperties":false,
-                "properties":{"sessionId":{"type":"string"},"parentToken":{"type":"string"},"cursor":{"type":["string","integer"]},"maxReports":{"type":"integer","minimum":1,"maximum":8},"timeoutMs":{"type":"integer","minimum":0,"maximum":30000}},
+                "properties":{"sessionId":{"type":"string"},"parentToken":{"type":"string"},"cursor":{"type":["string","integer"]},"maxReports":{"type":"integer","minimum":1,"maximum":8},"timeoutMs":{"type":"integer","minimum":0,"maximum":MAX_WAIT_MS,"default":DEFAULT_WAIT_MS}},
                 "required":["sessionId","parentToken"]
             }),
         ),
