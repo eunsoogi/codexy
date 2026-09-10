@@ -57,8 +57,11 @@ non-Watcher routes retain their explicitly defined wait behavior.
 
 During that assignment, the Worker MUST send ordinary progress, completion,
 finding, and attention reports to the exact Watcher task supplied by the
-Orchestrator through the host's supported task-message route. The Watcher MUST
-deduplicate unchanged reports and relay only meaningful changes or required
+Orchestrator through the host's supported task-message route. Each report MUST
+carry its source Worker task and issue/PR lane (or an explicit no-PR marker).
+The Watcher MUST validate that correspondence against the assignment, keep
+different source tasks or lanes separate, and never combine their reports. It
+MUST deduplicate unchanged reports and relay only meaningful changes or required
 decisions through `watcher_report`; the Orchestrator sends implementation
 directions to the Worker and retains judgement, correction, and acceptance. If
 the message route is verified unavailable or a concrete emergency occurs, the

@@ -174,14 +174,14 @@ opt a user into another repository's GitHub policy.
 | Watcher / `codexy-watcher` | `gpt-5.6-luna` | `max`            | Bounded native-subagent observation of assigned Workers through the core Watcher MCP; reports material events and never directs, edits, replaces, or accepts Worker work. |
 | Worker / ordinary child    | `gpt-5.6-luna` | `max`            | Separate app task that owns its implementation branch/worktree, verifies the issue, and reports through the assigned Watcher when that route exists.                      |
 
-Reporting flow: the Orchestrator summons the native Watcher and assigns or
-corrects the Worker. With that route active, Worker reports go through the
-host's supported task-message route to the exact Watcher task; the Luna/max
-Watcher suppresses unchanged reports and relays material events through
-`watcher_report`. The Astra/medium Orchestrator receives them through
-`wait_watcher`, judges and directs the Worker, retaining correction and
-acceptance authority. A verified unavailable route or concrete emergency permits
-one marked parent fallback; no duplicate reporting; receipts stay direct-parent.
+Reporting flow: the Orchestrator assigns or corrects the Worker through the
+native Watcher. Worker reports use the supported route to its exact task,
+preserving source Worker task and issue/PR lane; the Watcher suppresses
+unchanged reports and relays material events through `watcher_report`. The
+Orchestrator receives them through `wait_watcher`, judges and directs the
+Worker, and retains correction and acceptance authority. A verified unavailable
+route or concrete emergency permits one marked parent fallback; no duplicate
+reports; receipts stay direct-parent.
 
 Goal boundary: the Orchestrator owns the overall task goal, the Watcher owns
 only a bounded observation assignment, and the Worker owns its finite execution

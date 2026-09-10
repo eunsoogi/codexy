@@ -52,7 +52,10 @@ accept, verify a correction, replace, or recruit. A Watcher report is a signal,
 not acceptance, and repeated unchanged observations MUST be suppressed. During
 the assignment, Workers MUST send ordinary progress, completion, findings, and
 attention reports to the exact Watcher task supplied by the Orchestrator through
-the host's supported task-message route. The Watcher deduplicates unchanged
+the host's supported task-message route. Each report MUST carry its source
+Worker task and issue/PR lane (or an explicit no-PR marker); the Watcher MUST
+validate that correspondence against the assignment, keep distinct tasks/lanes
+separate, and never combine their reports. The Watcher deduplicates unchanged
 reports and relays only meaningful changes or required decisions through
 `watcher_report`; implementation directions still go from the Orchestrator to
 the Worker. A verified unavailable message route or concrete emergency permits

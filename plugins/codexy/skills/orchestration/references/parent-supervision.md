@@ -71,11 +71,11 @@ alter protected technical text.
 
 - Native Watcher assignments route ordinary Worker progress, completion,
   findings, attention, gate, fatal-error, and final-result reports to the exact
-  assigned Watcher task through the host task-message route. The Watcher
-  deduplicates unchanged identities, reports only action-required material
-  deltas through `watcher_report`, and keeps its native turn while targets
-  remain nonterminal. Goal-transition and terminal handoff receipts remain
-  direct-parent; reports are signals, not acceptance.
+  assigned Watcher task. Each report MUST carry its source Worker task and
+  issue/PR lane (or an explicit no-PR marker); the Watcher MUST validate current
+  assignment, keep distinct tasks/lanes separate, deduplicate identities, and
+  report only action-required deltas through `watcher_report`. Goal and terminal
+  receipts remain direct-parent; reports are signals, not acceptance.
 - A verified-unavailable route or concrete emergency permits one marked
   direct-parent fallback; Worker MUST report one limitation and MUST NOT resume
   routine direct reporting or duplicate it. Routine reads and liveness-only goal
