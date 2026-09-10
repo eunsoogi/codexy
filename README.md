@@ -177,11 +177,11 @@ opt a user into another repository's GitHub policy.
 Reporting flow: the Orchestrator summons the native Watcher and assigns or
 corrects the Worker; the Worker returns results and evidence through its app
 task; the Luna/max Watcher reports material events through `watcher_report`; the
-Astra/medium Orchestrator waits with `wait_watcher`, judges the report, and
-retains correction and acceptance authority. The MCP transports signals; it does
-not judge Worker state. App-task delivery uses Luna/max parent-to-Worker and
-Astra/medium Worker-to-parent; the native Watcher calls `watcher_report` as
-Luna/max, and the Astra/medium parent receives it through `wait_watcher`.
+Astra/medium Orchestrator waits with `watcher_wait`, judges the report, and
+retains correction and acceptance authority. MCP carries signals, not Worker
+judgement. App-task delivery is Luna/max parent-to-Worker and Astra/medium
+Worker-to-parent; the native Watcher reports through `watcher_report`, and the
+parent receives it through `watcher_wait`; `wait_watcher` remains compatible.
 
 Goal boundary: the Orchestrator owns the overall task goal, the Watcher owns
 only a bounded observation assignment, and the Worker owns its finite execution
