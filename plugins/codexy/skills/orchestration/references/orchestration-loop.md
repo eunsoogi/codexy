@@ -91,11 +91,10 @@
    - MUST keep evidence tied to the exact commit, PR head, file state, or
      runtime surface being claimed.
    - For supervision, MUST exercise the actual subagent creation, MCP
-     `watcher_report`/`watcher_wait` (or legacy `wait_watcher`) delivery,
-     Worker readback, and Orchestrator-goal path. Report the Orchestrator's
-     overall goal and the
-     Watcher's bounded observation assignment separately; a Watcher report does
-     not prove issue completion.
+     `watcher_report`/`watcher_wait` (or legacy `wait_watcher`) delivery, Worker
+     readback, and Orchestrator-goal path. Report the Orchestrator's overall
+     goal and the Watcher's bounded observation assignment separately; a Watcher
+     report does not prove issue completion.
 6. Finish:
    - MUST confirm no running sessions, open child lanes, untracked required
      files, or unverified claims remain.

@@ -112,19 +112,20 @@ alter protected technical text.
 
 ## Waiting and direct correction
 
-- For ordinary non-Watcher app-task waits, Codex MUST prefer batched cursor-based `wait_threads`.
-  Unchanged cursors, bounded timeouts, and legitimate long commands are not stalls.
-  Codex MUST NOT emit repeated unchanged status, read a full transcript to observe activity,
-  rerun tests only to watch progress, or interrupt a live reviewer merely because it is taking time.
-- In a native Watcher route, only the assigned Watcher MAY call `wait_threads` for
-  assigned Worker/task targets. The Orchestrator MUST await canonical `watcher_wait`
-  or compatibility `wait_watcher` and MUST NOT directly wait on those targets.
-  Fallback, unavailable, and host-transition branches MUST report the limitation,
-  recover the supported Watcher route, and MUST NOT authorize direct parent polling.
-- An implementation Worker or child MUST NOT open, wait on, report to, cancel, or reuse
-  a parent-owned Watcher session/token; session visibility and parent transcripts
-  are not capability grants. A bounded authoritative Worker/app readback after
-  an actionable report is allowed for judgement and correction, not observation waiting.
+- For ordinary non-Watcher app-task waits, Codex MUST prefer cursor-based
+  `wait_threads`. Unchanged cursors and bounded timeouts are not stalls. Codex
+  MUST NOT emit repeated unchanged status, read a full transcript, rerun tests
+  to watch progress, or interrupt a live reviewer merely because it is taking
+  time.
+- In a native Watcher route, only the assigned Watcher MAY call `wait_threads`
+  for its Worker/task targets. The Orchestrator MUST await canonical
+  `watcher_wait` or compatibility `wait_watcher` and MUST NOT directly wait on
+  those targets. Fallback, unavailable, and host-transition branches MUST
+  recover the supported Watcher route, never direct parent polling.
+- An implementation Worker or child MUST NOT open, wait on, report to, cancel,
+  or reuse a parent-owned Watcher session/token. A bounded authoritative
+  Worker/app readback after an actionable report is allowed for judgement and
+  correction, not observation waiting.
 - Inside a native Watcher turn, the observation loop MUST use `wait_threads` and
   each target's latest cursor, inspect the relevant actual Worker result, report
   any material event, and wait again while any assigned target remains
@@ -166,10 +167,10 @@ alter protected technical text.
   through the supported host route, and verifies the next relevant tool call,
   diff, or result itself.
 - On a user interrupt, stop, expiry, or completed observation assignment, the
-  Orchestrator calls `watcher_cancel` when authorized. A pending
-  `watcher_wait` or legacy `wait_watcher` MUST release immediately on host
-  cancellation/input; the durable queue and cursor remain available for an
-  honest resume or explicit cancellation.
+  Orchestrator calls `watcher_cancel` when authorized. A pending `watcher_wait`
+  or legacy `wait_watcher` MUST release immediately on host cancellation/input;
+  the durable queue and cursor remain available for an honest resume or explicit
+  cancellation.
 
 - The Orchestrator MUST own the exact overall task objective and MUST preserve
   its active goal through Watcher creation, reports, correction, review, and
