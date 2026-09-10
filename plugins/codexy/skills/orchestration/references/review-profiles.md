@@ -1,101 +1,62 @@
 # Review profiles
 
-The closed review profile set is:
+The closed profile set selects a proportionate path for the current change:
 
-- `light`: no reviewer and no full or delta recheck quota.
-- `standard`: one `codexy-inspector` review and one full plus one delta recheck;
-  one typed current-head re-review may consume terminal verdict three after
-  those two reviews.
-- `strict`: one `codexy-sentinel` review and one full plus one delta recheck;
-  one typed current-head re-review may consume terminal verdict three after
-  those two reviews, while blocking findings remain bounded by the strict
-  contract.
+- `light`: no LLM reviewer; use the relevant direct checks.
+- `standard`: use one `codexy-inspector` review when the selected profile or
+  the change requires an independent reviewer.
+- `strict`: use one `codexy-sentinel` review for a strict or explicitly audited
+  lane.
 
-For a child-owned implementation lane, when the selected profile is `standard`
-or `strict`, the branch-owning child MUST delegate the one profile-selected
-internal reviewer after local proof. `light` retains its no-reviewer route. The
-parent MUST consume the resulting evidence and MUST NOT invoke that internal
-reviewer or tell the child not to invoke it. A separate repository-required
-external `@codex review`, when applicable, is parent-owned and follows the
-child's internal review. Author self-review is forbidden; delegating the
-independent packaged reviewer is not self-review. These ownership rules MUST NOT
-change profile selection, reviewer identity, or any review quota.
+For a child-owned implementation lane, the branch-owning child owns the
+profile-selected reviewer when that reviewer is required. The parent consumes
+the result and retains merge or publication authority. A separate connector
+review is parent-owned only when the user, repository, or a concrete risk
+explicitly requires it. These ownership rules MUST NOT create a second default
+review or change the selected profile.
 
-The post-cap re-review is not another full or delta quota. It is admitted only
-from the direct ordered terminal history, for mandatory base integration, an
-in-scope contract/root repair, an authenticated external finding discovered on
-the clean delta-PASS head, or an authenticated mixed-finding disposition from a
-blocked delta; the issue-wide terminal limit remains three. A migration marker
-MUST preserve actual reviewer tuples and explicitly select the normal
-legacy-prefix/current-suffix direction or the boundary-1 current-prefix/legacy-
-delta exception; it MUST NOT rewrite history.
+The normal reviewer state is current-head evidence. It contains the control
+schema, selected profile, policy reviewer when applicable, `reviewed_head`, one
+actual `terminal_result` or non-terminal `status`, and
+`unresolved_findings`. A reviewer MUST bind the exact current head. `PASS`,
+`BLOCK`, and `UNOBSERVABLE` are terminal results; `PENDING` and `RUNNING` are
+observations of the same active reviewer and MUST remain pending until its
+actual result arrives.
 
-Reviewer-backed transitions use authenticated current and previous PR snapshots
-from the canonical GitHub readback producer. Snapshots bind the same repository,
-PR number, URL, base branch, capture provenance, `baseRefOid`, and `headRefOid`;
-the authenticated `capture.owningIssue` object also binds the owning issue's
-repository, number, canonical URL, and explicit `owner-assignment`,
-`closing-issue-reference`, or `linked-issue-reference` association. The owning
-issue object comes from the authenticated issue read and is distinct from the PR
-number; `reviewControl.issue_number` binds that owning issue. The previous
-snapshot's `reviewControl` is the only predecessor authority.
-`previous_control_state` is rejected. Base integration must change and prove
-base ancestry. Contract/root repair must retain the base, follow a prior `BLOCK`
-delta with findings, bind `qualifying_change.finding_ids` exactly to those
-findings, and show the evidence diff changes every finding's recorded path. The
-current snapshot's head and base identity are preserved.
+Current-head readiness requires the relevant checks for the changed surface, an
+actual reviewer `PASS` when a reviewer is selected, and no unresolved
+actionable findings. A `BLOCK`, `UNOBSERVABLE`, stale head, failed relevant
+check, or actual unresolved finding remains blocking. Fixing a finding may be
+verified on the current head without restarting a review count or inventing a
+new evidence ledger.
 
-The supported connector capture MUST follow the
-[authenticated GitHub connector capture](connector-capture.md) contract,
-including its source, derivation, contradiction, and live-proof boundaries.
+One selected reviewer is not an automatic stack. A second reviewer, repeated
+broad check, semantic evaluator, connector review, or evidence artifact MUST
+be requested only by the user, repository policy, or a concrete unresolved
+risk.
 
-The external-finding reason MUST be produced from a locator-only
-`authenticated_external_finding_locator` request. The producer MUST perform a
-fixed-argument, host-authorized GitHub GraphQL read for that locator, reject
-command failures, GraphQL errors, incomplete connections, and identity
-mismatches, then construct the `codexy.review-control-external-finding.v1`
-envelope with the raw response and its deterministic projection. Caller-supplied
-`authenticated_external_finding` or `authenticated_external_finding_capture`
-values MUST be rejected. `capture.raw` equality and re-projection are offline
-shape/integrity checks only and MUST NOT be treated as authentication. The
-producer, `build-pr-state`, and completion handoff MUST use the live source read
-for external-finding authority; offline validators only validate an envelope
-already admitted by that source-owned boundary. The envelope's repository,
-owning issue, source PR, immutable review-thread and comment identities with the
-canonical discussion URL, author, observed commit, unique finding IDs, and
-repository-relative affected paths MUST equal the live projection. The
-transition requires `observedCommit` to equal the prior delta head and the
-repair diff to touch every recorded path. A source with different repository,
-issue, PR, head, finding set, or paths is rejected. The source PR's owning issue
-is provenance and does not replace the target `reviewControl.issue_number`.
+Missing historical transcripts, genesis/import records, invocation telemetry,
+and quota bookkeeping MUST NOT block the compact current-head path. They remain
+unknown evidence and MUST NOT be converted into a synthetic result or a new
+approval request.
 
-The mixed-finding disposition reason MUST preserve the base OID and cover every
-finding from the blocked delta exactly once. It MUST be produced only from a
-locator-only `authenticated_finding_disposition_locator` request. Its exact
-authenticated CI and maintainer-source contract is defined in
-[authenticated finding-disposition CI](finding-disposition-ci.md). `known_empty`
-required checks are an authenticated state, not a future-job inventory;
-unavailable or incomplete sources remain unproved. Finding classification MUST
-follow the retained semantic kind, not a workflow path: CI observations resolve
-only through CI, a source defect still requires actual evidence-diff path
-coverage, and the exact policy finding only through the maintainer decision. All
-remaining findings require actual evidence-diff path coverage with at least one
-code repair. The producer, `build-pr-state`, and completion handoff MUST reread
-both sources; callers MUST NOT provide source, capture, classification, or
-finding IDs, and this reason MUST NOT waive code, CI, review, merge, or quota
-requirements.
+## Explicit legacy review-state path
 
-After a third terminal `BLOCK`, the sibling `final_disposition` path MAY record
-the parent's bounded disposition while retaining all three original review
-events and `terminal_review_count = 3`. A repaired-head disposition MUST bind
-the third head through an ancestor evidence commit to the exact current head,
-with non-empty, finding-path-only diffs retained in the final tree. A same-head
-disposition MUST use evidence refresh and MUST NOT invent a source edit. Its
-authority MUST come from the locator-only
-`authenticated_final_disposition_locator` and a live reread of exact-head
-all-success CI plus a complete, resolved thread inventory. Ordinary PR,
-ownership, tests, LOC, connector-review, CI, and merge gates remain active;
-synthetic `PASS`/`UNOBSERVABLE` and a fourth profile review are forbidden.
+Controls that contain `full_review_count`, `delta_review_count`,
+`terminal_review_count`, `terminal_review_limit`, `terminal_review_history`,
+`pre_pr_import`, `native_history_recovery`, `native_history_provenance`,
+`reviewer_migration`,
+`post_cap_re_review`, or `final_disposition` opt into the existing legacy
+transition path. That path is used only when an explicit requirement or a
+concrete unresolved risk needs historical reconstruction or a bounded
+disposition. Its validators MUST preserve actual reviewer tuples, heads,
+findings, source provenance, and authentic GitHub or host evidence; they MUST
+reject fabricated history, synthetic verdicts, and caller-supplied authority.
 
-Escalation may only move to a strictly higher profile. The executable profile
-contract is maintained by the packaged runtime validator.
+Pre-PR imports and native recovery remain non-admitted until a real current-head
+review is available. Post-cap and final-disposition transitions MUST preserve
+their actual prior history and continue to enforce code, relevant checks,
+ownership, safety, thread, LOC, and merge gates. None of these legacy paths may
+waive a real finding or authorize a fourth reviewer.
+
+The executable profile contract remains in the packaged runtime validator.

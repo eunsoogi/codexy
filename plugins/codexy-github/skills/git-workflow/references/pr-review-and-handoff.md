@@ -40,28 +40,29 @@ captured PR title has passed validation. These retained title checks do not
 impose a body template, review quota, fixed approval phrase, or exclusive
 mutation route.
 
-## Review ownership and assignment
+## Current-head review and ownership
 
-For a child-owned implementation lane, the owning child MUST delegate the
-profile-selected internal reviewer after local proof, preserve its review
-history, and repair any actionable findings on the child branch. The parent MUST
-consume that evidence and MUST NOT spawn the internal reviewer or instruct the
-child not to spawn it. If repository policy requires a separate external
-`@codex review`, the parent requests it after the child's internal review and
-owns the resulting integration and readiness decision.
+The normal review path uses the current change as its evidence boundary. Read the
+current PR head, relevant checks, selected reviewer result, and actual
+unresolved findings. One proportionate independent reviewer is enough when the
+selected profile or concrete risk calls for one. `PASS` with no actionable
+findings supports the review gate; `BLOCK`, `UNOBSERVABLE`, `PENDING`,
+`RUNNING`, a stale head, a failed relevant check, or an actual finding does
+not.
 
-The parent-to-child assignment MUST distinguish the author's prohibited
-self-review from the owning child's required delegation of an independent
-packaged reviewer. The nonrecursive prohibition belongs in a helper or reviewer
-assignment; it MUST NOT be copied into the owning-child assignment as a ban on
-the selected internal review.
+Missing historical transcripts, genesis/import records, invocation telemetry,
+quota bookkeeping, and optional evaluator or connector output MUST NOT block
+ordinary current-head work. Fix actionable findings in the owning child lane,
+rerun relevant verification, and read the new head back. Additional reviewers,
+broad rechecks, semantic evaluators, or evidence artifacts require an explicit
+user or repository requirement or a concrete unresolved risk.
 
-If the parent already spawned the selected internal reviewer before this
-ownership correction, the child MUST retain the authentic event and existing
-review count/history, including source sender and receiver facts. It MUST NOT
-start a duplicate fresh full review solely to make the child the historical
-sender; use the existing review-lifecycle/native-history recovery path when
-needed and keep any unavailable or non-admitted state explicit.
+For a child-owned implementation lane, the owning child owns the
+profile-selected reviewer when that reviewer is required and repairs findings
+on the child branch. The parent consumes current-head evidence and retains
+merge or publication authority. The parent MUST NOT replace the child reviewer
+or patch its branch. A separately required connector review remains
+parent-owned and follows the documented connector procedure.
 
 Native host transcript capture and recovery apply only when a selected review or
 transition path consumes those historical events. If that path uses a selected
@@ -100,14 +101,14 @@ MUST be present before that readiness claim.
 
 ## Current Readiness State
 
-Before every readiness or handoff claim under the selected contract, capture
-fresh authenticated GitHub state for:
+Before a readiness or handoff claim under the selected contract, capture fresh
+authenticated GitHub state for:
 
 - repository and protected default branch;
 - PR number, state, draft state, merge state, base, head branch, and head SHA;
-- checks, reviews, latest reviews, comments, labels, and issue linkage; and
-- all review threads with resolution, outdated state, path, comment URL, author,
-  body, creation time, and comment commit SHA.
+- relevant checks, selected reviews, comments, labels, and issue linkage; and
+- review threads when the selected review or known feedback requires thread
+  resolution evidence.
 
 Also capture local branch status, local HEAD, and the remote-tracking head.
 Those SHAs MUST equal the current PR head for a pushed/synced readiness claim.
@@ -115,9 +116,10 @@ For a stacked PR, add authenticated linked-issue evidence when GitHub does not
 populate closing references.
 
 Requested changes, actionable comments, and every unresolved actionable thread
-remain blocking. Outdated-but-fixed threads still require current-head evidence
-and GitHub resolution or an accepted no-change rationale. A green check or open
-PR alone is not readiness evidence.
+remain blocking when that feedback is in scope. Outdated-but-fixed threads still
+require current-head evidence and GitHub resolution or an accepted no-change
+rationale. A green check or open PR alone is not readiness evidence, but missing
+optional historical or connector evidence is not a default block.
 
 ## Child-Owned Feedback
 
@@ -132,9 +134,10 @@ child-owned branch or resolve a thread from prose alone.
 
 For a child-owned implementation or an explicitly selected completion-handoff
 contract, the handoff MUST bind the issue, branch/worktree, base,
-local/remote/PR head, changed paths, verification, checks, reviews, comments,
-labels, issue linkage, and unresolved threads. Ask `$orchestration` to apply its
-public **completion-handoff** contract to this captured state. An intentionally
-open PR MUST state the explicit parent-owned next gate; it is not merged
-completion. An ordinary authorized remote metadata operation does not require
-this handoff shape solely because the plugin is installed.
+local/remote/PR head, changed paths, relevant verification, checks, selected
+review result, labels, issue linkage, and any in-scope unresolved threads. Ask
+`$orchestration` to apply its public **completion-handoff** contract to this
+captured state. An intentionally open PR MUST state the explicit parent-owned
+next gate; it is not merged completion. An ordinary authorized remote metadata
+operation does not require this handoff shape solely because the plugin is
+installed.

@@ -15,12 +15,13 @@ pub(crate) fn build_pr_state(
     control_text: &str,
     previous_text: &str,
 ) -> Result<Value> {
-    let current: Value = snapshot::normalize(&serde_json::from_str(current_text)?, "current")
-        .map_err(anyhow::Error::msg)?;
     let mut control: Value = serde_json::from_str(control_text)?;
     if !control.is_object() {
         bail!("review control state must be an object");
     }
+    let simple = state::is_simple_control(&control);
+    let current: Value = snapshot::normalize(&serde_json::from_str(current_text)?, "current")
+        .map_err(anyhow::Error::msg)?;
     if external_finding::requires_source(&control) {
         external_finding::refresh_live(&mut control).map_err(anyhow::Error::msg)?;
     }
@@ -32,25 +33,33 @@ pub(crate) fn build_pr_state(
         final_disposition::refresh_live(&mut control, None, &current)
             .map_err(anyhow::Error::msg)?;
     }
-    let previous = snapshot::normalize(
-        &serde_json::from_str(previous_text)
-            .map_err(|error| anyhow::anyhow!("previous PR state is invalid: {error}"))?,
-        "previous",
-    )
-    .map_err(anyhow::Error::msg)?;
-    let control = if control.get("profile").and_then(Value::as_str) != Some("light")
-        || request::predecessor_has_pre_pr_history(Some(&previous))
-    {
-        transition::check_with_repository(
-            plugin_root,
-            repository_root,
-            &previous,
-            &current,
-            &control,
-        )
-        .map_err(anyhow::Error::msg)?
-    } else {
+    let previous_has_pre_pr_history = serde_json::from_str::<Value>(previous_text)
+        .ok()
+        .as_ref()
+        .is_some_and(|previous| request::predecessor_has_pre_pr_history(Some(previous)));
+    let control = if simple && !previous_has_pre_pr_history {
         control
+    } else {
+        let previous = snapshot::normalize(
+            &serde_json::from_str(previous_text)
+                .map_err(|error| anyhow::anyhow!("previous PR state is invalid: {error}"))?,
+            "previous",
+        )
+        .map_err(anyhow::Error::msg)?;
+        if control.get("profile").and_then(Value::as_str) != Some("light")
+            || previous_has_pre_pr_history
+        {
+            transition::check_with_repository(
+                plugin_root,
+                repository_root,
+                &previous,
+                &current,
+                &control,
+            )
+            .map_err(anyhow::Error::msg)?
+        } else {
+            control
+        }
     };
     let mut state = current;
     let object = state
@@ -161,11 +170,15 @@ pub(crate) fn produce(
             "review control producer requires authenticated_finding_disposition_locator for mixed findings"
         );
     }
-    let control = if control
-        .get("profile")
-        .and_then(Value::as_str)
-        .is_some_and(|profile| profile != "light")
-        || request::predecessor_has_pre_pr_history(previous_pr_state.as_ref())
+    let simple = state::is_simple_control(&control);
+    let previous_has_pre_pr_history =
+        request::predecessor_has_pre_pr_history(previous_pr_state.as_ref());
+    let control = if previous_has_pre_pr_history
+        || (!simple
+            && control
+                .get("profile")
+                .and_then(Value::as_str)
+                .is_some_and(|profile| profile != "light"))
     {
         let raw_error = state::check_control(plugin_root, &control).err();
         let current = current_pr_state
@@ -190,6 +203,11 @@ pub(crate) fn produce(
     } else {
         control
     };
+    if simple && let Some(current) = current_pr_state {
+        let mut state = current;
+        state["reviewControl"] = control.clone();
+        state::check_pr_state(plugin_root, &state, false).map_err(anyhow::Error::msg)?;
+    }
     state::check_control(plugin_root, &control).map_err(anyhow::Error::msg)?;
     Ok(serde_json::json!({"control_state": control}))
 }

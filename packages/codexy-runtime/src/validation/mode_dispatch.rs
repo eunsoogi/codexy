@@ -91,7 +91,10 @@ fn review_lifecycle_errors(plugin_root: &Path, evidence: &str) -> Vec<String> {
                     && record.get("reviewer").is_some()
             })
         })
-        .filter(|line| !review_control::is_lifecycle_terminal(plugin_root, line))
+        .filter(|line| {
+            !review_control::is_lifecycle_terminal(plugin_root, line)
+                && !review_control::is_lifecycle_pending(plugin_root, line)
+        })
         .map(|_| "review lifecycle evidence must contain direct terminal fields".to_owned())
         .collect()
 }
