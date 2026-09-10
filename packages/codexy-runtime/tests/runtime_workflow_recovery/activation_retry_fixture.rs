@@ -58,6 +58,7 @@ impl Fixture {
                     .join("scripts/select-runtime-activation-branch.sh"),
             )
             .args([version, receipt.to_str().ok_or("receipt path")?])
+            .current_dir(&self.repo)
             .env(
                 "PATH",
                 format!("{}:{}", self.bin.display(), std::env::var("PATH")?),
