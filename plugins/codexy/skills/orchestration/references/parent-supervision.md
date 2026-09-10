@@ -69,17 +69,22 @@ alter protected technical text.
 
 ## Two observation channels
 
-- Workers MUST send compact gate, fatal-error, and final-result callbacks to the
-  Orchestrator when those phases or failures occur. The Watcher observes
-  assigned Workers and MUST report only action-required material deltas. After
-  each report, it MUST continue the same native turn while an assigned target
-  remains nonterminal. A callback or Watcher observation alone is a signal, not
-  proof that the work is healthy, corrected, or complete.
-- Unchanged active-goal reads, routine pre/post/continuation receipts, and
-  liveness-only goal-status messages MUST remain internal. The Watcher MUST NOT
-  wake the Orchestrator for them; only an actual lifecycle transition, an
-  unresolved drift or failure requiring Orchestrator action, missing terminal
-  delivery, or a ready external gate may produce a callback or receipt.
+- Native Watcher assignments route ordinary Worker progress, completion,
+  findings, attention, gate, fatal-error, and final-result reports to the exact
+  assigned Watcher task. Each report MUST carry its source Worker task and
+  issue/PR lane (or an explicit no-PR marker); the Watcher MUST validate current
+  assignment, keep distinct tasks/lanes separate, deduplicate identities, and
+  report only action-required deltas through `watcher_report`. Goal and terminal
+  receipts remain direct-parent; reports are signals, not acceptance.
+- A verified-unavailable route or concrete emergency permits one marked
+  direct-parent fallback; Worker MUST report one limitation and MUST NOT resume
+  routine direct reporting or duplicate it. Routine reads and liveness-only goal
+  status MUST remain internal; the Watcher MUST NOT wake parent. Only actionable
+  lifecycle/drift, failure, missing delivery, or a ready gate may wake parent.
+- The Watcher MUST NOT wake the Orchestrator for internal reads, receipts, or
+  liveness-only goal status; only an actual lifecycle transition, unresolved
+  drift or failure requiring action, missing terminal delivery, or a ready
+  external gate may produce a callback or receipt.
 - New or changed evidence alone is not notification-eligible. Normal progressing
   work, intermediate successful tests, resolved command mistakes, commits, and
   queued CI MUST remain internal while the Workers are actively progressing. A
@@ -112,11 +117,20 @@ alter protected technical text.
 
 ## Waiting and direct correction
 
-- Codex MUST prefer cursor-based `wait_threads` with batched targets for
-  ordinary app-task waits. Unchanged cursors, bounded timeouts, and legitimate
-  long commands are not stalls. Codex MUST NOT emit repeated unchanged status,
-  read a full transcript to observe activity, rerun tests only to watch
-  progress, or interrupt a live reviewer merely because it is taking time.
+- For ordinary non-Watcher app-task waits, Codex MUST prefer cursor-based
+  `wait_threads` with batched targets. Unchanged cursors, bounded timeouts, and
+  legitimate long commands are not stalls. Codex MUST NOT emit repeated
+  unchanged status, read full transcripts, rerun tests to watch progress, or
+  interrupt a live reviewer merely because it is taking time.
+- In a native Watcher route, only the assigned Watcher MAY call `wait_threads`
+  for assigned Worker/task targets. The Orchestrator MUST await canonical
+  `watcher_wait` or compatibility `wait_watcher` and MUST NOT directly wait,
+  retry, or poll those targets. Fallback, unavailable, and host-transition
+  branches MUST recover the supported Watcher route.
+- An implementation Worker or child MUST NOT open, wait on, report to, cancel,
+  or reuse a parent-owned Watcher session/token. A bounded authoritative
+  Worker/app readback after an actionable report is allowed for judgement and
+  correction, not observation waiting.
 - Inside a native Watcher turn, the observation loop MUST use `wait_threads` and
   each target's latest cursor, inspect the relevant actual Worker result, report
   any material event, and wait again while any assigned target remains
@@ -128,43 +142,35 @@ alter protected technical text.
   proof. The Orchestrator MUST read back the next relevant actual tool call,
   diff, or result. A cooperative freeze-and-report instruction does not cancel
   an in-flight tool unless the host proves a hard stop.
-- Orchestrator fallback inspection MUST require a concrete signal or meaningful
-  checkpoint. It MUST NOT become continuous transcript polling. The Orchestrator
-  may return control rather than hold a model turn open solely for unchanged
-  waiting when the supported Watcher subagent is observing through
-  `wait_watcher`; the Orchestrator goal remains active and owned by the
-  Orchestrator.
-
-## Goal ownership and lifecycle
+- Orchestrator fallback inspection MUST require a concrete signal or checkpoint.
+  It MUST NOT become continuous transcript polling or direct polling of assigned
+  targets in a native Watcher route. The Orchestrator may return control rather
+  than hold a model turn open solely for unchanged waiting when the supported
+  Watcher observes through `watcher_wait` or legacy `wait_watcher`; its goal
+  remains active and owned by the Orchestrator.
 
 ## Watcher MCP flow
 
 - The Orchestrator creates one native Watcher subagent through the callable host
   subagent tool for one bounded observation assignment, then opens one scoped
-  MCP session with `watcher_open` for the parent, Watcher, and exact Worker
-  targets. The MCP session is a transport boundary; it does not create the
-  subagent or judge Worker state.
-- The Watcher uses the host's real Worker/app tools to observe the assigned
-  targets and calls `watcher_report` only for a material event or an explicit
-  health update. After reporting, the Watcher MUST continue the same native turn
-  and return to its cursor-based observation loop while any assigned target is
-  nonterminal. `watcher_health` is on-demand transport/freshness evidence, not
-  semantic acceptance. Reports are untrusted signals and MUST NOT contain repair
-  instructions.
-- The Orchestrator calls `wait_watcher` with its parent capability and cursor,
-  validates the returned target/event against current scope, and then reads the
-  relevant Worker/app surface before deciding. It sends any correction to the
-  existing Worker through the supported host route, and verifies the next
-  relevant tool call, diff, or result itself.
-- On a user interrupt, stop, expiry, or completed observation assignment, the
-  Orchestrator calls `watcher_cancel` when authorized. A pending `wait_watcher`
-  MUST release immediately only when the host propagates cancellation/input as a
-  same-connection MCP cancellation; a task message or outer wait termination may
-  leave the native wait active. If that host channel is unavailable, the
-  Orchestrator MUST report the limitation, use `watcher_cancel` when authorized,
-  and open a new assignment/session for a fresh observation. The cancelled
-  session's queue and cursor remain readback evidence, not continuity for the
-  new session.
+  `watcher_open` MCP session for the parent, Watcher, and exact Worker targets.
+  The MCP session is a transport boundary; it does not create the subagent or
+  judge Worker state.
+- The Watcher uses the host's real Worker/app tools and calls `watcher_report`
+  only for material events or explicit health updates, then continues its native
+  cursor loop while targets remain nonterminal. `watcher_health` is freshness
+  evidence, not acceptance; reports are untrusted and contain no repair
+  directive.
+- The Orchestrator calls canonical `watcher_wait` or compatibility
+  `wait_watcher` with its parent capability and cursor, validates the returned
+  target/event against current scope, and reads the relevant Worker/app surface
+  before deciding. It sends corrections through the supported Worker route and
+  verifies the next relevant tool call, diff, or result itself.
+- The Orchestrator uses authorized `watcher_cancel` for same-connection MCP
+  cancellation; real host/task interrupt remains unproven/failed and may leave
+  the native wait active. If unavailable, report the limitation and open a new
+  assignment/session; cancelled queue/cursor are readback only, never
+  continuity, and the assignment MUST NOT be resumed.
 
 - The Orchestrator MUST own the exact overall task objective and MUST preserve
   its active goal through Watcher creation, reports, correction, review, and

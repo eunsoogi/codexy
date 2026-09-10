@@ -1,36 +1,44 @@
 # Runtime Heartbeats
 
-The owner MUST use event-driven `wait_threads` with each target's latest cursor
-as the default for ordinary child completion or attention waits. The owner MUST
-reserve heartbeat scheduling for genuinely scheduled monitoring or when
-`wait_threads` is unavailable. A Watcher is a bounded native subagent summoned
-by the Orchestrator, not a separate app task, heartbeat, or automatic scheduler.
+For ordinary non-Watcher child completion or attention waits, the owner MUST use
+event-driven `wait_threads` with each target's latest cursor as the default. The
+owner MUST reserve heartbeat scheduling for genuinely scheduled monitoring or
+when `wait_threads` is unavailable. A Watcher is a bounded native subagent
+summoned by the Orchestrator, not a separate app task, heartbeat, or automatic
+scheduler.
 
-After a host transition or `No handler registered` failure, the owner MUST treat
-the mismatch as host-transition exposure evidence, perform one fresh thread-tool
-discovery and one host-aware `wait_threads` retry before any fallback, MUST NOT
-use unbounded `read_thread`, and any bounded metadata fallback MUST consume the
-current Orchestrator-stage budget and record only returned size/token metadata.
+For an ordinary non-Watcher owner, after a host transition or
+`No handler
+registered` failure, the owner MUST treat the mismatch as
+host-transition exposure evidence, perform one fresh thread-tool discovery and
+one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded
+`read_thread`, and any bounded metadata fallback MUST consume the current
+Orchestrator-stage budget and record only returned size/token metadata. On a
+native Watcher route, the assigned Watcher owns the wait/retry for assigned
+targets; the Orchestrator MUST use `watcher_wait` or legacy `wait_watcher` and
+MUST NOT directly retry or poll those targets.
 
-While a desktop-origin root turn has a callable `wait_threads` handler, the
+For an ordinary non-Watcher owner with a callable `wait_threads` handler, the
 owner MUST use the cursor-based wait for an assigned observation obligation
-while that obligation remains. For a native Watcher, this wait belongs to one
-long-running subagent turn: after each wait it MUST inspect the actual Worker
-result, report a material event when warranted, and continue waiting while any
-assigned target remains nonterminal. An unchanged cursor, bounded timeout, one
-report, or one Worker completion is nonterminal and MUST NOT end that Watcher
-turn. A Watcher may return only after the full assignment is terminal, the user
-or Orchestrator explicitly cancels it, or a verified host limitation prevents
-continuation. For ordinary owners outside the Watcher route, the caller controls
-whether to return after the bounded wait; the host's automatic continuation
-behavior is not implied by this contract and MUST be reported if observed. If a
-slingshot-host turn still returns `No handler registered` after the one fresh
-discovery and one host-aware retry, the owner MUST emit exactly one unavailable
-evidence receipt and require desktop-origin root re-entry; it MUST NOT repeat
-the wait call, schedule a heartbeat relay, use `read_thread`, or use
-`handoff_thread` for recovery. The slingshot recovery route is not an
-unavailable-wait fallback eligible for heartbeat registration; it ends in
-desktop-origin root re-entry.
+while that obligation remains. For a native Watcher route, only the assigned
+Watcher may call that wait for assigned Worker targets, within one long-running
+native turn: after each wait it MUST inspect the actual Worker result, report a
+material event when warranted, and continue waiting while any assigned target
+remains nonterminal. An unchanged cursor, bounded timeout, one report, or one
+Worker completion is nonterminal and MUST NOT end that Watcher turn. A Watcher
+may return only after the full assignment is terminal, the user or Orchestrator
+explicitly cancels it, or a verified host limitation prevents continuation. The
+Orchestrator awaits `watcher_wait` or legacy `wait_watcher` and MUST NOT
+directly wait on those assigned targets. For ordinary owners outside the Watcher
+route, the caller controls whether to return after the bounded wait; the host's
+automatic continuation behavior is not implied by this contract and MUST be
+reported if observed. If a slingshot-host turn still returns
+`No handler registered` after the one fresh discovery and one host-aware retry,
+the owner MUST emit exactly one unavailable evidence receipt and require
+desktop-origin root re-entry; it MUST NOT repeat the wait call, schedule a
+heartbeat relay, use `read_thread`, or use `handoff_thread` for recovery. The
+slingshot recovery route is not an unavailable-wait fallback eligible for
+heartbeat registration; it ends in desktop-origin root re-entry.
 
 ## Native Watcher boundary
 
@@ -41,29 +49,42 @@ callbacks and task state, and MUST report action-required drift or an
 unavailable channel through `watcher_report`. It MUST remain read-only: it MUST
 NOT edit, direct or message a Worker, supply a repair directive, correct,
 accept, verify a correction, replace, or recruit. A Watcher report is a signal,
-not acceptance, and repeated unchanged observations MUST be suppressed.
-Unchanged active-goal reads, routine pre/post/continuation receipts, and
-liveness-only goal-status messages MUST remain internal. Only an actual
-lifecycle transition, unresolved drift or failure requiring Orchestrator action,
-missing terminal delivery, or a ready external gate may be reported.
+not acceptance, and repeated unchanged observations MUST be suppressed. During
+the assignment, Workers MUST send ordinary progress, completion, findings, and
+attention reports to the exact Watcher task supplied by the Orchestrator through
+the host's supported task-message route. Each report MUST carry its source
+Worker task and issue/PR lane (or an explicit no-PR marker); the Watcher MUST
+validate that correspondence against the assignment, keep distinct tasks/lanes
+separate, and never combine their reports. The Watcher deduplicates unchanged
+reports and relays only meaningful changes or required decisions through
+`watcher_report`; implementation directions still go from the Orchestrator to
+the Worker. A verified unavailable message route or concrete emergency permits
+one marked direct-parent fallback, not routine duplicate reporting. Unchanged
+active-goal reads, routine pre/post/continuation receipts, and liveness-only
+goal-status messages MUST remain internal. Only an actual lifecycle transition,
+unresolved drift or failure requiring Orchestrator action, missing terminal
+delivery, or a ready external gate may be reported.
 
 The Orchestrator MUST keep the overall goal active and owned by itself while the
-Watcher subagent observes. It MAY use `wait_watcher` with the parent token and
-cursor for bounded waiting; a user input or host cancellation MUST release that
-wait immediately only when the host propagates it as a same-connection MCP
-cancellation. A task message or outer wait termination may leave the native wait
-active; report that limitation, use authorized `watcher_cancel`, and open a new
-assignment/session for a fresh observation. `watcher_cancel` ends the current
-session only. The Watcher has no long-lived release goal. If the host exposes a
+Watcher subagent observes. It MAY use canonical `watcher_wait`, or legacy
+`wait_watcher`, with the parent token and cursor for bounded waiting. A
+same-connection MCP cancellation propagated through authorized `watcher_cancel`
+releases the wait; real host/task interrupt success remains unproven/failed. A
+task message or outer wait termination may leave the native wait active; report
+the limitation, use `watcher_cancel` only when authorized, and open a new
+assignment/session for fresh observation. A cancelled assignment MUST NOT be
+resumed. The Watcher has no long-lived release goal. If the host exposes a
 finite goal for the subagent, that goal MUST cover only the bounded observation
 assignment and MUST NOT be treated as issue or release completion. The Watcher
 MUST keep its native turn active after each report and return to its
 `wait_threads` loop while an assigned target remains nonterminal; the
 Orchestrator may return control while that native turn continues. The Watcher
 may return only for full assignment completion, explicit user/Orchestrator
-cancellation, or a verified host limitation. The Orchestrator MUST inspect the
-relevant Worker/app surface after a material report, decide and instruct the
-Worker, and verify the resulting call or diff.
+cancellation, or a verified host limitation. An implementation Worker or child
+MUST NOT open, wait on, report to, cancel, or reuse the parent-owned Watcher
+session or token; visible session metadata is not authority. The Orchestrator
+MUST inspect the relevant Worker/app surface after a material report, decide and
+instruct the Worker, and verify the resulting call or diff.
 
 ## Eligibility And Discovery
 

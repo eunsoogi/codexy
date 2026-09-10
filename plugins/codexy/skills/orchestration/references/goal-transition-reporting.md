@@ -3,8 +3,10 @@
 ## Scope
 
 This is the static evidence and instruction contract for delegated child goal
-operations. Issue #367 owns runtime task delivery; Issue #373 owns runtime
-deduplication, restart recovery, worktree preservation, and replacement.
+operations. Issue #1036 owns native-Watcher-first ordinary report routing; Issue
+#367 owns runtime task delivery and transition receipt mechanics; Issue #373
+owns runtime deduplication, restart recovery, worktree preservation, and
+replacement.
 
 ## Source Parent Binding
 
@@ -27,6 +29,23 @@ Each receipt MUST carry a stable transition key. A static fixture MUST use the
 same source task id and transition key for its pre-delivery, goal call, and
 post-result records. Repeated delivery evidence for one key MUST be represented
 as deduplicated; it MUST NOT imply a second goal call.
+
+## Native Watcher report route
+
+During a native Watcher assignment, the parent MUST give the Worker the exact
+Watcher task identity and the host's supported task-message route. The Worker
+MUST send ordinary progress, completion, finding, and attention reports there;
+each report MUST carry its source Worker task and issue/PR lane (or an explicit
+no-PR marker). The Watcher MUST validate that correspondence against the
+assignment, keep different source tasks or lanes separate, and never combine
+their reports. It MUST NOT guess a target from transcript visibility, receive a
+Watcher token, or call Watcher MCP transport tools. The Watcher deduplicates
+unchanged event identities and relays only meaningful changes or required
+decisions through `watcher_report` for the parent to judge. A verified
+unavailable route or concrete emergency permits one marked direct-parent
+fallback and one limitation receipt; it MUST NOT silently resume routine direct
+reporting or duplicate both routes. The exact direct-parent transition receipts
+above remain authoritative.
 
 ## Callback evidence boundary
 
@@ -92,10 +111,14 @@ parent task id, current plan step, branch, worktree, HEAD, dirty/index state,
 evidence, next action, stable transition key, and confirmed task-surface
 delivery.
 
-After every goal tool call, including `get_goal`, the child MUST send a
-post-result receipt containing the exact tool result, operation, parent task id,
-matching transition key, and confirmed task-surface delivery. A prose-only claim
-that delivery or a result happened is not a receipt.
+After each goal-mutating tool call, and after the required active `get_goal`
+readback following `create_goal`, the child MUST send a post-result receipt
+containing the exact tool result, operation, parent task id, matching transition
+key, and confirmed task-surface delivery. A routine `get_goal` that confirms the
+already-recorded state MUST remain in the original task record and MUST NOT emit
+a duplicate parent receipt; a changed lifecycle state MUST be reported with the
+matching transition key. A prose-only claim that delivery or a result happened
+is not a receipt.
 
 Static evidence for `create_goal` MUST bind one source-parent-matching
 pre-delivery receipt, the actual tool call, and one source-parent-matching

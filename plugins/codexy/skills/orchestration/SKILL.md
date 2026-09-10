@@ -36,6 +36,40 @@ timeout, or unchanged progress MUST NOT end the turn. The Watcher may return
 only after the full assignment is terminal, the user or Orchestrator explicitly
 cancels it, or a verified host limitation prevents continuation.
 
+### Native Watcher caller boundary
+
+For a native Watcher route, only the assigned Watcher MAY call `wait_threads` to
+observe its assigned Worker or task targets. The Orchestrator MUST await reports
+through canonical `watcher_wait` or compatibility `wait_watcher` and MUST NOT
+call `wait_threads` for those targets. Fallback, unavailable, and
+host-transition branches MUST report the real limitation and recover the
+supported Watcher route; they MUST NOT re-authorize direct parent polling. After
+an actionable report, one bounded authoritative Worker or app readback is
+allowed for judgement and correction, and that readback is not an observation
+wait.
+
+An implementation Worker or child MUST NOT open, wait on, report to, cancel, or
+reuse a parent-owned Watcher session or token. Visibility of a session, token,
+or parent transcript does not grant that capability. Ordinary Worker and
+non-Watcher routes retain their explicitly defined wait behavior.
+
+### Native Watcher report route
+
+During that assignment, the Worker MUST send ordinary progress, completion,
+finding, and attention reports to the exact Watcher task supplied by the
+Orchestrator through the host's supported task-message route. Each report MUST
+carry its source Worker task and issue/PR lane (or an explicit no-PR marker).
+The Watcher MUST validate that correspondence against the assignment, keep
+different source tasks or lanes separate, and never combine their reports. It
+MUST deduplicate unchanged reports and relay only meaningful changes or required
+decisions through `watcher_report`; the Orchestrator sends implementation
+directions to the Worker and retains judgement, correction, and acceptance. If
+the message route is verified unavailable or a concrete emergency occurs, the
+Worker may use one marked direct-parent fallback and MUST report the limitation
+once; it MUST NOT resume routine parent reporting or duplicate both routes.
+Goal-transition and terminal handoff receipts remain direct-parent control-plane
+messages.
+
 ### Permission boundary
 
 - Before asking for approval, MUST identify the next action and test whether it
