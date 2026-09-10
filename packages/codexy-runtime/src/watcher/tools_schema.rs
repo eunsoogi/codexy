@@ -27,7 +27,7 @@ pub fn tools() -> Vec<ToolDef> {
         ),
         ToolDef::new(
             "wait_watcher",
-            "Wait for bounded material Watcher reports from a durable cross-process queue; host cancellation releases the wait immediately.",
+            "Wait for bounded material Watcher reports from a durable cross-process queue for up to 60 minutes; host cancellation releases the wait immediately.",
             json!({
                 "type":"object", "additionalProperties":false,
                 "properties":{"sessionId":{"type":"string"},"parentToken":{"type":"string"},"cursor":{"type":["string","integer"]},"maxReports":{"type":"integer","minimum":1,"maximum":8},"timeoutMs":{"type":"integer","minimum":0,"maximum":MAX_WAIT_MS,"default":DEFAULT_WAIT_MS}},

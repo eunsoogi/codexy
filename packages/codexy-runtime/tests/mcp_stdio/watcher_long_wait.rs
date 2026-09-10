@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-const LONG_WAIT_MS: u64 = 300_000;
+const LONG_WAIT_MS: u64 = 3_600_000;
 
 fn open_session_with_ttl(
     client: &mut McpClient,
@@ -74,7 +74,7 @@ fn waiting_until_true(
 }
 
 #[test]
-fn long_wait_bound_rejects_only_values_above_five_minutes() -> TestResult {
+fn long_wait_bound_rejects_only_values_above_one_hour() -> TestResult {
     let state = tempfile::tempdir()?;
     let mut client = watcher_client(state.path())?;
     initialize(&mut client)?;
@@ -88,7 +88,7 @@ fn long_wait_bound_rejects_only_values_above_five_minutes() -> TestResult {
     ))?;
     assert_eq!(
         response["error"]["message"],
-        "watcher timeoutMs must be at most 300000"
+        "watcher timeoutMs must be at most 3600000"
     );
     Ok(())
 }
@@ -235,7 +235,7 @@ fn wait_schema_documents_the_long_poll_bounds() -> TestResult {
         .and_then(|tools| tools.iter().find(|tool| tool["name"] == "wait_watcher"))
         .ok_or("wait_watcher schema is missing")?;
     let timeout = &wait["inputSchema"]["properties"]["timeoutMs"];
-    assert_eq!(timeout["default"], 60_000);
-    assert_eq!(timeout["maximum"], 300_000);
+    assert_eq!(timeout["default"], 600_000);
+    assert_eq!(timeout["maximum"], 3_600_000);
     Ok(())
 }
