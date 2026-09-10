@@ -119,9 +119,7 @@ def rollback_or_raise(
 ) -> None:
     try:
         write_journal(home, journal.with_phase("rolling-back"))
-        restore_selection(
-            home, executable, invoke, manifest, root, journal.before
-        )
+        restore_selection(home, executable, invoke, manifest, root, journal.before)
         if (
             selection(manifest, list_installed(executable, invoke), root)
             != journal.before

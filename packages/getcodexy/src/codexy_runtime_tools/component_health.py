@@ -71,10 +71,7 @@ def _component_health(
             plugin, manifest.component(component).plugin, record_version(record)
         )
         and valid_registration(plugin, component)
-        and (
-            component != "core"
-            or valid_watcher_cache(codex_home, manifest.version)
-        )
+        and (component != "core" or valid_watcher_cache(codex_home, manifest.version))
     )
     result = dict(
         component=component,

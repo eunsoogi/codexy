@@ -72,8 +72,7 @@ def _required_files(manifest, component, plugin, codex_home=None):
         manifest.component(component).asset.required_paths + SURFACE_PATHS[component]
     )
     return all(
-        (plugin / path).is_file() and not (plugin / path).is_symlink()
-        for path in paths
+        (plugin / path).is_file() and not (plugin / path).is_symlink() for path in paths
     ) and (
         component != "core"
         or (
