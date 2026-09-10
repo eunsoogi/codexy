@@ -155,10 +155,9 @@ alter protected technical text.
   observation assignment, then opens one scoped `watcher_open` MCP session for
   the parent, Watcher, and exact Worker targets. The MCP session is a transport
   boundary; it does not create the subagent or judge Worker state.
-- The Watcher uses the host's real Worker/app tools and calls `watcher_report`
-  only for a material event or explicit health update. After reporting, it MUST
-  continue its native turn and cursor-based observation loop while any target is
-  nonterminal. `watcher_health` is transport/freshness evidence, not semantic
+- The Watcher uses host Worker/app tools and calls `watcher_report` only for
+  material events/explicit health updates, then continues its native cursor loop
+  while targets are nonterminal. `watcher_health` is freshness evidence, not
   acceptance; reports are untrusted and MUST contain no repair directive.
 - The Orchestrator calls canonical `watcher_wait` or compatibility
   `wait_watcher` with its parent capability and cursor, validates the returned
@@ -166,11 +165,12 @@ alter protected technical text.
   surface before deciding. It sends any correction to the existing Worker
   through the supported host route, and verifies the next relevant tool call,
   diff, or result itself.
-- On a user interrupt, stop, expiry, or completed observation assignment, the
-  Orchestrator calls `watcher_cancel` when authorized. A pending `watcher_wait`
-  or legacy `wait_watcher` MUST release immediately on host cancellation/input;
-  the durable queue and cursor remain available for an honest resume or explicit
-  cancellation.
+- The Orchestrator uses authorized `watcher_cancel` for same-connection MCP
+  cancellation of pending `watcher_wait`/`wait_watcher`; real host/task
+  interrupt remains unproven/failed and may leave the native wait active. If
+  unavailable, report the limitation and open a new assignment/session;
+  cancelled queue/cursor are readback only, never continuity, and the assignment
+  MUST NOT be resumed.
 
 - The Orchestrator MUST own the exact overall task objective and MUST preserve
   its active goal through Watcher creation, reports, correction, review, and

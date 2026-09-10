@@ -64,21 +64,24 @@ delivery, or a ready external gate may be reported.
 
 The Orchestrator MUST keep the overall goal active and owned by itself while the
 Watcher subagent observes. It MAY use canonical `watcher_wait`, or legacy
-`wait_watcher`, with the parent token and cursor for bounded waiting; a user
-input or host cancellation MUST release that wait immediately while preserving
-the Watcher session, cursor, and queued Worker reports. The Watcher has no
-long-lived release goal. If the host exposes a finite goal for the subagent,
-that goal MUST cover only the bounded observation assignment and MUST NOT be
-treated as issue or release completion. The Watcher MUST keep its native turn
-active after each report and return to its `wait_threads` loop while an assigned
-target remains nonterminal; the Orchestrator may return control while that
-native turn continues. The Watcher may return only for full assignment
-completion, explicit user/Orchestrator cancellation, or a verified host
-limitation. An implementation Worker or child MUST NOT open, wait on, report to,
-cancel, or reuse the parent-owned Watcher session or token; visible session
-metadata is not authority. The Orchestrator MUST inspect the relevant Worker/app
-surface after a material report, decide and instruct the Worker, and verify the
-resulting call or diff.
+`wait_watcher`, with the parent token and cursor for bounded waiting. A
+same-connection MCP cancellation propagated through authorized `watcher_cancel`
+releases the wait; real host/task interrupt success remains unproven/failed. A
+task message or outer wait termination may leave the native wait active; report
+the limitation and open a new assignment/session for fresh observation. A
+cancelled assignment MUST NOT be resumed. The Watcher has no long-lived release
+goal. If the host exposes a finite goal for the subagent, that goal MUST cover
+only the bounded observation assignment and MUST NOT be treated as issue or
+release completion. The Watcher MUST keep its native turn active after each
+report and return to its `wait_threads` loop while an assigned target remains
+nonterminal; the Orchestrator may return control while that native turn
+continues. The Watcher may return only for full assignment completion, explicit
+user/Orchestrator cancellation, or a verified host limitation. An implementation
+Worker or child MUST NOT open, wait on, report to, cancel, or reuse the
+parent-owned Watcher session or token; visible session metadata is not
+authority. The Orchestrator MUST inspect the relevant Worker/app surface after a
+material report, decide and instruct the Worker, and verify the resulting call
+or diff.
 
 ## Eligibility And Discovery
 
