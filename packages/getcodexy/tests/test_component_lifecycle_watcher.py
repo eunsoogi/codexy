@@ -52,6 +52,32 @@ class LifecycleWatcherTests(unittest.TestCase):
             self.assertEqual(receipt["outcome"], "completed")
             self.assertEqual(watcher.read_bytes(), self._expected_source(state))
 
+    @unittest.skipIf(os.name == "nt", "creating a symlink requires Windows privileges")
+    def test_install_rejects_a_symlinked_watcher_parent_before_materialization(
+        self,
+    ) -> None:
+        with fixture() as state:
+            core = state.marketplace / "plugins/codexy"
+            outside = state.root / "outside"
+            outside.mkdir()
+            moved = outside / "mcp"
+            (core / "mcp").rename(moved)
+            marker = moved / "codexy-mcp-watcher"
+            marker.write_bytes(b"preserve")
+            (core / "mcp").symlink_to(moved, target_is_directory=True)
+
+            receipt = run_operation(
+                "install",
+                ("core",),
+                state.home,
+                state.codex,
+                state.run,
+                operation_id="op-install-symlinked-watcher-parent",
+            )
+
+            self.assertEqual(receipt["outcome"], "rolled-back")
+            self.assertEqual(marker.read_bytes(), b"preserve")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -16,7 +16,7 @@ class WatcherMaterializationTests(unittest.TestCase):
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            plugin = Path(temporary)
+            plugin = Path(temporary).resolve()
             source = plugin / materializer.WATCHER_SOURCE
             source.parent.mkdir(parents=True)
             source.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
@@ -32,7 +32,7 @@ class WatcherMaterializationTests(unittest.TestCase):
 
     def test_posix_missing_source_does_not_create_a_registered_target(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            plugin = Path(temporary)
+            plugin = Path(temporary).resolve()
             with (
                 patch.object(materializer.os, "name", "posix"),
                 self.assertRaisesRegex(RuntimeError, "source launcher is missing"),
@@ -40,15 +40,39 @@ class WatcherMaterializationTests(unittest.TestCase):
                 materializer.materialize_watcher(plugin)
             self.assertFalse((plugin / materializer.WATCHER_COMMAND).exists())
 
+    def test_posix_rejects_a_symlinked_target_parent_before_copy(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            plugin = root / "plugin"
+            outside = root / "outside/mcp"
+            outside.mkdir(parents=True)
+            source = outside / "codexy-mcp-watcher.sh"
+            source.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            source.chmod(source.stat().st_mode | stat.S_IXUSR)
+            marker = outside / "codexy-mcp-watcher"
+            marker.write_bytes(b"preserve")
+            plugin.mkdir()
+            (plugin / "mcp").symlink_to(outside, target_is_directory=True)
+
+            with (
+                patch.object(materializer.os, "name", "posix"),
+                self.assertRaisesRegex(ValueError, "symlink"),
+            ):
+                materializer.materialize_watcher(plugin)
+            self.assertEqual(marker.read_bytes(), b"preserve")
+
     def test_windows_prefers_the_bundled_native_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            plugin = Path(temporary)
+            plugin = Path(temporary).resolve()
             bundled = plugin / materializer.WATCHER_RUNTIME
             bundled.parent.mkdir(parents=True)
             bundled.write_bytes(b"native watcher")
             bundled.chmod(bundled.stat().st_mode | stat.S_IXUSR)
 
-            with patch.object(materializer.os, "name", "nt"):
+            with (
+                patch.object(materializer.os, "name", "nt"),
+                patch("codexy_runtime_tools.updater.Path", PosixPath),
+            ):
                 target = materializer.materialize_watcher(plugin)
 
             self.assertEqual(target, plugin / materializer.WATCHER_WINDOWS)
@@ -58,7 +82,7 @@ class WatcherMaterializationTests(unittest.TestCase):
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
+            root = Path(temporary).resolve()
             plugin = root / "plugins/codexy"
             plugin.mkdir(parents=True)
             home = root / "home/.codex"
@@ -73,6 +97,7 @@ class WatcherMaterializationTests(unittest.TestCase):
             with (
                 patch.object(materializer.os, "name", "nt"),
                 patch.object(materializer, "Path", PosixPath),
+                patch("codexy_runtime_tools.updater.Path", PosixPath),
                 patch.dict(os.environ, {}, clear=True),
                 patch.object(
                     materializer.Configuration, "load", return_value=config
