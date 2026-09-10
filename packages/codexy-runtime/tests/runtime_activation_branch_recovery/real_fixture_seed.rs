@@ -16,7 +16,7 @@ pub(super) struct MaterializedFixture {
 // Keep only files that the activation and validation contracts read. The
 // verifier archives this fixture four times, so recursive source trees multiply
 // Windows filesystem work without adding an oracle.
-const PREPARED_PATHS: [&str; 28] = [
+const PREPARED_PATHS: [&str; 25] = [
     ".agents/plugins",
     ".gitattributes",
     ".github/workflows/plugin-runtime-binaries.yml",
@@ -25,7 +25,6 @@ const PREPARED_PATHS: [&str; 28] = [
     "docs/getcodexy-component-installation.md",
     "packages/codexy-runtime/Cargo.lock",
     "packages/codexy-runtime/Cargo.toml",
-    "packages/codexy-runtime/schemas/handoff-runtime.schema.json",
     "packages/codexy-runtime/src/version/bootstrap.rs",
     "packages/getcodexy/contracts/component-installation-contract.json",
     "packages/getcodexy/pyproject.toml",
@@ -35,14 +34,12 @@ const PREPARED_PATHS: [&str; 28] = [
     "plugins/codexy/.codex-plugin/plugin.json",
     "plugins/codexy/mcp/codexy-mcp-watcher.cmd",
     "plugins/codexy/mcp/codexy-mcp-watcher.sh",
-    "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd",
-    "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh",
-    "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py",
     "plugins/codexy-devtools",
     "plugins/codexy-github/.codex-plugin/plugin.json",
     "plugins/codexy-github/skills/git-workflow/SKILL.md",
     "scripts/activate-runtime-contract.sh",
     "scripts/download-selected-runtime-package.sh",
+    "scripts/generate-release-changelog",
     "scripts/sync-plugin-version.sh",
     "scripts/verify-runtime-activation-branch",
 ];
@@ -86,6 +83,10 @@ impl FixtureSeed {
 
 fn initialize_repository(repo: &Path) -> Result<(), Box<dyn std::error::Error>> {
     configure_repository(repo)?;
+    // The checkout starts with the complete historical index. Clear it before
+    // staging the prepared paths, otherwise unselected files survive in the
+    // commit tree even though they were omitted from the fixture.
+    git(repo, &["read-tree", "--empty"])?;
     let mut add = Command::new("git");
     add.args(["add", "-A", "--"])
         .args(PREPARED_PATHS)
