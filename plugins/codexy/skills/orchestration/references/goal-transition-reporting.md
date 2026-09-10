@@ -28,6 +28,18 @@ same source task id and transition key for its pre-delivery, goal call, and
 post-result records. Repeated delivery evidence for one key MUST be represented
 as deduplicated; it MUST NOT imply a second goal call.
 
+## Callback evidence boundary
+
+The Worker/app transcript and the parent callback-delivery receipt are separate
+evidence surfaces. A Worker `read_thread` response—including a completed turn
+with `items: []`, an omitted `latestAssistantMessageId`, omitted fields, or a
+partial page—cannot establish that the parent callback was delivered or was
+missing. Delivery evidence MUST come from the actual parent task surface bound
+to the exact target and transition key. When that parent readback is absent or
+incomplete, preserve `unknown` and do not classify the callback as missing.
+Watcher absence reports MUST also follow the
+[observation evidence boundaries](observation-evidence.md).
+
 ## Delegated assignment authorization
 
 A parent-supplied assignment that names the objective and success criteria is
