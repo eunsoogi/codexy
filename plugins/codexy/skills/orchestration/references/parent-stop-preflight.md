@@ -41,3 +41,10 @@ branch, worktree, PR, durable child context, or review-response ownership:
    host limitation. The Orchestrator may return control while that native turn
    continues; ordinary Worker finite-goal closure and `blocked` recovery remain
    required.
+9. In a native Watcher route, only the assigned Watcher MAY call `wait_threads`
+   for assigned Worker or task targets. The Orchestrator MUST await canonical
+   `watcher_wait` or compatibility `wait_watcher` and MUST NOT directly wait on
+   those targets. Fallback, unavailable, and host-transition branches MUST
+   report the actual limitation and recover the supported Watcher route; they
+   MUST NOT authorize direct parent polling. Ordinary non-Watcher routes retain
+   their explicitly defined wait behavior.

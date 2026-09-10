@@ -56,6 +56,11 @@
      one Worker completion, or an empty timeout MUST NOT end that turn; return
      is reserved for full assignment completion, explicit cancellation, or a
      verified host limitation.
+   - Only the assigned Watcher MAY call `wait_threads` for its assigned Worker
+     or task targets. The Orchestrator MUST await canonical `watcher_wait` or
+     compatibility `wait_watcher` and MUST NOT directly wait on those targets;
+     fallback, unavailable, and host-transition branches MUST recover the
+     supported Watcher route rather than authorize parent polling.
    - MUST complete lane assignment before implementation edits begin. An
      Orchestrator may prepare issue text, branch name, worktree path, and
      handoff text, but MUST NOT patch implementation files for the child-owned
@@ -86,8 +91,9 @@
    - MUST keep evidence tied to the exact commit, PR head, file state, or
      runtime surface being claimed.
    - For supervision, MUST exercise the actual subagent creation, MCP
-     `watcher_report`/`wait_watcher` delivery, Worker readback, and
-     Orchestrator-goal path. Report the Orchestrator's overall goal and the
+     `watcher_report`/`watcher_wait` (or legacy `wait_watcher`) delivery,
+     Worker readback, and Orchestrator-goal path. Report the Orchestrator's
+     overall goal and the
      Watcher's bounded observation assignment separately; a Watcher report does
      not prove issue completion.
 6. Finish:
