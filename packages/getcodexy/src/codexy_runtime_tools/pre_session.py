@@ -85,6 +85,7 @@ def run_pre_session(
     validate_or_quarantine_marketplace(
         executable, invoke, home, marketplace_root, f"v{target_version}"
     )
+    materialize_watcher(marketplace_root / "plugins/codexy", home)
     _json(
         invoke([str(executable), "plugin", "add", "codexy@codexy", "--json"]),
         "plugin add",
@@ -94,7 +95,6 @@ def run_pre_session(
         marketplace_root,
         target_version,
     )
-    materialize_watcher(plugin, home)
     current = synchronize(plugin, home, "check")
     if current.status == "ready":
         return PreSessionResult(plugin, version, False)

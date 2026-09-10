@@ -197,12 +197,12 @@ def apply_forward(
                 manifest.version,
                 home,
             )
+    if "core" in journal.target:
+        materialize_watcher(marketplace_path(root) / "plugins/codexy", home)
     for component in adds:
         mutate(executable, invoke, "add", manifest, component)
     for component in removes:
         mutate(executable, invoke, "remove", manifest, component)
-    if "core" in journal.target:
-        materialize_watcher(marketplace_path(root) / "plugins/codexy", home)
     return verify_post_operation_inventory(
         manifest, list_installed(executable, invoke), journal.target, root
     )

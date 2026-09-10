@@ -65,6 +65,7 @@ def run_github_pre_session(
     ]
     snapshot = ActivationSnapshot.capture(home)
     try:
+        materialize_watcher(marketplace_root / "plugins/codexy", home)
         for identity in ("codexy@codexy", "codexy-github@codexy"):
             _json(
                 invoke([str(executable), "plugin", "add", identity, "--json"]),
@@ -82,7 +83,6 @@ def run_github_pre_session(
         if core_version != github_version:
             raise ValueError("Codexy core and GitHub plugin versions must match")
         verify_component(core_root, "codexy", core_version)
-        materialize_watcher(core_root, home)
         with (
             frozen_component(core_root, "codexy", core_version) as trusted_core,
             frozen_component(

@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import os
 import unittest
+from unittest.mock import patch
 
 from codexy_runtime_tools.component_lifecycle import run_operation
-from codexy_runtime_tools.component_watcher_materialization import watcher_entrypoint
+from codexy_runtime_tools.component_watcher_materialization import (
+    materialize_watcher,
+    watcher_entrypoint,
+)
 from packages.getcodexy.tests.component_lifecycle_records import record
 from packages.getcodexy.tests.component_lifecycle_support import fixture
 
@@ -22,16 +26,27 @@ class LifecycleWatcherTests(unittest.TestCase):
 
     def test_install_materializes_the_registered_watcher_entrypoint(self) -> None:
         with fixture() as state:
-            receipt = run_operation(
-                "install",
-                (),
-                state.home,
-                state.codex,
-                state.run,
-                operation_id="op-install-watcher",
-            )
+            seen_mutations: list[tuple[str, ...]] = []
+
+            def materialize_before_host_add(plugin, home):
+                seen_mutations.append(tuple(state.mutations))
+                return materialize_watcher(plugin, home)
+
+            with patch(
+                "codexy_runtime_tools.component_lifecycle_recovery.materialize_watcher",
+                side_effect=materialize_before_host_add,
+            ):
+                receipt = run_operation(
+                    "install",
+                    (),
+                    state.home,
+                    state.codex,
+                    state.run,
+                    operation_id="op-install-watcher",
+                )
 
             self.assertEqual(receipt["outcome"], "completed")
+            self.assertEqual(seen_mutations, [()])
             watcher = watcher_entrypoint(state.marketplace / "plugins/codexy")
             self.assertEqual(watcher.read_bytes(), self._expected_source(state))
 
@@ -40,16 +55,31 @@ class LifecycleWatcherTests(unittest.TestCase):
             record(state.home, ["core"])
             watcher = watcher_entrypoint(state.marketplace / "plugins/codexy")
             watcher.write_bytes(b"stale target")
-            receipt = run_operation(
-                "update",
-                ("core",),
-                state.home,
-                state.codex,
-                state.run,
-                operation_id="op-update-watcher",
-            )
+            seen_mutations: list[tuple[str, ...]] = []
+
+            def materialize_before_host_update(plugin, home):
+                seen_mutations.extend(
+                    mutation
+                    for mutation in state.mutations
+                    if mutation[:2] == ("plugin", "add")
+                )
+                return materialize_watcher(plugin, home)
+
+            with patch(
+                "codexy_runtime_tools.component_lifecycle_recovery.materialize_watcher",
+                side_effect=materialize_before_host_update,
+            ):
+                receipt = run_operation(
+                    "update",
+                    ("core",),
+                    state.home,
+                    state.codex,
+                    state.run,
+                    operation_id="op-update-watcher",
+                )
 
             self.assertEqual(receipt["outcome"], "completed")
+            self.assertEqual(seen_mutations, [])
             self.assertEqual(watcher.read_bytes(), self._expected_source(state))
 
     @unittest.skipIf(os.name == "nt", "creating a symlink requires Windows privileges")
