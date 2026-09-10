@@ -89,6 +89,50 @@ class GithubPreSessionDefaultActivationTests(unittest.TestCase):
                 manifest.write_text(json.dumps(contents), encoding="utf-8")
                 self._assert_rollback(root, core, github)
 
+    def test_symlinked_watcher_parent_is_rejected_before_materialization(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root, core, github = activation_fixture(Path(temporary))
+            outside = root / "outside"
+            outside.mkdir()
+            moved = outside / "mcp"
+            (core / "mcp").rename(moved)
+            marker = moved / "codexy-mcp-watcher"
+            marker.write_bytes(b"preserve")
+            (core / "mcp").symlink_to(moved, target_is_directory=True)
+            list_calls = 0
+
+            def runner(command: list[str]) -> subprocess.CompletedProcess[str]:
+                nonlocal list_calls
+                if command[1:4] == ["plugin", "marketplace", "list"]:
+                    payload: object = {
+                        "marketplaces": [marketplace_entry(root / "marketplace")]
+                    }
+                elif command[1:3] == ["plugin", "list"]:
+                    list_calls += 1
+                    payload = {
+                        "installed": []
+                        if list_calls == 1
+                        else [
+                            installed(core, "codexy"),
+                            installed(github, "codexy-github"),
+                        ]
+                    }
+                else:
+                    payload = {"ok": True}
+                return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
+
+            with self.assertRaisesRegex(ValueError, "link|reparse"):
+                run_github_pre_session(
+                    root / "fresh Codex home",
+                    codex=executable(root),
+                    runner=runner,
+                    synchronize=lambda *_: self.fail(
+                        "symlinked component reached activation"
+                    ),
+                    package_version=version(core),
+                )
+            self.assertEqual(marker.read_bytes(), b"preserve")
+
     def test_duplicate_manifest_keys_fail_and_roll_back(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root, core, github = activation_fixture(Path(temporary))

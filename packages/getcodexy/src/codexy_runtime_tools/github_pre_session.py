@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from .component_integrity import frozen_component
+from .component_integrity import frozen_component, verify_component
 from .component_registration_health import valid_registration
 from .component_watcher_materialization import materialize_watcher
 from .activation_transaction import ActivationSnapshot
@@ -81,6 +81,7 @@ def run_github_pre_session(
         )
         if core_version != github_version:
             raise ValueError("Codexy core and GitHub plugin versions must match")
+        verify_component(core_root, "codexy", core_version)
         materialize_watcher(core_root, home)
         with (
             frozen_component(core_root, "codexy", core_version) as trusted_core,

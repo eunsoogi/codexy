@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import unittest
 
 from codexy_runtime_tools.component_lifecycle import run_operation
@@ -9,6 +10,16 @@ from packages.getcodexy.tests.component_lifecycle_support import fixture
 
 
 class LifecycleWatcherTests(unittest.TestCase):
+    @staticmethod
+    def _expected_source(state) -> bytes:
+        plugin = state.marketplace / "plugins/codexy"
+        relative = (
+            "runtime/codexy-mcp-watcher-windows-x86_64.exe"
+            if os.name == "nt"
+            else "mcp/codexy-mcp-watcher.sh"
+        )
+        return (plugin / relative).read_bytes()
+
     def test_install_materializes_the_registered_watcher_entrypoint(self) -> None:
         with fixture() as state:
             receipt = run_operation(
@@ -22,12 +33,7 @@ class LifecycleWatcherTests(unittest.TestCase):
 
             self.assertEqual(receipt["outcome"], "completed")
             watcher = watcher_entrypoint(state.marketplace / "plugins/codexy")
-            self.assertEqual(
-                watcher.read_bytes(),
-                (
-                    state.marketplace / "plugins/codexy/mcp/codexy-mcp-watcher.sh"
-                ).read_bytes(),
-            )
+            self.assertEqual(watcher.read_bytes(), self._expected_source(state))
 
     def test_update_refreshes_a_stale_materialized_watcher_entrypoint(self) -> None:
         with fixture({"core"}) as state:
@@ -44,12 +50,7 @@ class LifecycleWatcherTests(unittest.TestCase):
             )
 
             self.assertEqual(receipt["outcome"], "completed")
-            self.assertEqual(
-                watcher.read_bytes(),
-                (
-                    state.marketplace / "plugins/codexy/mcp/codexy-mcp-watcher.sh"
-                ).read_bytes(),
-            )
+            self.assertEqual(watcher.read_bytes(), self._expected_source(state))
 
 
 if __name__ == "__main__":
