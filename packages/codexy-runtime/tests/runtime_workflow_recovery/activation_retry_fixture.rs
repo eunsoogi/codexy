@@ -1,5 +1,4 @@
 use super::receipt::receipt;
-use serde_json::Value;
 use std::{
     fs,
     path::{Path, PathBuf},
