@@ -44,9 +44,13 @@ missing terminal delivery, or a ready external gate may be reported.
 The Orchestrator MUST keep the overall goal active and owned by itself while the
 Watcher subagent observes. It MAY use `wait_watcher` with the parent token and
 cursor for bounded waiting; a user input or host cancellation MUST release that
-wait immediately. The Watcher has no long-lived release goal. If the host
-exposes a finite goal for the subagent, that goal MUST cover only the bounded
-observation assignment and MUST NOT be treated as issue or release completion.
+wait immediately only when the host propagates it as a same-connection MCP
+cancellation. A task message or outer wait termination may leave the native
+wait active; report that limitation, use authorized `watcher_cancel`, and open a
+new assignment/session for a fresh observation. The Watcher has no long-lived
+release goal. If the host exposes a finite goal for the subagent, that goal MUST
+cover only the bounded observation assignment and MUST NOT be treated as issue
+or release completion.
 The Orchestrator MUST inspect the relevant Worker/app surface after a material
 report, decide and instruct the Worker, and verify the resulting call or diff.
 

@@ -29,10 +29,13 @@ app task, spawn another agent, or recruit another Watcher. MUST NOT treat
 watcher_health, a timestamp, or liveness alone as semantic acceptance.
 
 The Orchestrator waits through wait_watcher and judges the returned report. A
-host user interrupt releases the pending wait immediately but does not by
-itself cancel the observation session; watcher_cancel ends the session only
-when the Orchestrator authorizes it. MUST return after the bounded assignment,
-material report, cancellation, or a clearly reported host limitation.
+same-connection MCP cancellation notification releases a pending wait when the
+host propagates it; a host/task message or outer wait termination may leave the
+native wait active. If host cancellation is unavailable, MUST report the
+limitation, use watcher_cancel only when the Orchestrator authorizes it, and
+open a new assignment/session for a fresh observation. watcher_cancel ends the
+current session only; MUST return after the bounded assignment, material
+report, cancellation, or a clearly reported host limitation.
 
 Evidence expectations: distinguish native creation and status evidence, real
 Worker/app observation, MCP report identity, wait delivery, health state, and
