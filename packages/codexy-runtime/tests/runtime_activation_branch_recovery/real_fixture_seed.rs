@@ -16,7 +16,8 @@ pub(super) struct MaterializedFixture {
 // Keep only files that the activation and validation contracts read. The
 // verifier archives this fixture four times, so recursive source trees multiply
 // Windows filesystem work without adding an oracle.
-const PREPARED_PATHS: [&str; 25] = [
+const PREPARED_PATHS: [&str; 26] = [
+    "AGENTS.md",
     ".agents/plugins",
     ".gitattributes",
     ".github/workflows/plugin-runtime-binaries.yml",
