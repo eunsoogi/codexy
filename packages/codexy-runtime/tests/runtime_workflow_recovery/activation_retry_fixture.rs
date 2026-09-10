@@ -6,6 +6,8 @@ use std::{
     process::{Command, Output},
 };
 
+#[path = "activation_retry_fixture_scripts.rs"]
+mod scripts;
 #[path = "activation_retry_setup.rs"]
 mod setup;
 
@@ -37,11 +39,7 @@ impl Fixture {
     ) -> Result<String, Box<dyn std::error::Error>> {
         Ok(git(
             &self.repo,
-            &[
-                "ls-remote",
-                "origin",
-                &format!("refs/heads/{branch}"),
-            ],
+            &["ls-remote", "origin", &format!("refs/heads/{branch}")],
         )?
         .split_whitespace()
         .next()
@@ -51,20 +49,57 @@ impl Fixture {
 
     pub(crate) fn select_branch(
         &self,
+        version: &str,
         receipt: &Path,
     ) -> Result<String, Box<dyn std::error::Error>> {
         success(
-            Command::new(self.repo.join("scripts/select-runtime-activation-branch.sh"))
-                .args([&self.version, receipt.to_str().ok_or("receipt path")?])
-                .env(
-                    "PATH",
-                    format!("{}:{}", self.bin.display(), std::env::var("PATH")?),
-                )
+            Command::new(
+                self.repo
+                    .join("scripts/select-runtime-activation-branch.sh"),
+            )
+            .args([version, receipt.to_str().ok_or("receipt path")?])
+            .env(
+                "PATH",
+                format!("{}:{}", self.bin.display(), std::env::var("PATH")?),
+            )
+            .env("GH_TOKEN", "fixture-github-token")
+            .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
+            .env("CODEXY_FIXTURE_STEP", "direct-selector")
+            .env("PR_STATE_FILE", self.root.path().join("pr-state"))
+            .env("OPEN_ACTIVATION_BRANCH", &self.open_branch)
+            .env("PR_READBACK_MODE", &self.mutation)
+            .output()?,
+        )
+    }
+
+    pub(crate) fn pr_states(&self, branch: &str) -> Result<String, Box<dyn std::error::Error>> {
+        success(
+            Command::new(self.bin.join("gh"))
+                .args([
+                    "pr",
+                    "list",
+                    "--head",
+                    branch,
+                    "--state",
+                    "all",
+                    "--json",
+                    "state",
+                    "--jq",
+                    ".[].state",
+                ])
                 .env("GH_TOKEN", "fixture-github-token")
-                .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
-                .env("CODEXY_FIXTURE_STEP", "direct-selector")
+                .env("CODEXY_FIXTURE_STEP", "fixture-history")
+                .env("PR_READBACK_MODE", &self.mutation)
                 .env("PR_STATE_FILE", self.root.path().join("pr-state"))
-                .env("OPEN_ACTIVATION_BRANCH", &self.open_branch)
+                .env("LEGACY_BRANCH", &self.legacy_branch)
+                .env(
+                    "LEGACY_PR_STATE",
+                    if self.mutation == "merged-deleted" || self.mutation == "retained" {
+                        "MERGED"
+                    } else {
+                        ""
+                    },
+                )
                 .output()?,
         )
     }
@@ -132,6 +167,15 @@ impl Fixture {
             .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
             .env("ACTIVATION_BRANCH", &self.branch)
             .env("OPEN_ACTIVATION_BRANCH", &self.open_branch)
+            .env("LEGACY_BRANCH", &self.legacy_branch)
+            .env(
+                "LEGACY_PR_STATE",
+                if self.mutation == "merged-deleted" || self.mutation == "retained" {
+                    "MERGED"
+                } else {
+                    ""
+                },
+            )
             .env("PR_READBACK_MODE", &self.mutation)
             .env("PR_READBACK_ATTEMPT", temporary.join("pr-readback-attempt"))
             .env("PR_STATE_FILE", self.root.path().join("pr-state"))
@@ -178,41 +222,3 @@ pub(crate) fn success(output: Output) -> Result<String, Box<dyn std::error::Erro
     }
     Ok(String::from_utf8(output.stdout)?.trim().to_owned())
 }
-
-const GH: &str = r#"#!/bin/sh
-set -eu
-test "${GH_TOKEN:-}" = fixture-github-token || { echo "verifier GitHub query requires GH_TOKEN: $CODEXY_FIXTURE_STEP" >&2; exit 4; }
-case "$*" in
-  'pr list '*'--json number,headRefName'*)
-    if test "$(cat "$PR_STATE_FILE")" = 1; then
-      printf '[{"number":1,"headRefName":"%s"}]\n' "$OPEN_ACTIVATION_BRANCH"
-    else
-      printf '[]\n'
-    fi
-    ;;
-  'pr list '*'--json state '*) if test "$(cat "$PR_STATE_FILE")" = 1; then printf '%s\n' OPEN; fi ;;
-  'pr list '*'--json number '*) cat "$PR_STATE_FILE" ;;
-  'pr list '*'--json headRefOid '*)
-    attempt=0
-    test ! -f "$PR_READBACK_ATTEMPT" || attempt=$(cat "$PR_READBACK_ATTEMPT")
-    attempt=$((attempt + 1)); printf '%s' "$attempt" > "$PR_READBACK_ATTEMPT"
-    head=$(git rev-parse HEAD); count=$(cat "$PR_STATE_FILE")
-    case "$PR_READBACK_MODE" in
-      readback-delay) if test "$attempt" -lt 3; then head=$(git rev-parse HEAD^); fi ;;
-      readback-wrong) head=$(git rev-parse HEAD^) ;;
-      readback-missing) head=missing; count=0 ;;
-      readback-duplicate) count=2 ;;
-    esac
-    case "$*" in *'@tsv'*) printf '%s\t%s\n' "$count" "$head" ;; *) printf '%s\n' "$head" ;; esac ;;
-  'pr create '*) test "$(cat "$PR_STATE_FILE")" = 0; printf 1 > "$PR_STATE_FILE" ;;
-  *) echo "unexpected GitHub mutation: $*" >&2; exit 98 ;;
-esac
-"#;
-
-const CARGO: &str = r#"#!/bin/sh
-set -eu
-case "$*" in *'--bin codexy-sync-version -- '*) ;; *) exit 99 ;; esac
-while test "$1" != --; do shift; done
-shift
-exec "$CODEXY_TEST_SYNC_VERSION_BINARY" "$@"
-"#;

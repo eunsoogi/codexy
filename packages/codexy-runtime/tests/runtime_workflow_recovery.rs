@@ -4,37 +4,39 @@ use serde_yaml::Value;
 
 use crate::support;
 
+#[cfg(unix)]
+#[path = "runtime_workflow_recovery/activation_generation_behavior.rs"]
+mod activation_generation_behavior;
+#[path = "runtime_workflow_recovery/activation_generation_contract.rs"]
+mod activation_generation_contract;
+#[cfg(unix)]
+#[path = "runtime_workflow_recovery/activation_retry_behavior.rs"]
+mod activation_retry_behavior;
+#[path = "runtime_workflow_recovery/ci_dispatch.rs"]
+mod ci_dispatch;
+#[cfg(unix)]
+#[path = "runtime_workflow_recovery/ci_dispatch_behavior.rs"]
+mod ci_dispatch_behavior;
+#[path = "runtime_workflow_recovery/durable_selection.rs"]
+mod durable_selection;
+#[path = "runtime_workflow_recovery/durable_selection_behavior.rs"]
+mod durable_selection_behavior;
+#[path = "runtime_workflow_recovery/exact_pr_head_admission.rs"]
+mod exact_pr_head_admission;
+#[path = "runtime_workflow_recovery/legacy_public_assembly.rs"]
+mod legacy_public_assembly;
+#[path = "runtime_workflow_recovery/legacy_selected_source.rs"]
+mod legacy_selected_source;
 #[path = "runtime_workflow_recovery/release_lineage.rs"]
 mod release_lineage;
 #[path = "runtime_workflow_recovery/release_reconciliation.rs"]
 mod release_reconciliation;
 #[path = "runtime_workflow_recovery/release_tag_admission.rs"]
 mod release_tag_admission;
-#[path = "runtime_workflow_recovery/durable_selection.rs"]
-mod durable_selection;
-#[path = "runtime_workflow_recovery/durable_selection_behavior.rs"]
-mod durable_selection_behavior;
-#[path = "runtime_workflow_recovery/legacy_selected_source.rs"]
-mod legacy_selected_source;
-#[path = "runtime_workflow_recovery/legacy_public_assembly.rs"]
-mod legacy_public_assembly;
-#[path = "runtime_workflow_recovery/exact_pr_head_admission.rs"]
-mod exact_pr_head_admission;
 #[path = "runtime_workflow_recovery/windows_smoke.rs"]
 mod windows_smoke;
-#[path = "runtime_workflow_recovery/ci_dispatch.rs"]
-mod ci_dispatch;
-#[cfg(unix)]
-#[path = "runtime_workflow_recovery/ci_dispatch_behavior.rs"]
-mod ci_dispatch_behavior;
-#[cfg(unix)]
-#[path = "runtime_workflow_recovery/activation_retry_behavior.rs"]
-mod activation_retry_behavior;
-#[cfg(unix)]
-#[path = "runtime_workflow_recovery/activation_generation_behavior.rs"]
-mod activation_generation_behavior;
-#[path = "runtime_workflow_recovery/activation_generation_contract.rs"]
-mod activation_generation_contract;
+#[path = "runtime_workflow_recovery/workflow_behavior.rs"]
+mod workflow_behavior;
 
 #[test]
 fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()
@@ -61,22 +63,11 @@ fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()
     support::assert_structured_literals(
         &download,
         "authenticated staging downloader",
-        &[".status \"$run\")\" = completed", ".conclusion \"$run\")\" = success"],
+        &[
+            ".status \"$run\")\" = completed",
+            ".conclusion \"$run\")\" = success",
+        ],
     );
-    Ok(())
-}
-
-#[test]
-fn staging_publication_uses_expiring_authenticated_artifacts()
--> Result<(), Box<dyn std::error::Error>> {
-    let candidate = workflow("runtime-candidate.yml")?;
-    let steps = candidate["jobs"]["stage-runtime"]["steps"]
-        .as_sequence()
-        .ok_or("staging steps")?;
-    let (_, publish) = named_step(steps, "Upload authenticated staging bundle")?;
-    assert_eq!(publish["uses"], "actions/upload-artifact@v7");
-    assert_eq!(publish["with"]["name"], "runtime-staging-${{ github.run_id }}-${{ github.run_attempt }}");
-    assert_eq!(publish["with"]["retention-days"], 14);
     Ok(())
 }
 
@@ -94,7 +85,9 @@ fn staging_publication_records_a_reproducible_success_binding()
     support::assert_structured_literals(
         &assembly,
         "reproducible candidate archive",
-        &["tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy"],
+        &[
+            "tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy",
+        ],
     );
     let publish = run(
         &candidate,
@@ -123,7 +116,11 @@ fn activation_requires_a_successful_authenticated_staging_binding()
     support::assert_structured_literals(
         &download,
         "activation staging success binding",
-        &["runtime-staging-artifacts.json", "actions/artifacts/$artifact_id/zip", ".expired == false"],
+        &[
+            "runtime-staging-artifacts.json",
+            "actions/artifacts/$artifact_id/zip",
+            ".expired == false",
+        ],
     );
     Ok(())
 }
@@ -132,7 +129,11 @@ fn activation_requires_a_successful_authenticated_staging_binding()
 fn activation_pr_creation_reuses_an_existing_verified_staging_branch()
 -> Result<(), Box<dyn std::error::Error>> {
     let activation = workflow("runtime-activation.yml")?;
-    let branch = run(&activation, "open-activation-pr", "Prepare one version-selection branch")?;
+    let branch = run(
+        &activation,
+        "open-activation-pr",
+        "Prepare one version-selection branch",
+    )?;
     support::assert_structured_literals(
         branch,
         "resumable activation pull request",
@@ -143,8 +144,19 @@ fn activation_pr_creation_reuses_an_existing_verified_staging_branch()
             "\"$BOOTSTRAP_VERSION\" \"$RUNNER_TEMP/codexy-runtime-staging/runtime-staging-receipt.json\"",
         ],
     );
-    let creation = run(&activation, "open-activation-pr", "Create exactly one activation pull request")?;
-    support::assert_structured_literals(creation, "activation PR reuse", &["gh pr list --head \"$branch\" --state open", "git rev-parse -q --verify MERGE_HEAD"]);
+    let creation = run(
+        &activation,
+        "open-activation-pr",
+        "Create exactly one activation pull request",
+    )?;
+    support::assert_structured_literals(
+        creation,
+        "activation PR reuse",
+        &[
+            "gh pr list --head \"$branch\" --state open",
+            "git rev-parse -q --verify MERGE_HEAD",
+        ],
+    );
     Ok(())
 }
 
@@ -157,7 +169,10 @@ fn activation_new_and_retry_paths_share_post_transform_tree_verification()
         .ok_or("activation job")?;
     let steps = job["steps"].as_sequence().ok_or("activation steps")?;
     let prepare = step_index(steps, "Prepare one version-selection branch")?;
-    let apply = step_index(steps, "Apply verified activation and version-selection contract")?;
+    let apply = step_index(
+        steps,
+        "Apply verified activation and version-selection contract",
+    )?;
     let stage = step_index(steps, "Stage and verify activation branch")?;
     let create = step_index(steps, "Create exactly one activation pull request")?;
     assert!(prepare < apply && apply < stage && stage < create);
@@ -186,46 +201,22 @@ fn activation_new_and_retry_paths_share_post_transform_tree_verification()
     Ok(())
 }
 
-#[test]
-fn candidate_builds_run_platform_local_lsp_and_codegraph_protocol_smokes()
--> Result<(), Box<dyn std::error::Error>> {
-    let candidate = workflow("runtime-candidate.yml")?;
-    let steps = candidate["jobs"]["build-runtime"]["steps"]
-        .as_sequence()
-        .ok_or("build-runtime steps")?;
-    let smoke = named_step(steps, "Smoke platform-local MCP protocols")?;
-    let package = step_index(steps, "Package declared platform binaries")?;
-    assert!(smoke.0 < package, "protocol smoke must precede packaging");
-    let script = smoke.1["run"].as_str().ok_or("smoke run")?;
-    support::assert_structured_literals(
-        script,
-        "platform-local MCP protocol smokes",
-        &[
-            "codexy-mcp-lsp",
-            "codexy-mcp-codegraph",
-            "\"method\": \"initialize\"",
-            "\"protocolVersion\": \"2024-11-05\"",
-            "\"name\": \"lsp_status\"",
-            "\"name\": \"codegraph_overview\"",
-        ],
-    );
-    Ok(())
-}
-
 fn workflow(name: &str) -> Result<Value, Box<dyn std::error::Error>> {
-    let path = codexy_runtime::paths::repository_root().join(".github/workflows").join(name);
+    let path = codexy_runtime::paths::repository_root()
+        .join(".github/workflows")
+        .join(name);
     Ok(serde_yaml::from_str(&fs::read_to_string(path)?)?)
 }
 
 fn script(name: &str) -> Result<String, Box<dyn std::error::Error>> {
-    Ok(fs::read_to_string(codexy_runtime::paths::repository_root().join("scripts").join(name))?)
+    Ok(fs::read_to_string(
+        codexy_runtime::paths::repository_root()
+            .join("scripts")
+            .join(name),
+    )?)
 }
 
-fn run<'a>(
-    value: &'a Value,
-    job: &str,
-    name: &str,
-) -> Result<&'a str, Box<dyn std::error::Error>> {
+fn run<'a>(value: &'a Value, job: &str, name: &str) -> Result<&'a str, Box<dyn std::error::Error>> {
     value["jobs"][job]["steps"]
         .as_sequence()
         .and_then(|steps| steps.iter().find(|step| step["name"] == name))

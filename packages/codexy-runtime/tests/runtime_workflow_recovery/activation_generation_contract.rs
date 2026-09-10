@@ -21,7 +21,11 @@ fn activation_steps_reuse_the_receipt_bound_generation_branch()
             assert!(!run.contains("select-runtime-activation-branch.sh"));
         }
     }
-    let prepare = super::run(&activation, "open-activation-pr", "Prepare one version-selection branch")?;
+    let prepare = super::run(
+        &activation,
+        "open-activation-pr",
+        "Prepare one version-selection branch",
+    )?;
     assert!(!prepare.contains("branch=\"codexy/runtime-activation-v${BOOTSTRAP_VERSION}\""));
     Ok(())
 }

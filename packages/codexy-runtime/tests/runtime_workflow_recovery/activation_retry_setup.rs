@@ -1,5 +1,5 @@
-use super::*;
 use super::super::receipt::receipt_with_identity;
+use super::*;
 
 pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
@@ -52,7 +52,12 @@ pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Err
         .as_str()
         .ok_or("candidate version")?
         .to_owned();
-    let legacy_branch = format!("codexy/runtime-activation-v{version}-staging-42-1");
+    let generation_branch = format!("codexy/runtime-activation-v{version}-staging-42-1");
+    let legacy_branch = if matches!(mutation, "merged-deleted" | "retained") {
+        format!("codexy/runtime-activation-v{version}")
+    } else {
+        generation_branch
+    };
     let branch = legacy_branch.clone();
     git(&repo, &["switch", "-c", &legacy_branch])?;
     success(
@@ -124,10 +129,10 @@ pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Err
         )?;
         branch = format!("codexy/runtime-activation-v{version}-staging-43-2");
     }
-    let open_branch = if mutation == "competing" {
-        format!("codexy/runtime-activation-v{version}-staging-99-1")
-    } else {
-        branch.clone()
+    let open_branch = match mutation {
+        "competing" => format!("codexy/runtime-activation-v{version}-staging-99-1"),
+        "adjacent-version" => "codexy/runtime-activation-v1.7.10-staging-99-1".to_owned(),
+        _ => branch.clone(),
     };
     fs::write(
         root.path().join("pr-state"),
@@ -139,7 +144,7 @@ pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Err
     )?;
     let bin = root.path().join("bin");
     fs::create_dir(&bin)?;
-    for (name, body) in [("gh", GH), ("cargo", CARGO)] {
+    for (name, body) in [("gh", super::scripts::GH), ("cargo", super::scripts::CARGO)] {
         fs::write(bin.join(name), body)?;
         crate::support::make_executable(&bin.join(name))?;
     }

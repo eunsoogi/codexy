@@ -30,7 +30,7 @@ legacy_branch="codexy/runtime-activation-v${version}"
 branch="${legacy_branch}-staging-${staging_run_id}-${staging_run_attempt}"
 git check-ref-format --branch "$branch" >/dev/null 2>&1 || fail "derived activation branch is invalid"
 
-if open_prs="$(gh pr list --repo "$repository" --base main --state open --limit 100 --json number,headRefName)"; then
+if open_prs="$(gh pr list --repo "$repository" --base main --state open --limit 101 --json number,headRefName)"; then
 	:
 else
 	gh_status=$?
@@ -38,9 +38,11 @@ else
 	exit "$gh_status"
 fi
 printf '%s\n' "$open_prs" | jq -e 'type == "array" and all(.[]; (.number | type) == "number" and (.headRefName | type) == "string")' >/dev/null || fail "open activation pull-request state is invalid"
+inventory_count="$(printf '%s\n' "$open_prs" | jq -er 'length')"
+test "$inventory_count" -lt 101 || fail "open activation pull-request inventory is saturated"
 matching="$(printf '%s\n' "$open_prs" | jq -er --arg branch "$branch" '[.[] | select(.headRefName == $branch)] | length')"
 test "$matching" -le 1 || fail "duplicate activation pull requests: branch=$branch count=$matching"
-competing="$(printf '%s\n' "$open_prs" | jq -er --arg prefix "$legacy_branch" --arg branch "$branch" '[.[] | select(.headRefName | startswith($prefix)) | select(.headRefName != $branch) | .headRefName] | unique | join(",")')"
+competing="$(printf '%s\n' "$open_prs" | jq -er --arg legacy "$legacy_branch" --arg generation_prefix "$legacy_branch-staging-" --arg branch "$branch" '[.[] | select(.headRefName == $legacy or (.headRefName | startswith($generation_prefix))) | select(.headRefName != $branch) | .headRefName] | unique | join(",")')"
 test -z "$competing" || fail "competing runtime activation pull request: $competing"
 
 printf '%s\n' "$branch"

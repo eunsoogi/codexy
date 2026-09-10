@@ -1,6 +1,6 @@
-use std::fs;
 use super::activation_retry_behavior::fixture::{Fixture, git, success};
 use super::activation_retry_behavior::receipt_with_identity;
+use std::fs;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
@@ -25,21 +25,71 @@ fn activation_generation_distinguishes_receipt_attempts() -> TestResult {
     let source = git(&fixture.repo, &["rev-parse", "main"])?;
     let tree = git(&fixture.repo, &["rev-parse", "main^{tree}"])?;
     let first = tempfile::NamedTempFile::new()?;
-    fs::write(first.path(), serde_json::to_vec(&receipt_with_identity(&source, &tree, 42, 1))?)?;
+    fs::write(
+        first.path(),
+        serde_json::to_vec(&receipt_with_identity(&source, &tree, 42, 1))?,
+    )?;
     let second = tempfile::NamedTempFile::new()?;
-    fs::write(second.path(), serde_json::to_vec(&receipt_with_identity(&source, &tree, 42, 2))?)?;
-    assert_ne!(fixture.select_branch(first.path())?, fixture.select_branch(second.path())?);
+    fs::write(
+        second.path(),
+        serde_json::to_vec(&receipt_with_identity(&source, &tree, 42, 2))?,
+    )?;
+    assert_ne!(
+        fixture.select_branch("1.7.0", first.path())?,
+        fixture.select_branch("1.7.0", second.path())?
+    );
+    Ok(())
+}
+
+#[test]
+fn activation_generation_rejects_a_saturated_open_pr_inventory() -> TestResult {
+    let fixture = Fixture::new("saturated")?;
+    let source = git(&fixture.repo, &["rev-parse", "main"])?;
+    let tree = git(&fixture.repo, &["rev-parse", "main^{tree}"])?;
+    let receipt = tempfile::NamedTempFile::new()?;
+    fs::write(
+        receipt.path(),
+        serde_json::to_vec(&receipt_with_identity(&source, &tree, 42, 1))?,
+    )?;
+    let error = fixture
+        .select_branch("1.7.0", receipt.path())
+        .expect_err("saturated PR inventory was accepted");
+    assert!(error.to_string().contains("inventory is saturated"));
+    Ok(())
+}
+
+#[test]
+fn activation_generation_does_not_confuse_a_longer_version_prefix() -> TestResult {
+    let fixture = Fixture::new("adjacent-version")?;
+    let source = git(&fixture.repo, &["rev-parse", "main"])?;
+    let tree = git(&fixture.repo, &["rev-parse", "main^{tree}"])?;
+    let receipt = tempfile::NamedTempFile::new()?;
+    fs::write(
+        receipt.path(),
+        serde_json::to_vec(&receipt_with_identity(&source, &tree, 42, 1))?,
+    )?;
+    assert_eq!(
+        fixture.select_branch("1.7.1", receipt.path())?,
+        "codexy/runtime-activation-v1.7.1-staging-42-1"
+    );
     Ok(())
 }
 
 #[test]
 fn activation_generation_uses_a_new_branch_after_deleted_legacy_activation() -> TestResult {
     let fixture = Fixture::new("merged-deleted")?;
-    assert!(git(
-        &fixture.repo,
-        &["ls-remote", "origin", &format!("refs/heads/{}", fixture.legacy_branch)],
-    )?
-    .is_empty());
+    assert_eq!(fixture.pr_states(&fixture.legacy_branch)?, "MERGED");
+    assert!(
+        git(
+            &fixture.repo,
+            &[
+                "ls-remote",
+                "origin",
+                &format!("refs/heads/{}", fixture.legacy_branch)
+            ],
+        )?
+        .is_empty()
+    );
     assert_ne!(fixture.branch, fixture.legacy_branch);
     success(fixture.run("new-generation")?)?;
     let head = fixture.remote_head()?;
@@ -51,9 +101,13 @@ fn activation_generation_uses_a_new_branch_after_deleted_legacy_activation() -> 
 #[test]
 fn activation_generation_preserves_a_retained_legacy_branch() -> TestResult {
     let fixture = Fixture::new("retained")?;
+    assert_eq!(fixture.pr_states(&fixture.legacy_branch)?, "MERGED");
     let legacy_head = fixture.remote_branch_head(&fixture.legacy_branch)?;
     success(fixture.run("retained-generation")?)?;
-    assert_eq!(fixture.remote_branch_head(&fixture.legacy_branch)?, legacy_head);
+    assert_eq!(
+        fixture.remote_branch_head(&fixture.legacy_branch)?,
+        legacy_head
+    );
     assert_ne!(fixture.remote_head()?, legacy_head);
     Ok(())
 }
