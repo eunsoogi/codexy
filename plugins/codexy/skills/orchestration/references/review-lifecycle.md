@@ -9,6 +9,29 @@ reauthorization, and route resets. Full remains one review and delta remains at
 most one recheck; the counters and history MUST not be reset or silently
 discarded.
 
+## Review ownership
+
+For a child-owned lane, the branch-owning child owns profile-selected internal
+review delegation, the wait for its natural terminal result, review-feedback
+repair, and native review-history preservation. The parent consumes that
+evidence, requests a separate repository-required external `@codex review` when
+applicable, and makes integration and readiness decisions. The parent MUST NOT
+invoke the child lane's internal reviewer or tell the child not to invoke it.
+
+The author MUST NOT review the author's own diff or present self-inspection as
+the profile-selected gate. Delegating the independent packaged reviewer is
+required when the selected profile requires one and is not self-review.
+
+If a parent has already summoned that internal reviewer for a child-owned lane,
+the owning child MUST preserve the authentic host event and existing direct
+review state. Any admitted terminal result MUST remain counted exactly once in
+`terminal_review_history`, with the actual sender, receiver, model, effort,
+reviewed head, result, and findings retained. The child MUST NOT reset history
+or create a duplicate fresh full review solely to repair the routing mistake.
+When a durable representation is missing, use the existing native-history
+capture/recovery path; preserve `not_attested` or `not_admitted` limitations and
+never fabricate a child sender or reviewer verdict.
+
 Missing historical evidence MUST be treated as a limitation on the review or
 readiness result, not automatically as a limitation on all authorized work. The
 agent MUST preserve the actual unknown, `UNOBSERVABLE`, `not_attested`, or

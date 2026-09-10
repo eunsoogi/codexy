@@ -43,6 +43,18 @@ concrete emergency permits one marked direct-parent fallback and one limitation
 receipt; it MUST NOT silently resume routine direct reporting or duplicate both
 routes. The exact direct-parent transition receipts above remain authoritative.
 
+## Callback evidence boundary
+
+The Worker/app transcript and the parent callback-delivery receipt are separate
+evidence surfaces. A Worker `read_thread` response—including a completed turn
+with `items: []`, an omitted `latestAssistantMessageId`, omitted fields, or a
+partial page—cannot establish that the parent callback was delivered or was
+missing. Delivery evidence MUST come from the actual parent task surface bound
+to the exact target and transition key. When that parent readback is absent or
+incomplete, preserve `unknown` and do not classify the callback as missing.
+Watcher absence reports MUST also follow the
+[observation evidence boundaries](observation-evidence.md).
+
 ## Delegated assignment authorization
 
 A parent-supplied assignment that names the objective and success criteria is

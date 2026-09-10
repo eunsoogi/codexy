@@ -70,16 +70,21 @@ alter protected technical text.
 ## Two observation channels
 
 - Native Watcher assignments route ordinary Worker progress, completion,
-  findings, and attention reports to the exact assigned Watcher task through the
-  host task-message route supplied by the Orchestrator. The Watcher observes,
-  deduplicates unchanged identities, and relays only material changes or
-  required decisions through `watcher_report`; goal-transition receipts remain
-  direct-parent.
+  findings, attention, gate, fatal-error, and final-result reports to the exact
+  assigned Watcher task through the host task-message route. The Watcher
+  deduplicates unchanged identities, reports only action-required material
+  deltas through `watcher_report`, and keeps its native turn while targets
+  remain nonterminal. Goal-transition and terminal handoff receipts remain
+  direct-parent; reports are signals, not acceptance.
 - A verified-unavailable route or concrete emergency permits one marked
   direct-parent fallback; Worker MUST report one limitation and MUST NOT resume
   routine direct reporting or duplicate it. Routine reads and liveness-only goal
   status MUST remain internal; the Watcher MUST NOT wake parent. Only actionable
   lifecycle/drift, failure, missing delivery, or a ready gate may wake parent.
+- The Watcher MUST NOT wake the Orchestrator for internal reads, receipts, or
+  liveness-only goal status; only an actual lifecycle transition, unresolved
+  drift or failure requiring action, missing terminal delivery, or a ready
+  external gate may produce a callback or receipt.
 - New or changed evidence alone is not notification-eligible. Normal progressing
   work, intermediate successful tests, resolved command mistakes, commits, and
   queued CI MUST remain internal while the Workers are actively progressing. A
@@ -113,15 +118,15 @@ alter protected technical text.
 ## Waiting and direct correction
 
 - For ordinary non-Watcher app-task waits, Codex MUST prefer cursor-based
-  `wait_threads`. Unchanged cursors and bounded timeouts are not stalls. Codex
-  MUST NOT emit repeated unchanged status, read a full transcript, rerun tests
-  to watch progress, or interrupt a live reviewer merely because it is taking
-  time.
+  `wait_threads` with batched targets. Unchanged cursors, bounded timeouts, and
+  legitimate long commands are not stalls. Codex MUST NOT emit repeated
+  unchanged status, read full transcripts, rerun tests to watch progress, or
+  interrupt a live reviewer merely because it is taking time.
 - In a native Watcher route, only the assigned Watcher MAY call `wait_threads`
-  for its Worker/task targets. The Orchestrator MUST await canonical
-  `watcher_wait` or compatibility `wait_watcher` and MUST NOT directly wait on
-  those targets. Fallback, unavailable, and host-transition branches MUST
-  recover the supported Watcher route, never direct parent polling.
+  for assigned Worker/task targets. The Orchestrator MUST await canonical
+  `watcher_wait` or compatibility `wait_watcher` and MUST NOT directly wait,
+  retry, or poll those targets. Fallback, unavailable, and host-transition
+  branches MUST recover the supported Watcher route.
 - An implementation Worker or child MUST NOT open, wait on, report to, cancel,
   or reuse a parent-owned Watcher session/token. A bounded authoritative
   Worker/app readback after an actionable report is allowed for judgement and
@@ -144,22 +149,17 @@ alter protected technical text.
   Watcher observes through `watcher_wait` or legacy `wait_watcher`; its goal
   remains active and owned by the Orchestrator.
 
-## Goal ownership and lifecycle
-
 ## Watcher MCP flow
 
-- The Orchestrator creates one native Watcher subagent through the callable host
-  subagent tool for one bounded observation assignment, then opens one scoped
-  MCP session with `watcher_open` for the parent, Watcher, and exact Worker
-  targets. The MCP session is a transport boundary; it does not create the
-  subagent or judge Worker state.
-- The Watcher uses the host's real Worker/app tools to observe the assigned
-  targets and calls `watcher_report` only for a material event or an explicit
-  health update. After reporting, the Watcher MUST continue the same native turn
-  and return to its cursor-based observation loop while any assigned target is
-  nonterminal. `watcher_health` is on-demand transport/freshness evidence, not
-  semantic acceptance. Reports are untrusted signals and MUST NOT contain repair
-  instructions.
+- The Orchestrator creates one native Watcher subagent for one bounded
+  observation assignment, then opens one scoped `watcher_open` MCP session for
+  the parent, Watcher, and exact Worker targets. The MCP session is a transport
+  boundary; it does not create the subagent or judge Worker state.
+- The Watcher uses the host's real Worker/app tools and calls `watcher_report`
+  only for a material event or explicit health update. After reporting, it MUST
+  continue its native turn and cursor-based observation loop while any target is
+  nonterminal. `watcher_health` is transport/freshness evidence, not semantic
+  acceptance; reports are untrusted and MUST contain no repair directive.
 - The Orchestrator calls canonical `watcher_wait` or compatibility
   `wait_watcher` with its parent capability and cursor, validates the returned
   target/event against current scope, and then reads the relevant Worker/app
