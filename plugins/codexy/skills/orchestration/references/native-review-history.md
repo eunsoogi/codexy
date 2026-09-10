@@ -93,3 +93,10 @@ new user decision. The agent MUST preserve the source's actual unavailable,
 `not_attested`, `not_admitted`, or unknown result and MUST NOT fabricate history
 or approval. Its collection MAY proceed as authorized preparation, while
 readiness MUST remain unproved until the authentic required source is available.
+
+The same limitation applies to a sparse or filtered review inventory. A
+completed turn with `items: []`, an omitted `latestAssistantMessageId`, an
+incomplete page, or a filtered list with no matching finding is not proof that
+the review event or finding was absent. Preserve the source as incomplete or
+unknown and require the complete authoritative inventory before making an
+absence claim.

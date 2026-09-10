@@ -40,6 +40,29 @@ captured PR title has passed validation. These retained title checks do not
 impose a body template, review quota, fixed approval phrase, or exclusive
 mutation route.
 
+## Review ownership and assignment
+
+For a child-owned implementation lane, the owning child MUST delegate the
+profile-selected internal reviewer after local proof, preserve its review
+history, and repair any actionable findings on the child branch. The parent MUST
+consume that evidence and MUST NOT spawn the internal reviewer or instruct the
+child not to spawn it. If repository policy requires a separate external
+`@codex review`, the parent requests it after the child's internal review and
+owns the resulting integration and readiness decision.
+
+The parent-to-child assignment MUST distinguish the author's prohibited
+self-review from the owning child's required delegation of an independent
+packaged reviewer. The nonrecursive prohibition belongs in a helper or reviewer
+assignment; it MUST NOT be copied into the owning-child assignment as a ban on
+the selected internal review.
+
+If the parent already spawned the selected internal reviewer before this
+ownership correction, the child MUST retain the authentic event and existing
+review count/history, including source sender and receiver facts. It MUST NOT
+start a duplicate fresh full review solely to make the child the historical
+sender; use the existing review-lifecycle/native-history recovery path when
+needed and keep any unavailable or non-admitted state explicit.
+
 Native host transcript capture and recovery apply only when a selected review or
 transition path consumes those historical events. If that path uses a selected
 review that occurred before PR creation, the owning child MUST locally verify

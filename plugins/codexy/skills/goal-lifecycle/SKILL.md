@@ -46,7 +46,10 @@ acceptance authority. The Watcher MUST NOT create, transfer, complete, or block
 a separate overall goal. The Watcher MCP transports the bounded assignment and
 reports; it does not grant the Watcher goal ownership. The delegated-assignment
 rule above continues to apply to implementation Workers, not to this native
-Watcher role.
+Watcher role. The Watcher keeps that assignment in one native turn and MUST NOT
+return after one report, one Worker completion, or an empty timeout while an
+assigned target remains nonterminal; it returns only for full assignment
+completion, explicit cancellation, or a verified host limitation.
 
 ## Required first transition
 
