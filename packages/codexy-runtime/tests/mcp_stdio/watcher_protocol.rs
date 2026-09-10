@@ -24,7 +24,7 @@ fn tool_payload(response: &Value) -> Result<Value, Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
+fn watcher_wait_is_released_by_mcp_cancellation_without_consuming_later_events(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let state = tempfile::tempdir()?;
     let mut client = watcher_client(state.path())?;
@@ -38,8 +38,18 @@ fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
     let names = list["result"]["tools"]
         .as_array()
         .ok_or("watcher tools must be an array")?;
-    assert!(names.iter().any(|tool| tool["name"] == "wait_watcher"));
-    assert!(!names.iter().any(|tool| tool["name"] == "watcher_wait"));
+    let canonical = names
+        .iter()
+        .find(|tool| tool["name"] == "watcher_wait")
+        .ok_or("canonical watcher_wait tool is missing")?;
+    let compatibility = names
+        .iter()
+        .find(|tool| tool["name"] == "wait_watcher")
+        .ok_or("wait_watcher compatibility tool is missing")?;
+    assert_eq!(canonical["inputSchema"], compatibility["inputSchema"]);
+    assert!(compatibility["description"]
+        .as_str()
+        .is_some_and(|description| description.contains("Compatibility alias")));
 
     let opened = client.send(&json!({
         "jsonrpc":"2.0","id":3,"method":"tools/call",
@@ -58,7 +68,7 @@ fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
 
     client.send_without_read(&json!({
         "jsonrpc":"2.0","id":4,"method":"tools/call",
-        "params":{"name":"wait_watcher","arguments":{
+        "params":{"name":"watcher_wait","arguments":{
             "sessionId":session,"parentToken":parent_token,"timeoutMs":30000
         }}
     }))?;
@@ -91,7 +101,7 @@ fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
     }))?;
     let replacement = client.send(&json!({
         "jsonrpc":"2.0","id":41,"method":"tools/call",
-        "params":{"name":"wait_watcher","arguments":{
+        "params":{"name":"watcher_wait","arguments":{
             "sessionId":session,"parentToken":parent_token,"cursor":0,"timeoutMs":0
         }}
     }))?;
@@ -136,7 +146,7 @@ fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
 
     let waited = client.send(&json!({
         "jsonrpc":"2.0","id":7,"method":"tools/call",
-        "params":{"name":"wait_watcher","arguments":{
+        "params":{"name":"watcher_wait","arguments":{
             "sessionId":session,"parentToken":parent_token,"cursor":0,"timeoutMs":1000
         }}
     }))?;
@@ -147,7 +157,7 @@ fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
     assert!(cursor.as_str().is_some(), "watcher cursors must round-trip as strings");
     let empty = client.send(&json!({
         "jsonrpc":"2.0","id":71,"method":"tools/call",
-        "params":{"name":"wait_watcher","arguments":{
+        "params":{"name":"watcher_wait","arguments":{
             "sessionId":session,"parentToken":parent_token,
             "cursor":cursor,"timeoutMs":0
         }}
@@ -169,5 +179,53 @@ fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
         }}
     }))?;
     assert_eq!(tool_payload(&cancelled)?["status"], "cancelled");
+    Ok(())
+}
+
+#[test]
+fn watcher_wait_and_legacy_alias_return_the_same_payload(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let state = tempfile::tempdir()?;
+    let mut client = watcher_client(state.path())?;
+    client.send(&json!({
+        "jsonrpc":"2.0","id":1,"method":"initialize","params":{}
+    }))?;
+    let opened = client.send(&json!({
+        "jsonrpc":"2.0","id":2,"method":"tools/call",
+        "params":{"name":"watcher_open","arguments":{
+            "assignmentId":"alias-result-test",
+            "parent":{"id":"parent-task"},
+            "watcher":{"id":"native-watcher"},
+            "targets":[{"threadId":"target-thread"}],
+            "ttlSeconds":60
+        }}
+    }))?;
+    let opened = tool_payload(&opened)?;
+    let session = opened["sessionId"].as_str().ok_or("session id")?.to_owned();
+    let parent_token = opened["parentToken"].as_str().ok_or("parent token")?.to_owned();
+    let watcher_token = opened["watcherToken"].as_str().ok_or("watcher token")?.to_owned();
+    let reported = client.send(&json!({
+        "jsonrpc":"2.0","id":3,"method":"tools/call",
+        "params":{"name":"watcher_report","arguments":{
+            "sessionId":session,"watcherToken":watcher_token,
+            "target":{"threadId":"target-thread"},"eventId":"same-payload",
+            "kind":"gate_ready","summary":"same payload"
+        }}
+    }))?;
+    assert_eq!(tool_payload(&reported)?["status"], "accepted");
+
+    let arguments = json!({
+        "sessionId":session,"parentToken":parent_token,
+        "cursor":"0","maxReports":1,"timeoutMs":0
+    });
+    let canonical = client.send(&json!({
+        "jsonrpc":"2.0","id":4,"method":"tools/call",
+        "params":{"name":"watcher_wait","arguments":arguments}
+    }))?;
+    let compatibility = client.send(&json!({
+        "jsonrpc":"2.0","id":5,"method":"tools/call",
+        "params":{"name":"wait_watcher","arguments":arguments}
+    }))?;
+    assert_eq!(tool_payload(&canonical)?, tool_payload(&compatibility)?);
     Ok(())
 }

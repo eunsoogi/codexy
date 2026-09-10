@@ -74,9 +74,11 @@ MUST use this flow after compaction and before handoff:
    exposure evidence, perform one fresh thread-tool discovery and one host-aware
    `wait_threads` retry before any fallback, and MUST NOT use unbounded
    `read_thread`. If the bounded Watcher subagent is observing through
-   `wait_watcher`, the Orchestrator MAY return control instead of holding a
+   `watcher_wait`, the Orchestrator MAY return control instead of holding a
    model turn open solely for unchanged waiting, while retaining its active
-   overall goal. The Watcher MUST NOT create or own that goal. A Watcher
+   overall goal. The legacy `wait_watcher` remains a callable compatibility
+   alias; new callers MUST use `watcher_wait`. The Watcher MUST NOT create or
+   own that goal. A Watcher
    callback or observation is a material signal only when its event identity is
    new and Orchestrator action is required. Unchanged active-goal reads, routine
    pre/post/continuation receipts, liveness-only goal-status messages, normal

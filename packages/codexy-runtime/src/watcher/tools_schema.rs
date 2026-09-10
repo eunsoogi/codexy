@@ -1,6 +1,19 @@
 use serde_json::json;
 
+use super::state::{MAX_REPORTS, MAX_WAIT_MS};
 use crate::mcp::ToolDef;
+
+fn wait_tool(name: &str, description: &str) -> ToolDef {
+    ToolDef::new(
+        name,
+        description,
+        json!({
+            "type":"object", "additionalProperties":false,
+            "properties":{"sessionId":{"type":"string"},"parentToken":{"type":"string"},"cursor":{"type":["string","integer"]},"maxReports":{"type":"integer","minimum":1,"maximum":MAX_REPORTS},"timeoutMs":{"type":"integer","minimum":0,"maximum":MAX_WAIT_MS}},
+            "required":["sessionId","parentToken"]
+        }),
+    )
+}
 
 pub fn tools() -> Vec<ToolDef> {
     vec![
@@ -24,14 +37,13 @@ pub fn tools() -> Vec<ToolDef> {
                 "anyOf":[{"required":["target"]},{"required":["event"]}]
             }),
         ),
-        ToolDef::new(
-            "wait_watcher",
+        wait_tool(
+            "watcher_wait",
             "Wait for bounded material Watcher reports from a durable cross-process queue; host cancellation releases the wait immediately.",
-            json!({
-                "type":"object", "additionalProperties":false,
-                "properties":{"sessionId":{"type":"string"},"parentToken":{"type":"string"},"cursor":{"type":["string","integer"]},"maxReports":{"type":"integer","minimum":1,"maximum":8},"timeoutMs":{"type":"integer","minimum":0,"maximum":30000}},
-                "required":["sessionId","parentToken"]
-            }),
+        ),
+        wait_tool(
+            "wait_watcher",
+            "Compatibility alias for watcher_wait; host cancellation releases the wait immediately.",
         ),
         ToolDef::new(
             "watcher_health",
