@@ -26,16 +26,6 @@ internal reviewer or tell the child not to invoke it. This is distinct from a
 repository-required external `@codex review`, which the parent requests when
 applicable; the child MUST NOT request that external review.
 
-When private semantic evaluation is in scope, the owning child MUST complete
-that independent evaluation and deliver its terminal summary, including any
-unmeasured limitation, before delegating the selected reviewer. `PENDING`,
-`RUNNING`, a bounded wait, or unavailable evaluator output is not a reviewer
-verdict and MUST NOT be converted into `UNOBSERVABLE`. The reviewer assignment
-MUST bind the evaluator result and the same frozen head. If a reviewer was
-already started early, preserve its authentic event and natural terminal result,
-record the ordering/evidence limitation, and do not interrupt, replace, or
-duplicate it solely to repair the sequence.
-
 Author self-review is forbidden, but delegating the independent packaged
 reviewer is not self-review. The nonrecursive prohibition for a helper or
 reviewer

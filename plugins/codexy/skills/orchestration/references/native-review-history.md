@@ -37,18 +37,9 @@ Prompt wording and packaged policy configuration are not role provenance.
 
 The owner chain MUST contain exactly one completed collabAgentToolCall
 `spawnAgent` or `spawn_agent` item whose sole receiver is the reviewer thread.
-Its sender and receiver are source facts; prompt, model, and reasoning effort
-are source facts only when exposed by the bound source. Encrypted or unavailable
-values remain unknown and MUST NOT be caller-supplied. Unrelated spawn items
-MUST remain in the receipt as raw excluded helpers. A helper MUST NOT substitute
-for the reviewer invocation.
-
-A read_thread projection MAY be incomplete. A separate validated native host
-record MAY supplement it only when `function_call`/`call_id`, the matching
-`function_call_output`, owner session/thread, and `SubAgentActivity`
-receiver/path/selected role bind exactly. Encrypted prompt, model, and effort
-fields remain unknown and MUST NOT be caller-supplied. Raw caller JSON is shape
-input only and MUST NOT be treated as credential authentication.
+Its sender, receiver, prompt, model, and reasoning effort are source facts.
+Unrelated spawn items MUST remain in the receipt as raw excluded helpers. A
+helper MUST NOT substitute for the reviewer invocation.
 
 The reviewer chain MUST identify completed turns with one final
 agentMessage/AgentMessage item and explicit full, delta, or

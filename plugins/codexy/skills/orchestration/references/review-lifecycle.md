@@ -5,9 +5,9 @@ active reviewer and do not consume a verdict.
 The direct `codexy.review-control-state.v1` state MUST carry the issue identity,
 terminal review count, a three-verdict limit, and the ordered terminal history.
 The owner MUST preserve that history across goals, lanes, compaction,
-reauthorization, and route resets. On ordinary admitted routes, full remains one
-review and delta remains at most one recheck; the counters and history MUST not
-be reset or silently discarded.
+reauthorization, and route resets. Full remains one review and delta remains at
+most one recheck; the counters and history MUST not be reset or silently
+discarded.
 
 ## Review ownership
 
@@ -31,17 +31,6 @@ or create a duplicate fresh full review solely to repair the routing mistake.
 When a durable representation is missing, use the existing native-history
 capture/recovery path; preserve `not_attested` or `not_admitted` limitations and
 never fabricate a child sender or reviewer verdict.
-
-When private semantic evaluation is in scope, the owning child MUST wait for its
-independent evaluator to reach a terminal result and deliver its compact
-summary, including any unmeasured limitation, before delegating the selected
-reviewer. `PENDING`, `RUNNING`, a bounded wait, or unavailable evaluator output
-is not a reviewer verdict and MUST NOT be converted into `UNOBSERVABLE` merely
-because the reviewer lacks the result. The reviewer assignment MUST bind the
-same frozen head and the evaluator's available result. If a reviewer was already
-started before that evidence arrived, preserve its authentic event and natural
-terminal result, record the sequencing/evidence limitation, and do not
-interrupt, replace, or duplicate it solely to repair the ordering.
 
 Missing historical evidence MUST be treated as a limitation on the review or
 readiness result, not automatically as a limitation on all authorized work. The
@@ -76,23 +65,6 @@ still requires a PASS at the actual current head. Later ordinary transitions
 MUST preserve the marker and reject changed, removed, reordered, duplicated, or
 incomplete provenance.
 
-A separate pre-PR preservation route MAY use the marker with
-`pre_pr_import.mode=preserved_history` and
-`pre_pr_import.admission=not_admitted`. It MUST preserve the complete ordered
-terminal history as actually observed, including every valid event kind, result,
-finding, and history longer than the ordinary issue-wide three-event quota. It
-MUST retain actual event IDs, threads, turns, ordinals, heads, results,
-findings, source provenance, and the distinction between policy and invocation
-attestation. This includes sequences such as `BLOCK→BLOCK→PASS`; an unknown or
-absent kind MUST remain unknown or absent and MUST NOT be relabeled as
-`required_current_head`. The route MUST NOT hide over-quota events, rewrite the
-last `PASS`, delete an earlier `BLOCK`, auto-admit the last `PASS`, accept a
-synthetic event, or change the ordinary profile quota. Preserved history is
-bookkeeping only: it MUST NOT authorize readiness, quota consumption, merge,
-completion, or another review. Only the existing authenticated final-disposition
-or consumer logic may later admit or dispose of it with current-head proof. The
-marker and source remain shape evidence, not credential authentication.
-
 When a selected reviewer completed after PR creation and the supported host
 records remain available, the owner MAY use the native recovery CLI with one
 complete owner/reviewer capture and a fresh authenticated current PR snapshot:
@@ -100,23 +72,18 @@ complete owner/reviewer capture and a fresh authenticated current PR snapshot:
 --current-pr-state-file <current> --input <native-history> --output <recovered>`.
 The capture MUST preserve the completed owner spawn, its single reviewer
 receiver, every complete reviewer page, source-local order, final message
-identity, reviewed head, terminal result, findings, and unchanged raw UTF-8
-source. A read_thread projection MAY be supplemented only by a separate
-validated native host record when `function_call`/`call_id`, the matching
-`function_call_output`, owner session/thread, and `SubAgentActivity`
-receiver/path/selected role bind exactly. Encrypted prompt, model, or effort
-fields remain unknown and MUST NOT be caller-supplied. The input MUST NOT claim
-authentication or supply a current PR snapshot; raw caller JSON is shape input,
-not credential proof. The CLI binds the supplied snapshot and records the result
-as `proved_post_pr`, `not_attested`, and `not_admitted`. Recovery MUST accept
-only one full event followed by an optional delta, MUST reject an existing
-history, and MUST retain the immutable top-level `nativeHistoryRecovery`
-receipt. The recovered control MUST remain non-admissible while its
-`native_history_recovery` blocker is present. Only a subsequent ordinary
-current-head transition may append its real verdict and remove that blocker; the
-`native_history_provenance` marker and full receipt MUST be carried forward and
-revalidated against the preserved source. A recovery receipt alone MUST NOT
-authorize readiness, completion, merge, or another review.
+identity, actual model/effort, reviewed head, terminal result, findings, and raw
+UTF-8 source. The input MUST NOT claim authentication or supply a current PR
+snapshot; the CLI binds the supplied snapshot and records the result as
+`proved_post_pr`, `not_attested`, and `not_admitted`. Recovery MUST accept only
+one full event followed by an optional delta, MUST reject an existing history,
+and MUST retain the immutable top-level `nativeHistoryRecovery` receipt. The
+recovered control MUST remain non-admissible while its `native_history_recovery`
+blocker is present. Only a subsequent ordinary current-head transition may
+append its real verdict and remove that blocker; the `native_history_provenance`
+marker and full receipt MUST be carried forward and revalidated against the
+preserved source. A recovery receipt alone MUST NOT authorize readiness,
+completion, merge, or another review.
 
 After full and delta are both consumed, exactly one third
 `required_current_head` review may be admitted when the current head moved for
