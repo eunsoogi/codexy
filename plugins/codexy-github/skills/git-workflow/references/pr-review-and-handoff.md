@@ -74,24 +74,48 @@ an older imported PASS is not current-head readiness. Missing host items remain
 unavailable unless the exact original host record supplies them; prose or a
 synthetic historical PR snapshot is not a substitute.
 
+If the authentic pre-PR source contains a complete ordered terminal history, the
+owning child MAY use the separate preservation mode:
+`pre_pr_import.mode=preserved_history` and
+`pre_pr_import.admission=not_admitted`. The source MUST preserve every actually
+observed valid event kind, result, finding, source provenance,
+policy-vs-invocation attestation distinction, and history longer than the
+ordinary issue-wide three-event quota, with actual IDs, threads, turns,
+ordinals, heads, and reviewer facts. This includes sequences such as
+`BLOCK→BLOCK→PASS`. Unknown or absent kinds MUST remain unknown or absent and
+MUST NOT be relabeled as `required_current_head`. This mode MUST NOT hide
+over-quota events, rewrite the last `PASS`, delete an earlier `BLOCK`,
+auto-admit the last `PASS`, change ordinary profile quotas, establish readiness,
+consume quota, authorize merge or completion, or permit a synthetic event,
+duplicate reviewer, or fourth review. Only the existing authenticated
+final-disposition or consumer path may later admit or dispose of the preserved
+history with current-head proof; the marker and source JSON are shape evidence,
+not credential proof.
+
 If selected review events completed after PR creation and the selected path
 consumes them, the owning child MUST capture the supported native host records
 before recovery: the complete owner page chain containing the single reviewer
 `spawnAgent` or `spawn_agent`, the matching reviewer page chain, continuation
-cursors, completed final messages, source-local order, actual model/effort,
-reviewed heads, terminal results, findings, timestamps, and unchanged raw UTF-8
-text. The child MUST run the existing
+cursors, completed final messages, source-local order, reviewed heads, terminal
+results, findings, timestamps, and unchanged raw UTF-8 text. A read_thread
+projection MAY be supplemented only by a separate validated native host record
+when `function_call`/`call_id`, the matching `function_call_output`, owner
+session/thread, and `SubAgentActivity` receiver/path/selected role bind exactly.
+Encrypted prompt, model, or effort fields remain unknown and MUST NOT be
+caller-supplied. The child MUST run the existing
 `codexy-review-control --recover-native-review-history` mode with the fresh
 authenticated current PR snapshot and keep the input capture outside tracked
-files. The mode produces a non-admitted top-level `nativeHistoryRecovery`
-receipt; it does not authenticate caller fields, invent a historical snapshot,
-or establish current-head readiness. The next build MUST carry that receipt
-forward and consume the recovered predecessor through the ordinary transition
-validator. It MAY remove `native_history_recovery` only while appending a real
-current-head verdict; it MUST retain and revalidate `native_history_provenance`,
-the full/delta event prefix, actual source reviewer facts, findings, and event
-counts. Direct recovery output MUST NOT be described as PR-ready, complete,
-merge-authorized, or evidence that another review is needed.
+files. The input MUST NOT claim authentication or supply a current PR snapshot;
+raw caller JSON is shape input, not credential proof. The mode produces a
+non-admitted top-level `nativeHistoryRecovery` receipt; it does not authenticate
+caller fields, invent a historical snapshot, or establish current-head
+readiness. The next build MUST carry that receipt forward and consume the
+recovered predecessor through the ordinary transition validator. It MAY remove
+`native_history_recovery` only while appending a real current-head verdict; it
+MUST retain and revalidate `native_history_provenance`, the full/delta event
+prefix, actual source reviewer facts, findings, and event counts. Direct
+recovery output MUST NOT be described as PR-ready, complete, merge-authorized,
+or evidence that another review is needed.
 
 After opening a PR, read back the remote PR number, URL, title, body, state,
 draft state, base, head branch, exact head SHA, labels, and linked issue when

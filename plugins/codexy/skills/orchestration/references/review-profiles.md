@@ -21,6 +21,32 @@ child's internal review. Author self-review is forbidden; delegating the
 independent packaged reviewer is not self-review. These ownership rules MUST NOT
 change profile selection, reviewer identity, or any review quota.
 
+When private semantic evaluation is in scope, the owning child MUST complete
+that independent evaluation and deliver its terminal summary, including any
+unmeasured limitation, before delegating the selected reviewer. `PENDING`,
+`RUNNING`, a bounded wait, or unavailable evaluator output is not a reviewer
+verdict and MUST NOT be turned into `UNOBSERVABLE`. The reviewer assignment MUST
+bind the evaluator result and the same frozen head. If a reviewer was already
+started early, preserve its authentic event and terminal result, record the
+ordering/evidence limitation, and do not interrupt, replace, or duplicate it.
+
+Ordinary standard and strict routes retain one full review, at most one delta
+recheck, and the bounded third current-head review described below. A separate
+pre-PR preservation route MAY mark `pre_pr_import.mode=preserved_history` and
+`pre_pr_import.admission=not_admitted` when an authentic source contains a
+complete ordered terminal history. It MUST retain every actually observed valid
+event kind, result, finding, source provenance, policy-vs-invocation attestation
+distinction, and history longer than the ordinary three-event issue-wide quota,
+together with actual IDs, threads, turns, ordinals, and heads. This includes
+sequences such as `BLOCK→BLOCK→PASS`. Unknown or absent kinds MUST stay unknown
+or absent and MUST NOT be relabeled as `required_current_head`. Preserved
+history MUST NOT hide over-quota events, rewrite the last `PASS`, delete an
+earlier `BLOCK`, auto-admit the last `PASS`, change ordinary profile quotas,
+authorize readiness, consume quota, merge, complete, or dispatch another review.
+Existing authenticated final-disposition or consumer logic remains the only
+authority for later admission or disposition; it MUST NOT create a fourth
+review.
+
 The post-cap re-review is not another full or delta quota. It is admitted only
 from the direct ordered terminal history, for mandatory base integration, an
 in-scope contract/root repair, an authenticated external finding discovered on
