@@ -11,6 +11,16 @@ The closed review profile set is:
   those two reviews, while blocking findings remain bounded by the strict
   contract.
 
+For a child-owned implementation lane, when the selected profile is `standard`
+or `strict`, the branch-owning child MUST delegate the one profile-selected
+internal reviewer after local proof. `light` retains its no-reviewer route. The
+parent MUST consume the resulting evidence and MUST NOT invoke that internal
+reviewer or tell the child not to invoke it. A separate repository-required
+external `@codex review`, when applicable, is parent-owned and follows the
+child's internal review. Author self-review is forbidden; delegating the
+independent packaged reviewer is not self-review. These ownership rules MUST NOT
+change profile selection, reviewer identity, or any review quota.
+
 The post-cap re-review is not another full or delta quota. It is admitted only
 from the direct ordered terminal history, for mandatory base integration, an
 in-scope contract/root repair, an authenticated external finding discovered on

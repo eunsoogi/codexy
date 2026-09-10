@@ -5,7 +5,7 @@ use serde_json::Value;
 
 use crate::mcp::{CancellationToken, text_result};
 
-use super::state::{MAX_REPORTS, MAX_TTL_SECONDS, MAX_WAIT_MS, Store};
+use super::state::{DEFAULT_WAIT_MS, MAX_REPORTS, MAX_TTL_SECONDS, MAX_WAIT_MS, Store};
 use arguments::{
     ensure_keys, event_field, identity, optional_cursor, optional_event_string, optional_event_u64,
     optional_u64, required_string,
@@ -155,7 +155,8 @@ fn call_tool_inner(
             let max_reports =
                 usize::try_from(optional_u64(args.get("maxReports"), "maxReports")?.unwrap_or(1))
                     .context("watcher maxReports is out of range")?;
-            let timeout = optional_u64(args.get("timeoutMs"), "timeoutMs")?.unwrap_or(MAX_WAIT_MS);
+            let timeout =
+                optional_u64(args.get("timeoutMs"), "timeoutMs")?.unwrap_or(DEFAULT_WAIT_MS);
             if max_reports == 0 || max_reports > MAX_REPORTS {
                 bail!("watcher maxReports must be between 1 and {MAX_REPORTS}");
             }
