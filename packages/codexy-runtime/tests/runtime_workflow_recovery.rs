@@ -169,7 +169,7 @@ fn activation_new_and_retry_paths_share_post_transform_tree_verification()
 
     let stage_run = steps[stage]["run"].as_str().ok_or("stage run")?;
     assert!(stage_run.contains("git add -A -- ."));
-    assert!(stage_run.contains("\"$RUNNER_TEMP/codexy-runtime-contract/scripts/verify-runtime-activation-branch\" \"$branch\" \"$GITHUB_SHA\" \"$BOOTSTRAP_VERSION\" \"$RUNNER_TEMP/codexy-runtime-staging/runtime-staging-receipt.json\""));
+    assert!(stage_run.contains("\"$RUNNER_TEMP/codexy-runtime-contract/scripts/verify-runtime-activation-branch\" \"$branch\" \"$GITHUB_SHA\" \"$BOOTSTRAP_VERSION\" \"$receipt\""));
     assert!(!stage_run.contains("git add .agents/plugins"));
 
     let create_run = steps[create]["run"].as_str().ok_or("create run")?;

@@ -6,6 +6,7 @@ use std::{
 
 pub(super) const HEAD: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 pub(super) const BASE: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+pub(super) const BRANCH: &str = "codexy/runtime-activation-v1.7.0-staging-42-1";
 pub(super) const WORKFLOWS: [&str; 5] = [
     "rust-test.yml",
     "language-lint.yml",
@@ -31,7 +32,7 @@ impl Fixture {
             };
             state[*workflow] = json!([{
                 "databaseId": index + 100, "event": "pull_request",
-                "headSha": HEAD, "headBranch": "codexy/runtime-activation-v1.7.0",
+                "headSha": HEAD, "headBranch": BRANCH,
                 "displayTitle": title, "status": "completed", "conclusion": "success",
             }]);
         }
@@ -71,6 +72,7 @@ impl Fixture {
             .env("GH_REPO", "eunsoogi/codexy")
             .env("FIXTURE_HEAD", HEAD)
             .env("FIXTURE_BASE", BASE)
+            .env("FIXTURE_BRANCH", BRANCH)
             .output()?)
     }
 
@@ -87,11 +89,14 @@ impl Fixture {
 }
 
 const PRELUDE: &str = r#"
+printf '%s\n' "$FIXTURE_BRANCH" > "$RUNNER_TEMP/codexy-runtime-activation-branch"
 git() {
+  test -f "$RUNNER_TEMP/codexy-runtime-activation-branch"
   case "$*" in
     'rev-parse HEAD') printf '%s\n' "$FIXTURE_HEAD" ;;
     'rev-parse '*'^'{commit}) printf '%s\n' "$FIXTURE_BASE" ;;
-    'ls-remote '*) printf '%s\trefs/heads/codexy/runtime-activation-v1.7.0\n' "$FIXTURE_HEAD" ;;
+    'check-ref-format '*) ;;
+    'ls-remote '*) printf '%s\trefs/heads/%s\n' "$FIXTURE_HEAD" "$FIXTURE_BRANCH" ;;
     *) echo "unexpected git call: $*" >&2; return 1 ;;
   esac
 }
@@ -107,6 +112,7 @@ root = Path(os.environ['FIXTURE_ROOT'])
 state_path = root / 'state.json'
 state = json.loads(state_path.read_text())
 head, base = os.environ['FIXTURE_HEAD'], os.environ['FIXTURE_BASE']
+branch = os.environ['FIXTURE_BRANCH']
 def value(flag):
     return args[args.index(flag) + 1]
 def save():
@@ -123,7 +129,7 @@ elif args[:2] == ['run', 'list']:
     print(json.dumps(state[value('--workflow')]))
 elif args[:2] == ['workflow', 'run']:
     workflow = args[2]
-    assert value('--ref') == 'codexy/runtime-activation-v1.7.0'
+    assert value('--ref') == branch
     assert f'head_sha={head}' in args
     if workflow == 'rust-test.yml':
         assert 'run_mode=ci' in args
@@ -135,7 +141,7 @@ elif args[:2] == ['workflow', 'run']:
         output.write(workflow + '\n')
     state[workflow].append(dict(databaseId=1000+list(state).index(workflow),
         event='workflow_dispatch', headSha=head,
-        headBranch='codexy/runtime-activation-v1.7.0', displayTitle=title,
+        headBranch=branch, displayTitle=title,
         status='completed', conclusion='success'))
     save()
 elif args[:2] in (['run', 'view'], ['run', 'watch']):
