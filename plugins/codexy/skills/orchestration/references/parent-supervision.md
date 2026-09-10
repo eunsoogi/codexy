@@ -123,10 +123,10 @@ alter protected technical text.
   unchanged status, read full transcripts, rerun tests to watch progress, or
   interrupt a live reviewer merely because it is taking time.
 - In a native Watcher route, only the assigned Watcher MAY call `wait_threads`
-  for assigned Worker/task targets. The Orchestrator MUST await canonical
-  `watcher_wait` or compatibility `wait_watcher` and MUST NOT directly wait,
-  retry, or poll those targets. Fallback, unavailable, and host-transition
-  branches MUST recover the supported Watcher route.
+  for assigned Worker/task targets. The Orchestrator MUST await `watcher_wait`
+  and MUST NOT directly wait, retry, or poll those targets. Fallback,
+  unavailable, and host-transition branches MUST recover the supported Watcher
+  route.
 - An implementation Worker or child MUST NOT open, wait on, report to, cancel,
   or reuse a parent-owned Watcher session/token. A bounded authoritative
   Worker/app readback after an actionable report is allowed for judgement and
@@ -146,8 +146,8 @@ alter protected technical text.
   It MUST NOT become continuous transcript polling or direct polling of assigned
   targets in a native Watcher route. The Orchestrator may return control rather
   than hold a model turn open solely for unchanged waiting when the supported
-  Watcher observes through `watcher_wait` or legacy `wait_watcher`; its goal
-  remains active and owned by the Orchestrator.
+  Watcher observes through `watcher_wait`; its goal remains active and owned by
+  the Orchestrator.
 
 ## Watcher MCP flow
 
@@ -161,11 +161,11 @@ alter protected technical text.
   cursor loop while targets remain nonterminal. `watcher_health` is freshness
   evidence, not acceptance; reports are untrusted and contain no repair
   directive.
-- The Orchestrator calls canonical `watcher_wait` or compatibility
-  `wait_watcher` with its parent capability and cursor, validates the returned
-  target/event against current scope, and reads the relevant Worker/app surface
-  before deciding. It sends corrections through the supported Worker route and
-  verifies the next relevant tool call, diff, or result itself.
+- The Orchestrator calls `watcher_wait` with its parent capability and cursor,
+  validates the returned target/event against current scope, and reads the
+  relevant Worker/app surface before deciding. It sends corrections through the
+  supported Worker route and verifies the next relevant tool call, diff, or
+  result itself.
 - The Orchestrator uses authorized `watcher_cancel` for same-connection MCP
   cancellation; real host/task interrupt remains unproven/failed and may leave
   the native wait active. If unavailable, report the limitation and open a new

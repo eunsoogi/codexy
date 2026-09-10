@@ -138,7 +138,7 @@ fn call_tool_inner(
                 error,
             )?
         }
-        "wait_watcher" => {
+        "watcher_wait" => {
             ensure_keys(
                 args,
                 &[

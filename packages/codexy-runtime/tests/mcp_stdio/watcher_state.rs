@@ -132,7 +132,7 @@ fn run_concurrent_reports_and_health_once() -> Result<(), String> {
         let response = restarted
             .send(&json!({
                 "jsonrpc": "2.0", "id": index + 200, "method": "tools/call",
-                "params": {"name": "wait_watcher", "arguments": {
+                "params": {"name": "watcher_wait", "arguments": {
                     "sessionId": session, "parentToken": parent_token,
                     "cursor": cursor, "maxReports": 8, "timeoutMs": 1000
                 }}

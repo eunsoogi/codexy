@@ -148,11 +148,12 @@ GitHub 정책에 동의한 것으로 해석되지 않습니다.
 배정·교정하면, 해당 경로에서 Worker가 host가 지원하는 task-message 경로로 source
 Worker task와 issue/PR 대응을 보존한 채 정확히 지정된 Watcher task에 일반 보고를
 보냅니다. Luna/max Watcher는 변경 없는 보고를 억제하고 중요한 사건을
-`watcher_report`로 중계하며, Astra/medium Orchestrator는 `wait_watcher`로 받아
-판단하고 교정과 결과 인수 권한을 유지합니다. 부모는 Worker에게 구현 지시를 직접
-보냅니다. 메시지 경로를 사용할 수 없다는 사실이 확인되거나 구체적인 긴급 상황일
-때만 한 번 표시된 parent fallback을 허용하며, 일상적인 중복 보고를 되살리지는
-않습니다. 목표 전환 receipt는 계속 parent에 직접 보냅니다.
+`watcher_report`로 중계하며, Astra/medium Orchestrator는 `watcher_wait`로
+받습니다. Orchestrator는 보고를 판단하고 Worker를 지시하며 교정과 결과 인수
+권한을 유지합니다. 부모는 Worker에게 구현 지시를 직접 보냅니다. 확인된 메시지
+경로 부재나 구체적인 긴급 상황일 때만 한 번 표시된 parent fallback을 허용하며,
+일상적인 중복 보고를 되살리지는 않습니다. 목표 전환 receipt는 계속 parent에 직접
+보냅니다.
 
 목표도 분리됩니다. Orchestrator는 전체 작업 목표, Watcher는 유한한 관찰 배정,
 Worker는 유한한 실행 목표를 맡습니다. Watcher는 전체 목표를 소유하거나 옮기지

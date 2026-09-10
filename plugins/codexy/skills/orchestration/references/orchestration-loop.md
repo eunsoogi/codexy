@@ -57,10 +57,10 @@
      is reserved for full assignment completion, explicit cancellation, or a
      verified host limitation.
    - Only the assigned Watcher MAY call `wait_threads` for its assigned Worker
-     or task targets. The Orchestrator MUST await canonical `watcher_wait` or
-     compatibility `wait_watcher` and MUST NOT directly wait on those targets;
-     fallback, unavailable, and host-transition branches MUST recover the
-     supported Watcher route rather than authorize parent polling.
+     or task targets. The Orchestrator MUST await `watcher_wait` and MUST NOT
+     directly wait on those targets; fallback, unavailable, and host-transition
+     branches MUST recover the supported Watcher route rather than authorize
+     parent polling.
    - The assignment MUST give the Worker the exact Watcher task and the host's
      supported task-message route for ordinary progress, completion, findings,
      and attention reports. The Watcher deduplicates unchanged reports and
@@ -97,11 +97,10 @@
    - MUST keep evidence tied to the exact commit, PR head, file state, or
      runtime surface being claimed.
    - For supervision, MUST exercise the actual subagent creation, Worker-to-
-     Watcher task-message delivery, MCP `watcher_report`/`watcher_wait` (or
-     legacy `wait_watcher`) delivery, Worker readback, and Orchestrator-goal
-     path. Report the Orchestrator's overall goal and the Watcher's bounded
-     observation assignment separately; a Watcher report does not prove issue
-     completion.
+     Watcher task-message delivery, MCP `watcher_report`/`watcher_wait`
+     delivery, Worker readback, and Orchestrator-goal path. Report the
+     Orchestrator's overall goal and the Watcher's bounded observation
+     assignment separately; a Watcher report does not prove issue completion.
 6. Finish:
    - MUST confirm no running sessions, open child lanes, untracked required
      files, or unverified claims remain.

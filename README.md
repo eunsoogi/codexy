@@ -178,7 +178,7 @@ Reporting flow: the Orchestrator assigns or corrects the Worker through the
 native Watcher. Worker reports use the supported route to its exact task,
 preserving source Worker task and issue/PR lane; the Watcher suppresses
 unchanged reports and relays material events through `watcher_report`. The
-Orchestrator receives them through `wait_watcher`, judges and directs the
+Orchestrator receives them through `watcher_wait`, judges and directs the
 Worker, and retains correction and acceptance authority. A verified unavailable
 route or concrete emergency permits one marked parent fallback; no duplicate
 reports; receipts stay direct-parent.

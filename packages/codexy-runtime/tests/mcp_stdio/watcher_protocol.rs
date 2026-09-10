@@ -24,7 +24,7 @@ fn tool_payload(response: &Value) -> Result<Value, Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
+fn watcher_wait_is_released_by_mcp_cancellation_without_consuming_later_events(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let state = tempfile::tempdir()?;
     let mut client = watcher_client(state.path())?;
@@ -38,8 +38,22 @@ fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
     let names = list["result"]["tools"]
         .as_array()
         .ok_or("watcher tools must be an array")?;
-    assert!(names.iter().any(|tool| tool["name"] == "wait_watcher"));
-    assert!(!names.iter().any(|tool| tool["name"] == "watcher_wait"));
+    assert_eq!(
+        names
+            .iter()
+            .filter(|tool| tool["name"] == "watcher_wait")
+            .count(),
+        1,
+        "watcher_wait must be exposed exactly once"
+    );
+    assert!(
+        names.iter().all(|tool| {
+            tool["name"]
+                .as_str()
+                .is_some_and(|name| name.starts_with("watcher_"))
+        }),
+        "all Watcher tools must use watcher_* names"
+    );
 
     let opened = client.send(&json!({
         "jsonrpc":"2.0","id":3,"method":"tools/call",
@@ -58,7 +72,7 @@ fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
 
     client.send_without_read(&json!({
         "jsonrpc":"2.0","id":4,"method":"tools/call",
-        "params":{"name":"wait_watcher","arguments":{
+        "params":{"name":"watcher_wait","arguments":{
             "sessionId":session,"parentToken":parent_token,"timeoutMs":30000
         }}
     }))?;
@@ -91,7 +105,7 @@ fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
     }))?;
     let replacement = client.send(&json!({
         "jsonrpc":"2.0","id":41,"method":"tools/call",
-        "params":{"name":"wait_watcher","arguments":{
+        "params":{"name":"watcher_wait","arguments":{
             "sessionId":session,"parentToken":parent_token,"cursor":0,"timeoutMs":0
         }}
     }))?;
@@ -136,7 +150,7 @@ fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
 
     let waited = client.send(&json!({
         "jsonrpc":"2.0","id":7,"method":"tools/call",
-        "params":{"name":"wait_watcher","arguments":{
+        "params":{"name":"watcher_wait","arguments":{
             "sessionId":session,"parentToken":parent_token,"cursor":0,"timeoutMs":1000
         }}
     }))?;
@@ -147,7 +161,7 @@ fn wait_watcher_is_released_by_mcp_cancellation_without_consuming_later_events(
     assert!(cursor.as_str().is_some(), "watcher cursors must round-trip as strings");
     let empty = client.send(&json!({
         "jsonrpc":"2.0","id":71,"method":"tools/call",
-        "params":{"name":"wait_watcher","arguments":{
+        "params":{"name":"watcher_wait","arguments":{
             "sessionId":session,"parentToken":parent_token,
             "cursor":cursor,"timeoutMs":0
         }}

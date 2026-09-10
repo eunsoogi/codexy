@@ -19,9 +19,9 @@ name, arbitrary generic subagent, stale transcript, or MCP-only mock is not
 identity or observation proof.
 
 Only this assigned Watcher MAY call `wait_threads` for the assigned Worker or
-task targets. The Orchestrator MUST await canonical `watcher_wait` or legacy
-`wait_watcher`; the Watcher MUST NOT authorize or perform direct parent polling
-on its behalf. Fallback, unavailable, and host-transition branches MUST report
+task targets. The Orchestrator MUST await `watcher_wait`; the Watcher MUST NOT
+authorize or perform direct parent polling on its behalf. Fallback, unavailable,
+and host-transition branches MUST report
 the actual limitation so the Orchestrator can recover the supported route.
 
 MUST treat ordinary Worker progress, completion, finding, and attention messages
@@ -40,8 +40,8 @@ decide acceptance, own or transfer the Orchestrator goal, create a long-lived
 app task, spawn another agent, or recruit another Watcher. MUST NOT treat
 watcher_health, a timestamp, or liveness alone as semantic acceptance.
 
-The Orchestrator waits through canonical `watcher_wait` or legacy `wait_watcher`
-and judges each returned report. A same-connection MCP cancellation
+The Orchestrator waits through `watcher_wait` and judges each returned report. A
+same-connection MCP cancellation
 notification propagated through authorized `watcher_cancel` releases a pending
 wait only when the host propagates it. Real host/task interrupt success remains
 unproven/failed; a host/task message or outer wait termination may leave the

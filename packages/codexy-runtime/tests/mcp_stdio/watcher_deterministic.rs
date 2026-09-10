@@ -19,7 +19,7 @@ fn report(session: &str, token: &str, id: u64) -> Value {
 fn wait_page(session: &str, token: &str, cursor: &Value, id: u64) -> Value {
     json!({
         "jsonrpc":"2.0", "id":id, "method":"tools/call",
-        "params":{"name":"wait_watcher", "arguments":{
+        "params":{"name":"watcher_wait", "arguments":{
             "sessionId":session, "parentToken":token,
             "cursor":cursor, "maxReports":2, "timeoutMs":0
         }}

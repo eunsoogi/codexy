@@ -52,12 +52,11 @@ assigned target remains nonterminal; it returns only for full assignment
 completion, explicit cancellation, or a verified host limitation.
 
 Only the assigned Watcher MAY call `wait_threads` for its assigned Worker or
-task targets. The Orchestrator MUST await canonical `watcher_wait` or
-compatibility `wait_watcher` and MUST NOT directly wait on those targets.
-Fallback, unavailable, and host-transition branches MUST recover the supported
-Watcher route rather than authorize direct parent polling. An implementation
-Worker or child MUST NOT open, wait on, report to, cancel, or reuse a
-parent-owned Watcher session or token.
+task targets. The Orchestrator MUST await `watcher_wait` and MUST NOT directly
+wait on those targets. Fallback, unavailable, and host-transition branches MUST
+recover the supported Watcher route rather than authorize direct parent polling.
+An implementation Worker or child MUST NOT open, wait on, report to, cancel, or
+reuse a parent-owned Watcher session or token.
 
 During that assignment, ordinary Worker progress, completion, findings, and
 attention reports MUST go to the exact Watcher task supplied by the Orchestrator

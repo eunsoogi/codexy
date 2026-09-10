@@ -40,13 +40,12 @@ cancels it, or a verified host limitation prevents continuation.
 
 For a native Watcher route, only the assigned Watcher MAY call `wait_threads` to
 observe its assigned Worker or task targets. The Orchestrator MUST await reports
-through canonical `watcher_wait` or compatibility `wait_watcher` and MUST NOT
-call `wait_threads` for those targets. Fallback, unavailable, and
-host-transition branches MUST report the real limitation and recover the
-supported Watcher route; they MUST NOT re-authorize direct parent polling. After
-an actionable report, one bounded authoritative Worker or app readback is
-allowed for judgement and correction, and that readback is not an observation
-wait.
+through `watcher_wait` and MUST NOT call `wait_threads` for those targets.
+Fallback, unavailable, and host-transition branches MUST report the real
+limitation and recover the supported Watcher route; they MUST NOT re-authorize
+direct parent polling. After an actionable report, one bounded authoritative
+Worker or app readback is allowed for judgement and correction, and that
+readback is not an observation wait.
 
 An implementation Worker or child MUST NOT open, wait on, report to, cancel, or
 reuse a parent-owned Watcher session or token. Visibility of a session, token,

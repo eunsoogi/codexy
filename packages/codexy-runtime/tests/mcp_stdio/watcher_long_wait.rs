@@ -46,7 +46,7 @@ fn wait_request(
 ) -> Value {
     json!({
         "jsonrpc": "2.0", "id": request_id, "method": "tools/call",
-        "params": {"name": "wait_watcher", "arguments": {
+        "params": {"name": "watcher_wait", "arguments": {
             "sessionId": session, "parentToken": parent_token,
             "cursor": cursor, "timeoutMs": timeout_ms
         }}
@@ -232,14 +232,14 @@ fn wait_schema_documents_the_long_poll_bounds() -> TestResult {
     }))?;
     let wait = listed["result"]["tools"]
         .as_array()
-        .and_then(|tools| tools.iter().find(|tool| tool["name"] == "wait_watcher"))
-        .ok_or("wait_watcher schema is missing")?;
+        .and_then(|tools| tools.iter().find(|tool| tool["name"] == "watcher_wait"))
+        .ok_or("watcher_wait schema is missing")?;
     let timeout = &wait["inputSchema"]["properties"]["timeoutMs"];
     assert_eq!(timeout["default"], 600_000);
     assert_eq!(timeout["maximum"], 3_600_000);
     let description = wait["description"]
         .as_str()
-        .ok_or("wait_watcher description is missing")?;
+        .ok_or("watcher_wait description is missing")?;
     assert!(description.contains("status=expired"));
     assert!(description.contains("empty events"));
     assert!(description.contains("unchanged nextCursor"));

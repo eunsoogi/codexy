@@ -63,35 +63,41 @@ MUST use this flow after compaction and before handoff:
 
 1. **Inventory once**: MUST keep one compact ledger line per active lane with
    `issue`, `PR`, `branch`, `head`, `owner`, and `state`.
-2. **Accept qualifying events only**: the root Orchestrator MUST NOT
-   continuously poll. Use event-driven `wait_threads` with each target's latest
-   cursor and batched targets for ordinary child completion or attention waits.
-   Unchanged cursors, bounded timeouts, and legitimate long commands are
-   nonterminal; they MUST NOT produce repeated status messages, full-transcript
-   reads, test reruns, or interruptions. Reserve heartbeat scheduling for
-   genuinely scheduled monitoring or when `wait_threads` is unavailable. After a
-   host transition or `No handler registered` failure, treat the mismatch as
-   exposure evidence, perform one fresh thread-tool discovery and one host-aware
-   `wait_threads` retry before any fallback, and MUST NOT use unbounded
-   `read_thread`. If the bounded Watcher subagent is observing through
-   `wait_watcher`, the Orchestrator MAY return control instead of holding a
-   model turn open solely for unchanged waiting, while retaining its active
-   overall goal. The Watcher MUST NOT create or own that goal. A Watcher
-   callback or observation is a material signal only when its event identity is
-   new and Orchestrator action is required. Unchanged active-goal reads, routine
+2. **Accept qualifying events only**: for ordinary non-Watcher waits, the root
+   Orchestrator MUST use event-driven `wait_threads` with each target's latest
+   cursor and batched targets. Unchanged cursors, bounded timeouts, and
+   legitimate long commands are nonterminal; they MUST NOT produce repeated
+   status messages, full-transcript reads, test reruns, or interruptions.
+   Reserve heartbeat scheduling for scheduled monitoring or unavailable
+   `wait_threads`. For a native Watcher route, only the assigned Watcher MAY
+   call `wait_threads` for its Worker/task targets. The Orchestrator MUST await
+   `watcher_wait`; new callers MUST use `watcher_wait` and MUST NOT directly
+   wait on those assigned targets. Fallback, unavailable, or host-transition
+   branches MUST report the actual limitation, recover the supported Watcher
+   route, and MUST NOT authorize direct parent polling or unbounded
+   `read_thread`. After an actionable Watcher report, one bounded authoritative
+   Worker/app readback for judgement/correction is allowed; it is not an
+   observation wait. An implementation Worker or child MUST NOT open, wait on,
+   report to, cancel, or reuse a parent-owned Watcher session or token; session
+   visibility and parent transcript access are not capability grants. The
+   Watcher MUST NOT create or own the Orchestrator goal. A Watcher callback or
+   observation is material only when its event identity is new and Orchestrator
+   action is required. Unchanged active-goal reads, routine
    pre/post/continuation receipts, liveness-only goal-status messages, normal
    progress, intermediate successful tests, resolved command mistakes, commits,
-   and queued CI MUST remain internal and MUST NOT wake the Orchestrator.
-   Workers MUST send compact deltas for terminal child state, their
-   fatal/gate/final callbacks, PR creation, a required external check-state
-   change, actionable review feedback, or review-thread resolution. Watchers
-   MUST send their own compact deltas for observation-channel failure or
-   actionable drift, and selected reviewers MUST send their verdicts. A Watcher
-   drift event is qualifying only when its report is grounded in a changed
-   artifact, diff, or relevant actual tool call, identifies the conflicting
-   current scope, ownership, or user constraint without a repair directive, and
-   requires an Orchestrator decision; relayed Worker or Orchestrator findings
-   MUST remain distinct from Watcher-first detection.
+   and queued CI MUST remain internal; they MUST NOT wake the Orchestrator. For
+   absence classifications, apply
+   [observation-evidence.md](observation-evidence.md). Workers MUST send compact
+   deltas for terminal child state, their fatal/gate/final callbacks, PR
+   creation, a required external check-state change, actionable review feedback,
+   or review-thread resolution. Watchers MUST send their own compact deltas for
+   observation-channel failure or actionable drift, and selected reviewers MUST
+   send their verdicts. A Watcher drift event is qualifying only when its report
+   is grounded in a changed artifact, diff, or relevant actual tool call,
+   identifies the conflicting current scope, ownership, or user constraint
+   without a repair directive, and requires an Orchestrator decision; relayed
+   Worker or Orchestrator findings MUST remain distinct from Watcher-first
+   detection.
 3. **Validate stable event identity**: every event MUST use a deterministic
    `<kind>|<lane>|<subject>` identity. The ledger MUST reject a repeated
    identity before it changes counters or next actions.
