@@ -45,13 +45,7 @@ pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Err
     let tree = git(&repo, &["rev-parse", "HEAD^{tree}"])?;
     let receipt_path = root.path().join("receipt.json");
     fs::write(&receipt_path, serde_json::to_vec(&receipt(&base, &tree))?)?;
-    let contract: Value = serde_json::from_slice(&fs::read(
-        repo.join(".agents/plugins/release-publish-contract.json"),
-    )?)?;
-    let version = contract["bootstrap"]["candidateVersion"]
-        .as_str()
-        .ok_or("candidate version")?
-        .to_owned();
+    let version = codexy_runtime::version::runtime_version().to_owned();
     let generation_branch = format!("codexy/runtime-activation-v{version}-staging-42-1");
     let legacy_branch = if matches!(mutation, "merged-deleted" | "retained") {
         format!("codexy/runtime-activation-v{version}")
