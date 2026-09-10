@@ -19,7 +19,10 @@ pub(crate) const MAX_TARGETS: usize = 8;
 pub(crate) const MAX_EVENTS: usize = 64;
 pub(crate) const MAX_SESSIONS: usize = 128;
 pub(crate) const MAX_REPORTS: usize = 8;
-pub(crate) const MAX_WAIT_MS: u64 = 30_000;
+/// Default wait duration for callers that omit `timeoutMs`.
+pub(crate) const DEFAULT_WAIT_MS: u64 = 60_000;
+/// Maximum bounded wait duration accepted by the Watcher MCP.
+pub(crate) const MAX_WAIT_MS: u64 = 300_000;
 pub(crate) const MAX_TTL_SECONDS: u64 = 86_400;
 const LOCK_WAIT_MS: u64 = 2_000;
 pub(super) const EVENT_BYTES: usize = 16_384;

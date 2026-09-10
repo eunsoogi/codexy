@@ -28,6 +28,8 @@ mod lsp_stderr;
 mod wrapper_runtime;
 #[path = "mcp_stdio/watcher_protocol.rs"]
 mod watcher_protocol;
+#[path = "mcp_stdio/watcher_long_wait.rs"]
+mod watcher_long_wait;
 #[path = "mcp_stdio/watcher_lock_lifecycle.rs"]
 mod watcher_lock_lifecycle;
 #[path = "mcp_stdio/watcher_recovery.rs"]
