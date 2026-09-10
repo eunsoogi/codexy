@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import sys
+import unittest
 from pathlib import Path
 
 
@@ -35,6 +37,18 @@ for line in sys.stdin:
 """
 
 
+def require_native_watcher_binary() -> Path:
+    native_binary = os.environ.get("CODEXY_TEST_WATCHER_BINARY")
+    if native_binary:
+        source = Path(native_binary)
+        if not source.is_file():
+            raise RuntimeError(f"missing hosted Windows Watcher runtime: {source}")
+        return source
+    if os.environ.get("CI", "").lower() == "true":
+        raise RuntimeError("hosted Windows Watcher runtime is required in CI")
+    raise unittest.SkipTest("hosted Windows Watcher runtime is required")
+
+
 def install_watcher_runtime(plugin: Path) -> None:
     runtime = plugin / "runtime"
     runtime.mkdir(parents=True, exist_ok=True)
@@ -43,6 +57,10 @@ def install_watcher_runtime(plugin: Path) -> None:
         path.write_text(FAKE_WATCHER, encoding="utf-8")
         path.chmod(0o755)
     if os.name == "nt":
+        binary = runtime / "codexy-mcp-watcher-windows-x86_64.exe"
+        source = require_native_watcher_binary()
+        shutil.copyfile(source, binary)
+        binary.chmod(0o755)
         script = runtime / "codexy-mcp-watcher-windows-x86_64.py"
         script.write_text(FAKE_WATCHER, encoding="utf-8")
         (plugin / "mcp/codexy-mcp-watcher.cmd").write_text(
@@ -50,3 +68,8 @@ def install_watcher_runtime(plugin: Path) -> None:
             "exit /b %ERRORLEVEL%\r\n",
             encoding="utf-8",
         )
+    from codexy_runtime_tools.component_watcher_materialization import (
+        materialize_watcher,
+    )
+
+    materialize_watcher(plugin)

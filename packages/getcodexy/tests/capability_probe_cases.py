@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 from codexy_runtime_tools.component_health import health
 from codexy_runtime_tools.component_manifest import load_component_manifest
+from codexy_runtime_tools.component_watcher_materialization import materialize_watcher
 from packages.getcodexy.tests.component_distribution_support import (
     FAKE_MCP,
     install_watcher_runtime,
@@ -51,6 +52,11 @@ class CapabilityProbeCases:
     def setUp(self) -> None:
         super().setUp()
         self.manifest = load_component_manifest()
+        self._record_temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self._record_temporary.cleanup)
+        self._record_core = Path(self._record_temporary.name) / "plugins/codexy"
+        shutil.copytree(REPOSITORY / "plugins/codexy", self._record_core)
+        materialize_watcher(self._record_core)
         self.records = self._records(self.manifest)
         self._probe_patch = patch(
             "codexy_runtime_tools.component_health._probe_component",
@@ -205,7 +211,15 @@ class CapabilityProbeCases:
             component: {
                 "name": plugin,
                 "version": manifest.version,
-                "source": {"path": str((REPOSITORY / "plugins" / plugin).resolve())},
+                "source": {
+                    "path": str(
+                        (
+                            self._record_core
+                            if component == "core"
+                            else REPOSITORY / "plugins" / plugin
+                        ).resolve()
+                    )
+                },
                 "authority": {"state": "valid"},
             }
             for component, plugin in PLUGIN_NAMES.items()

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .component_manifest import ComponentManifest
 from .component_registration_health import valid_registration
+from .component_watcher_materialization import watcher_entrypoint
 from .component_resolver import ComponentResolutionError, compare_versions
 
 
@@ -60,7 +61,7 @@ def _required_files(manifest, component, plugin):
     )
     return all(
         (plugin / path).is_file() and not (plugin / path).is_symlink() for path in paths
-    )
+    ) and (component != "core" or watcher_entrypoint(plugin).is_file())
 
 
 def _plugin_root(record):

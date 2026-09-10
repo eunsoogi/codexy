@@ -9,16 +9,18 @@ from codexy_runtime_tools import component_watcher_probe as probe
 
 
 class WatcherProbeTests(unittest.TestCase):
-    def test_source_launcher_fallback_resolves_relative_to_plugin(self) -> None:
+    def test_probe_uses_registered_path_without_source_suffix_fallback(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             plugin = Path(directory)
             launcher = plugin / "mcp/codexy-mcp-watcher.sh"
             launcher.parent.mkdir()
             launcher.write_text("#!/bin/sh\n", encoding="utf-8")
             values = probe._argv("./mcp/codexy-mcp-watcher", plugin, ["--stdio"])
-        self.assertEqual(values, [str(launcher), "--stdio"])
+        self.assertEqual(values, [str(launcher.with_suffix("")), "--stdio"])
 
-    def test_windows_prefers_native_binary_over_extensionless_launcher(self) -> None:
+    def test_windows_probe_does_not_choose_a_suffix_for_the_registered_path(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as directory:
             plugin = Path(directory)
             launcher = plugin / "mcp/codexy-mcp-watcher"
@@ -27,9 +29,9 @@ class WatcherProbeTests(unittest.TestCase):
                 path.write_bytes(b"watcher")
             with patch.object(probe.os, "name", "nt"):
                 values = probe._argv("./mcp/codexy-mcp-watcher", plugin)
-        self.assertEqual(values, [f"{launcher}.exe"])
+        self.assertEqual(values, [str(launcher)])
 
-    def test_windows_falls_back_to_cmd_when_native_binary_is_missing(self) -> None:
+    def test_windows_probe_does_not_fall_back_to_cmd(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             plugin = Path(directory)
             launcher = plugin / "mcp/codexy-mcp-watcher"
@@ -37,8 +39,7 @@ class WatcherProbeTests(unittest.TestCase):
             Path(f"{launcher}.cmd").write_text("@echo off\n", encoding="utf-8")
             with patch.object(probe.os, "name", "nt"):
                 values = probe._argv("./mcp/codexy-mcp-watcher", plugin)
-        self.assertIsInstance(values, str)
-        self.assertIn(f"{launcher}.cmd", values)
+        self.assertEqual(values, [str(launcher)])
 
     def test_repeated_probe_assignments_are_unique(self) -> None:
         with (

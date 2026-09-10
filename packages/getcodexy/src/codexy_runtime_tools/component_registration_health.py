@@ -14,6 +14,7 @@ from .component_core_hooks import (
 )
 from .component_integrity import MAX_COMPONENT_BYTES, _read_regular, valid_agent_toml
 from .component_manifest import load_component_manifest
+from .component_watcher_materialization import valid_watcher_entrypoint
 
 CATALOGS = {
     "core": """# Codexy packaged-agent discovery/registration contract. Validators and the
@@ -187,6 +188,7 @@ def valid_registration(plugin: Path, component: str) -> bool:
             component == "core"
             and json.loads(_text(plugin / ".mcp.json", plugin)) == CORE_MCP
             and _executable(plugin / "mcp/codexy-mcp-watcher.sh", plugin)
+            and valid_watcher_entrypoint(plugin)
         )
         return (
             (component != "core" or core_mcp)

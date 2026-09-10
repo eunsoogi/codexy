@@ -130,6 +130,10 @@ def make_plugin(root: Path) -> Path:
         '"version":"1.2.2"}',
         encoding="utf-8",
     )
+    launcher = root / "mcp/codexy-mcp-watcher.sh"
+    launcher.parent.mkdir(parents=True, exist_ok=True)
+    launcher.write_text("#!/bin/sh\n", encoding="utf-8")
+    launcher.chmod(0o755)
     if root.parent.name == "plugins" and root.name == "codexy":
         marketplace_root = root.parent.parent
         _git(marketplace_root, "init", "-q")
