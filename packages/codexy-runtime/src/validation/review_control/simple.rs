@@ -151,10 +151,11 @@ fn check(
         return Err("light review selection must not carry review result state".into());
     }
 
-    if let Some(result) = result {
-        if !TERMINAL_RESULTS.contains(&result) && !PENDING_RESULTS.contains(&result) {
-            return Err("review control state result is invalid".into());
-        }
+    if let Some(result) = result
+        && !TERMINAL_RESULTS.contains(&result)
+        && !PENDING_RESULTS.contains(&result)
+    {
+        return Err("review control state result is invalid".into());
     }
     if require_pass {
         if profile.reviewer.is_some() && result != Some("PASS") {

@@ -42,13 +42,12 @@ mutation route.
 
 ## Current-head review and ownership
 
-The normal review path uses the current change as its evidence boundary. Read the
-current PR head, relevant checks, selected reviewer result, and actual
+The normal review path uses the current change as its evidence boundary. Read
+the current PR head, relevant checks, selected reviewer result, and actual
 unresolved findings. One proportionate independent reviewer is enough when the
 selected profile or concrete risk calls for one. `PASS` with no actionable
 findings supports the review gate; `BLOCK`, `UNOBSERVABLE`, `PENDING`,
-`RUNNING`, a stale head, a failed relevant check, or an actual finding does
-not.
+`RUNNING`, a stale head, a failed relevant check, or an actual finding does not.
 
 Missing historical transcripts, genesis/import records, invocation telemetry,
 quota bookkeeping, and optional evaluator or connector output MUST NOT block
@@ -58,11 +57,11 @@ broad rechecks, semantic evaluators, or evidence artifacts require an explicit
 user or repository requirement or a concrete unresolved risk.
 
 For a child-owned implementation lane, the owning child owns the
-profile-selected reviewer when that reviewer is required and repairs findings
-on the child branch. The parent consumes current-head evidence and retains
-merge or publication authority. The parent MUST NOT replace the child reviewer
-or patch its branch. A separately required connector review remains
-parent-owned and follows the documented connector procedure.
+profile-selected reviewer when that reviewer is required and repairs findings on
+the child branch. The parent consumes current-head evidence and retains merge or
+publication authority. The parent MUST NOT replace the child reviewer or patch
+its branch. A separately required connector review remains parent-owned and
+follows the documented connector procedure.
 
 Native host transcript capture and recovery apply only when a selected review or
 transition path consumes those historical events. If that path uses a selected

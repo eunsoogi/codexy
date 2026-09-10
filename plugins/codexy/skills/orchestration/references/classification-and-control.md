@@ -95,8 +95,8 @@ unassigned or out-of-scope edits.
   follow the proportionate current-head contract in `review-profiles.md`:
   `light` has no LLM reviewer, `standard` uses
   `plugins/codexy/agents/codexy-inspector.toml` when an independent reviewer is
-  required, and `strict` uses `plugins/codexy/agents/codexy-sentinel.toml`.
-  The reviewer reads the current diff, exact head, lane scope, and relevant
+  required, and `strict` uses `plugins/codexy/agents/codexy-sentinel.toml`. The
+  reviewer reads the current diff, exact head, lane scope, and relevant
   verification; missing historical or optional evidence is not a default gate.
 - A selected reviewer MUST return `PASS`, `BLOCK`, or `UNOBSERVABLE` when it
   reaches a terminal result. A bounded wait with no result is `PENDING`, and an
@@ -136,35 +136,33 @@ silence, clean gates, and a ready PR are non-authoritative signals.
 The selected profile and reviewer remain the authority for review state. The
 compact current-head control MUST carry the existing
 `codexy.review-control-state.v1` schema, selected `profile`, the policy
-`reviewer` when applicable, exact `reviewed_head`, one actual
-`terminal_result` or non-terminal `status`, and
-`unresolved_findings`. A selected reviewer MUST match the current PR head and
-profile policy. `PASS` with no unresolved actionable findings is the only
-positive review result; `BLOCK`, `UNOBSERVABLE`, `PENDING`, `RUNNING`,
-stale heads, failed relevant checks, and actual findings MUST not be presented
-as readiness.
+`reviewer` when applicable, exact `reviewed_head`, one actual `terminal_result`
+or non-terminal `status`, and `unresolved_findings`. A selected reviewer MUST
+match the current PR head and profile policy. `PASS` with no unresolved
+actionable findings is the only positive review result; `BLOCK`, `UNOBSERVABLE`,
+`PENDING`, `RUNNING`, stale heads, failed relevant checks, and actual findings
+MUST not be presented as readiness.
 
 The compact path does not require `issue_number`, review counts, ordered
 history, a prior control state, transcript import, invocation telemetry, or a
 disposition object. The authenticated current PR snapshot remains authoritative
 for repository, PR, base, and head identity. `previous_control_state` MUST
-remain rejected when supplied to the producer; absence of a previous snapshot
-is valid for the compact path.
+remain rejected when supplied to the producer; absence of a previous snapshot is
+valid for the compact path.
 
 A child-owned lane MUST send implementation or review-response fixes to its
 owning child. The parent consumes the current result and retains merge or
-publication authority. A pending reviewer stays with the same reviewer until
-the real result arrives; it MUST NOT be interrupted, replaced, duplicated, or
+publication authority. A pending reviewer stays with the same reviewer until the
+real result arrives; it MUST NOT be interrupted, replaced, duplicated, or
 converted into a new approval request.
 
 ## Explicit legacy state
 
 A control that carries `full_review_count`, `delta_review_count`,
-`terminal_review_count`, `terminal_review_limit`,
-`terminal_review_history`, `pre_pr_import`, `native_history_recovery`,
-`native_history_provenance`, `reviewer_migration`, `post_cap_re_review`, or
-`final_disposition` opts into
-the existing legacy validator. That path is permitted only for an explicit
+`terminal_review_count`, `terminal_review_limit`, `terminal_review_history`,
+`pre_pr_import`, `native_history_recovery`, `native_history_provenance`,
+`reviewer_migration`, `post_cap_re_review`, or `final_disposition` opts into the
+existing legacy validator. That path is permitted only for an explicit
 requirement or concrete unresolved risk. It MUST use authenticated current and
 previous PR snapshots, preserve actual history and source provenance, reject
 fabricated or reordered records, and keep real findings, relevant checks,
@@ -172,8 +170,8 @@ ownership, safety, LOC, review-thread, and merge gates active.
 
 Pre-PR or native history recovery remains non-admitted until a real current-head
 review is recorded. Post-cap and final-disposition handling MUST preserve its
-actual prior events and MUST NOT create a synthetic `PASS`, waive a finding,
-or invoke a fourth reviewer. The detailed source contracts remain in
+actual prior events and MUST NOT create a synthetic `PASS`, waive a finding, or
+invoke a fourth reviewer. The detailed source contracts remain in
 [review profiles](review-profiles.md), [review lifecycle](review-lifecycle.md),
 [native review history](native-review-history.md), and
 [authenticated finding-disposition CI](finding-disposition-ci.md).
