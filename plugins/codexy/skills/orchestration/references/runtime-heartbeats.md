@@ -14,15 +14,21 @@ current Orchestrator-stage budget and record only returned size/token metadata.
 
 While a desktop-origin root turn has a callable `wait_threads` handler, the
 owner MUST use the cursor-based wait for an assigned observation obligation
-while that obligation remains. An unchanged cursor or bounded timeout is not a
-stall and MUST NOT by itself start another model turn or complete the goal. The
-caller controls whether to return after the bounded wait; the host's automatic
-continuation behavior is not implied by this contract and MUST be reported if
-observed. If a slingshot-host turn still returns `No handler registered` after
-the one fresh discovery and one host-aware retry, the owner MUST emit exactly
-one unavailable evidence receipt and require desktop-origin root re-entry; it
-MUST NOT repeat the wait call, schedule a heartbeat relay, use `read_thread`, or
-use `handoff_thread` for recovery. The slingshot recovery route is not an
+while that obligation remains. For a native Watcher, this wait belongs to one
+long-running subagent turn: after each wait it MUST inspect the actual Worker
+result, report a material event when warranted, and continue waiting while any
+assigned target remains nonterminal. An unchanged cursor, bounded timeout, one
+report, or one Worker completion is nonterminal and MUST NOT end that Watcher
+turn. A Watcher may return only after the full assignment is terminal, the user
+or Orchestrator explicitly cancels it, or a verified host limitation prevents
+continuation. For ordinary owners outside the Watcher route, the caller controls
+whether to return after the bounded wait; the host's automatic continuation
+behavior is not implied by this contract and MUST be reported if observed. If a
+slingshot-host turn still returns `No handler registered` after the one fresh
+discovery and one host-aware retry, the owner MUST emit exactly one unavailable
+evidence receipt and require desktop-origin root re-entry; it MUST NOT repeat
+the wait call, schedule a heartbeat relay, use `read_thread`, or use
+`handoff_thread` for recovery. The slingshot recovery route is not an
 unavailable-wait fallback eligible for heartbeat registration; it ends in
 desktop-origin root re-entry.
 
@@ -47,8 +53,13 @@ cursor for bounded waiting; a user input or host cancellation MUST release that
 wait immediately. The Watcher has no long-lived release goal. If the host
 exposes a finite goal for the subagent, that goal MUST cover only the bounded
 observation assignment and MUST NOT be treated as issue or release completion.
-The Orchestrator MUST inspect the relevant Worker/app surface after a material
-report, decide and instruct the Worker, and verify the resulting call or diff.
+The Watcher MUST keep its native turn active after each report and return to its
+`wait_threads` loop while an assigned target remains nonterminal; the
+Orchestrator may return control while that native turn continues. The Watcher
+may return only for full assignment completion, explicit user/Orchestrator
+cancellation, or a verified host limitation. The Orchestrator MUST inspect the
+relevant Worker/app surface after a material report, decide and instruct the
+Worker, and verify the resulting call or diff.
 
 ## Eligibility And Discovery
 

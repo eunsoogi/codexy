@@ -25,6 +25,17 @@ includes parent replies, task/agent prompts, delegated instructions, progress
 and callback messages, handoffs, and tool prompt fields. Concision and protected
 technical text MUST follow that contract.
 
+### Watcher turn lifecycle
+
+When the packaged `codexy-watcher` is summoned, it MUST keep the same native
+subagent turn active for the full assigned observation. Inside that turn it MUST
+repeat `wait_threads` with the latest cursor, inspect the actual Worker result,
+report a material event when warranted, and continue observing while any
+assigned target remains nonterminal. A report, one Worker completion, an empty
+timeout, or unchanged progress MUST NOT end the turn. The Watcher may return
+only after the full assignment is terminal, the user or Orchestrator explicitly
+cancels it, or a verified host limitation prevents continuation.
+
 ### Permission boundary
 
 - Before asking for approval, MUST identify the next action and test whether it

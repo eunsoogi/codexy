@@ -50,7 +50,12 @@
      multi-agent equivalent) with the Worker's exact target identities. The
      Watcher observes and reports through the core Watcher MCP; it MUST NOT
      become an independent app task, edit Worker files, correct Workers, decide
-     acceptance, or recruit a second watcher.
+     acceptance, or recruit a second watcher. The same native Watcher turn MUST
+     repeat `wait_threads`, actual Worker-result inspection, material reporting,
+     and the next wait while any assigned target remains nonterminal. A report,
+     one Worker completion, or an empty timeout MUST NOT end that turn; return
+     is reserved for full assignment completion, explicit cancellation, or a
+     verified host limitation.
    - MUST complete lane assignment before implementation edits begin. An
      Orchestrator may prepare issue text, branch name, worktree path, and
      handoff text, but MUST NOT patch implementation files for the child-owned

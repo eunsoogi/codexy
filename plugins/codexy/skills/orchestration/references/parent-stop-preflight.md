@@ -34,6 +34,10 @@ branch, worktree, PR, durable child context, or review-response ownership:
    [parent-supervision.md](parent-supervision.md), the Orchestrator's exact
    overall goal MUST remain active while the Watcher is summoned. The Watcher
    MUST NOT create or recreate that goal, and the Orchestrator MUST NOT clear,
-   transfer, or falsely complete it to fit a handoff. The Orchestrator returns
-   control only after the bounded observation or material event work, while
-   ordinary Worker finite-goal closure and `blocked` recovery remain required.
+   transfer, or falsely complete it to fit a handoff. The Watcher MUST keep the
+   same native turn active after a material report, one Worker completion, or an
+   empty timeout while assigned targets remain nonterminal. It returns only
+   after the full assignment, explicit user/parent cancellation, or a verified
+   host limitation. The Orchestrator may return control while that native turn
+   continues; ordinary Worker finite-goal closure and `blocked` recovery remain
+   required.

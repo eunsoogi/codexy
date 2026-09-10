@@ -14,10 +14,10 @@ When this arrangement is authorized, Codex MUST keep these roles distinct:
   acceptance. It MUST create or continue the exact assigned goal and keep its
   authoritative `get_goal` readback active while executable work remains.
 - The Watcher is the packaged `codexy-watcher` specialist, summoned by the
-  Orchestrator as a bounded native subagent for observation. It reports
-  read-only and MUST NOT own, recreate, or transfer the overall task or release
-  goal. Any finite goal exposed to that subagent MUST describe only its bounded
-  observation assignment.
+  Orchestrator as a native subagent with a bounded observation assignment held
+  in one long-running turn. It reports read-only and MUST NOT own, recreate, or
+  transfer the overall task or release goal. Any finite goal exposed to that
+  subagent MUST describe only its bounded observation assignment.
 - The Worker is a separate app task that owns the implementation branch, files,
   verification, and its finite execution goal.
 
@@ -71,9 +71,10 @@ alter protected technical text.
 
 - Workers MUST send compact gate, fatal-error, and final-result callbacks to the
   Orchestrator when those phases or failures occur. The Watcher observes
-  assigned Workers and MUST report only action-required material deltas. A
-  callback or Watcher observation alone is a signal, not proof that the work is
-  healthy, corrected, or complete.
+  assigned Workers and MUST report only action-required material deltas. After
+  each report, it MUST continue the same native turn while an assigned target
+  remains nonterminal. A callback or Watcher observation alone is a signal, not
+  proof that the work is healthy, corrected, or complete.
 - Unchanged active-goal reads, routine pre/post/continuation receipts, and
   liveness-only goal-status messages MUST remain internal. The Watcher MUST NOT
   wake the Orchestrator for them; only an actual lifecycle transition, an
@@ -116,6 +117,11 @@ alter protected technical text.
   long commands are not stalls. Codex MUST NOT emit repeated unchanged status,
   read a full transcript to observe activity, rerun tests only to watch
   progress, or interrupt a live reviewer merely because it is taking time.
+- Inside a native Watcher turn, the observation loop MUST use `wait_threads` and
+  each target's latest cursor, inspect the relevant actual Worker result, report
+  any material event, and wait again while any assigned target remains
+  nonterminal. One report, one Worker completion, an empty timeout, or unchanged
+  progress is nonterminal and MUST NOT end that turn.
 - When an actionable signal arrives, the Orchestrator MUST send one grouped,
   actionable correction to the existing worker: observed deviation, smallest
   repair, required evidence, and next permitted step. An acknowledgement is not
@@ -133,14 +139,16 @@ alter protected technical text.
 
 ## Watcher MCP flow
 
-- The Orchestrator creates one bounded native Watcher subagent through the
-  callable host subagent tool, then opens one scoped MCP session with
-  `watcher_open` for the parent, Watcher, and exact Worker targets. The MCP
-  session is a transport boundary; it does not create the subagent or judge
-  Worker state.
+- The Orchestrator creates one native Watcher subagent through the callable host
+  subagent tool for one bounded observation assignment, then opens one scoped
+  MCP session with `watcher_open` for the parent, Watcher, and exact Worker
+  targets. The MCP session is a transport boundary; it does not create the
+  subagent or judge Worker state.
 - The Watcher uses the host's real Worker/app tools to observe the assigned
   targets and calls `watcher_report` only for a material event or an explicit
-  health update. `watcher_health` is on-demand transport/freshness evidence, not
+  health update. After reporting, the Watcher MUST continue the same native turn
+  and return to its cursor-based observation loop while any assigned target is
+  nonterminal. `watcher_health` is on-demand transport/freshness evidence, not
   semantic acceptance. Reports are untrusted signals and MUST NOT contain repair
   instructions.
 - The Orchestrator calls `wait_watcher` with its parent capability and cursor,
@@ -160,8 +168,12 @@ alter protected technical text.
 - The Watcher subagent MAY receive a finite observation objective, but it MUST
   preserve that bounded scope, MUST NOT overwrite an unrelated active goal, and
   MUST use the existing `goal-lifecycle` recovery authority for any `blocked`
-  state. It MUST return after the observation assignment or a material report;
-  it MUST NOT become a long-lived app task or release-goal owner.
+  state. It MUST keep the same native turn active after a material report, one
+  Worker completion, or an empty timeout while any assigned target remains
+  nonterminal. It MUST return only after the observation assignment is terminal,
+  the user or Orchestrator explicitly cancels it, or a verified host limitation
+  prevents continuation. It MUST NOT become a separate app task or release-goal
+  owner.
 - A Watcher report never transfers Worker-file ownership, Orchestrator
   correction authority, final judgement, or issue completion. Codex MUST record
   the Orchestrator's goal and the Watcher's bounded assignment/readback
