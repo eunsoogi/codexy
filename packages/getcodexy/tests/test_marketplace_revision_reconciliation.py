@@ -85,6 +85,10 @@ def _fixture(
         ),
         encoding="utf-8",
     )
+    launcher = marketplace / "plugins/codexy/mcp/codexy-mcp-watcher.sh"
+    launcher.parent.mkdir(parents=True)
+    launcher.write_text("#!/bin/sh\n", encoding="utf-8")
+    launcher.chmod(0o755)
     _git(marketplace, "init", "-q")
     _git(marketplace, "branch", "-M", "main")
     _git(marketplace, "config", "user.name", "fixture")

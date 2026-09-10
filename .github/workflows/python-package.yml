@@ -101,6 +101,19 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
+          $version = "1.7.0"
+          $archive = Join-Path $env:RUNNER_TEMP "codexy-marketplace-bundle-$version.tar.gz"
+          $extract = Join-Path $env:RUNNER_TEMP "codexy-marketplace-bundle-$version"
+          Invoke-WebRequest -Uri "https://github.com/eunsoogi/codexy/releases/download/v$version/codexy-marketplace-bundle.tar.gz" -OutFile $archive
+          New-Item -ItemType Directory -Force -Path $extract | Out-Null
+          & tar.exe -xzf $archive -C $extract
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $binary = Join-Path $extract "plugins\codexy\mcp\codexy-mcp-watcher.exe"
+          if (-not (Test-Path -LiteralPath $binary -PathType Leaf)) {
+            throw "released native Watcher runtime is missing: $binary"
+          }
+          $env:CODEXY_TEST_WATCHER_BINARY = $binary
+          "CODEXY_TEST_WATCHER_BINARY=$binary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           $env:PYTHONPATH = "packages/getcodexy/src;packages/getcodexy/tests"
           $hookRoot = Join-Path $PWD "plugins/codexy-github/hooks"
           $expectedContext = '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Codexy GitHub workflow is installed. Use $git-workflow; GitHub authorization remains with the host, connector, and GitHub."}}'
@@ -126,6 +139,8 @@ jobs:
             "packages/getcodexy/tests/test_component_lifecycle_update_recovery.py"
             "packages/getcodexy/tests/test_component_lifecycle_admission.py"
             "packages/getcodexy/tests/test_component_transaction_durability.py"
+            "packages/getcodexy/tests/test_component_lifecycle_watcher.py"
+            "packages/getcodexy/tests/test_component_watcher_registration.py"
           )
           python -m unittest @componentTests
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

@@ -18,6 +18,7 @@ from .plugin_resolution import (
     official_marketplace as _official_marketplace,
     preflight_install as _preflight,
 )
+from .component_watcher_materialization import materialize_watcher
 from .updater import SyncResult, _absolute, _validate_real_path, sync_agents
 from .version_lock import default_package_version
 
@@ -84,6 +85,7 @@ def run_pre_session(
     validate_or_quarantine_marketplace(
         executable, invoke, home, marketplace_root, f"v{target_version}"
     )
+    materialize_watcher(marketplace_root / "plugins/codexy", home)
     _json(
         invoke([str(executable), "plugin", "add", "codexy@codexy", "--json"]),
         "plugin add",

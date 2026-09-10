@@ -190,7 +190,7 @@ class PreSessionSafetyTests(unittest.TestCase):
                     package_version="1.2.2",
                 )
 
-            self.assertEqual(calls, commands())
+            self.assertEqual(calls, commands()[:7])
 
     def test_terminal_command_failure_does_not_partially_synchronize(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

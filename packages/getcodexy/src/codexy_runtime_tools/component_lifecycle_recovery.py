@@ -10,6 +10,7 @@ from .component_hook_activation import HookLister
 from .component_lifecycle_finish import finish_committed
 from .component_lifecycle_preflight import existing_marketplace
 from .component_manifest import ComponentManifest
+from .component_watcher_materialization import materialize_watcher
 from .component_resolver import (
     ComponentResolutionError,
     reconcile_installed_inventory,
@@ -27,7 +28,7 @@ from .component_transaction_state import (
 from .component_lifecycle_terminal import terminal
 from .marketplace_repin import reconcile_official_marketplace_root
 from .pre_session import _json, official_marketplace_root
-from .plugin_resolution import MarketplaceBinding, MarketplaceIdentity
+from .plugin_resolution import MarketplaceBinding, MarketplaceIdentity, marketplace_path
 
 
 Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
@@ -196,6 +197,8 @@ def apply_forward(
                 manifest.version,
                 home,
             )
+    if "core" in journal.target:
+        materialize_watcher(marketplace_path(root) / "plugins/codexy", home)
     for component in adds:
         mutate(executable, invoke, "add", manifest, component)
     for component in removes:

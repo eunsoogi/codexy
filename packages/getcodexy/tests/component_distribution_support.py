@@ -10,6 +10,9 @@ from unittest.mock import Mock, patch
 
 from codexy_runtime_tools.version_lock import default_package_version
 from packages.getcodexy.tests.component_watcher_fixture import install_watcher_runtime
+from packages.getcodexy.tests.component_watcher_fixture import (
+    require_native_watcher_binary,
+)
 
 FAKE_MCP = r"""#!/usr/bin/env python3
 import json, os, subprocess, sys

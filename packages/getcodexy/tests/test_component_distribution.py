@@ -27,6 +27,8 @@ class ComponentDistributionTests(unittest.TestCase):
         value = os.environ.get(EXECUTABLE_ENV)
         if not value:
             raise unittest.SkipTest(f"{EXECUTABLE_ENV} is not set")
+        if os.name == "nt":
+            support.require_native_watcher_binary()
         cls.executable = Path(value).resolve()
         if not cls.executable.is_file():
             raise RuntimeError(

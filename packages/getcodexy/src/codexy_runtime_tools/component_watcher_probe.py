@@ -143,18 +143,11 @@ def _argv(command, plugin, args=()):
     ]
     if values and values[0].endswith("mcp/codexy-mcp-watcher"):
         entrypoint = values[0]
-        resolved = (
+        values[0] = os.path.normpath(
             entrypoint
             if os.path.isabs(entrypoint)
             else os.path.join(str(plugin), entrypoint)
         )
-        resolved = os.path.normpath(resolved)
-        suffixes = (".exe", ".cmd", "") if os.name == "nt" else ("", ".sh")
-        for suffix in suffixes:
-            candidate = f"{resolved}{suffix}"
-            if os.path.isfile(candidate):
-                values[0] = candidate
-                break
     if (
         os.name == "nt"
         and values[0].lower().endswith((".bat", ".cmd"))

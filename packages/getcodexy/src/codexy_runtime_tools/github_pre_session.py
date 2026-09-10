@@ -10,8 +10,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from .component_integrity import frozen_component
+from .component_integrity import frozen_component, verify_component
 from .component_registration_health import valid_registration
+from .component_watcher_materialization import materialize_watcher
 from .activation_transaction import ActivationSnapshot
 from .plugin_resolution import (
     official_named_install,
@@ -64,6 +65,7 @@ def run_github_pre_session(
     ]
     snapshot = ActivationSnapshot.capture(home)
     try:
+        materialize_watcher(marketplace_root / "plugins/codexy", home)
         for identity in ("codexy@codexy", "codexy-github@codexy"):
             _json(
                 invoke([str(executable), "plugin", "add", identity, "--json"]),
@@ -80,6 +82,7 @@ def run_github_pre_session(
         )
         if core_version != github_version:
             raise ValueError("Codexy core and GitHub plugin versions must match")
+        verify_component(core_root, "codexy", core_version)
         with (
             frozen_component(core_root, "codexy", core_version) as trusted_core,
             frozen_component(
