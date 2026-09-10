@@ -158,8 +158,13 @@ alter protected technical text.
   relevant tool call, diff, or result itself.
 - On a user interrupt, stop, expiry, or completed observation assignment, the
   Orchestrator calls `watcher_cancel` when authorized. A pending `wait_watcher`
-  MUST release immediately on host cancellation/input; the durable queue and
-  cursor remain available for an honest resume or explicit cancellation.
+  MUST release immediately only when the host propagates cancellation/input as a
+  same-connection MCP cancellation; a task message or outer wait termination may
+  leave the native wait active. If that host channel is unavailable, the
+  Orchestrator MUST report the limitation, use `watcher_cancel` when authorized,
+  and open a new assignment/session for a fresh observation. The cancelled
+  session's queue and cursor remain readback evidence, not continuity for the
+  new session.
 
 - The Orchestrator MUST own the exact overall task objective and MUST preserve
   its active goal through Watcher creation, reports, correction, review, and
