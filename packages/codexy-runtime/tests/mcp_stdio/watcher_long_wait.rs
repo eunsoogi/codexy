@@ -237,5 +237,12 @@ fn wait_schema_documents_the_long_poll_bounds() -> TestResult {
     let timeout = &wait["inputSchema"]["properties"]["timeoutMs"];
     assert_eq!(timeout["default"], 600_000);
     assert_eq!(timeout["maximum"], 3_600_000);
+    let description = wait["description"]
+        .as_str()
+        .ok_or("wait_watcher description is missing")?;
+    assert!(description.contains("status=expired"));
+    assert!(description.contains("empty events"));
+    assert!(description.contains("unchanged nextCursor"));
+    assert!(description.contains("durable queue preserved"));
     Ok(())
 }
