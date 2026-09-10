@@ -9,29 +9,38 @@ use std::{
 #[path = "activation_retry_setup.rs"]
 mod setup;
 
-pub(super) struct Fixture {
+pub(crate) struct Fixture {
     root: tempfile::TempDir,
-    pub(super) repo: PathBuf,
-    pub(super) branch: String,
+    pub(crate) repo: PathBuf,
+    pub(crate) branch: String,
+    pub(crate) legacy_branch: String,
+    pub(super) open_branch: String,
     version: String,
-    main: String,
+    pub(crate) main: String,
     receipt: PathBuf,
     bin: PathBuf,
     mutation: String,
 }
 
 impl Fixture {
-    pub(super) fn new(mutation: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub(crate) fn new(mutation: &str) -> Result<Self, Box<dyn std::error::Error>> {
         setup::prepare(mutation)
     }
 
-    pub(super) fn remote_head(&self) -> Result<String, Box<dyn std::error::Error>> {
+    pub(crate) fn remote_head(&self) -> Result<String, Box<dyn std::error::Error>> {
+        self.remote_branch_head(&self.branch)
+    }
+
+    pub(crate) fn remote_branch_head(
+        &self,
+        branch: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         Ok(git(
             &self.repo,
             &[
                 "ls-remote",
                 "origin",
-                &format!("refs/heads/{}", self.branch),
+                &format!("refs/heads/{branch}"),
             ],
         )?
         .split_whitespace()
@@ -40,11 +49,31 @@ impl Fixture {
         .to_owned())
     }
 
-    pub(super) fn run(&self, attempt: &str) -> Result<Output, Box<dyn std::error::Error>> {
+    pub(crate) fn select_branch(
+        &self,
+        receipt: &Path,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        success(
+            Command::new(self.repo.join("scripts/select-runtime-activation-branch.sh"))
+                .args([&self.version, receipt.to_str().ok_or("receipt path")?])
+                .env(
+                    "PATH",
+                    format!("{}:{}", self.bin.display(), std::env::var("PATH")?),
+                )
+                .env("GH_TOKEN", "fixture-github-token")
+                .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
+                .env("CODEXY_FIXTURE_STEP", "direct-selector")
+                .env("PR_STATE_FILE", self.root.path().join("pr-state"))
+                .env("OPEN_ACTIVATION_BRANCH", &self.open_branch)
+                .output()?,
+        )
+    }
+
+    pub(crate) fn run(&self, attempt: &str) -> Result<Output, Box<dyn std::error::Error>> {
         self.run_with_omitted_token(attempt, None)
     }
 
-    pub(super) fn run_with_omitted_token(
+    pub(crate) fn run_with_omitted_token(
         &self,
         attempt: &str,
         omitted_step: Option<&str>,
@@ -100,6 +129,9 @@ impl Fixture {
             )
             .env("RUNNER_TEMP", &temporary)
             .env("GITHUB_SHA", &self.main)
+            .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
+            .env("ACTIVATION_BRANCH", &self.branch)
+            .env("OPEN_ACTIVATION_BRANCH", &self.open_branch)
             .env("PR_READBACK_MODE", &self.mutation)
             .env("PR_READBACK_ATTEMPT", temporary.join("pr-readback-attempt"))
             .env("PR_STATE_FILE", self.root.path().join("pr-state"))
@@ -117,14 +149,14 @@ impl Fixture {
             .output()?)
     }
 
-    pub(super) fn prepare_next_attempt(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub(crate) fn prepare_next_attempt(&self) -> Result<(), Box<dyn std::error::Error>> {
         git(&self.repo, &["checkout", "main"])?;
         git(&self.repo, &["branch", "-D", &self.branch])?;
         Ok(())
     }
 }
 
-pub(super) fn git(repo: &Path, args: &[&str]) -> Result<String, Box<dyn std::error::Error>> {
+pub(crate) fn git(repo: &Path, args: &[&str]) -> Result<String, Box<dyn std::error::Error>> {
     let output = Command::new("git").args(args).current_dir(repo).output()?;
     success(output)
 }
@@ -135,7 +167,7 @@ fn commit(repo: &Path, message: &str) -> Result<(), Box<dyn std::error::Error>> 
     Ok(())
 }
 
-pub(super) fn success(output: Output) -> Result<String, Box<dyn std::error::Error>> {
+pub(crate) fn success(output: Output) -> Result<String, Box<dyn std::error::Error>> {
     if !output.status.success() {
         return Err(format!(
             "stdout: {}\nstderr: {}",
@@ -151,6 +183,13 @@ const GH: &str = r#"#!/bin/sh
 set -eu
 test "${GH_TOKEN:-}" = fixture-github-token || { echo "verifier GitHub query requires GH_TOKEN: $CODEXY_FIXTURE_STEP" >&2; exit 4; }
 case "$*" in
+  'pr list '*'--json number,headRefName'*)
+    if test "$(cat "$PR_STATE_FILE")" = 1; then
+      printf '[{"number":1,"headRefName":"%s"}]\n' "$OPEN_ACTIVATION_BRANCH"
+    else
+      printf '[]\n'
+    fi
+    ;;
   'pr list '*'--json state '*) if test "$(cat "$PR_STATE_FILE")" = 1; then printf '%s\n' OPEN; fi ;;
   'pr list '*'--json number '*) cat "$PR_STATE_FILE" ;;
   'pr list '*'--json headRefOid '*)

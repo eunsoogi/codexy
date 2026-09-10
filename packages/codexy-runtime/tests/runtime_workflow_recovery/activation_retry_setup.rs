@@ -1,4 +1,5 @@
 use super::*;
+use super::super::receipt::receipt_with_identity;
 
 pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
@@ -34,6 +35,11 @@ pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Err
         repo.join("scripts/verify-runtime-activation-branch"),
         "#!/bin/sh\necho stale-branch-verifier >&2\nexit 97\n",
     )?;
+    fs::copy(
+        source.join("scripts/select-runtime-activation-branch.sh"),
+        repo.join("scripts/select-runtime-activation-branch.sh"),
+    )?;
+    crate::support::make_executable(&repo.join("scripts/select-runtime-activation-branch.sh"))?;
     commit(&repo, "old contract")?;
     let base = git(&repo, &["rev-parse", "HEAD"])?;
     let tree = git(&repo, &["rev-parse", "HEAD^{tree}"])?;
@@ -46,8 +52,9 @@ pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Err
         .as_str()
         .ok_or("candidate version")?
         .to_owned();
-    let branch = format!("codexy/runtime-activation-v{version}");
-    git(&repo, &["switch", "-c", &branch])?;
+    let legacy_branch = format!("codexy/runtime-activation-v{version}-staging-42-1");
+    let branch = legacy_branch.clone();
+    git(&repo, &["switch", "-c", &legacy_branch])?;
     success(
         Command::new(env!("CARGO_BIN_EXE_codexy-activate-runtime"))
             .args(["--repo-root"])
@@ -76,7 +83,7 @@ pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Err
         }
         _ => {}
     }
-    git(&repo, &["push", "origin", &branch])?;
+    git(&repo, &["push", "origin", &legacy_branch])?;
     git(&repo, &["switch", "main"])?;
     fs::copy(
         source.join("scripts/verify-runtime-activation-branch"),
@@ -98,9 +105,9 @@ pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Err
     commit(&repo, "advance main contract")?;
     let main = git(&repo, &["rev-parse", "HEAD"])?;
     git(&repo, &["push", "origin", "main"])?;
-    git(&repo, &["branch", "-D", &branch])?;
-    if mutation == "new" {
-        git(&repo, &["push", "origin", "--delete", &branch])?;
+    git(&repo, &["branch", "-D", &legacy_branch])?;
+    if matches!(mutation, "new" | "merged-deleted") {
+        git(&repo, &["push", "origin", "--delete", &legacy_branch])?;
     }
     if mutation == "source" {
         fs::write(
@@ -108,9 +115,27 @@ pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Err
             serde_json::to_vec(&receipt(&main, &git(&repo, &["rev-parse", "HEAD^{tree}"])?))?,
         )?;
     }
+    let mut branch = branch;
+    if matches!(mutation, "merged-deleted" | "retained") {
+        let main_tree = git(&repo, &["rev-parse", "HEAD^{tree}"])?;
+        fs::write(
+            &receipt_path,
+            serde_json::to_vec(&receipt_with_identity(&main, &main_tree, 43, 2))?,
+        )?;
+        branch = format!("codexy/runtime-activation-v{version}-staging-43-2");
+    }
+    let open_branch = if mutation == "competing" {
+        format!("codexy/runtime-activation-v{version}-staging-99-1")
+    } else {
+        branch.clone()
+    };
     fs::write(
         root.path().join("pr-state"),
-        if mutation == "new" { "0" } else { "1" },
+        if matches!(mutation, "new" | "merged-deleted" | "retained") {
+            "0"
+        } else {
+            "1"
+        },
     )?;
     let bin = root.path().join("bin");
     fs::create_dir(&bin)?;
@@ -122,6 +147,8 @@ pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Err
         root,
         repo,
         branch,
+        legacy_branch,
+        open_branch,
         version,
         main,
         receipt: receipt_path,

@@ -30,6 +30,11 @@ mod ci_dispatch_behavior;
 #[cfg(unix)]
 #[path = "runtime_workflow_recovery/activation_retry_behavior.rs"]
 mod activation_retry_behavior;
+#[cfg(unix)]
+#[path = "runtime_workflow_recovery/activation_generation_behavior.rs"]
+mod activation_generation_behavior;
+#[path = "runtime_workflow_recovery/activation_generation_contract.rs"]
+mod activation_generation_contract;
 
 #[test]
 fn activation_requires_clean_bootstrap_entrypoint_and_successful_staging_run()
@@ -134,7 +139,8 @@ fn activation_pr_creation_reuses_an_existing_verified_staging_branch()
         &[
             "git ls-remote --exit-code --heads origin \"$branch\"",
             "\"$trusted/scripts/verify-runtime-activation-branch\" \"$branch\" \"$existing_base\" \"$BOOTSTRAP_VERSION\" \"$RUNNER_TEMP/codexy-runtime-staging/runtime-staging-receipt.json\"",
-            "codexy/runtime-activation-v${BOOTSTRAP_VERSION}",
+            "select-runtime-activation-branch.sh",
+            "\"$BOOTSTRAP_VERSION\" \"$RUNNER_TEMP/codexy-runtime-staging/runtime-staging-receipt.json\"",
         ],
     );
     let creation = run(&activation, "open-activation-pr", "Create exactly one activation pull request")?;
