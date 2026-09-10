@@ -37,7 +37,7 @@ fn wait_all(
     let response = reader
         .send(&json!({
             "jsonrpc": "2.0", "id": request_id, "method": "tools/call",
-            "params": {"name": "wait_watcher", "arguments": {
+            "params": {"name": "watcher_wait", "arguments": {
                 "sessionId": session, "parentToken": parent_token,
                 "cursor": "0", "maxReports": 8, "timeoutMs": 1000
             }}

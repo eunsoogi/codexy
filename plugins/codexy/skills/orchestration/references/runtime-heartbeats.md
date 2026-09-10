@@ -48,7 +48,7 @@ lifecycle transition, unresolved drift or failure requiring Orchestrator action,
 missing terminal delivery, or a ready external gate may be reported.
 
 The Orchestrator MUST keep the overall goal active and owned by itself while the
-Watcher subagent observes. It MAY use `wait_watcher` with the parent token and
+Watcher subagent observes. It MAY use `watcher_wait` with the parent token and
 cursor for bounded waiting; a user input or host cancellation MUST release that
 wait immediately only when the host propagates it as a same-connection MCP
 cancellation. A task message or outer wait termination may leave the native wait

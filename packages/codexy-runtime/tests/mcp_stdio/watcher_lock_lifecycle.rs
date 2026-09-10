@@ -28,7 +28,7 @@ fn wait_lock_is_released_when_its_owner_process_dies() -> Result<(), Box<dyn std
     initialize(&mut holder)?;
     holder.send_without_read(&json!({
         "jsonrpc":"2.0","id":3,"method":"tools/call",
-        "params":{"name":"wait_watcher","arguments":{
+        "params":{"name":"watcher_wait","arguments":{
             "sessionId":session,"parentToken":parent_token,"timeoutMs":30000
         }}
     }))?;
@@ -58,7 +58,7 @@ fn wait_lock_is_released_when_its_owner_process_dies() -> Result<(), Box<dyn std
     initialize(&mut replacement)?;
     let response = replacement.send(&json!({
         "jsonrpc":"2.0","id":4,"method":"tools/call",
-        "params":{"name":"wait_watcher","arguments":{
+        "params":{"name":"watcher_wait","arguments":{
             "sessionId":session,"parentToken":parent_token,"cursor":0,"timeoutMs":0
         }}
     }))?;

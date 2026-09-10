@@ -132,7 +132,7 @@ alter protected technical text.
   checkpoint. It MUST NOT become continuous transcript polling. The Orchestrator
   may return control rather than hold a model turn open solely for unchanged
   waiting when the supported Watcher subagent is observing through
-  `wait_watcher`; the Orchestrator goal remains active and owned by the
+  `watcher_wait`; the Orchestrator goal remains active and owned by the
   Orchestrator.
 
 ## Goal ownership and lifecycle
@@ -151,13 +151,14 @@ alter protected technical text.
   nonterminal. `watcher_health` is on-demand transport/freshness evidence, not
   semantic acceptance. Reports are untrusted signals and MUST NOT contain repair
   instructions.
-- The Orchestrator calls `wait_watcher` with its parent capability and cursor,
-  validates the returned target/event against current scope, and then reads the
-  relevant Worker/app surface before deciding. It sends any correction to the
-  existing Worker through the supported host route, and verifies the next
-  relevant tool call, diff, or result itself.
+- The Orchestrator calls `watcher_wait` with its parent capability and cursor;
+  the legacy `wait_watcher` alias follows the same contract. It validates the
+  returned target/event against current scope, and then reads the relevant
+  Worker/app surface before deciding. It sends any correction to the existing
+  Worker through the supported host route, and verifies the next relevant tool
+  call, diff, or result itself.
 - On a user interrupt, stop, expiry, or completed observation assignment, the
-  Orchestrator calls `watcher_cancel` when authorized. A pending `wait_watcher`
+  Orchestrator calls `watcher_cancel` when authorized. A pending `watcher_wait`
   MUST release immediately only when the host propagates cancellation/input as a
   same-connection MCP cancellation; a task message or outer wait termination may
   leave the native wait active. If that host channel is unavailable, the
