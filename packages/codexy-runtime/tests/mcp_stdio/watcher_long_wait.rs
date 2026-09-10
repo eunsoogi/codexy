@@ -243,6 +243,6 @@ fn wait_schema_documents_the_long_poll_bounds() -> TestResult {
     assert!(description.contains("status=expired"));
     assert!(description.contains("empty events"));
     assert!(description.contains("unchanged nextCursor"));
-    assert!(description.contains("durable queue preserved"));
+    assert!(description.contains("does not consume or modify the durable event log"));
     Ok(())
 }
