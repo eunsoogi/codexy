@@ -36,8 +36,8 @@ result, consume any parent phase-scope update, report a material event when
 warranted, and return to the same `wait_threads` loop while any assigned target
 remains nonterminal. One report, one Worker completion, an empty timeout, or
 unchanged progress MUST NOT end this native turn. MUST return only after the
-full assignment, explicit user or Orchestrator cancellation, or a clearly
-reported host limitation.
+full assignment, explicit user or Orchestrator cancellation, or a verified
+host limitation.
 
 Evidence expectations: distinguish native creation and status evidence, real
 Worker/app observation, MCP report identity, wait delivery, health state, and
