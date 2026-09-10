@@ -1,4 +1,6 @@
 <!-- Token-efficient orchestration event delta. MUST keep one block per active lane. -->
+<!-- This template is for an explicitly selected legacy review-history path. A
+     normal current-head review uses direct fields and leaves this ledger empty. -->
 
 ## Lane
 

@@ -62,64 +62,25 @@ Output format: MUST list findings first, ordered by severity with file reference
 
 MUST stop and escalate when required evidence is absent, review feedback is unresolved or stale, scope ownership is unclear, the branch changed after verification, or a maintainer decision is required. MUST handoff by naming the exact blocker, the owner who MUST address it, and the verification needed after the fix. MUST distinguish a missing review input from a missing user decision: evidence required for the selected current-head review or readiness decision MUST remain a blocking evidence gap until collected, even when its collection is authorized and reversible; that collection MUST NOT require a new user approval. Optional or non-required evidence MAY be a follow-up, while a concrete material choice or actual external/destructive authority remains an escalation boundary.
 
-Selected terminal handoff: when a strict review reaches a terminal result, MUST
-report the issue identity, selected profile, selected reviewer, exact current head,
-one exact terminal result from `PASS`, `BLOCK`, or `UNOBSERVABLE`,
-unresolved finding dispositions, the full and delta review counts, the
-`terminal_review_count` and `terminal_review_limit`, and the ordered
-`terminal_review_history` in the direct control state. Each reviewer-backed
-state transition MUST validate its previous direct state from the persisted
-prior PR snapshot; `build-pr-state` and the producer MUST compare those two
-representations. The first full event appends to a clean zero-count genesis.
-The history MUST retain the full and delta events across goals, lanes,
-compaction, reauthorization, and route resets. After those two reviews are
-exhausted, the one third
-`required_current_head` event MUST carry exactly one `post_cap_re_review`
-object: its reason MUST be `mandatory_base_integration`,
-`in_scope_contract_root_repair`, `authenticated_external_finding_repair`, or
-`authenticated_finding_disposition`;
-its `prior_reviewed_head` MUST equal the delta head, and its
-`qualifying_change` MUST bind that delta head to the current head through an
-evidence commit in the Git ancestry. The current authenticated PR snapshot MUST
-carry the base and head OIDs. Mandatory base integration MUST change
-`baseRefOid` and prove base ancestry; an in-scope contract/root repair MUST
-retain the base, follow a prior `BLOCK` delta with findings, bind `finding_ids`
-exactly to those findings, and show the evidence diff changes each finding's
-recorded path. An authenticated external finding repair MUST retain the base,
-follow a clean `PASS` delta with no unresolved findings, and be produced from
-the locator-only `authenticated_external_finding_locator` through a fixed,
-host-authorized GitHub GraphQL read. The producer MUST reject caller-supplied
-external source or capture values, persist the raw response and deterministic
-projection in the authenticated GitHub GraphQL
-`codexy.review-control-external-finding.v1` envelope, and reject command
-failures, GraphQL errors, incomplete connections, and identity mismatches.
-`capture.raw` equality/re-projection is offline shape/integrity evidence only,
-not authentication. The producer, `build-pr-state`, and completion handoff MUST
-use the live source read for external-finding authority. The envelope's source
-repository, owning issue, source PR, review-thread/comment identity, author,
-observed commit equal to the delta head, unique finding IDs, and
-repository-relative paths MUST equal the live projection. Its producer-derived
-`finding_ids` MUST match the source exactly, and the evidence diff MUST touch
-every recorded path. The current head MUST differ. After an authentic third
-`BLOCK`, the sibling `final_disposition` MAY record one bounded parent/maintainer
-decision, but MUST preserve all three original events, the third `BLOCK`, and
-count `3/3`. A repaired-head disposition MUST bind the third head through an
-ancestor evidence commit to the exact current head with non-empty,
-finding-path-only diffs retained in the final tree; a same-head disposition MUST
-use evidence refresh without an artificial source edit. Its authority MUST come
-only from the locator-only `authenticated_final_disposition_locator` and live
-rereads at producer, build, and handoff. The reread MUST prove an immutable
-OWNER/MEMBER decision, exact repository/issue/PR/base/head identity, exact-head
-all-success CI, and complete paginated review threads with zero unresolved
-nodes. This path does not permit synthetic `PASS`/`UNOBSERVABLE`, a fourth
-profile review, private evaluator inputs, or waiving ordinary tests, ownership,
-safety, LOC, connector-review, CI, or merge gates.
-Ordinary churn, duplicate or unchanged heads, a fourth event, and missing,
-reordered, or truncated history MUST be rejected. The same Sentinel remains
-active; it MUST NOT be duplicated,
-interrupted, replaced, or polled. The previous `reviewControl` MUST come only
-from the authenticated persisted prior PR snapshot; a separately supplied predecessor
-MUST NOT be accepted. These direct facts are authoritative; a typed
-terminal record, ledger ancestry, packet, or additional receipt schema MUST NOT
-be required, generated, or treated as a completion prerequisite.
+Compact terminal handoff: when the strict reviewer reaches a terminal result,
+MUST report the selected profile, policy reviewer, exact current head, one
+`PASS`, `BLOCK`, or `UNOBSERVABLE` result, and unresolved finding dispositions.
+The compact control MUST contain only the current-head fields defined by
+`review-profiles.md`; it MUST NOT require review counts, ordered history,
+genesis/import records, transcript reconstruction, invocation telemetry, quota
+bookkeeping, or a disposition ledger. A pending `PENDING` or `RUNNING` result
+MUST remain pending until the same reviewer returns its actual result.
+
+Explicit legacy handoff: only when the control explicitly carries the legacy
+history or disposition fields named in `review-profiles.md`, MUST preserve the
+authenticated prior snapshots, reviewer tuples, heads, findings, source
+provenance, and transition constraints enforced by the packaged validator,
+including full/delta events, `terminal_review_count`,
+`terminal_review_limit`, `terminal_review_history`, and any
+`required_current_head` transition such as `mandatory_base_integration`,
+`in_scope_contract_root_repair`, or `qualifying_change` bound to an evidence commit.
+The persisted prior PR snapshot remains authoritative for that path.
+Legacy recovery or disposition output MUST NOT establish current-head readiness
+by itself, waive an actual finding, or authorize a fourth review. These legacy
+requirements MUST NOT be applied to a compact current-head control.
 """

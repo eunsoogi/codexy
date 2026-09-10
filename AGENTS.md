@@ -54,7 +54,7 @@ codexy/
 | Language lint and format maintenance  | `docs/lint-and-format.md`                                                                                                                | Agents MUST read this before changing lint/format config, tool versions, lockfiles, executable filenames, formatter output, or the Language lint workflow. |
 | Specialist agents                     | `plugins/codexy/agents/*.toml`                                                                                                           | One agent per file plus `catalog.toml` and `openai.yaml`.                                                                                                  |
 | Orchestration behavior                | `plugins/codexy/skills/orchestration/SKILL.md`                                                                                           | Classification, thread, goal, todo, multi-agent, worktree, and token-discipline policy.                                                                    |
-| Review gate contract                  | `plugins/codexy/skills/orchestration/references/review-profiles.md`                                                                      | Closed light/standard/strict reviewer selection; Sentinel is strict-only.                                                                                  |
+| Review gate contract                  | `plugins/codexy/skills/orchestration/references/review-profiles.md`                                                                      | Proportionate current-head reviewer selection; legacy history paths are explicit opt-ins.                                                                  |
 | MCP/LSP integration                   | `plugins/codexy-devtools/.mcp.json`, `plugins/codexy-devtools/.codex/lsp-client.json`, `plugins/codexy-devtools/lsp/server-catalog.toml` | MUST keep these validator-compatible together.                                                                                                             |
 | User-facing docs                      | `README.md`, `README.ko.md`, `plugins/codexy/skills/**/SKILL.md`                                                                         | Root README files stay concise; skills carry executable usage detail.                                                                                      |
 | Repository-only skills                | `.agents/skills/**/SKILL.md`                                                                                                             | MUST keep project-maintenance workflows discoverable in this repository without packaging them in Codexy.                                                  |
@@ -69,20 +69,18 @@ codexy/
 - `LICENSE` MUST remain the standard English MIT license text.
 - MUST put executable Git, issue, PR, review, connector, and merge procedures in
   `plugins/codexy-github/skills/git-workflow/SKILL.md`, not in this file.
-- Manual Codex connector review is enabled for this repository; automatic
-  connector review MUST remain disabled. Standard-profile PRs do not require a
-  manual connector review by default; the selected `codexy-inspector` review and
-  its existing quota/history still apply. The recorded workflow profile controls
-  this exception; standard classification MUST NOT be used to relabel strict
-  work or evade the strict review. For strict-profile work, or when a manual
-  review is explicitly requested by the user or required by a stronger governing
-  requirement, the parent/orchestrator MUST request exactly one explicit
-  `@codex review` after the owning child satisfies the packaged multi-agent
-  review policy on the frozen head, following the canonical procedure in
+- Manual Codex connector review is available when the user, repository, or a
+  concrete risk explicitly requires it; automatic connector review MUST remain
+  disabled. Standard and strict current-head work use at most one selected
+  proportionate reviewer (`codexy-inspector` or `codexy-sentinel`) when that
+  profile requires a reviewer. The compact current-head path MUST NOT require
+  imported transcripts, genesis records, quota counters, invocation telemetry,
+  or disposition ledgers. If a manual connector review is explicitly required,
+  the parent/orchestrator MUST request exactly one on the frozen head, following
+  the canonical procedure in
   `plugins/codexy-github/skills/git-workflow/references/codex-connector-review.md`.
-  Light-profile work MUST remain subject to the existing manual connector-review
-  requirement, and any already-requested review's actionable findings MUST
-  remain applicable.
+  Any already-requested review's actual actionable findings MUST remain
+  applicable.
 
 ## Release/version-only orchestration
 

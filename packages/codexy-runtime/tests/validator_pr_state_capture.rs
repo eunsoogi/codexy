@@ -5,6 +5,8 @@ use serde_json::{Value, json};
 
 #[path = "support/review_control_direct_state.rs"]
 mod direct_state;
+#[path = "validator_pr_state_capture/compact.rs"]
+mod compact;
 #[path = "validator_pr_state_capture/connector.rs"]
 mod connector;
 
@@ -26,6 +28,7 @@ fn direct_review_control_accepts_state_without_ceremony() -> TestResult {
     assert!(control.get("packet").is_none());
     Ok(())
 }
+
 #[test]
 fn direct_review_control_rejects_the_closed_negative_cases() -> TestResult {
     for legacy in ["", "decision", "evidence", "ledger"] {

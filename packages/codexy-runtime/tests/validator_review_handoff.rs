@@ -7,10 +7,11 @@ fn sentinel_handoff_keeps_direct_state_without_legacy_artifacts() -> TestResult 
     let path = codexy_runtime::paths::repository_root()
         .join("plugins/codexy/agents/codexy-sentinel.toml");
     let text = fs::read_to_string(path)?;
-    let handoff = text
-        .split_once("Selected terminal handoff:")
+    let (compact, legacy) = text
+        .split_once("Compact terminal handoff:")
         .map(|(_, rest)| rest)
-        .expect("selected terminal handoff");
+        .and_then(|rest| rest.split_once("Explicit legacy handoff:"))
+        .expect("compact and explicit legacy handoffs");
     let forbidden = [
         ["codexy", "review", "terminal-record", "v1"],
         ["codexy", "review", "ledger", "v1"],
@@ -19,18 +20,25 @@ fn sentinel_handoff_keeps_direct_state_without_legacy_artifacts() -> TestResult 
     for parts in forbidden {
         let forbidden = parts.join(".");
         assert!(
-            !handoff.contains(&forbidden),
-            "selected handoff must not require {forbidden}"
+            !compact.contains(&forbidden),
+            "compact handoff must not require {forbidden}"
         );
     }
     for required in [
         "selected profile",
-        "selected reviewer",
+        "policy reviewer",
         "exact current head",
         "PASS",
         "BLOCK",
         "UNOBSERVABLE",
         "unresolved finding",
+    ] {
+        assert!(
+            compact.to_ascii_lowercase().contains(&required.to_ascii_lowercase()),
+            "compact handoff must retain current-head field {required}"
+        );
+    }
+    for required in [
         "full",
         "delta",
         "terminal_review_count",
@@ -44,8 +52,8 @@ fn sentinel_handoff_keeps_direct_state_without_legacy_artifacts() -> TestResult 
         "persisted prior PR snapshot",
     ] {
         assert!(
-            handoff.to_ascii_lowercase().contains(&required.to_ascii_lowercase()),
-            "selected handoff must retain direct-state field {required}"
+            legacy.to_ascii_lowercase().contains(&required.to_ascii_lowercase()),
+            "legacy handoff must retain direct-state field {required}"
         );
     }
     Ok(())

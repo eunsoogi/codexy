@@ -104,10 +104,11 @@ cancels it, or a verified host limitation prevents continuation.
 
 ### Review and communicate
 
-- MUST read [review profiles](references/review-profiles.md) when selecting the
-  single applicable reviewer and review quota.
+- MUST read [review profiles](references/review-profiles.md) when selecting a
+  proportionate current-head reviewer or an explicit legacy review path.
 - MUST read [review lifecycle](references/review-lifecycle.md) when waiting for,
-  repairing from, or handing off a reviewer result.
+  repairing from, or handing off a current-head reviewer result or legacy
+  review-state result.
 - MUST read
   [plain-language user replies](references/plain-language-user-replies.md) when
   writing any user-visible message, including task/agent prompts, callbacks,

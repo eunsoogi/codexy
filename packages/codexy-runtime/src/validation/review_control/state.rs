@@ -10,16 +10,38 @@ mod check;
 mod lifecycle;
 #[path = "state/native_history.rs"]
 mod native_history;
+#[path = "simple.rs"]
+mod simple;
 
 pub(super) const CONTROL_SCHEMA: &str = "codexy.review-control-state.v1";
 
 const TERMINAL_RESULTS: [&str; 3] = ["PASS", "BLOCK", "UNOBSERVABLE"];
 
 pub(super) fn is_lifecycle_terminal(plugin_root: &Path, record: &str) -> bool {
+    let Ok(value) = serde_json::from_str::<Value>(record) else {
+        return false;
+    };
+    if value.as_object().is_some_and(simple::is_simple) {
+        return simple::is_terminal(plugin_root, &value);
+    }
     lifecycle::is_terminal(plugin_root, record)
 }
 
+pub(super) fn is_lifecycle_pending(plugin_root: &Path, record: &str) -> bool {
+    let Ok(value) = serde_json::from_str::<Value>(record) else {
+        return false;
+    };
+    value.as_object().is_some_and(simple::is_simple) && simple::is_pending(plugin_root, &value)
+}
+
+pub(super) fn is_simple_control(control: &Value) -> bool {
+    control.as_object().is_some_and(simple::is_simple)
+}
+
 pub(super) fn check_control(plugin_root: &Path, control: &Value) -> Result<(), String> {
+    if is_simple_control(control) {
+        return simple::check_control(plugin_root, control);
+    }
     let light = control.get("profile").and_then(Value::as_str) == Some("light");
     let head = control
         .get("final_disposition")
@@ -75,6 +97,9 @@ pub(super) fn check_pr_state(
     state: &Value,
     require_pass: bool,
 ) -> Result<(), String> {
+    if state.get("reviewControl").is_some_and(is_simple_control) {
+        return simple::check_pr_state(plugin_root, state, require_pass);
+    }
     if state
         .get("reviewControl")
         .and_then(Value::as_object)

@@ -37,10 +37,18 @@ labels, titles, milestones, and unrelated improvements are deterministic-validat
 concerns or non-blocking follow-ups, not Inspector blockers.
 
 Review cycle:
-MUST perform one full review and, after a scoped repair, at most one delta
-recheck of named findings and directly changed boundaries. MUST NOT restart a
-full review after that repair. A second recurrence, timeout, or UNOBSERVABLE
-result MUST return a parent decision rather than select or replace a reviewer.
+For the normal compact current-head path, MUST review the selected current head
+and return its actual `PASS`, `BLOCK`, or `UNOBSERVABLE` result; `PENDING` and
+`RUNNING` remain observations of that same reviewer. After an in-scope repair,
+MUST rerun the relevant proof and recheck the new current head with the same
+selected reviewer. This path MUST NOT require full/delta counts, ordered
+history, quota exhaustion, or a parent decision merely because the head changed.
+
+When the assigned control explicitly carries legacy history or transition fields,
+MUST preserve that path's authenticated full/delta/post-cap rules and recorded
+limits. A legacy recurrence or limit MAY require its existing parent decision,
+but those rules MUST NOT be carried into the compact current-head path and MUST
+NOT select or replace a reviewer.
 
 Output and handoff:
 Output MUST contain Blocking findings (in-scope only), Non-blocking follow-ups

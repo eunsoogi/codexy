@@ -104,3 +104,7 @@ pub(super) fn check_handoff(plugin_root: &Path, state: &Value) -> Vec<String> {
 pub(super) fn is_lifecycle_terminal(plugin_root: &Path, record: &str) -> bool {
     state::is_lifecycle_terminal(plugin_root, record)
 }
+
+pub(super) fn is_lifecycle_pending(plugin_root: &Path, record: &str) -> bool {
+    state::is_lifecycle_pending(plugin_root, record)
+}
