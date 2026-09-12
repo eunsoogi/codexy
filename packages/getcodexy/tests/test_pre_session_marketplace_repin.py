@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -82,6 +83,48 @@ class PreSessionMarketplaceRepinTests(unittest.TestCase):
                     (codex, "plugin", "add", "codexy@codexy", "--json"),
                     (codex, "plugin", "list", "--json"),
                 ],
+            )
+
+    def test_existing_host_cache_target_is_repaired_after_official_install(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            marketplace_root = root / "marketplace"
+            plugin = make_plugin(marketplace_root / "plugins/codexy")
+            home = root / "home/.codex"
+            home.mkdir(parents=True)
+            (home / "config.toml").write_text(
+                '[marketplaces.codexy]\nref = "v1.2.2"\n', encoding="utf-8"
+            )
+            cache = home / "plugins/cache/codexy/codexy/1.2.2"
+            shutil.copytree(plugin, cache)
+            calls: list[tuple[str, ...]] = []
+
+            def runner(command: list[str]) -> subprocess.CompletedProcess[str]:
+                calls.append(tuple(command))
+                if command[1:4] == ["plugin", "marketplace", "list"]:
+                    payload: object = {"marketplaces": [marketplace(marketplace_root)]}
+                elif command[1:3] == ["plugin", "list"]:
+                    payload = {
+                        "installed": []
+                        if calls.count(tuple(command)) == 1
+                        else [installed(plugin)]
+                    }
+                else:
+                    payload = {"ok": True}
+                return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
+
+            result = run_pre_session(
+                home,
+                codex=Path("/trusted/codex"),
+                runner=runner,
+                synchronize=_ready,
+                package_version="1.2.2",
+            )
+
+            self.assertEqual(result.version, "1.2.2")
+            self.assertEqual(
+                (cache / "mcp/codexy-mcp-watcher").read_bytes(),
+                (plugin / "mcp/codexy-mcp-watcher.sh").read_bytes(),
             )
 
     def test_failed_repin_restores_the_exact_prior_registration(self) -> None:

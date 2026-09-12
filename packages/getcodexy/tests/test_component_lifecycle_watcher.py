@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import unittest
 from unittest.mock import patch
 
@@ -10,7 +11,7 @@ from codexy_runtime_tools.component_watcher_materialization import (
     watcher_entrypoint,
 )
 from packages.getcodexy.tests.component_lifecycle_records import record
-from packages.getcodexy.tests.component_lifecycle_support import fixture
+from packages.getcodexy.tests.component_lifecycle_support import VERSION, fixture
 
 
 class LifecycleWatcherTests(unittest.TestCase):
@@ -81,6 +82,28 @@ class LifecycleWatcherTests(unittest.TestCase):
             self.assertEqual(receipt["outcome"], "completed")
             self.assertEqual(seen_mutations, [])
             self.assertEqual(watcher.read_bytes(), self._expected_source(state))
+
+    def test_update_repairs_a_stale_host_cache_target(self) -> None:
+        with fixture({"core"}) as state:
+            record(state.home, ["core"])
+            source_plugin = state.marketplace / "plugins/codexy"
+            materialize_watcher(source_plugin, state.home)
+            cache = state.home / "plugins/cache/codexy/codexy" / VERSION
+            shutil.copytree(source_plugin, cache)
+            cache_target = watcher_entrypoint(cache)
+            cache_target.write_bytes(b"stale cache target")
+
+            receipt = run_operation(
+                "update",
+                ("core",),
+                state.home,
+                state.codex,
+                state.run,
+                operation_id="op-update-cache-watcher",
+            )
+
+            self.assertEqual(receipt["outcome"], "completed")
+            self.assertEqual(cache_target.read_bytes(), self._expected_source(state))
 
     @unittest.skipIf(os.name == "nt", "creating a symlink requires Windows privileges")
     def test_install_rejects_a_symlinked_watcher_parent_before_materialization(
