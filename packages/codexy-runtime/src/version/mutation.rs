@@ -110,6 +110,7 @@ pub fn check_candidate() -> Result<String> {
         "selected",
     )?;
     let selected_runtime_tag = runtime_selection::selected_tag(&root)?;
+    super::selected_release::check(&root, &selected)?;
     if nested_string(&publish, &["bootstrap", "selectedVersion"])? != selected
         || nested_string(&publish, &["runtime", "selectedTag"])? != selected_runtime_tag
         || nested_string(&publish, &["bootstrap", "candidateVersion"])? != candidate

@@ -22,6 +22,15 @@ pub(super) fn check_snapshot_contract(platforms: &[String]) -> Result<()> {
     let repo_root = crate::paths::repo_root()?;
     let contract_path = repo_root.join(CONTRACT_PATH);
     let contract = load_json(&contract_path)?;
+    let selected_version = require_string(
+        contract
+            .get("bootstrap")
+            .and_then(Value::as_object)
+            .and_then(|bootstrap| bootstrap.get("selectedVersion")),
+        "bootstrap.selectedVersion",
+        &contract_path,
+    )?;
+    crate::version::selected_release::check(&repo_root, &selected_version)?;
     require_exact(
         contract.get("schema"),
         "schema",

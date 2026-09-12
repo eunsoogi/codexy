@@ -2,6 +2,8 @@ use serde_yaml::Value;
 
 #[path = "release_workflow_parity/publication.rs"]
 mod publication;
+#[path = "release_workflow_parity/windows.rs"]
+mod windows;
 
 #[test]
 fn version_bump_stages_python_metadata() -> Result<(), Box<dyn std::error::Error>> {

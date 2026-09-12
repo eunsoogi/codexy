@@ -1,5 +1,6 @@
 pub(super) const REPLACED_FILES: &[&str] = &[
     ".github/workflows/plugin-runtime-binaries.yml",
+    ".github/workflows/python-package.yml",
     "packages/codexy-runtime/Cargo.toml",
     "packages/codexy-runtime/Cargo.lock",
     ".agents/plugins/release-publish-contract.json",
@@ -44,6 +45,9 @@ pub(super) const REPLACED_FILES: &[&str] = &[
     "plugins/codexy-github/.codex-plugin/plugin.json",
     "plugins/codexy-github/skills/git-workflow/SKILL.md",
     "scripts/download-selected-runtime-package.sh",
+    "scripts/verify_public_marketplace_bundle.py",
+    "scripts/public_marketplace_bundle_support.py",
+    "packages/codexy-runtime/tests/runtime_workflow_recovery/ci_dispatch_fixture.rs",
 ];
 
 pub(super) const REMOVED_FILES: &[&str] = &[

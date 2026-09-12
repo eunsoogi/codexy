@@ -1,4 +1,5 @@
 #!/bin/sh
+# shellcheck disable=SC2016,SC2086
 set -eu
 
 target_version="${1:?target version is required}"
@@ -53,6 +54,99 @@ jq -e --arg version "$target_version" '
   ([.components[].version] | all(. == $version)) and
   ([.compatibleCombinations[].version] | all(. == $version))
 ' "$component_manifest" >/dev/null
+
+workflow=.github/workflows/python-package.yml
+workflow_helper=scripts/verify_public_marketplace_bundle.py
+workflow_support=scripts/public_marketplace_bundle_support.py
+for required in \
+  'scripts/verify_public_marketplace_bundle.py' \
+  'scripts/public_marketplace_bundle_support.py' \
+  'BASE_SHA' \
+  'PRIOR_PUBLIC_VERSION'; do
+  grep -F -- "$required" "$workflow" >/dev/null || {
+    printf '%s\n' "$workflow must route the Windows lifecycle through the selected public release helper (missing $required)" >&2
+    exit 1
+  }
+done
+lifecycle_run="$(awk '
+  /^      - name: Run native component lifecycle tests$/ { in_step=1; next }
+  in_step && /^      - name:/ { exit }
+  in_step && /^        run: \|$/ { in_run=1; next }
+  in_step && in_run {
+    line=$0
+    sub(/^          /, "", line)
+    print line
+  }
+' "$workflow")"
+test -n "$lifecycle_run" || {
+  printf '%s\n' "$workflow is missing the Windows native lifecycle run block" >&2
+  exit 1
+}
+for required in \
+  '$verified = python scripts/verify_public_marketplace_bundle.py --output-dir $bundleRoot' \
+  '$release = $verified | ConvertFrom-Json' \
+  '$binary = $release.watcher_binary' \
+  '$env:CODEXY_TEST_WATCHER_BINARY = $binary' \
+  '"CODEXY_TEST_WATCHER_BINARY=$binary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append'; do
+  printf '%s\n' "$lifecycle_run" | grep -F -- "$required" >/dev/null || {
+    printf '%s\n' "$workflow lifecycle must bind the tested binary to the verified helper result (missing $required)" >&2
+    exit 1
+  }
+done
+for required in \
+  '$verified = python scripts/verify_public_marketplace_bundle.py --output-dir $bundleRoot' \
+  '$release = $verified | ConvertFrom-Json' \
+  '$binary = $release.watcher_binary' \
+  '$env:CODEXY_TEST_WATCHER_BINARY = $binary' \
+  '"CODEXY_TEST_WATCHER_BINARY=$binary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append'; do
+  assignment="$(printf '%s\n' "$lifecycle_run" | grep -F -x -- "$required" || true)"
+  test "$assignment" = "$required" || {
+    printf '%s\n' "$workflow lifecycle must bind the tested binary to the verified helper result (unexpected $required assignment)" >&2
+    exit 1
+  }
+done
+for forbidden in 'gh release' 'Invoke-WebRequest' 'Invoke-RestMethod' \
+  'Start-BitsTransfer' 'System.Net.WebClient' 'releases/download/'; do
+  if printf '%s\n' "$lifecycle_run" | grep -F -- "$forbidden" >/dev/null; then
+    printf '%s\n' "$workflow lifecycle must not perform a direct public release operation (found $forbidden)" >&2
+    exit 1
+  fi
+done
+if printf '%s\n' "$lifecycle_run" | grep -Eq '(^|[^[:alnum:]])v?[0-9]+\.[0-9]+\.[0-9]+([^[:alnum:]]|$)'; then
+  printf '%s\n' "$workflow lifecycle must not contain a literal release version" >&2
+  exit 1
+fi
+for required in \
+  'from public_marketplace_bundle_support import' \
+  'CONTRACT,' \
+  'release_tag = current_tag' \
+  'version = current_tag.removeprefix("v")' \
+  '"gh",' \
+  '"release",' \
+  '"download",' \
+  'runtime-release-receipt.json'; do
+  grep -F -- "$required" "$workflow_helper" >/dev/null || {
+    printf '%s\n' "$workflow_helper must derive and verify the selected public release (missing $required)" >&2
+    exit 1
+  }
+done
+for required in \
+  'CONTRACT = Path(".agents/plugins/release-publish-contract.json")' \
+  'tarfile.open' \
+  'archive.extract' \
+  'runtime-release-receipt/v2' \
+  'manifestSha256'; do
+  grep -F -- "$required" "$workflow_support" >/dev/null || {
+    printf '%s\n' "$workflow_support must provide public release verification support (missing $required)" >&2
+    exit 1
+  }
+done
+for path in "$workflow_helper" "$workflow_support"; do
+  if grep -Eq "^[[:space:]]*version[[:space:]]*=[[:space:]]*[\"'][0-9]" "$path"; then
+    printf '%s\n' "$path must not hard-code a public release version" >&2
+    exit 1
+  fi
+done
 
 if test -n "${GITHUB_ENV:-}"; then
   printf 'TARGET_VERSION=%s\nRELEASE_TAG=%s\n' "$target_version" "$release_tag" >> "$GITHUB_ENV"
