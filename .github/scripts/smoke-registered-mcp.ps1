@@ -3,6 +3,12 @@ $ErrorActionPreference = "Stop"
 $temporaryRoot = if ([string]::IsNullOrWhiteSpace($env:RUNNER_TEMP)) { [System.IO.Path]::GetTempPath() } else { $env:RUNNER_TEMP }
 $cacheRoot = Join-Path $temporaryRoot "codexy-mcp-registration-cache"
 New-Item -ItemType Directory -Force -Path $cacheRoot | Out-Null
+$selectedWheelDir = $env:CODEXY_SELECTED_MCP_WHEEL_DIR
+if (-not [string]::IsNullOrWhiteSpace($selectedWheelDir)) {
+  $env:UV_NO_INDEX = "1"
+  $env:UV_FIND_LINKS = $selectedWheelDir
+  $env:UV_CACHE_DIR = Join-Path $temporaryRoot "codexy-registered-uv-cache"
+}
 
 $os = if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
   "windows"
