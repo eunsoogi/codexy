@@ -85,6 +85,9 @@ jobs:
         run: pwsh -NoProfile -NonInteractive -File .github/scripts/prepare-mcp-wheel-fixtures.ps1
       - name: Verify installed wheel and console entrypoint
         run: |
+          export UV_NO_INDEX=1
+          export UV_FIND_LINKS="$CODEXY_SELECTED_MCP_WHEEL_DIR"
+          export UV_CACHE_DIR="$RUNNER_TEMP/codexy-installed-wheel-uv-cache"
           version="$(python -c 'import tomllib; print(next(package["version"] for package in tomllib.load(open("packages/getcodexy/uv.lock", "rb"))["package"] if package["name"] == "getcodexy"))')"
           test "$version" = "$(python -c 'import tomllib; print(tomllib.load(open("packages/getcodexy/pyproject.toml", "rb"))["project"]["version"])')"
           python -m venv .package-venv
@@ -92,7 +95,7 @@ jobs:
           .package-venv/bin/python -c 'from codexy_runtime_tools.version_lock import default_package_version; assert default_package_version() == "'"$version"'"'
           .package-venv/bin/codexy-mcp-runtime --help
           GETCODEXY_DISTRIBUTION_EXECUTABLE="$PWD/.package-venv/bin/getcodexy" PYTHONPATH=packages/getcodexy/tests .package-venv/bin/python -m unittest packages/getcodexy/tests/test_component_distribution.py packages/getcodexy/tests/test_component_capability_probe.py
-          UV_NO_INDEX=1 UV_FIND_LINKS="$CODEXY_SELECTED_MCP_WHEEL_DIR" UV_CACHE_DIR="$RUNNER_TEMP/codexy-registered-uv-cache" pwsh -NoProfile -NonInteractive -File .github/scripts/smoke-registered-mcp.ps1
+          pwsh -NoProfile -NonInteractive -File .github/scripts/smoke-registered-mcp.ps1
       - uses: actions/upload-artifact@v7
         with:
           name: getcodexy-bootstrap-package-${{ matrix.platform }}
@@ -190,6 +193,9 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
+          $env:UV_NO_INDEX = "1"
+          $env:UV_FIND_LINKS = $env:CODEXY_SELECTED_MCP_WHEEL_DIR
+          $env:UV_CACHE_DIR = Join-Path $env:RUNNER_TEMP "codexy-installed-wheel-uv-cache"
           $env:PYTHONPATH = "packages/getcodexy/src;packages/getcodexy/tests"
           python -m unittest packages/getcodexy/tests/test_github_pre_session_install.py packages/getcodexy/tests/test_public_activation_contract.py packages/getcodexy/tests/test_windows_activation_contract.py packages/getcodexy/tests/test_version_lock.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
