@@ -54,17 +54,23 @@ class PublicActivationContractTests(unittest.TestCase):
         self.assertNotIn("-p 'test_component*.py'", workflow)
         self.assertNotIn("test_component_integrity_windows.py", workflow)
         self.assertNotIn("test_component_manifest_resolver.py", workflow)
-        self.assertIn("getcodexy.exe --help", workflow)
-        self.assertIn("codexy-github-install.exe --help", workflow)
+        self.assertIn("& $candidatePackage --help", workflow)
+        self.assertIn(
+            'Join-Path $candidateScripts "codexy-github-install.exe") --help',
+            workflow,
+        )
         self.assertIn("test_version_lock.py", workflow)
         self.assertIn("default_package_version", workflow)
         self.assertIn(
             '$env:PYTHONPATH = "packages/getcodexy/tests"\n'
-            "          .package-venv\\Scripts\\python -m unittest "
+            "          & $candidatePython -m unittest "
             "packages/getcodexy/tests/test_component_distribution.py",
             workflow,
         )
-        self.assertIn("codexy-github-check.exe --check-pr-labels", workflow)
+        self.assertIn(
+            'Join-Path $candidateScripts "codexy-github-check.exe") --check-pr-labels',
+            workflow,
+        )
         self.assertIn("& (Join-Path $hookRoot", workflow)
         self.assertNotIn("cmd /d /s /c", workflow)
         self.assertIn('"plugins/codexy-github/**"', workflow)

@@ -193,10 +193,18 @@ jobs:
           $candidateScripts = Join-Path $PWD ".candidate-venv\Scripts"
           $candidatePython = Join-Path $candidateScripts "python.exe"
           if (-not (Test-Path -LiteralPath $candidatePython -PathType Leaf)) { throw "prepared candidate wheel venv is missing: $candidatePython" }
+          $candidatePackage = Join-Path $candidateScripts "getcodexy.exe"
+          & $candidatePackage --help
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $candidateVersion = python -c "import tomllib; print(next(package['version'] for package in tomllib.load(open('packages/getcodexy/uv.lock', 'rb'))['package'] if package['name'] == 'getcodexy'))"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $installedVersion = & $candidatePython -c "from codexy_runtime_tools.version_lock import default_package_version; print(default_package_version())"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($installedVersion.Trim() -ne $candidateVersion.Trim()) { throw "prepared candidate wheel version identity is not synchronized" }
           $env:UV_NO_INDEX = "1"
           $env:UV_FIND_LINKS = $env:CODEXY_SELECTED_MCP_WHEEL_DIR
           $env:UV_CACHE_DIR = Join-Path $env:RUNNER_TEMP "codexy-installed-wheel-uv-cache"
-          $env:GETCODEXY_DISTRIBUTION_EXECUTABLE = Join-Path $candidateScripts "getcodexy.exe"
+          $env:GETCODEXY_DISTRIBUTION_EXECUTABLE = $candidatePackage
           $env:PYTHONPATH = "packages/getcodexy/tests"
           & $candidatePython -m unittest packages/getcodexy/tests/test_component_distribution.py packages/getcodexy/tests/test_component_capability_probe.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
