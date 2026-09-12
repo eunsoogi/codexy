@@ -208,11 +208,12 @@ class ComponentDistributionTests(unittest.TestCase):
     def _run(
         self, command: str, *components: str, expected: int = 0
     ) -> dict[str, object]:
+        watcher_runtime = self.marketplace / "plugins/codexy/runtime"
         environment = os.environ | {
             "CODEXY_MATRIX_STATE": str(self.state),
             "CODEXY_MATRIX_MARKETPLACE": str(self.marketplace),
             "CODEXY_MATRIX_VERSION": self.version,
-            "CODEXY_RUNTIME_DIR": str(self.root / "missing-runtime"),
+            "CODEXY_RUNTIME_DIR": str(watcher_runtime),
         }
         result = subprocess.run(
             [

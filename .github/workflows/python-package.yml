@@ -124,8 +124,22 @@ jobs:
           $release = $verified | ConvertFrom-Json
           Write-Host (@{ prior_public_release = $release.release_tag; baseline_source = $release.baseline_source; baseline_commit = $release.baseline_commit; bundle_sha256 = $release.bundle_sha256 } | ConvertTo-Json -Compress)
           $binary = $release.watcher_binary
+          $runtimeDir = Join-Path $bundleRoot "runtime-override"
+          New-Item -ItemType Directory -Force -Path $runtimeDir | Out-Null
+          foreach ($runtimeName in @(
+            "codexy-mcp-watcher-windows-x86_64.exe"
+            "codexy-mcp-lsp-windows-x86_64.exe"
+            "codexy-mcp-codegraph-windows-x86_64.exe"
+          )) {
+            $runtimePlugin = if ($runtimeName -eq "codexy-mcp-watcher-windows-x86_64.exe") { "codexy" } else { "codexy-devtools" }
+            $runtime = Join-Path $bundleRoot "extracted/plugins/$runtimePlugin/runtime/$runtimeName"
+            if (-not (Test-Path -LiteralPath $runtime -PathType Leaf)) { throw "verified public runtime is missing: $runtime" }
+            Copy-Item -LiteralPath $runtime -Destination (Join-Path $runtimeDir $runtimeName)
+          }
           $env:CODEXY_TEST_WATCHER_BINARY = $binary
+          $env:CODEXY_RUNTIME_DIR = $runtimeDir
           "CODEXY_TEST_WATCHER_BINARY=$binary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CODEXY_RUNTIME_DIR=$runtimeDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           $env:PYTHONPATH = "packages/getcodexy/src;packages/getcodexy/tests"
           $hookRoot = Join-Path $PWD "plugins/codexy-github/hooks"
           $expectedContext = '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Codexy GitHub workflow is installed. Use $git-workflow; GitHub authorization remains with the host, connector, and GitHub."}}'
