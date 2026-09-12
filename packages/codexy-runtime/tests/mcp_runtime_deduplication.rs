@@ -1,7 +1,7 @@
 use std::path::Path;
 
 #[test]
-fn public_mcp_servers_share_one_runtime_delegate_without_windows_server_copies()
+fn public_mcp_servers_share_one_metadata_bootstrap_without_windows_server_copies()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
     let plugin = root.join("plugins/codexy-devtools");
@@ -10,12 +10,19 @@ fn public_mcp_servers_share_one_runtime_delegate_without_windows_server_copies()
     for server in ["lsp", "codegraph"] {
         assert_eq!(
             mcp[server]["command"].as_str(),
-            Some("./mcp/codexy-mcp-devtools"),
-            "{server} must use the shared public MCP delegate"
+            Some("uv"),
+            "{server} must use the shared metadata bootstrap"
         );
         assert_eq!(
             mcp[server]["args"],
-            serde_json::json!([server, "--stdio"]),
+            serde_json::json!([
+                "run",
+                "--no-project",
+                "--script",
+                "./mcp/codexy_mcp_bootstrap.py",
+                server,
+                "--stdio"
+            ]),
             "{server} must retain its public server identity"
         );
 

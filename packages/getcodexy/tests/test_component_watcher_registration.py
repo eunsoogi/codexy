@@ -5,19 +5,19 @@ import unittest
 from unittest.mock import patch
 
 from codexy_runtime_tools.component_inspection import doctor
-from codexy_runtime_tools.component_watcher_materialization import (
-    materialize_watcher,
-    watcher_entrypoint,
-)
+from codexy_runtime_tools.component_mcp_materialization import materialize_component_mcp
 from packages.getcodexy.tests.component_lifecycle_support import fixture
 from packages.getcodexy.tests.component_lifecycle_support import VERSION
 
 
 class WatcherRegistrationTests(unittest.TestCase):
-    def test_doctor_rejects_a_missing_registered_watcher_target(self) -> None:
+    def test_doctor_rejects_a_missing_registered_watcher_bootstrap(self) -> None:
         with fixture({"core"}) as state:
-            materialize_watcher(state.marketplace / "plugins/codexy")
-            watcher_entrypoint(state.marketplace / "plugins/codexy").unlink()
+            bootstrap = state.marketplace / "plugins/codexy/mcp/codexy_mcp_bootstrap.py"
+            materialize_component_mcp(
+                state.marketplace / "plugins/codexy", "core", VERSION
+            )
+            bootstrap.unlink()
             result = doctor(state.home, codex=state.codex, runner=state.run)
 
         health = result["component_health"][0]
@@ -25,12 +25,14 @@ class WatcherRegistrationTests(unittest.TestCase):
         self.assertEqual(health["first_failure_stage"], "configured")
         self.assertEqual(health["reason_code"], "component-not-configured")
 
-    def test_doctor_rejects_a_missing_cached_watcher_target(self) -> None:
+    def test_doctor_rejects_a_missing_cached_watcher_bootstrap(self) -> None:
         with fixture({"core"}) as state:
-            materialize_watcher(state.marketplace / "plugins/codexy")
+            materialize_component_mcp(
+                state.marketplace / "plugins/codexy", "core", VERSION
+            )
             cache = state.home / "plugins/cache/codexy/codexy" / VERSION
             shutil.copytree(state.marketplace / "plugins/codexy", cache)
-            watcher_entrypoint(cache).unlink()
+            (cache / "mcp/codexy_mcp_bootstrap.py").unlink()
             result = doctor(state.home, codex=state.codex, runner=state.run)
 
         health = result["component_health"][0]
@@ -41,7 +43,9 @@ class WatcherRegistrationTests(unittest.TestCase):
 
     def test_doctor_probes_the_host_cache_copy_when_it_exists(self) -> None:
         with fixture({"core"}) as state:
-            materialize_watcher(state.marketplace / "plugins/codexy")
+            materialize_component_mcp(
+                state.marketplace / "plugins/codexy", "core", VERSION
+            )
             cache = state.home / "plugins/cache/codexy/codexy" / VERSION
             shutil.copytree(state.marketplace / "plugins/codexy", cache)
             probed: list[object] = []

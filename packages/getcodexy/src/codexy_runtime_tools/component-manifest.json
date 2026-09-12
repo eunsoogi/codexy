@@ -38,6 +38,7 @@
           ".codex-plugin/plugin.json",
           "assets/codexy-icon.png",
           ".mcp.json",
+          "mcp/codexy_mcp_bootstrap.py",
           "mcp/codexy-mcp-watcher.sh",
           "mcp/codexy-mcp-watcher.cmd",
           "skills/dreaming/scripts/resumable-context-capsule.sh",
@@ -74,7 +75,8 @@
         "packageRoot": "plugins/codexy-devtools",
         "requiredPaths": [
           ".codex-plugin/plugin.json",
-          ".mcp.json"
+          ".mcp.json",
+          "mcp/codexy_mcp_bootstrap.py"
         ]
       }
     }

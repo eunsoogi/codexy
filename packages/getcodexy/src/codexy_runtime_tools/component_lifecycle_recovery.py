@@ -8,12 +8,9 @@ from typing import Callable
 
 from .component_hook_activation import HookLister
 from .component_lifecycle_finish import finish_committed
+from .component_lifecycle_mcp import materialize_mcp_caches, materialize_mcp_sources
 from .component_lifecycle_preflight import existing_marketplace
 from .component_manifest import ComponentManifest
-from .component_watcher_materialization import (
-    materialize_watcher,
-    materialize_watcher_cache,
-)
 from .component_resolver import (
     ComponentResolutionError,
     reconcile_installed_inventory,
@@ -31,7 +28,7 @@ from .component_transaction_state import (
 from .component_lifecycle_terminal import terminal
 from .marketplace_repin import reconcile_official_marketplace_root
 from .pre_session import _json, official_marketplace_root
-from .plugin_resolution import MarketplaceBinding, MarketplaceIdentity, marketplace_path
+from .plugin_resolution import MarketplaceBinding, MarketplaceIdentity
 
 
 Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
@@ -172,14 +169,14 @@ def restore_selection(
     before: tuple[str, ...],
 ) -> None:
     current = selection(manifest, list_installed(executable, invoke), root)
+    materialize_mcp_sources(root, manifest, before)
     for component in before:
         if component not in current:
             mutate(executable, invoke, "add", manifest, component)
     for component in reversed(manifest.component_ids):
         if component in current and component not in before:
             mutate(executable, invoke, "remove", manifest, component)
-    if "core" in before:
-        materialize_watcher_cache(home, manifest.version)
+    materialize_mcp_caches(home, root, manifest, before)
 
 
 def apply_forward(
@@ -203,15 +200,13 @@ def apply_forward(
                 manifest.version,
                 home,
             )
-    if "core" in journal.target:
-        materialize_watcher(marketplace_path(root) / "plugins/codexy", home)
+    materialize_mcp_sources(root, manifest, journal.target)
     for component in adds:
         mutate(executable, invoke, "add", manifest, component)
     for component in removes:
         mutate(executable, invoke, "remove", manifest, component)
     installed = list_installed(executable, invoke)
-    if "core" in journal.target:
-        materialize_watcher_cache(home, manifest.version)
+    materialize_mcp_caches(home, root, manifest, journal.target)
     return verify_post_operation_inventory(manifest, installed, journal.target, root)
 
 

@@ -11,37 +11,13 @@ pub(super) fn check(
     object: &Map<String, Value>,
     command: &[String],
 ) -> Result<()> {
-    if name == "watcher" {
-        let expected = [
-            "./mcp/codexy-mcp-watcher".to_string(),
-            "--stdio".to_string(),
-        ];
-        if command != expected {
-            bail!(
-                "{} watcher.command must use the exact core MCP entrypoint {:?}",
-                display_relative(path),
-                expected
-            );
-        }
-        if object.get("cwd").and_then(Value::as_str) != Some(".") {
-            bail!(
-                "{} watcher.cwd must be '.' so Codex resolves the command from the plugin root",
-                display_relative(path)
-            );
-        }
+    if !matches!(name, "watcher" | "lsp" | "codegraph") {
         return Ok(());
     }
-    if !matches!(name, "lsp" | "codegraph") {
-        return Ok(());
-    }
-    let expected = [
-        "./mcp/codexy-mcp-devtools".to_string(),
-        name.to_string(),
-        "--stdio".to_string(),
-    ];
+    let expected = shared_bootstrap_command(name);
     if command != expected {
         bail!(
-            "{} {name}.command must use the exact cross-platform plugin entrypoint {:?}",
+            "{} {name}.command must use the exact shared cross-platform MCP bootstrap {:?}",
             display_relative(path),
             expected
         );
@@ -55,13 +31,54 @@ pub(super) fn check(
     Ok(())
 }
 
+pub(crate) fn shared_bootstrap_command(name: &str) -> Vec<String> {
+    vec![
+        "uv".to_owned(),
+        "run".to_owned(),
+        "--no-project".to_owned(),
+        "--script".to_owned(),
+        "./mcp/codexy_mcp_bootstrap.py".to_owned(),
+        name.to_owned(),
+        "--stdio".to_owned(),
+    ]
+}
+
+pub(crate) fn is_shared_bootstrap(command: &[String]) -> bool {
+    ["watcher", "lsp", "codegraph"]
+        .iter()
+        .any(|name| command == shared_bootstrap_command(name))
+}
+
+pub(crate) fn is_shared_bootstrap_entry(
+    entry: Option<&serde_json::Map<String, Value>>,
+    name: &str,
+) -> bool {
+    let Some(entry) = entry else {
+        return false;
+    };
+    let Some(command) = entry.get("command").and_then(Value::as_str) else {
+        return false;
+    };
+    let Some(args) = entry.get("args").and_then(Value::as_array) else {
+        return false;
+    };
+    let Some(args) = args.iter().map(Value::as_str).collect::<Option<Vec<_>>>() else {
+        return false;
+    };
+    let mut command_items = vec![command.to_owned()];
+    command_items.extend(args.into_iter().map(ToOwned::to_owned));
+    entry.len() == 3
+        && entry.get("cwd") == Some(&Value::String(".".to_owned()))
+        && command_items == shared_bootstrap_command(name)
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::Path;
 
     use serde_json::{Map, Value};
 
-    use super::check;
+    use super::{check, shared_bootstrap_command};
 
     #[test]
     fn cross_host_entrypoint_matrix_preserves_exact_diagnostics() {
@@ -69,8 +86,8 @@ mod tests {
         let mut object = Map::new();
         object.insert("cwd".to_owned(), Value::String(".".to_owned()));
         let expected = format!(
-            ".mcp.json lsp.command must use the exact cross-platform plugin entrypoint {:?}",
-            ["./mcp/codexy-mcp-devtools", "lsp", "--stdio"]
+            ".mcp.json lsp.command must use the exact shared cross-platform MCP bootstrap {:?}",
+            shared_bootstrap_command("lsp")
         );
 
         for command in [

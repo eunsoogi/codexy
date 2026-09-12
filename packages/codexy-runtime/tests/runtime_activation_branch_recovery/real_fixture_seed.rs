@@ -16,7 +16,7 @@ pub(super) struct MaterializedFixture {
 // Keep only files that the activation and validation contracts read. The
 // verifier archives this fixture four times, so recursive source trees multiply
 // Windows filesystem work without adding an oracle.
-const PREPARED_PATHS: [&str; 29] = [
+const PREPARED_PATHS: [&str; 31] = [
     "AGENTS.md",
     ".agents/plugins",
     ".gitattributes",
@@ -34,8 +34,10 @@ const PREPARED_PATHS: [&str; 29] = [
     "packages/getcodexy/tests/fixtures/component-installation-cases.json",
     "packages/getcodexy/uv.lock",
     "plugins/codexy/.codex-plugin/plugin.json",
+    "plugins/codexy/.mcp.json",
     "plugins/codexy/mcp/codexy-mcp-watcher.cmd",
     "plugins/codexy/mcp/codexy-mcp-watcher.sh",
+    "plugins/codexy/mcp/codexy_mcp_bootstrap.py",
     "plugins/codexy-devtools",
     "plugins/codexy-github/.codex-plugin/plugin.json",
     "plugins/codexy-github/skills/git-workflow/SKILL.md",

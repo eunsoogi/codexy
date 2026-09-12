@@ -78,7 +78,7 @@ mod lsp;
 mod manifest;
 mod mcp;
 mod mcp_fragments;
-mod mcp_required;
+pub(crate) mod mcp_required;
 mod mcp_runtime;
 mod merge_authorization;
 mod merge_authorization_contract;

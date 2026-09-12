@@ -8,7 +8,7 @@ use super::final_archive_fixture::FinalArchiveFixture;
 
 #[path = "release_train_support.rs"]
 mod release_train_support;
-use release_train_support::{project_release_versions, release_checkout};
+use release_train_support::{copy_component_mcp, project_release_versions, release_checkout};
 
 const COMPONENT_MANIFEST: &str =
     "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
@@ -27,7 +27,7 @@ fn release_train_assembler_emits_a_reproducible_complete_bundle()
     let candidate_version = component_version(root)?;
     let release_tag = format!("v{candidate_version}");
     set_manifest_version(&fixture.root.join(PLUGIN_MANIFESTS[2]), &candidate_version)?;
-    fs::copy(root.join("plugins/codexy-devtools/.mcp.json"), fixture.root.join("plugins/codexy-devtools/.mcp.json"))?;
+    copy_component_mcp(root, &fixture.root)?;
     assert!(fixture.materialize_public_for_tag(&release_tag)?.status.success());
     for relative in [
         "plugins/codexy",
@@ -56,6 +56,15 @@ fn release_train_assembler_emits_a_reproducible_complete_bundle()
         assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
     }
     assert_eq!(fs::read(&first)?, fs::read(&second)?);
+    let entries = String::from_utf8(
+        Command::new("tar")
+            .args(["-tzf"])
+            .arg_path(&first)
+            .output()?
+            .stdout,
+    )?;
+    assert!(entries.contains("plugins/codexy/mcp/codexy_mcp_bootstrap.py"));
+    assert!(entries.contains("plugins/codexy-devtools/mcp/codexy_mcp_bootstrap.py"));
     Ok(())
 }
 

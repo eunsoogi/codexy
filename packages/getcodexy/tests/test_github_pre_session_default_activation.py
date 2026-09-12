@@ -121,7 +121,9 @@ class GithubPreSessionDefaultActivationTests(unittest.TestCase):
                     payload = {"ok": True}
                 return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
 
-            with self.assertRaisesRegex(ValueError, "link|reparse"):
+            with self.assertRaisesRegex(
+                RuntimeError, "MCP installation surface is invalid"
+            ):
                 run_github_pre_session(
                     root / "fresh Codex home",
                     codex=executable(root),

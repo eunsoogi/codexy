@@ -10,6 +10,7 @@ from .component_capability_probe import (
 )
 from .component_capability_observation import component_observations
 from .component_hook_activation import ACTIVATION_STATES
+from .component_mcp_materialization import MCP_COMPONENTS, valid_component_mcp_cache
 from .component_health_support import (
     _authority_valid,
     _health_plugin,
@@ -19,7 +20,6 @@ from .component_health_support import (
     record_version,
     version_relation,
 )
-from .component_watcher_materialization import valid_watcher_cache
 from .component_manifest import ComponentManifest
 from .component_registration_health import valid_registration
 
@@ -71,7 +71,10 @@ def _component_health(
             plugin, manifest.component(component).plugin, record_version(record)
         )
         and valid_registration(plugin, component)
-        and (component != "core" or valid_watcher_cache(codex_home, manifest.version))
+        and (
+            component not in MCP_COMPONENTS
+            or valid_component_mcp_cache(codex_home, component, manifest.version)
+        )
     )
     result = dict(
         component=component,

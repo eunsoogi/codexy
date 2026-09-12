@@ -13,6 +13,7 @@ on:
       - "docs/getcodexy-component-installation.md"
       - "scripts/verify_public_marketplace_bundle.py"
       - "scripts/public_marketplace_bundle_support.py"
+      - ".github/scripts/*mcp*"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/bootstrap-package.yml"
   push:
@@ -27,6 +28,7 @@ on:
       - "docs/getcodexy-component-installation.md"
       - "scripts/verify_public_marketplace_bundle.py"
       - "scripts/public_marketplace_bundle_support.py"
+      - ".github/scripts/*mcp*"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/bootstrap-package.yml"
   workflow_dispatch:
@@ -71,12 +73,16 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      - uses: astral-sh/setup-uv@v7
       - name: Run focused package tests
         run: PYTHONPATH=packages/getcodexy/src python -m unittest discover -s packages/getcodexy/tests -p 'test_*.py'
       - name: Build distribution
         run: |
           python -m pip install --disable-pip-version-check build
           python -m build --outdir dist packages/getcodexy
+      - name: Prepare MCP wheel fixtures
+        shell: bash
+        run: pwsh -NoProfile -NonInteractive -File .github/scripts/prepare-mcp-wheel-fixtures.ps1
       - name: Verify installed wheel and console entrypoint
         run: |
           version="$(python -c 'import tomllib; print(next(package["version"] for package in tomllib.load(open("packages/getcodexy/uv.lock", "rb"))["package"] if package["name"] == "getcodexy"))')"
@@ -85,7 +91,8 @@ jobs:
           .package-venv/bin/python -m pip install --no-index --find-links dist "getcodexy==${version}"
           .package-venv/bin/python -c 'from codexy_runtime_tools.version_lock import default_package_version; assert default_package_version() == "'"$version"'"'
           .package-venv/bin/codexy-mcp-runtime --help
-          GETCODEXY_DISTRIBUTION_EXECUTABLE="$PWD/.package-venv/bin/getcodexy" PYTHONPATH=packages/getcodexy/tests .package-venv/bin/python -m unittest packages/getcodexy/tests/test_component_distribution.py packages/getcodexy/tests/test_component_capability_probe.py
+          UV_NO_INDEX=1 UV_FIND_LINKS="$CODEXY_SELECTED_MCP_WHEEL_DIR" UV_CACHE_DIR="$RUNNER_TEMP/codexy-installed-wheel-uv-cache" GETCODEXY_DISTRIBUTION_EXECUTABLE="$PWD/.package-venv/bin/getcodexy" PYTHONPATH=packages/getcodexy/tests .package-venv/bin/python -m unittest packages/getcodexy/tests/test_component_distribution.py packages/getcodexy/tests/test_component_capability_probe.py
+          pwsh -NoProfile -NonInteractive -File .github/scripts/smoke-registered-mcp.ps1
       - uses: actions/upload-artifact@v7
         with:
           name: getcodexy-bootstrap-package-${{ matrix.platform }}
@@ -108,6 +115,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      - uses: astral-sh/setup-uv@v7
       - name: Run native component lifecycle tests
         shell: pwsh
         env:
@@ -154,6 +162,27 @@ jobs:
           )
           python -m unittest @componentTests
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build candidate and selected-version MCP wheels
+        shell: pwsh
+        run: ./.github/scripts/prepare-mcp-wheel-fixtures.ps1
+      - name: Verify candidate wheel runtime handoff on native Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $bundleRoot = Join-Path $env:RUNNER_TEMP "codexy-public-marketplace-bundle"
+          $runtimeDir = Join-Path $bundleRoot "extracted/plugins/codexy/runtime"
+          if (-not (Test-Path -LiteralPath $runtimeDir -PathType Container)) { throw "verified public runtime directory is missing: $runtimeDir" }
+          $env:CODEXY_RUNTIME_DIR = $runtimeDir
+          $env:CODEXY_RUNTIME_CACHE_DIR = Join-Path $env:RUNNER_TEMP "codexy-candidate-runtime-cache"
+          & $env:GETCODEXY_CANDIDATE_RUNTIME --help
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./.github/scripts/smoke-candidate-mcp-runtime.ps1
+      - name: Smoke registered MCP commands on native Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Remove-Item Env:CODEXY_RUNTIME_DIR -ErrorAction SilentlyContinue
+          ./.github/scripts/smoke-registered-mcp.ps1
       - name: Test dependency-aware GitHub activation
         shell: pwsh
         run: |
@@ -161,28 +190,25 @@ jobs:
           $env:PYTHONPATH = "packages/getcodexy/src;packages/getcodexy/tests"
           python -m unittest packages/getcodexy/tests/test_github_pre_session_install.py packages/getcodexy/tests/test_public_activation_contract.py packages/getcodexy/tests/test_windows_activation_contract.py packages/getcodexy/tests/test_version_lock.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m pip install --disable-pip-version-check build
+          $candidateScripts = Join-Path $PWD ".candidate-venv\Scripts"
+          $candidatePython = Join-Path $candidateScripts "python.exe"
+          if (-not (Test-Path -LiteralPath $candidatePython -PathType Leaf)) { throw "prepared candidate wheel venv is missing: $candidatePython" }
+          $candidatePackage = Join-Path $candidateScripts "getcodexy.exe"
+          & $candidatePackage --help
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m build --outdir dist packages/getcodexy
+          $candidateVersion = python -c "import tomllib; print(next(package['version'] for package in tomllib.load(open('packages/getcodexy/uv.lock', 'rb'))['package'] if package['name'] == 'getcodexy'))"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m venv .package-venv
+          $installedVersion = & $candidatePython -c "from codexy_runtime_tools.version_lock import default_package_version; print(default_package_version())"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $version = python -c "import tomllib; print(next(package['version'] for package in tomllib.load(open('packages/getcodexy/uv.lock', 'rb'))['package'] if package['name'] == 'getcodexy'))"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $projectVersion = python -c "import tomllib; print(tomllib.load(open('packages/getcodexy/pyproject.toml', 'rb'))['project']['version'])"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if ($version -ne $projectVersion) { throw "getcodexy version projections are not synchronized" }
-          .package-venv\Scripts\python -m pip install --no-index --find-links dist "getcodexy==$version"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          .package-venv\Scripts\python -c "from codexy_runtime_tools.version_lock import default_package_version; assert default_package_version() == '$version'"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          .package-venv\Scripts\getcodexy.exe --help
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $env:GETCODEXY_DISTRIBUTION_EXECUTABLE = "$PWD\.package-venv\Scripts\getcodexy.exe"
+          if ($installedVersion.Trim() -ne $candidateVersion.Trim()) { throw "prepared candidate wheel version identity is not synchronized" }
+          $env:UV_NO_INDEX = "1"
+          $env:UV_FIND_LINKS = $env:CODEXY_SELECTED_MCP_WHEEL_DIR
+          $env:UV_CACHE_DIR = Join-Path $env:RUNNER_TEMP "codexy-installed-wheel-uv-cache"
+          $env:GETCODEXY_DISTRIBUTION_EXECUTABLE = $candidatePackage
           $env:PYTHONPATH = "packages/getcodexy/tests"
-          .package-venv\Scripts\python -m unittest packages/getcodexy/tests/test_component_distribution.py packages/getcodexy/tests/test_component_capability_probe.py
+          & $candidatePython -m unittest packages/getcodexy/tests/test_component_distribution.py packages/getcodexy/tests/test_component_capability_probe.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          .package-venv\Scripts\codexy-github-install.exe --help
+          & (Join-Path $candidateScripts "codexy-github-install.exe") --help
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $checkRoot = Join-Path $env:RUNNER_TEMP "codexy github check"
           New-Item -ItemType Directory -Force -Path $checkRoot | Out-Null
@@ -194,16 +220,16 @@ jobs:
             repositoryLabels = @(@{ name = "type/refactor" })
           } | ConvertTo-Json -Compress
           Set-Content -NoNewline -Path $state -Value $statePayload
-          .package-venv\Scripts\codexy-github-check.exe --check-issue-title --issue-title "Extract GitHub workflow"
+          & (Join-Path $candidateScripts "codexy-github-check.exe") --check-issue-title --issue-title "Extract GitHub workflow"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          .package-venv\Scripts\codexy-github-check.exe --check-pr-labels --pr-state-file $state
+          & (Join-Path $candidateScripts "codexy-github-check.exe") --check-pr-labels --pr-state-file $state
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $mergeMessage = @(
             "refactor(github): extract workflow (#553)"
             ""
             "Fixes #552"
           ) -join "`n"
-          .package-venv\Scripts\codexy-github-check.exe --check-merge-message --expected-pr 553 --expected-issue 552 --merge-message $mergeMessage
+          & (Join-Path $candidateScripts "codexy-github-check.exe") --check-merge-message --expected-pr 553 --expected-issue 552 --merge-message $mergeMessage
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $hookRoot = Join-Path $env:RUNNER_TEMP "codexy github hook"
           Copy-Item -Recurse -Force plugins/codexy-github/hooks $hookRoot

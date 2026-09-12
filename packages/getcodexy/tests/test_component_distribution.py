@@ -212,7 +212,7 @@ class ComponentDistributionTests(unittest.TestCase):
             "CODEXY_MATRIX_STATE": str(self.state),
             "CODEXY_MATRIX_MARKETPLACE": str(self.marketplace),
             "CODEXY_MATRIX_VERSION": self.version,
-            "CODEXY_RUNTIME_DIR": str(self.root / "missing-runtime"),
+            "CODEXY_RUNTIME_DIR": str(self.marketplace / "plugins/codexy/runtime"),
         }
         result = subprocess.run(
             [

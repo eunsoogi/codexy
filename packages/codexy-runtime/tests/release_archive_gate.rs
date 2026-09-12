@@ -93,7 +93,16 @@ fn archive_gate_rejects_a_non_executable_wrapper() {
     use std::os::unix::fs::PermissionsExt;
 
     let (root, plugin_root, archive) = complete_archive_fixture("non-executable-wrapper");
-    let wrapper = plugin_root.join("mcp/codexy-mcp-devtools");
+    let wrapper = plugin_root.join("mcp/codexy-mcp-lsp");
+    std::fs::write(
+        plugin_root.join(".mcp.json"),
+        serde_json::json!({
+            "lsp": {"command": "./mcp/codexy-mcp-lsp"},
+            "codegraph": {"command": "./mcp/codexy-mcp-codegraph"}
+        })
+        .to_string(),
+    )
+    .expect("direct MCP wrapper fixture");
     let mut permissions = std::fs::metadata(&wrapper)
         .expect("wrapper metadata")
         .permissions();
@@ -104,7 +113,7 @@ fn archive_gate_rejects_a_non_executable_wrapper() {
     assert!(!output.status.success());
     assert!(
         String::from_utf8_lossy(&output.stderr)
-            .contains("packaged MCP wrapper is not executable: mcp/codexy-mcp-devtools")
+            .contains("packaged MCP wrapper is not executable: mcp/codexy-mcp-lsp")
     );
 }
 

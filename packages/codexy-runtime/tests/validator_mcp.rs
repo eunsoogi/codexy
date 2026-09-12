@@ -1,5 +1,3 @@
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt as _;
 use std::process::Command;
 
 use crate::support;
@@ -82,20 +80,19 @@ fn validator_cli_accepts_installed_plugin_mcp_entrypoints() -> Result<(), Box<dy
         let command = mcp_config[server_name]["command"]
             .as_str()
             .ok_or("MCP command must be a string")?;
-        assert!(command.starts_with("./"));
-        assert!(plugin_root.join(command).is_file());
-        #[cfg(unix)]
-        assert!(plugin_root.join(command).metadata()?.permissions().mode() & 0o111 != 0);
-        assert!(
-            !mcp_config[server_name]["args"]
-                .as_array()
-                .ok_or("MCP args must be an array")?
-                .iter()
-                .any(|arg| {
-                    arg.as_str()
-                        .is_some_and(|item| item.split('/').any(|component| component == ".."))
-                })
+        assert_eq!(command, "uv");
+        assert_eq!(
+            mcp_config[server_name]["args"],
+            serde_json::json!([
+                "run",
+                "--no-project",
+                "--script",
+                "./mcp/codexy_mcp_bootstrap.py",
+                server_name,
+                "--stdio"
+            ])
         );
+        assert!(plugin_root.join("mcp/codexy_mcp_bootstrap.py").is_file());
     }
 
     let output = validator(&plugin_root, "--check-mcp")?;
@@ -143,7 +140,7 @@ fn validator_cli_rejects_noncanonical_required_mcp_commands_cross_host()
     let output = validator(&plugin_root, "--check-mcp")?;
     assert!(!output.status.success(), "unsafe command passed: {command}");
     assert!(
-        stderr(&output).contains("must use the exact cross-platform plugin entrypoint"),
+        stderr(&output).contains("must use the exact shared cross-platform MCP bootstrap"),
         "unsafe command failed for the wrong reason: {command}: {}",
         stderr(&output)
     );

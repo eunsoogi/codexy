@@ -17,6 +17,7 @@ pub(super) fn check_version(expected: &str) -> Result<()> {
 }
 
 pub(super) fn check_version_at(root: &Path, expected: &str) -> Result<()> {
+    super::mcp_config::check_at(root)?;
     let path = root.join(WRAPPER);
     let path = if path.exists() {
         path

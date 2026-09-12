@@ -53,7 +53,8 @@ class WindowsActivationContractTests(unittest.TestCase):
             r"(?:^(?:python(?:\.exe)?(?=\s|$)|\.package-venv\\Scripts\\"
             r"(?:python(?:\.exe)?(?=\s|$)|getcodexy\.exe\b|"
             r"codexy-github-install\.exe\b|codexy-github-check\.exe\b))"
-            r"|=\s*python(?:\.exe)?(?=\s|$)|& \(Join-Path \$hookRoot)"
+            r"|=\s*python(?:\.exe)?(?=\s|$)|& \$candidate(?:Python|Package)\b"
+            r"|& \(Join-Path \$candidateScripts|& \(Join-Path \$hookRoot)"
         )
         for run in runs:
             lines = run.splitlines()
@@ -109,9 +110,9 @@ class WindowsActivationContractTests(unittest.TestCase):
             ),
             (
                 "entrypoint check",
-                ".package-venv\\Scripts\\getcodexy.exe --help\n"
+                "& $candidatePackage --help\n"
                 "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
-                ".package-venv\\Scripts\\getcodexy.exe --help",
+                "& $candidatePackage --help",
             ),
             (
                 "CMD check",
@@ -124,11 +125,13 @@ class WindowsActivationContractTests(unittest.TestCase):
         )
         for label, old, new in mutations:
             with self.subTest(label=label):
+                mutated = workflow.replace(old, new, 1)
+                self.assertNotEqual(
+                    mutated, workflow, f"{label} mutation did not apply"
+                )
                 with self.assertRaises(AssertionError):
                     self._assert_windows_native_commands_fail_fast(
-                        self._windows_activation_pwsh_runs(
-                            workflow.replace(old, new, 1)
-                        )
+                        self._windows_activation_pwsh_runs(mutated)
                     )
 
         unrelated_job = workflow + (

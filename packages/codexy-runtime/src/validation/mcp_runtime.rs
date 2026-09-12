@@ -11,6 +11,9 @@ const DISALLOWED_RUNTIME_SUFFIXES: &[&str] = &[
 ];
 
 pub(super) fn check_no_script_runtime(path: &Path, name: &str, command: &[String]) -> Result<()> {
+    if crate::validation::mcp_required::is_shared_bootstrap(command) {
+        return Ok(());
+    }
     let Some(first) = command.first() else {
         return Ok(());
     };

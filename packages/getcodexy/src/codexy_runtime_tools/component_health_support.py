@@ -4,14 +4,14 @@ import json
 import os
 from pathlib import Path
 
+from .component_mcp_materialization import (
+    MCP_COMPONENTS,
+    component_cache_plugin,
+    mcp_spec,
+)
 from .component_manifest import ComponentManifest
 from .component_registration_health import valid_registration
 from .component_resolver import ComponentResolutionError, compare_versions
-from .component_watcher_materialization import (
-    valid_watcher_cache,
-    watcher_cache_plugin,
-    watcher_entrypoint,
-)
 
 
 SURFACE_PATHS = {
@@ -19,12 +19,10 @@ SURFACE_PATHS = {
         "agents/catalog.toml",
         "hooks/hooks.json",
         "skills/wiki/SKILL.md",
-        ".mcp.json",
-        "mcp/codexy-mcp-watcher.sh",
-        "mcp/codexy-mcp-watcher.cmd",
+        *(path.as_posix() for path in mcp_spec("core").surface_paths),
     ),
     "github": ("agents/catalog.toml", "hooks/hooks.json"),
-    "devtools": ("mcp/codexy-mcp-devtools", ".mcp.json"),
+    "devtools": tuple(path.as_posix() for path in mcp_spec("devtools").surface_paths),
 }
 AUTHORITY_KEYS = ("authority", "artifact_authority", "artifactAuthority")
 
@@ -53,10 +51,6 @@ def _legacy_state(
         plugin, manifest.component(component).plugin, record_version(record)
     ) or not valid_registration(plugin, component):
         return "incompatible"
-    if component == "devtools" and not os.access(
-        plugin / "mcp/codexy-mcp-devtools", os.X_OK
-    ):
-        return "stale"
     if component == "core" and any(
         os.path.lexists(plugin / path)
         for path in (".codex/lsp-client.json", "lsp", "runtime-release.json")
@@ -73,23 +67,17 @@ def _required_files(manifest, component, plugin, codex_home=None):
     )
     return all(
         (plugin / path).is_file() and not (plugin / path).is_symlink() for path in paths
-    ) and (
-        component != "core"
-        or (
-            watcher_entrypoint(plugin).is_file()
-            and valid_watcher_cache(codex_home, manifest.version)
-        )
     )
 
 
 def _health_plugin(manifest, component, record, codex_home=None):
     plugin = _plugin_root(record)
-    if component != "core" or codex_home is None:
+    if component not in MCP_COMPONENTS or codex_home is None:
         return plugin
     cache_root = codex_home / "plugins" / "cache"
     if cache_root.is_symlink() or not cache_root.is_dir():
         return plugin
-    return watcher_cache_plugin(codex_home, manifest.version)
+    return component_cache_plugin(codex_home, component, manifest.version)
 
 
 def _plugin_root(record):

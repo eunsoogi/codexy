@@ -7,15 +7,32 @@ pub(super) struct Registration {
 }
 
 pub(super) fn packaged(root: &Path) -> Result<BTreeMap<String, Registration>, String> {
-    let source = std::fs::read_to_string(root.join("plugins/codexy-devtools/.mcp.json"))
-        .map_err(|error| error.to_string())?;
-    let value: serde_json::Value =
-        serde_json::from_str(&source).map_err(|error| error.to_string())?;
-    let servers = value.as_object().ok_or("MCP config must be an object")?;
-    servers
-        .iter()
-        .map(|(name, config)| Ok((name.clone(), registration(name, config.clone())?)))
-        .collect()
+    let mut packaged = BTreeMap::new();
+    for relative in [
+        "plugins/codexy/.mcp.json",
+        "plugins/codexy-devtools/.mcp.json",
+    ] {
+        let path = root.join(relative);
+        if !path.is_file() {
+            continue;
+        }
+        let source = std::fs::read_to_string(path).map_err(|error| error.to_string())?;
+        let value: serde_json::Value =
+            serde_json::from_str(&source).map_err(|error| error.to_string())?;
+        let servers = value.as_object().ok_or("MCP config must be an object")?;
+        for (name, config) in servers {
+            if packaged
+                .insert(name.clone(), registration(name, config.clone())?)
+                .is_some()
+            {
+                return Err(format!("duplicate packaged MCP: {name}"));
+            }
+        }
+    }
+    if packaged.is_empty() {
+        return Err("no packaged MCP registrations".to_owned());
+    }
+    Ok(packaged)
 }
 
 pub(super) fn documented(guide: &str) -> Result<BTreeMap<String, Registration>, String> {

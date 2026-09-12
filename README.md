@@ -112,6 +112,12 @@ codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
 ```
 
+The registered MCP servers launch the shared bootstrap through `uv`, and that
+bootstrap resolves the selected release with `uvx`. Ensure both `uv` and `uvx`
+are on the `PATH` of the host that starts Codex before opening a session. Check
+with `command -v uv` and `command -v uvx` (or `Get-Command uv` and
+`Get-Command uvx` in PowerShell).
+
 Use the release ref shown above. If it is not published, choose a tag from
 [Releases](https://github.com/eunsoogi/codexy/releases). The summary describes
 current source; install changes from a matching published release.

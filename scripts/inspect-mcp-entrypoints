@@ -26,7 +26,16 @@ def main() -> int:
             command_items = command
         else:
             command_items = []
+        script_argument = False
         for item in command_items:
+            if script_argument:
+                script_argument = False
+                continue
+            if item == "--script":
+                script_argument = True
+                continue
+            if isinstance(item, str) and item.startswith("--script=./"):
+                continue
             if isinstance(item, str) and item.startswith("./"):
                 print(item[2:])
     return 0

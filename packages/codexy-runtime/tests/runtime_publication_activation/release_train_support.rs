@@ -4,6 +4,24 @@ use crate::support;
 
 use super::{COMPONENT_MANIFEST, MARKETPLACE, PLUGIN_MANIFESTS};
 
+pub(super) fn copy_component_mcp(
+    root: &Path,
+    fixture_root: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for plugin_root in [
+        fixture_root.join("plugins/codexy-devtools"),
+        fixture_root.join("staged/plugins/codexy-devtools"),
+    ] {
+        for relative in [".mcp.json", "mcp/codexy_mcp_bootstrap.py"] {
+            fs::copy(
+                root.join("plugins/codexy-devtools").join(relative),
+                plugin_root.join(relative),
+            )?;
+        }
+    }
+    Ok(())
+}
+
 pub(super) fn project_release_versions(
     root: &Path,
     version: &str,

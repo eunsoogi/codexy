@@ -6,7 +6,7 @@ use serde_json::Value;
 use crate::paths::display_relative;
 use crate::validation::{json_array_strings, load_json};
 
-const COMMAND: &[&str] = &["./mcp/codexy-mcp-watcher", "--stdio"];
+const BOOTSTRAP: &str = "mcp/codexy_mcp_bootstrap.py";
 const SOURCE_LAUNCHER: &str = "mcp/codexy-mcp-watcher.sh";
 
 pub(super) fn check(plugin_root: &Path, manifest: &Value) -> Result<()> {
@@ -47,29 +47,43 @@ pub(super) fn check(plugin_root: &Path, manifest: &Value) -> Result<()> {
             items
         })
         .context("core watcher.command must be a string")?;
-    if command.iter().map(String::as_str).collect::<Vec<_>>() != COMMAND {
+    let expected = super::mcp_required::shared_bootstrap_command("watcher");
+    if command != expected {
         bail!(
-            "{} watcher command must be the exact core entrypoint",
+            "{} watcher command must be the exact shared cross-platform MCP bootstrap",
             display_relative(&path)
         );
     }
     let launcher = plugin_root.join(SOURCE_LAUNCHER);
-    let metadata = std::fs::symlink_metadata(&launcher).with_context(|| {
+    let launcher_metadata = std::fs::symlink_metadata(&launcher).with_context(|| {
         format!(
             "core watcher launcher is missing: {}",
             display_relative(&launcher)
         )
     })?;
-    if !metadata.file_type().is_file() || metadata.file_type().is_symlink() {
+    if !launcher_metadata.file_type().is_file() || launcher_metadata.file_type().is_symlink() {
         bail!(
             "{} core watcher launcher must be a regular file",
             display_relative(&launcher)
         );
     }
+    let bootstrap = plugin_root.join(BOOTSTRAP);
+    let bootstrap_metadata = std::fs::symlink_metadata(&bootstrap).with_context(|| {
+        format!(
+            "core MCP bootstrap is missing: {}",
+            display_relative(&bootstrap)
+        )
+    })?;
+    if !bootstrap_metadata.file_type().is_file() || bootstrap_metadata.file_type().is_symlink() {
+        bail!(
+            "{} core MCP bootstrap must be a regular file",
+            display_relative(&bootstrap)
+        );
+    }
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt as _;
-        if metadata.permissions().mode() & 0o111 == 0 {
+        if launcher_metadata.permissions().mode() & 0o111 == 0 {
             bail!(
                 "{} core watcher launcher must be executable",
                 display_relative(&launcher)

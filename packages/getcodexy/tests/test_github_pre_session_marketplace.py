@@ -67,9 +67,10 @@ class GithubPreSessionMarketplaceTests(unittest.TestCase):
             )
 
             self.assertEqual(
-                (cache / "mcp/codexy-mcp-watcher").read_bytes(),
-                (core / "mcp/codexy-mcp-watcher.sh").read_bytes(),
+                (cache / "mcp/codexy_mcp_bootstrap.py").read_bytes(),
+                (core / "mcp/codexy_mcp_bootstrap.py").read_bytes(),
             )
+            self.assertFalse((cache / "mcp/codexy-mcp-watcher").exists())
 
             self.assertEqual(
                 calls[:4],

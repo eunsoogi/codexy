@@ -97,6 +97,12 @@ codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
 ```
 
+등록된 MCP 서버는 `uv`로 공통 부트스트랩을 실행하고, 부트스트랩은 `uvx`로 선택된
+release를 실행합니다. Codex를 시작하는 host 환경의 `PATH`에서 `uv`와 `uvx`를
+모두 찾을 수 있어야 세션에서 MCP 서버가 실행됩니다. `command -v uv`와
+`command -v uvx`(PowerShell에서는 `Get-Command uv`, `Get-Command uvx`)로
+확인하세요.
+
 이 명령은 위의 release ref를 대상으로 합니다. 아직 공개되지 않았다면
 [Releases](https://github.com/eunsoogi/codexy/releases)에서 공개된 tag를
 선택하세요. 아래 기능 설명은 현재 source tree를 기준으로 하며, 변경 사항은
