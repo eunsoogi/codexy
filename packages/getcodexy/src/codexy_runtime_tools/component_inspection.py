@@ -6,12 +6,12 @@ from __future__ import annotations
 
 import os
 import subprocess
-from enum import Enum
 from pathlib import Path
 from typing import Callable
 
 from .component_hook_activation import HookLister, activation_for_inventory
 from .component_health import health as _health
+from .component_inspection_host import ProbeStage, host as _host
 from .component_inspection_types import InspectionReport
 from .component_inventory_classification import ComponentResolutionError
 from .component_inventory_classification import classify_installed_inventory
@@ -19,26 +19,19 @@ from .component_manifest import ComponentManifest, load_component_manifest
 from .component_observed_inventory import observe_installed_inventory
 from .component_resolver import admit_installed_inventory, canonical_components
 from .component_transaction_state import read_inventory
-from .github_pre_session import trusted_codex
 from .plugin_resolution import (
     MarketplaceBinding,
     marketplace_identity,
     named_marketplace,
     validate_local_marketplace,
 )
-from .pre_session import _find_codex, _json, _run
+from .pre_session import _json
 from .updater import _absolute, _validate_real_path
 
 
 Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
 STATUS_SCHEMA = "getcodexy.status.v1"
 DOCTOR_SCHEMA = "getcodexy.doctor.v1"
-
-
-class ProbeStage(str, Enum):
-    EXECUTABLE = "codex-executable"
-    PLUGIN_LIST = "codex-plugin-list"
-    MARKETPLACE_LIST = "codex-marketplace-list"
 
 
 def status(
@@ -71,7 +64,8 @@ def doctor(
     hook_lister: HookLister | None = None,
 ) -> dict[str, object]:
     """Inspect canonical managed files and return actionable repairs."""
-    report = _inspect(codex_home, codex, runner, hook_lister)
+    home = _absolute(codex_home)
+    report = _inspect(home, codex, runner, hook_lister)
     missing_requirements: list[str] = (
         [report["host_error"]] if report["host_error"] else []
     )
@@ -97,6 +91,7 @@ def doctor(
             report["admission_error"],
             bool(report["host_error"]),
             report["activation"],
+            codex_home=home,
         ),
         "source_of_truth": "installed-component-inventory",
         "errors": report["errors"],
@@ -175,19 +170,6 @@ def _inspect(
         "errors": errors
         or ([{"code": "inconsistent-installed-state"}] if inconsistent else []),
     }
-
-
-def _host(
-    home: Path, codex: Path | None, runner: Runner | None
-) -> tuple[Path, Runner, None] | tuple[None, None, ProbeStage]:
-    try:
-        return (
-            trusted_codex(codex or _find_codex()),
-            runner or (lambda command: _run(command, home)),
-            None,
-        )
-    except (OSError, RuntimeError, ValueError):
-        return None, None, ProbeStage.EXECUTABLE
 
 
 def _recorded(

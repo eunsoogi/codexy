@@ -22,6 +22,10 @@ class GithubPreSessionMarketplaceTests(unittest.TestCase):
             market = root / "marketplace"
             core = copy_plugin(market, "codexy")
             github = copy_plugin(market, "codexy-github")
+            home = root / "fresh Codex home"
+            home.mkdir(parents=True)
+            cache = home / "plugins/cache/codexy/codexy" / version(core)
+            shutil.copytree(core, cache)
             codex = executable(root)
             calls: list[tuple[str, ...]] = []
             marketplace_registered = False
@@ -54,12 +58,17 @@ class GithubPreSessionMarketplaceTests(unittest.TestCase):
                 return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
 
             run_github_pre_session(
-                root / "fresh Codex home",
+                home,
                 codex=codex,
                 runner=runner,
                 synchronize=lambda _root, home, mode: sync_result(mode, home),
                 activate_github=lambda *_: True,
                 package_version=version(core),
+            )
+
+            self.assertEqual(
+                (cache / "mcp/codexy-mcp-watcher").read_bytes(),
+                (core / "mcp/codexy-mcp-watcher.sh").read_bytes(),
             )
 
             self.assertEqual(

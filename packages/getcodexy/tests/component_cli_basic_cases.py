@@ -74,6 +74,22 @@ class ComponentCliBasicCases:
             self.assertEqual(main(["update", "--json"]), 0)
         self.assertEqual(operation.call_args.args[0:2], ("update", ()))
 
+    def test_human_mutation_output_requires_a_fresh_task_for_host_refresh(self) -> None:
+        output = io.StringIO()
+        with (
+            patch(
+                "codexy_runtime_tools.component_cli.run_operation",
+                return_value={"outcome": "completed"},
+            ),
+            redirect_stdout(output),
+        ):
+            self.assertEqual(main(["install"]), 0)
+
+        self.assertEqual(
+            output.getvalue(),
+            "getcodexy install: completed; start a fresh Codex task to refresh installed plugins and MCP tools\n",
+        )
+
     def test_human_status_names_the_live_state_and_errors(self) -> None:
         receipt = {
             "outcome": "completed",

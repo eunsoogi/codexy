@@ -17,6 +17,7 @@ WATCHER_COMMAND = Path("mcp/codexy-mcp-watcher")
 WATCHER_SOURCE = Path("mcp/codexy-mcp-watcher.sh")
 WATCHER_WINDOWS = Path("mcp/codexy-mcp-watcher.exe")
 WATCHER_RUNTIME = Path("runtime/codexy-mcp-watcher-windows-x86_64.exe")
+WATCHER_CACHE_ROOT = Path("plugins/cache/codexy/codexy")
 
 
 def watcher_entrypoint(plugin: Path) -> Path:
@@ -47,6 +48,50 @@ def materialize_watcher(plugin: Path, home: Path | None = None) -> Path:
 def valid_watcher_entrypoint(plugin: Path) -> bool:
     """Check the exact installed target without changing the plugin."""
     return _valid_executable(watcher_entrypoint(plugin))
+
+
+def watcher_cache_plugin(home: Path, version: str) -> Path:
+    """Return Codex's versioned cache copy for the core plugin."""
+    if (
+        not isinstance(version, str)
+        or not version
+        or version in {".", ".."}
+        or "/" in version
+        or "\\" in version
+    ):
+        raise ValueError("Watcher cache version must be one path component")
+    return home / WATCHER_CACHE_ROOT / version
+
+
+def materialize_watcher_cache(home: Path, version: str) -> Path | None:
+    """Repair the exact target in an existing Codex plugin cache.
+
+    Some test and recovery hosts do not expose a plugin cache directory. In
+    that case the source installation remains the only available surface and
+    there is no cache target to repair. Once Codex has created its cache root,
+    a missing or invalid core cache copy is an installation failure and is
+    allowed to raise from ``materialize_watcher``.
+    """
+    cache_root = home / "plugins" / "cache"
+    if not os.path.lexists(cache_root):
+        return None
+    if cache_root.is_symlink() or not cache_root.is_dir():
+        raise RuntimeError(
+            f"Codex plugin cache root is not a regular directory: {cache_root}"
+        )
+    return materialize_watcher(watcher_cache_plugin(home, version), home)
+
+
+def valid_watcher_cache(home: Path | None, version: str) -> bool:
+    """Check the host cache target when the host exposes its cache root."""
+    if home is None:
+        return True
+    cache_root = home / "plugins" / "cache"
+    if not os.path.lexists(cache_root):
+        return True
+    if cache_root.is_symlink() or not cache_root.is_dir():
+        return False
+    return valid_watcher_entrypoint(watcher_cache_plugin(home, version))
 
 
 def _windows_source(plugin: Path) -> Path | None:

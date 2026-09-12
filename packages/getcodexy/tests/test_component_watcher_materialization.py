@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import stat
 import tempfile
 import unittest
@@ -60,6 +61,41 @@ class WatcherMaterializationTests(unittest.TestCase):
             ):
                 materializer.materialize_watcher(plugin)
             self.assertEqual(marker.read_bytes(), b"preserve")
+
+    def test_existing_host_cache_repairs_the_exact_versioned_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            source_plugin = root / "marketplace/plugins/codexy"
+            source = source_plugin / materializer.WATCHER_SOURCE
+            source.parent.mkdir(parents=True)
+            source.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            source.chmod(source.stat().st_mode | stat.S_IXUSR)
+            home = root / "home/.codex"
+            cache_plugin = home / materializer.WATCHER_CACHE_ROOT / "1.2.2"
+            shutil.copytree(source_plugin, cache_plugin)
+
+            with patch.object(materializer.os, "name", "posix"):
+                self.assertFalse(materializer.valid_watcher_cache(home, "1.2.2"))
+                target = materializer.materialize_watcher_cache(home, "1.2.2")
+
+            self.assertEqual(target, cache_plugin / materializer.WATCHER_COMMAND)
+            self.assertEqual(target.read_bytes(), source.read_bytes())
+            self.assertTrue(materializer.valid_watcher_cache(home, "1.2.2"))
+
+    @unittest.skipIf(os.name == "nt", "creating a symlink requires Windows privileges")
+    def test_cache_root_symlink_is_not_followed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            home = root / "home/.codex"
+            outside = root / "outside"
+            outside.mkdir(parents=True)
+            home.mkdir(parents=True)
+            (home / "plugins").mkdir()
+            (home / "plugins/cache").symlink_to(outside, target_is_directory=True)
+
+            self.assertFalse(materializer.valid_watcher_cache(home, "1.2.2"))
+            with self.assertRaisesRegex(RuntimeError, "regular directory"):
+                materializer.materialize_watcher_cache(home, "1.2.2")
 
     def test_windows_prefers_the_bundled_native_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

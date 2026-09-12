@@ -10,7 +10,10 @@ from .component_hook_activation import HookLister
 from .component_lifecycle_finish import finish_committed
 from .component_lifecycle_preflight import existing_marketplace
 from .component_manifest import ComponentManifest
-from .component_watcher_materialization import materialize_watcher
+from .component_watcher_materialization import (
+    materialize_watcher,
+    materialize_watcher_cache,
+)
 from .component_resolver import (
     ComponentResolutionError,
     reconcile_installed_inventory,
@@ -116,7 +119,7 @@ def rollback_or_raise(
 ) -> None:
     try:
         write_journal(home, journal.with_phase("rolling-back"))
-        restore_selection(executable, invoke, manifest, root, journal.before)
+        restore_selection(home, executable, invoke, manifest, root, journal.before)
         if (
             selection(manifest, list_installed(executable, invoke), root)
             != journal.before
@@ -161,6 +164,7 @@ def write_completed(
 
 
 def restore_selection(
+    home: Path,
     executable: Path,
     invoke: Runner,
     manifest: ComponentManifest,
@@ -174,6 +178,8 @@ def restore_selection(
     for component in reversed(manifest.component_ids):
         if component in current and component not in before:
             mutate(executable, invoke, "remove", manifest, component)
+    if "core" in before:
+        materialize_watcher_cache(home, manifest.version)
 
 
 def apply_forward(
@@ -203,9 +209,10 @@ def apply_forward(
         mutate(executable, invoke, "add", manifest, component)
     for component in removes:
         mutate(executable, invoke, "remove", manifest, component)
-    return verify_post_operation_inventory(
-        manifest, list_installed(executable, invoke), journal.target, root
-    )
+    installed = list_installed(executable, invoke)
+    if "core" in journal.target:
+        materialize_watcher_cache(home, manifest.version)
+    return verify_post_operation_inventory(manifest, installed, journal.target, root)
 
 
 def mutate(
