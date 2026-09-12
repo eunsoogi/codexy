@@ -21,10 +21,6 @@ from codexy_runtime_tools.component_mcp_materialization import (
     valid_component_mcp,
     valid_component_mcp_cache,
 )
-from codexy_runtime_tools.component_watcher_materialization import (
-    materialize_watcher,
-    valid_watcher_entrypoint,
-)
 
 
 REPOSITORY = Path(__file__).resolve().parents[3]
@@ -39,9 +35,7 @@ class WatcherMaterializationTests(unittest.TestCase):
             plugin = _copy_plugin(Path(temporary), "codexy")
 
             self.assertEqual(materialize_component_mcp(plugin, "core", VERSION), plugin)
-            self.assertEqual(materialize_watcher(plugin), plugin)
             self.assertTrue(valid_component_mcp(plugin, "core", VERSION))
-            self.assertTrue(valid_watcher_entrypoint(plugin))
             self.assertFalse((plugin / "mcp/codexy-mcp-watcher").exists())
 
     def test_each_component_uses_only_its_own_mcp_servers(self) -> None:
@@ -56,7 +50,7 @@ class WatcherMaterializationTests(unittest.TestCase):
                     (plugin / ".mcp.json").read_text(encoding="utf-8")
                 )
                 self.assertEqual(set(configuration), servers)
-                self.assertEqual(configuration, mcp_configuration(component, VERSION))
+                self.assertEqual(configuration, mcp_configuration(component))
                 self.assertTrue(valid_component_mcp(plugin, component, VERSION))
 
     def test_devtools_helper_is_readable_but_not_required_to_be_executable(

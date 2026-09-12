@@ -9,9 +9,6 @@ from codexy_runtime_tools.component_lifecycle import run_operation
 from codexy_runtime_tools.component_mcp_materialization import (
     materialize_component_mcp,
 )
-from codexy_runtime_tools.component_watcher_materialization import (
-    materialize_watcher,
-)
 from packages.getcodexy.tests.component_lifecycle_records import record
 from packages.getcodexy.tests.component_lifecycle_support import VERSION, fixture
 
@@ -91,7 +88,7 @@ class LifecycleWatcherTests(unittest.TestCase):
         with fixture({"core"}) as state:
             record(state.home, ["core"])
             source_plugin = state.marketplace / "plugins/codexy"
-            materialize_watcher(source_plugin, state.home)
+            materialize_component_mcp(source_plugin, "core", VERSION)
             cache = state.home / "plugins/cache/codexy/codexy" / VERSION
             shutil.copytree(source_plugin, cache)
             cache_bootstrap = cache / "mcp/codexy_mcp_bootstrap.py"

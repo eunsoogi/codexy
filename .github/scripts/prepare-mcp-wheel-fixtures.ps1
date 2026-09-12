@@ -34,11 +34,14 @@ if ($candidateVersion -ne $selectedVersion) {
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
-python -m venv .candidate-venv
+$venv = Join-Path (Get-Location).Path ".candidate-venv"
+python -m venv $venv
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-.candidate-venv\Scripts\python -m pip install --no-index --find-links dist "getcodexy==$candidateVersion"
+$venvPython = Join-Path $venv $(if ($IsWindows) { "Scripts/python.exe" } else { "bin/python" })
+$venvRuntime = Join-Path $venv $(if ($IsWindows) { "Scripts/codexy-mcp-runtime.exe" } else { "bin/codexy-mcp-runtime" })
+& $venvPython -m pip install --no-index --find-links dist "getcodexy==$candidateVersion"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-$candidateRuntime = (Resolve-Path -LiteralPath ".candidate-venv\Scripts\codexy-mcp-runtime.exe").Path
+$candidateRuntime = (Resolve-Path -LiteralPath $venvRuntime).Path
 "CODEXY_SELECTED_MCP_WHEEL_DIR=$selectedWheelDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 "GETCODEXY_CANDIDATE_RUNTIME=$candidateRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 Write-Host (@{ candidate_version = $candidateVersion; selected_version = $selectedVersion; selected_wheel_dir = $selectedWheelDir; candidate_runtime = $candidateRuntime } | ConvertTo-Json -Compress)

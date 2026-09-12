@@ -101,19 +101,17 @@ class RuntimeGitInstallCases:
             mock.patch.dict("os.environ", {"PRESERVED": "yes"}, clear=True),
             mock.patch("codexy_runtime_tools.installer.os.name", "nt"),
             mock.patch(
-                "codexy_runtime_tools.installer.subprocess.run",
-                return_value=subprocess.CompletedProcess([], 23),
-            ) as run,
+                "codexy_runtime_tools.installer.handoff", return_value=23
+            ) as handoff,
             self.assertRaises(SystemExit) as raised,
         ):
             execute(
                 "/runtime", ["--stdio"], {"CODEXY_PLUGIN_ROOT": "/installed/plugin"}
             )
         self.assertEqual(raised.exception.code, 23)
-        run.assert_called_once_with(
+        handoff.assert_called_once_with(
             ["/runtime", "--stdio"],
-            env={"PRESERVED": "yes", "CODEXY_PLUGIN_ROOT": "/installed/plugin"},
-            check=False,
+            {"PRESERVED": "yes", "CODEXY_PLUGIN_ROOT": "/installed/plugin"},
         )
 
     def test_failed_git_install_never_publishes_its_staged_binary(self) -> None:

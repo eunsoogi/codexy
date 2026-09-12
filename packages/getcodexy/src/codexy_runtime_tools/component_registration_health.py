@@ -147,8 +147,8 @@ HOOKS = {
         }
     },
 }
-MCP = mcp_configuration("devtools", load_component_manifest().version)
-CORE_MCP = mcp_configuration("core", load_component_manifest().version)
+MCP = mcp_configuration("devtools")
+CORE_MCP = mcp_configuration("core")
 LAUNCHERS = {
     "core": CORE_HOOK_LAUNCHERS,
     "github": (

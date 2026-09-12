@@ -83,10 +83,7 @@ def mcp_server_config(server: str) -> dict[str, object]:
     }
 
 
-def mcp_configuration(
-    component: str, version: str | None = None
-) -> dict[str, dict[str, object]]:
-    del version
+def mcp_configuration(component: str) -> dict[str, dict[str, object]]:
     return {server: mcp_server_config(server) for server in mcp_spec(component).servers}
 
 
@@ -146,7 +143,7 @@ def valid_component_mcp(
             return False
         expected_version = version or selected_version
         configuration = json.loads((root / ".mcp.json").read_text(encoding="utf-8"))
-        if configuration != mcp_configuration(component, expected_version):
+        if configuration != mcp_configuration(component):
             return False
         return all(
             _valid_surface_file(root / path, executable=_needs_executable(path))

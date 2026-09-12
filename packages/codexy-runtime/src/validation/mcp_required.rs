@@ -31,7 +31,7 @@ pub(super) fn check(
     Ok(())
 }
 
-pub(super) fn shared_bootstrap_command(name: &str) -> Vec<String> {
+pub(crate) fn shared_bootstrap_command(name: &str) -> Vec<String> {
     vec![
         "uv".to_owned(),
         "run".to_owned(),
@@ -43,25 +43,33 @@ pub(super) fn shared_bootstrap_command(name: &str) -> Vec<String> {
     ]
 }
 
-pub(super) fn is_shared_bootstrap(command: &[String]) -> bool {
-    matches!(
-        command,
-        [
-            command,
-            run,
-            no_project,
-            script,
-            bootstrap,
-            name,
-            stdio
-        ] if command == "uv"
-            && run == "run"
-            && no_project == "--no-project"
-            && script == "--script"
-            && bootstrap == "./mcp/codexy_mcp_bootstrap.py"
-            && matches!(name.as_str(), "watcher" | "lsp" | "codegraph")
-            && stdio == "--stdio"
-    )
+pub(crate) fn is_shared_bootstrap(command: &[String]) -> bool {
+    ["watcher", "lsp", "codegraph"]
+        .iter()
+        .any(|name| command == shared_bootstrap_command(name))
+}
+
+pub(crate) fn is_shared_bootstrap_entry(
+    entry: Option<&serde_json::Map<String, Value>>,
+    name: &str,
+) -> bool {
+    let Some(entry) = entry else {
+        return false;
+    };
+    let Some(command) = entry.get("command").and_then(Value::as_str) else {
+        return false;
+    };
+    let Some(args) = entry.get("args").and_then(Value::as_array) else {
+        return false;
+    };
+    let Some(args) = args.iter().map(Value::as_str).collect::<Option<Vec<_>>>() else {
+        return false;
+    };
+    let mut command_items = vec![command.to_owned()];
+    command_items.extend(args.into_iter().map(ToOwned::to_owned));
+    entry.len() == 3
+        && entry.get("cwd") == Some(&Value::String(".".to_owned()))
+        && command_items == shared_bootstrap_command(name)
 }
 
 #[cfg(test)]

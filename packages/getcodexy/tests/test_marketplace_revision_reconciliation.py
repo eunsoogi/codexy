@@ -91,7 +91,7 @@ def _fixture(
     launcher.write_text("#!/bin/sh\n", encoding="utf-8")
     launcher.chmod(0o755)
     (marketplace / "plugins/codexy/.mcp.json").write_text(
-        json.dumps(mcp_configuration("core", VERSION)), encoding="utf-8"
+        json.dumps(mcp_configuration("core")), encoding="utf-8"
     )
     (marketplace / "plugins/codexy/mcp/codexy_mcp_bootstrap.py").write_text(
         "#!/usr/bin/env python3\n", encoding="utf-8"

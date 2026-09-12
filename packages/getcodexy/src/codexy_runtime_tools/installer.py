@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import NoReturn, Protocol
 
 from .cache import releases_match
+from .mcp_bootstrap import handoff
 from .package import acquire_package, unpack_runtime
 
 
@@ -70,12 +71,9 @@ def execute(
     command = str(path)
     runtime_environment = os.environ.copy()
     runtime_environment.update(environment or {})
-    if os.name == "nt":
-        completed = subprocess.run(
-            [command, *arguments], env=runtime_environment, check=False
-        )
-        raise SystemExit(completed.returncode)
-    os.execvpe(command, [command, *arguments], runtime_environment)
+    result = handoff([command, *arguments], runtime_environment)
+    if result is not None:
+        raise SystemExit(result)
     raise AssertionError("exec returned unexpectedly")
 
 

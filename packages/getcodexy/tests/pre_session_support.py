@@ -137,7 +137,7 @@ def make_plugin(root: Path) -> Path:
     launcher.write_text("#!/bin/sh\n", encoding="utf-8")
     launcher.chmod(0o755)
     (root / ".mcp.json").write_text(
-        json.dumps(mcp_configuration("core", "1.2.2")), encoding="utf-8"
+        json.dumps(mcp_configuration("core")), encoding="utf-8"
     )
     (root / "mcp/codexy_mcp_bootstrap.py").write_text(
         "#!/usr/bin/env python3\n", encoding="utf-8"

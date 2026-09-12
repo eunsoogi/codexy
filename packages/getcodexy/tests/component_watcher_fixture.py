@@ -9,6 +9,8 @@ import sys
 import unittest
 from pathlib import Path
 
+from codexy_runtime_tools.component_mcp_materialization import materialize_component_mcp
+
 
 FAKE_WATCHER = r"""#!/usr/bin/env python3
 import json
@@ -68,8 +70,4 @@ def install_watcher_runtime(plugin: Path) -> None:
             "exit /b %ERRORLEVEL%\r\n",
             encoding="utf-8",
         )
-    from codexy_runtime_tools.component_watcher_materialization import (
-        materialize_watcher,
-    )
-
-    materialize_watcher(plugin)
+    materialize_component_mcp(plugin, "core")

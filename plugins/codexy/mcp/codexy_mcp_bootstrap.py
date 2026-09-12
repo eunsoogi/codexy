@@ -56,13 +56,19 @@ def main(arguments: list[str] | None = None) -> int:
     environment = os.environ.copy()
     environment["CODEXY_PLUGIN_ROOT"] = str(plugin_root)
     try:
-        if os.name == "nt":
-            return subprocess.run(command, env=environment, check=False).returncode
-        os.execvpe(uvx, command, environment)
+        result = handoff(command, environment)
     except OSError as error:
         print(f"codexy_mcp_bootstrap could not start uvx: {error}", file=sys.stderr)
         return 127
-    return 127
+    return 127 if result is None else result
+
+
+def handoff(command: list[str], environment: dict[str, str]) -> int | None:
+    """Keep stdio and exit status intact across the host process boundary."""
+    if os.name == "nt":
+        return subprocess.run(command, env=environment, check=False).returncode
+    os.execvpe(command[0], command, environment)
+    return None
 
 
 def _selected_version(plugin_root: Path) -> str:
