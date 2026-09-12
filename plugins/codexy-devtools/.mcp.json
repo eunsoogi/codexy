@@ -1,12 +1,26 @@
 {
   "lsp": {
-    "command": "./mcp/codexy-mcp-devtools",
-    "args": ["lsp", "--stdio"],
+    "command": "uv",
+    "args": [
+      "run",
+      "--no-project",
+      "--script",
+      "./mcp/codexy_mcp_bootstrap.py",
+      "lsp",
+      "--stdio"
+    ],
     "cwd": "."
   },
   "codegraph": {
-    "command": "./mcp/codexy-mcp-devtools",
-    "args": ["codegraph", "--stdio"],
+    "command": "uv",
+    "args": [
+      "run",
+      "--no-project",
+      "--script",
+      "./mcp/codexy_mcp_bootstrap.py",
+      "codegraph",
+      "--stdio"
+    ],
     "cwd": "."
   }
 }

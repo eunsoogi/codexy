@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from codexy_runtime_tools.pre_session import run_pre_session
+from codexy_runtime_tools.component_mcp_materialization import mcp_configuration
 from codexy_runtime_tools.updater import SyncResult
 
 
@@ -89,6 +90,15 @@ def _fixture(
     launcher.parent.mkdir(parents=True)
     launcher.write_text("#!/bin/sh\n", encoding="utf-8")
     launcher.chmod(0o755)
+    (marketplace / "plugins/codexy/.mcp.json").write_text(
+        json.dumps(mcp_configuration("core", VERSION)), encoding="utf-8"
+    )
+    (marketplace / "plugins/codexy/mcp/codexy_mcp_bootstrap.py").write_text(
+        "#!/usr/bin/env python3\n", encoding="utf-8"
+    )
+    (marketplace / "plugins/codexy/mcp/codexy-mcp-watcher.cmd").write_text(
+        "@echo off\n", encoding="utf-8"
+    )
     _git(marketplace, "init", "-q")
     _git(marketplace, "branch", "-M", "main")
     _git(marketplace, "config", "user.name", "fixture")

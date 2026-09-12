@@ -1,7 +1,14 @@
 {
   "watcher": {
-    "command": "./mcp/codexy-mcp-watcher",
-    "args": ["--stdio"],
+    "command": "uv",
+    "args": [
+      "run",
+      "--no-project",
+      "--script",
+      "./mcp/codexy_mcp_bootstrap.py",
+      "watcher",
+      "--stdio"
+    ],
     "cwd": "."
   }
 }

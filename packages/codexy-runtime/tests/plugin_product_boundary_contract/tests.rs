@@ -45,7 +45,19 @@ fn core_and_devtools_packages_keep_developer_tool_surfaces_separate() -> TestRes
     let core_mcp: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
         core.join(".mcp.json"),
     )?)?;
-    assert_eq!(core_mcp["watcher"]["command"], "./mcp/codexy-mcp-watcher");
+    assert_eq!(core_mcp["watcher"]["command"], "uv");
+    assert_eq!(
+        core_mcp["watcher"]["args"],
+        serde_json::json!([
+            "run",
+            "--no-project",
+            "--script",
+            "./mcp/codexy_mcp_bootstrap.py",
+            "watcher",
+            "--stdio"
+        ])
+    );
+    assert!(core.join("mcp/codexy_mcp_bootstrap.py").is_file());
     assert!(core.join("mcp/codexy-mcp-watcher.sh").is_file());
     assert!(core.join("mcp/codexy-mcp-watcher.cmd").is_file());
     for absent in [
@@ -69,6 +81,7 @@ fn core_and_devtools_packages_keep_developer_tool_surfaces_separate() -> TestRes
     assert!(devtools.join("lsp/server-catalog.toml").is_file());
     assert!(devtools.join("mcp/codexy-mcp-lsp").is_file());
     assert!(devtools.join("mcp/codexy-mcp-codegraph").is_file());
+    assert!(devtools.join("mcp/codexy_mcp_bootstrap.py").is_file());
     Ok(())
 }
 

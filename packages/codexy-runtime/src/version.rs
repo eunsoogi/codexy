@@ -17,9 +17,11 @@ mod component_manifest;
 mod devtools_plugin;
 mod fields;
 mod github_plugin;
+mod mcp_config;
 mod mutation;
 mod mutation_inputs;
 mod readme;
+mod repository;
 mod runtime_selection;
 pub(crate) mod selected_release;
 mod semver;
@@ -33,6 +35,7 @@ const PUBLISH_CONTRACT: &str = ".agents/plugins/release-publish-contract.json";
 
 pub use admission::{VersionAdvanceAdmission, admit};
 pub use mutation::{admit_candidate, check_candidate, prepare_candidate, set_version};
+use repository::{package_manifests, runtime_package_path};
 pub(crate) use semver::require as require_semver;
 
 #[must_use]
@@ -42,19 +45,6 @@ pub const fn runtime_version() -> &'static str {
 
 pub(super) fn repo_path(relative: &str) -> Result<PathBuf> {
     Ok(repo_root()?.join(relative))
-}
-
-fn runtime_package_path(root: &std::path::Path, relative: &str) -> PathBuf {
-    root.join("packages/codexy-runtime").join(relative)
-}
-
-pub(super) fn package_manifests() -> Result<Vec<PathBuf>> {
-    let path = repo_path("package.json")?;
-    Ok(if path.exists() {
-        vec![path]
-    } else {
-        Vec::new()
-    })
 }
 
 pub(super) fn load_json(path: &Path) -> Result<Value> {

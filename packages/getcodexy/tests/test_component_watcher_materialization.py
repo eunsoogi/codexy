@@ -1,91 +1,141 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import stat
 import tempfile
 import unittest
-from pathlib import Path, PosixPath
-from types import SimpleNamespace
+from pathlib import Path
 from unittest.mock import patch
 
-from codexy_runtime_tools import component_watcher_materialization as materializer
+from codexy_runtime_tools import component_mcp_cache, mcp_bootstrap
+from codexy_runtime_tools.component_manifest import load_component_manifest
+from codexy_runtime_tools.component_mcp_materialization import (
+    component_cache_plugin,
+    materialize_component_mcp,
+    materialize_component_mcp_cache,
+    mcp_configuration,
+    valid_component_mcp,
+    valid_component_mcp_cache,
+)
+from codexy_runtime_tools.component_watcher_materialization import (
+    materialize_watcher,
+    valid_watcher_entrypoint,
+)
+
+
+REPOSITORY = Path(__file__).resolve().parents[3]
+VERSION = load_component_manifest().version
 
 
 class WatcherMaterializationTests(unittest.TestCase):
-    def test_posix_materializes_the_registered_entrypoint_from_the_source_launcher(
+    def test_core_materialization_validates_the_source_without_an_alias_target(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            plugin = Path(temporary).resolve()
-            source = plugin / materializer.WATCHER_SOURCE
-            source.parent.mkdir(parents=True)
-            source.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-            source.chmod(source.stat().st_mode | stat.S_IXUSR)
+            plugin = _copy_plugin(Path(temporary), "codexy")
 
-            with patch.object(materializer.os, "name", "posix"):
-                target = materializer.materialize_watcher(plugin)
+            self.assertEqual(materialize_component_mcp(plugin, "core", VERSION), plugin)
+            self.assertEqual(materialize_watcher(plugin), plugin)
+            self.assertTrue(valid_component_mcp(plugin, "core", VERSION))
+            self.assertTrue(valid_watcher_entrypoint(plugin))
+            self.assertFalse((plugin / "mcp/codexy-mcp-watcher").exists())
 
-            self.assertEqual(target, plugin / materializer.WATCHER_COMMAND)
-            self.assertEqual(target.read_bytes(), source.read_bytes())
-            self.assertTrue(target.stat().st_mode & stat.S_IXUSR)
-            self.assertTrue(materializer.valid_watcher_entrypoint(plugin))
-
-    def test_posix_missing_source_does_not_create_a_registered_target(self) -> None:
+    def test_each_component_uses_only_its_own_mcp_servers(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            plugin = Path(temporary).resolve()
-            with (
-                patch.object(materializer.os, "name", "posix"),
-                self.assertRaisesRegex(RuntimeError, "source launcher is missing"),
+            root = Path(temporary)
+            for component, plugin_name, servers in (
+                ("core", "codexy", {"watcher"}),
+                ("devtools", "codexy-devtools", {"lsp", "codegraph"}),
             ):
-                materializer.materialize_watcher(plugin)
-            self.assertFalse((plugin / materializer.WATCHER_COMMAND).exists())
+                plugin = _copy_plugin(root, plugin_name)
+                configuration = json.loads(
+                    (plugin / ".mcp.json").read_text(encoding="utf-8")
+                )
+                self.assertEqual(set(configuration), servers)
+                self.assertEqual(configuration, mcp_configuration(component, VERSION))
+                self.assertTrue(valid_component_mcp(plugin, component, VERSION))
 
-    def test_posix_rejects_a_symlinked_target_parent_before_copy(self) -> None:
+    def test_devtools_helper_is_readable_but_not_required_to_be_executable(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary).resolve()
-            plugin = root / "plugin"
-            outside = root / "outside/mcp"
-            outside.mkdir(parents=True)
-            source = outside / "codexy-mcp-watcher.sh"
-            source.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-            source.chmod(source.stat().st_mode | stat.S_IXUSR)
-            marker = outside / "codexy-mcp-watcher"
-            marker.write_bytes(b"preserve")
-            plugin.mkdir()
-            (plugin / "mcp").symlink_to(outside, target_is_directory=True)
+            plugin = _copy_plugin(Path(temporary), "codexy-devtools")
+            helper = plugin / "mcp/runtime-platform.sh"
+            helper.chmod(0o644)
 
-            with (
-                patch.object(materializer.os, "name", "posix"),
-                self.assertRaisesRegex(ValueError, "symlink"),
-            ):
-                materializer.materialize_watcher(plugin)
-            self.assertEqual(marker.read_bytes(), b"preserve")
+            materialize_component_mcp(plugin, "devtools", VERSION)
 
-    def test_existing_host_cache_repairs_the_exact_versioned_target(self) -> None:
+            self.assertTrue(valid_component_mcp(plugin, "devtools", VERSION))
+            self.assertEqual(stat.S_IMODE(helper.stat().st_mode), 0o644)
+
+    def test_source_rejects_a_release_version_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary).resolve()
-            source_plugin = root / "marketplace/plugins/codexy"
-            source = source_plugin / materializer.WATCHER_SOURCE
-            source.parent.mkdir(parents=True)
-            source.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-            source.chmod(source.stat().st_mode | stat.S_IXUSR)
+            plugin = _copy_plugin(Path(temporary), "codexy")
+
+            with self.assertRaisesRegex(RuntimeError, "does not match"):
+                materialize_component_mcp(plugin, "core", "9.9.9")
+
+    def test_source_rejects_a_nonmatching_plugin_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            plugin = _copy_plugin(Path(temporary), "codexy")
+            manifest_path = plugin / ".codex-plugin/plugin.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["name"] = "codexy-devtools"
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "identity is invalid"):
+                materialize_component_mcp(plugin, "core", VERSION)
+
+    def test_existing_host_cache_repairs_only_the_exact_component_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = _copy_plugin(root / "marketplace", "codexy")
             home = root / "home/.codex"
-            cache_plugin = home / materializer.WATCHER_CACHE_ROOT / "1.2.2"
-            shutil.copytree(source_plugin, cache_plugin)
+            cache = component_cache_plugin(home, "core", VERSION)
+            cache.parent.mkdir(parents=True)
+            shutil.copytree(source, cache)
+            bootstrap = cache / "mcp/codexy_mcp_bootstrap.py"
+            bootstrap.write_text("stale\n", encoding="utf-8")
+            bootstrap.chmod(0o600)
 
-            with patch.object(materializer.os, "name", "posix"):
-                self.assertFalse(materializer.valid_watcher_cache(home, "1.2.2"))
-                target = materializer.materialize_watcher_cache(home, "1.2.2")
+            target = materialize_component_mcp_cache(
+                home, "core", VERSION, source_plugin=source
+            )
 
-            self.assertEqual(target, cache_plugin / materializer.WATCHER_COMMAND)
-            self.assertEqual(target.read_bytes(), source.read_bytes())
-            self.assertTrue(materializer.valid_watcher_cache(home, "1.2.2"))
+            self.assertEqual(target, cache)
+            self.assertEqual(
+                bootstrap.read_bytes(),
+                (source / "mcp/codexy_mcp_bootstrap.py").read_bytes(),
+            )
+            self.assertEqual(
+                stat.S_IMODE(bootstrap.stat().st_mode),
+                stat.S_IMODE((source / "mcp/codexy_mcp_bootstrap.py").stat().st_mode),
+            )
+            self.assertTrue(valid_component_mcp_cache(home, "core", VERSION))
+            self.assertFalse((cache / "mcp/codexy-mcp-watcher").exists())
+
+    def test_same_version_cache_reuses_an_unchanged_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = _copy_plugin(root / "marketplace", "codexy")
+            home = root / "home/.codex"
+            cache = component_cache_plugin(home, "core", VERSION)
+            cache.parent.mkdir(parents=True)
+            shutil.copytree(source, cache)
+
+            with patch.object(component_mcp_cache, "_atomic_copy") as copy_file:
+                materialize_component_mcp_cache(
+                    home, "core", VERSION, source_plugin=source
+                )
+
+            copy_file.assert_not_called()
 
     @unittest.skipIf(os.name == "nt", "creating a symlink requires Windows privileges")
     def test_cache_root_symlink_is_not_followed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary).resolve()
+            root = Path(temporary)
             home = root / "home/.codex"
             outside = root / "outside"
             outside.mkdir(parents=True)
@@ -93,60 +143,64 @@ class WatcherMaterializationTests(unittest.TestCase):
             (home / "plugins").mkdir()
             (home / "plugins/cache").symlink_to(outside, target_is_directory=True)
 
-            self.assertFalse(materializer.valid_watcher_cache(home, "1.2.2"))
-            with self.assertRaisesRegex(RuntimeError, "regular directory"):
-                materializer.materialize_watcher_cache(home, "1.2.2")
+            self.assertFalse(valid_component_mcp_cache(home, "core", VERSION))
+            with self.assertRaisesRegex(ValueError, "symlink"):
+                materialize_component_mcp_cache(home, "core", VERSION)
 
-    def test_windows_prefers_the_bundled_native_runtime(self) -> None:
+    def test_bootstrap_reads_the_selected_manifest_version(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            plugin = Path(temporary).resolve()
-            bundled = plugin / materializer.WATCHER_RUNTIME
-            bundled.parent.mkdir(parents=True)
-            bundled.write_bytes(b"native watcher")
-            bundled.chmod(bundled.stat().st_mode | stat.S_IXUSR)
-
+            plugin = _copy_plugin(Path(temporary), "codexy-devtools")
             with (
-                patch.object(materializer.os, "name", "nt"),
-                patch("codexy_runtime_tools.updater.Path", PosixPath),
+                patch.object(mcp_bootstrap.Path, "cwd", return_value=plugin),
+                patch.object(
+                    mcp_bootstrap.shutil, "which", return_value="/usr/bin/uvx"
+                ),
+                patch.object(
+                    mcp_bootstrap.os,
+                    "execvpe",
+                    side_effect=OSError("test stop"),
+                ) as execvpe,
             ):
-                target = materializer.materialize_watcher(plugin)
+                result = mcp_bootstrap.main(["codegraph", "--stdio"])
 
-            self.assertEqual(target, plugin / materializer.WATCHER_WINDOWS)
-            self.assertEqual(target.read_bytes(), bundled.read_bytes())
+            self.assertEqual(result, 127)
+            executable, command, environment = execvpe.call_args.args
+            self.assertEqual(executable, "/usr/bin/uvx")
+            self.assertEqual(
+                command,
+                [
+                    "/usr/bin/uvx",
+                    "--from",
+                    f"getcodexy=={VERSION}",
+                    "codexy-mcp-runtime",
+                    "codegraph",
+                    "--plugin-root",
+                    str(plugin),
+                    "--",
+                    "--stdio",
+                ],
+            )
+            self.assertEqual(environment["CODEXY_PLUGIN_ROOT"], str(plugin))
 
-    def test_windows_downloads_the_official_runtime_when_source_has_no_binary(
-        self,
-    ) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary).resolve()
-            plugin = root / "plugins/codexy"
-            plugin.mkdir(parents=True)
-            home = root / "home/.codex"
-            config = SimpleNamespace(
-                runtime_name="codexy-mcp-watcher-windows-x86_64.exe"
+    def test_plugin_bootstraps_match_the_single_packaged_implementation(self) -> None:
+        canonical = (
+            REPOSITORY / "packages/getcodexy/src/codexy_runtime_tools/mcp_bootstrap.py"
+        ).read_bytes()
+        for plugin_name in ("codexy", "codexy-devtools"):
+            self.assertEqual(
+                (
+                    REPOSITORY / f"plugins/{plugin_name}/mcp/codexy_mcp_bootstrap.py"
+                ).read_bytes(),
+                canonical,
             )
 
-            def install(_config, _work, staged):
-                staged.write_bytes(b"downloaded watcher")
-                staged.chmod(staged.stat().st_mode | stat.S_IXUSR)
 
-            with (
-                patch.object(materializer.os, "name", "nt"),
-                patch.object(materializer, "Path", PosixPath),
-                patch("codexy_runtime_tools.updater.Path", PosixPath),
-                patch.dict(os.environ, {}, clear=True),
-                patch.object(
-                    materializer.Configuration, "load", return_value=config
-                ) as load,
-                patch.object(
-                    materializer, "install_package", side_effect=install
-                ) as install_package,
-            ):
-                target = materializer.materialize_watcher(plugin, home)
-
-            self.assertEqual(target.read_bytes(), b"downloaded watcher")
-            load.assert_called_once_with("watcher", plugin, ["--stdio"])
-            self.assertEqual(install_package.call_count, 1)
+def _copy_plugin(root: Path, plugin_name: str) -> Path:
+    destination = root / "plugins" / plugin_name
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    return Path(
+        shutil.copytree(REPOSITORY / "plugins" / plugin_name, destination)
+    ).resolve()
 
 
 if __name__ == "__main__":

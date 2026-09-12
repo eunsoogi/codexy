@@ -3,7 +3,6 @@
 import json
 import os
 import shlex
-import subprocess
 import time
 
 from .component_capability_observation import record_probe
@@ -138,25 +137,10 @@ def _assignment_id():
 
 
 def _argv(command, plugin, args=()):
-    values = shlex.split(command.replace("${PLUGIN_ROOT}", str(plugin))) + [
+    del plugin
+    return shlex.split(command) + [
         str(value) for value in (args if isinstance(args, list) else ())
     ]
-    if values and values[0].endswith("mcp/codexy-mcp-watcher"):
-        entrypoint = values[0]
-        values[0] = os.path.normpath(
-            entrypoint
-            if os.path.isabs(entrypoint)
-            else os.path.join(str(plugin), entrypoint)
-        )
-    if (
-        os.name == "nt"
-        and values[0].lower().endswith((".bat", ".cmd"))
-        and os.path.isfile(values[0])
-    ):
-        shell = os.environ.get("COMSPEC", "cmd.exe")
-        command = f'"{values[0]}" {subprocess.list2cmdline(values[1:])}'.rstrip()
-        return f'{subprocess.list2cmdline([shell])} /d /s /c "{command}"'
-    return values
 
 
 def _failure(base, reason, *, started=True):

@@ -108,6 +108,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      - uses: astral-sh/setup-uv@v7
       - name: Run native component lifecycle tests
         shell: pwsh
         env:
@@ -154,6 +155,9 @@ jobs:
           )
           python -m unittest @componentTests
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Smoke registered MCP commands on native Windows
+        shell: pwsh
+        run: ./.github/scripts/smoke-registered-mcp.ps1
       - name: Test dependency-aware GitHub activation
         shell: pwsh
         run: |

@@ -4,6 +4,8 @@ import json
 import subprocess
 from pathlib import Path
 
+from codexy_runtime_tools.component_mcp_materialization import mcp_configuration
+
 
 OFFICIAL = "https://github.com/eunsoogi/codexy.git"
 
@@ -134,6 +136,13 @@ def make_plugin(root: Path) -> Path:
     launcher.parent.mkdir(parents=True, exist_ok=True)
     launcher.write_text("#!/bin/sh\n", encoding="utf-8")
     launcher.chmod(0o755)
+    (root / ".mcp.json").write_text(
+        json.dumps(mcp_configuration("core", "1.2.2")), encoding="utf-8"
+    )
+    (root / "mcp/codexy_mcp_bootstrap.py").write_text(
+        "#!/usr/bin/env python3\n", encoding="utf-8"
+    )
+    (root / "mcp/codexy-mcp-watcher.cmd").write_text("@echo off\n", encoding="utf-8")
     if root.parent.name == "plugins" and root.name == "codexy":
         marketplace_root = root.parent.parent
         _git(marketplace_root, "init", "-q")

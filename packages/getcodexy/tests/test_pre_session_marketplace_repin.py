@@ -123,9 +123,10 @@ class PreSessionMarketplaceRepinTests(unittest.TestCase):
 
             self.assertEqual(result.version, "1.2.2")
             self.assertEqual(
-                (cache / "mcp/codexy-mcp-watcher").read_bytes(),
-                (plugin / "mcp/codexy-mcp-watcher.sh").read_bytes(),
+                (cache / "mcp/codexy_mcp_bootstrap.py").read_bytes(),
+                (plugin / "mcp/codexy_mcp_bootstrap.py").read_bytes(),
             )
+            self.assertFalse((cache / "mcp/codexy-mcp-watcher").exists())
 
     def test_failed_repin_restores_the_exact_prior_registration(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -18,9 +18,9 @@ from .plugin_resolution import (
     official_marketplace as _official_marketplace,
     preflight_install as _preflight,
 )
-from .component_watcher_materialization import (
-    materialize_watcher,
-    materialize_watcher_cache,
+from .component_mcp_materialization import (
+    materialize_component_mcp,
+    materialize_component_mcp_cache,
 )
 from .updater import SyncResult, _absolute, _validate_real_path, sync_agents
 from .version_lock import default_package_version
@@ -88,7 +88,9 @@ def run_pre_session(
     validate_or_quarantine_marketplace(
         executable, invoke, home, marketplace_root, f"v{target_version}"
     )
-    materialize_watcher(marketplace_root / "plugins/codexy", home)
+    materialize_component_mcp(
+        marketplace_root / "plugins/codexy", "core", target_version
+    )
     _json(
         invoke([str(executable), "plugin", "add", "codexy@codexy", "--json"]),
         "plugin add",
@@ -98,7 +100,7 @@ def run_pre_session(
         marketplace_root,
         target_version,
     )
-    materialize_watcher_cache(home, version)
+    materialize_component_mcp_cache(home, "core", version, source_plugin=plugin)
     current = synchronize(plugin, home, "check")
     if current.status == "ready":
         return PreSessionResult(plugin, version, False)
