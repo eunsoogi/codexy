@@ -80,7 +80,6 @@ jobs:
           python -m pip install --disable-pip-version-check build
           python -m build --outdir dist packages/getcodexy
       - name: Prepare MCP wheel fixtures
-        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY_ID: ${{ github.repository_id }}

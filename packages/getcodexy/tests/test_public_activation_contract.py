@@ -133,7 +133,7 @@ class PublicActivationContractTests(unittest.TestCase):
         self.assertLess(build, wheels)
         self.assertLess(wheels, focused)
         self.assertIn(
-            "UV_NO_INDEX=1 UV_FIND_LINKS=\"$CODEXY_SELECTED_MCP_WHEEL_DIR\"",
+            'UV_NO_INDEX=1 UV_FIND_LINKS="$CODEXY_SELECTED_MCP_WHEEL_DIR"',
             workflow,
         )
         fixture_helper = (

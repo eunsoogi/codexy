@@ -7,7 +7,7 @@ fn validation_workflows_are_read_only_and_disable_checkout_credentials() -> Resu
     for name in ["python-package.yml", "plugin-runtime-binaries.yml"] {
         let document = document(name)?;
         let permissions = mapping(&document["permissions"])?;
-        if name == "plugin-runtime-binaries.yml" {
+        if ["python-package.yml", "plugin-runtime-binaries.yml"].contains(&name) {
             assert_authenticated_read_only(permissions)?;
         } else {
             assert_exact(permissions, "contents", "read")?;
