@@ -157,6 +157,13 @@ class PublicActivationContractTests(unittest.TestCase):
         self.assertIn('"CORE"', smoke)
         self.assertIn('"DEVTOOLS"', smoke)
         self.assertIn("CODEXY_RUNTIME_${runtimePrefix}_DIR", smoke)
+        candidate_smoke = (
+            repository / ".github/scripts/smoke-candidate-mcp-runtime.ps1"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "-Environment @{ CODEXY_RUNTIME_DIR = $env:CODEXY_RUNTIME_DIR }",
+            candidate_smoke,
+        )
 
 
 if __name__ == "__main__":
