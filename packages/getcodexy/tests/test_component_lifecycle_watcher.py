@@ -109,6 +109,25 @@ class LifecycleWatcherTests(unittest.TestCase):
                 (source_plugin / "mcp/codexy_mcp_bootstrap.py").read_bytes(),
             )
 
+    def test_install_rolls_back_when_selected_host_cache_is_missing(self) -> None:
+        with fixture() as state:
+            (state.home / "plugins/cache").mkdir(parents=True)
+
+            receipt = run_operation(
+                "install",
+                ("core",),
+                state.home,
+                state.codex,
+                state.run,
+                operation_id="op-install-missing-mcp-cache",
+            )
+
+            self.assertEqual(receipt["outcome"], "rolled-back")
+            self.assertNotIn("core", state.selection)
+            self.assertFalse(
+                (state.home / "plugins/cache/codexy/codexy" / VERSION).exists()
+            )
+
     @unittest.skipIf(os.name == "nt", "creating a symlink requires Windows privileges")
     def test_install_rejects_a_symlinked_mcp_parent_before_materialization(
         self,

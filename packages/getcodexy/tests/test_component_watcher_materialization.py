@@ -112,6 +112,20 @@ class WatcherMaterializationTests(unittest.TestCase):
             self.assertTrue(valid_component_mcp_cache(home, "core", VERSION))
             self.assertFalse((cache / "mcp/codexy-mcp-watcher").exists())
 
+    def test_missing_selected_host_cache_is_not_silently_skipped(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = _copy_plugin(root / "marketplace", "codexy")
+            home = root / "home/.codex"
+            (home / "plugins/cache").mkdir(parents=True)
+
+            with self.assertRaisesRegex(RuntimeError, "MCP cache plugin is missing"):
+                materialize_component_mcp_cache(
+                    home, "core", VERSION, source_plugin=source
+                )
+
+            self.assertFalse(component_cache_plugin(home, "core", VERSION).exists())
+
     def test_same_version_cache_reuses_an_unchanged_surface(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

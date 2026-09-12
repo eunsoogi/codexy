@@ -123,7 +123,7 @@ def materialize_component_mcp_cache(
     _require_directory(cache_root, "Codex plugin cache root")
     target = component_cache_plugin(home, component, version)
     if not os.path.lexists(target):
-        return None
+        raise RuntimeError(f"MCP cache plugin is missing: {target}")
     target = _plugin_root(target)
     if source_plugin is not None:
         source = materialize_component_mcp(source_plugin, component, version)
