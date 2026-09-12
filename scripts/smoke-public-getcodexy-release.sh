@@ -19,9 +19,16 @@ trap 'report_smoke_failure "$?" "$BASH_COMMAND"' ERR
 : "${RUNNER_TEMP:?}"
 
 python -m venv public-bootstrap
+public-bootstrap/bin/python -m pip install --no-cache-dir uv
+export PATH="$PWD/public-bootstrap/bin:$PATH"
+export UV_CACHE_DIR="$RUNNER_TEMP/public-smoke-uv-cache"
 if [[ -n "${GETCODEXY_DIST:-}" ]]; then
 	public-bootstrap/bin/python -m pip install --no-cache-dir --no-index \
 		--find-links "$GETCODEXY_DIST" "getcodexy==${TARGET_VERSION}"
+	# Registered MCP commands invoke uvx from each plugin directory.
+	export UV_NO_INDEX=1
+	UV_FIND_LINKS="$(cd "$GETCODEXY_DIST" && pwd)"
+	export UV_FIND_LINKS
 else
 	public-bootstrap/bin/python -m pip install --no-cache-dir \
 		--index-url https://pypi.org/simple "getcodexy==${TARGET_VERSION}"
