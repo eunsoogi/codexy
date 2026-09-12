@@ -71,6 +71,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      - uses: astral-sh/setup-uv@v7
       - name: Run focused package tests
         run: PYTHONPATH=packages/getcodexy/src python -m unittest discover -s packages/getcodexy/tests -p 'test_*.py'
       - name: Build distribution

@@ -70,7 +70,7 @@ mod tests {
 
     use serde_json::{Map, Value};
 
-    use super::check;
+    use super::{check, shared_bootstrap_command};
 
     #[test]
     fn cross_host_entrypoint_matrix_preserves_exact_diagnostics() {

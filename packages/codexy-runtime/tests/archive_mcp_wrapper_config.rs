@@ -131,3 +131,38 @@ fn archive_gate_checks_direct_argv_wrapper_mode() {
 fn archive_gate_checks_nested_server_map_wrapper_mode() {
     assert_wrapper_mode("nested-server-map", true, false);
 }
+
+#[test]
+fn archive_entrypoint_inspector_excludes_interpreter_script_inputs() {
+    let root = tempdir().expect("tempdir");
+    let config = root.path().join(".mcp.json");
+    let value = serde_json::json!({
+        "watcher": {
+            "command": "uv",
+            "args": [
+                "run",
+                "--no-project",
+                "--script",
+                "./mcp/codexy_mcp_bootstrap.py",
+                "watcher",
+                "--stdio"
+            ]
+        },
+        "lsp": {
+            "command": [
+                "uv",
+                "run",
+                "--script=./mcp/codexy_mcp_bootstrap.py",
+                "lsp",
+                "--stdio"
+            ]
+        }
+    });
+    std::fs::write(
+        &config,
+        serde_json::to_vec(&value).expect("MCP config JSON"),
+    )
+    .expect("write MCP config");
+
+    assert!(entrypoints(&config).is_empty());
+}

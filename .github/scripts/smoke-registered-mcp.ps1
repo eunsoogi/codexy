@@ -16,6 +16,33 @@ function Read-McpResponse {
   return $line | ConvertFrom-Json
 }
 
+function Get-McpProcessDiagnostics {
+  param(
+    [System.Diagnostics.Process] $Process,
+    [object] $StderrTask
+  )
+  $exit = "running"
+  try {
+    if ($Process.HasExited) { $exit = [string]$Process.ExitCode }
+  } catch {
+    $exit = "unavailable"
+  }
+  $stderr = "<not-collected>"
+  if ($null -ne $StderrTask) {
+    if (-not $StderrTask.IsCompleted) {
+      try { $StderrTask.Wait(5000) | Out-Null } catch { }
+    }
+    if ($StderrTask.IsCompleted) {
+      try { $stderr = [string]$StderrTask.Result } catch { $stderr = "<read-failed>" }
+    } else {
+      $stderr = "<pending>"
+    }
+  }
+  $stderr = ($stderr -replace "\s+", " ").Trim()
+  if ([string]::IsNullOrWhiteSpace($stderr)) { $stderr = "<empty>" }
+  return "exit=$exit; stderr=$stderr"
+}
+
 function Send-McpRequest {
   param(
     [System.Diagnostics.Process] $Process,
@@ -84,6 +111,15 @@ function Invoke-McpRegistration {
     if (-not $process.WaitForExit(30000)) { throw "registered MCP server timed out: $Server" }
     if ($null -ne $stderrTask -and -not $stderrTask.Wait(5000)) { throw "registered MCP stderr drain timed out: $Server" }
     if ($process.ExitCode -ne 0) { throw "registered MCP server exited $($process.ExitCode): $Server`n$($stderrTask.Result)" }
+  } catch {
+    if ($started) {
+      try {
+        if (-not $process.HasExited) { $process.Kill($true) }
+      } catch { }
+      try { $process.WaitForExit(5000) | Out-Null } catch { }
+      throw "registered MCP server failed: ${Server}; $($_.Exception.Message); $(Get-McpProcessDiagnostics -Process $process -StderrTask $stderrTask)"
+    }
+    throw
   } finally {
     if ($started -and -not $process.HasExited) { $process.Kill($true); $process.WaitForExit() }
     $process.Dispose()
