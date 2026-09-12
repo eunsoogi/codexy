@@ -16,10 +16,11 @@ pub(super) struct MaterializedFixture {
 // Keep only files that the activation and validation contracts read. The
 // verifier archives this fixture four times, so recursive source trees multiply
 // Windows filesystem work without adding an oracle.
-const PREPARED_PATHS: [&str; 26] = [
+const PREPARED_PATHS: [&str; 29] = [
     "AGENTS.md",
     ".agents/plugins",
     ".gitattributes",
+    ".github/workflows/python-package.yml",
     ".github/workflows/plugin-runtime-binaries.yml",
     "README.md",
     "README.ko.md",
@@ -41,7 +42,9 @@ const PREPARED_PATHS: [&str; 26] = [
     "scripts/activate-runtime-contract.sh",
     "scripts/download-selected-runtime-package.sh",
     "scripts/generate-release-changelog",
+    "scripts/public_marketplace_bundle_support.py",
     "scripts/sync-plugin-version.sh",
+    "scripts/verify_public_marketplace_bundle.py",
     "scripts/verify-runtime-activation-branch",
 ];
 
@@ -157,13 +160,16 @@ fn prepare(repo: &Path) -> Result<String, Box<dyn std::error::Error>> {
     }
     real_source_pointer::restore_pre_activation_runtime_inputs(repo, &pre_activation_revision)?;
     metadata::make_uv_lock_stale(repo)?;
-    let workflow = ".github/workflows/plugin-runtime-binaries.yml";
-    let workflow_target = repo.join(workflow);
-    fs::create_dir_all(workflow_target.parent().ok_or("workflow parent")?)?;
-    fs::copy(
-        codexy_runtime::paths::repository_root().join(workflow),
-        workflow_target,
-    )?;
+    for relative in [
+        ".github/workflows/plugin-runtime-binaries.yml",
+        ".github/workflows/python-package.yml",
+        "scripts/public_marketplace_bundle_support.py",
+        "scripts/verify_public_marketplace_bundle.py",
+    ] {
+        let target = repo.join(relative);
+        fs::create_dir_all(target.parent().ok_or("fixture source parent")?)?;
+        fs::copy(codexy_runtime::paths::repository_root().join(relative), target)?;
+    }
     for relative in [
         "scripts/activate-runtime-contract.sh",
         "scripts/sync-plugin-version.sh",

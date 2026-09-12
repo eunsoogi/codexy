@@ -22,6 +22,8 @@ mod mutation_preflight;
 mod readme;
 #[path = "sync_version_cli/restoration.rs"]
 mod restoration;
+#[path = "sync_version_cli/selected_release.rs"]
+mod selected_release;
 #[path = "sync_version_cli/strict_manifest.rs"]
 mod strict_manifest;
 #[path = "sync_version_cli/uv_lock.rs"]

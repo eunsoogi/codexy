@@ -9,7 +9,10 @@ on:
       - "plugins/codexy-github/**"
       - "plugins/codexy-devtools/**"
       - ".agents/plugins/marketplace.json"
+      - ".agents/plugins/release-publish-contract.json"
       - "docs/getcodexy-component-installation.md"
+      - "scripts/verify_public_marketplace_bundle.py"
+      - "scripts/public_marketplace_bundle_support.py"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/bootstrap-package.yml"
   push:
@@ -20,7 +23,10 @@ on:
       - "plugins/codexy-github/**"
       - "plugins/codexy-devtools/**"
       - ".agents/plugins/marketplace.json"
+      - ".agents/plugins/release-publish-contract.json"
       - "docs/getcodexy-component-installation.md"
+      - "scripts/verify_public_marketplace_bundle.py"
+      - "scripts/public_marketplace_bundle_support.py"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/bootstrap-package.yml"
   workflow_dispatch:
@@ -28,6 +34,11 @@ on:
       head_sha:
         description: Exact commit to verify
         required: true
+        type: string
+      prior_public_version:
+        description: Optional exact prior public release for an activation check
+        required: false
+        default: ""
         type: string
 
 permissions:
@@ -99,19 +110,18 @@ jobs:
           python-version: "3.12"
       - name: Run native component lifecycle tests
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'push' && github.event.before || '' }}
+          PRIOR_PUBLIC_VERSION: ${{ inputs.prior_public_version || '' }}
         run: |
           $ErrorActionPreference = "Stop"
-          $version = "1.7.0"
-          $archive = Join-Path $env:RUNNER_TEMP "codexy-marketplace-bundle-$version.tar.gz"
-          $extract = Join-Path $env:RUNNER_TEMP "codexy-marketplace-bundle-$version"
-          Invoke-WebRequest -Uri "https://github.com/eunsoogi/codexy/releases/download/v$version/codexy-marketplace-bundle.tar.gz" -OutFile $archive
-          New-Item -ItemType Directory -Force -Path $extract | Out-Null
-          & tar.exe -xzf $archive -C $extract
+          $bundleRoot = Join-Path $env:RUNNER_TEMP "codexy-public-marketplace-bundle"
+          $verified = python scripts/verify_public_marketplace_bundle.py --output-dir $bundleRoot
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $binary = Join-Path $extract "plugins\codexy\mcp\codexy-mcp-watcher.exe"
-          if (-not (Test-Path -LiteralPath $binary -PathType Leaf)) {
-            throw "released native Watcher runtime is missing: $binary"
-          }
+          $release = $verified | ConvertFrom-Json
+          Write-Host (@{ prior_public_release = $release.release_tag; baseline_source = $release.baseline_source; baseline_commit = $release.baseline_commit; bundle_sha256 = $release.bundle_sha256 } | ConvertTo-Json -Compress)
+          $binary = $release.watcher_binary
           $env:CODEXY_TEST_WATCHER_BINARY = $binary
           "CODEXY_TEST_WATCHER_BINARY=$binary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           $env:PYTHONPATH = "packages/getcodexy/src;packages/getcodexy/tests"

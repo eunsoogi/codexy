@@ -157,3 +157,66 @@ class WindowsActivationContractTests(unittest.TestCase):
         self.assertIn(
             'throw "checked out source commit does not match requested head"', runs[0]
         )
+
+    def test_windows_lifecycle_uses_a_verified_selected_public_release(self) -> None:
+        repository = Path(__file__).resolve().parents[3]
+        workflow = (repository / ".github/workflows/python-package.yml").read_text(
+            encoding="utf-8"
+        )
+        run = self._windows_activation_pwsh_runs(workflow)[0]
+        self.assertIn(
+            "$verified = python scripts/verify_public_marketplace_bundle.py --output-dir $bundleRoot",
+            run,
+        )
+        self.assertIn("$release = $verified | ConvertFrom-Json", run)
+        self.assertIn("$binary = $release.watcher_binary", run)
+        self.assertIn("$env:CODEXY_TEST_WATCHER_BINARY = $binary", run)
+        self.assertIn(
+            '"CODEXY_TEST_WATCHER_BINARY=$binary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append',
+            run,
+        )
+        self.assertEqual(
+            run.splitlines().count("$env:CODEXY_TEST_WATCHER_BINARY = $binary"),
+            1,
+        )
+        self.assertEqual(
+            run.splitlines().count(
+                '"CODEXY_TEST_WATCHER_BINARY=$binary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append'
+            ),
+            1,
+        )
+        for forbidden in (
+            "gh release",
+            "Invoke-WebRequest",
+            "Invoke-RestMethod",
+            "Start-BitsTransfer",
+            "releases/download/",
+        ):
+            self.assertNotIn(forbidden, run)
+        self.assertIn("BASE_SHA:", workflow)
+        self.assertIn("PRIOR_PUBLIC_VERSION:", workflow)
+        self.assertNotIn('$version = "1.7.0"', run)
+        helper = (repository / "scripts/verify_public_marketplace_bundle.py").read_text(
+            encoding="utf-8"
+        )
+        for required in (
+            "from public_marketplace_bundle_support import",
+            "CONTRACT,",
+            "release_tag = current_tag",
+            '"gh",',
+            '"release",',
+            '"download",',
+            '"runtime-release-receipt.json"',
+        ):
+            self.assertIn(required, helper)
+        support = (
+            repository / "scripts/public_marketplace_bundle_support.py"
+        ).read_text(encoding="utf-8")
+        for required in (
+            'CONTRACT = Path(".agents/plugins/release-publish-contract.json")',
+            "runtime-release-receipt/v2",
+            "manifestSha256",
+            "tarfile.open",
+            "archive.extract",
+        ):
+            self.assertIn(required, support)

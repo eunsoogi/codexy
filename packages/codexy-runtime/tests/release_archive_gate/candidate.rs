@@ -3,6 +3,7 @@ use std::path::Path;
 use super::*;
 use crate::support::FixtureCommand;
 use sha2::{Digest as _, Sha256};
+mod candidate_repository;
 #[path = "candidate_watchers.rs"]
 mod watchers;
 
@@ -59,6 +60,7 @@ fn run_candidate_gate(root: &Path, archive: &Path, plugin_root: &Path) -> std::p
     std::fs::create_dir_all(repo_root.join(".github/workflows"))
         .expect("candidate workflow parent");
     std::fs::create_dir_all(repo_root.join("scripts")).expect("candidate scripts parent");
+    candidate_repository::copy_selected_sources(&repo_root);
     copy_candidate_source(".agents/plugins/release-publish-contract.json", &repo_root);
     copy_candidate_source(".github/workflows/plugin-runtime-binaries.yml", &repo_root);
     copy_candidate_source("scripts/generate-release-changelog", &repo_root);
@@ -83,19 +85,6 @@ fn run_candidate_gate(root: &Path, archive: &Path, plugin_root: &Path) -> std::p
         .output()
         .expect("archive gate should start")
 }
-pub(super) fn run_source_projection(plugin_root: &Path) -> std::process::Output {
-    let mut command = FixtureCommand::new("python3");
-    command
-        .arg(
-            codexy_runtime::paths::repository_root()
-                .join("scripts/inspect-release-archive-contract.py"),
-        )
-        .arg("source-projection");
-    command
-        .arg_path(plugin_root)
-        .output()
-        .expect("source projection should start")
-}
 pub(super) fn make_candidate_proven_windows_package(plugin_root: &Path) {
     make_candidate_proven_windows_package_with_core(plugin_root, false);
 }
@@ -103,6 +92,9 @@ fn copy_candidate_source(relative: &str, repo_root: &Path) {
     let source = codexy_runtime::paths::repository_root().join(relative);
     let target = repo_root.join(relative);
     std::fs::copy(source, target).expect("candidate source contract");
+}
+pub(super) fn run_source_projection(plugin_root: &Path) -> std::process::Output {
+    candidate_repository::run_source_projection(plugin_root)
 }
 fn make_candidate_proven_windows_package_with_core(plugin_root: &Path, core_aware: bool) {
     let digest =

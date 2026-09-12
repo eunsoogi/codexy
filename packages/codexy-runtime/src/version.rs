@@ -21,6 +21,7 @@ mod mutation;
 mod mutation_inputs;
 mod readme;
 mod runtime_selection;
+pub(crate) mod selected_release;
 mod semver;
 mod uv_lock;
 mod wrappers;
@@ -233,6 +234,7 @@ fn check_versions_inner(tag: Option<&str>, check_runtime_selection: bool) -> Res
         )?;
     }
     cargo::check_version(&repo_root()?, &lock_version)?;
+    selected_release::check(&repo_root()?, &lock_version)?;
     if check_runtime_selection {
         wrappers::check_version(&runtime_selection::wrapper_version(&repo_root()?)?)?;
     }

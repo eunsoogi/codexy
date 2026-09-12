@@ -6,6 +6,9 @@ use std::{
 
 pub(super) const HEAD: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 pub(super) const BASE: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+// Historical regression fixture: this intentionally models the retired 1.7.0
+// activation state and is not a production release projection.
+pub(super) const HISTORICAL_RELEASE_FIXTURE: &str = "1.7.0";
 pub(super) const BRANCH: &str = "codexy/runtime-activation-v1.7.0-staging-42-1";
 pub(super) const WORKFLOWS: [&str; 5] = [
     "rust-test.yml",
@@ -72,7 +75,7 @@ impl Fixture {
             .arg(format!("{PRELUDE}\n{dispatch}"))
             .env("FIXTURE_ROOT", self.root.path())
             .env("RUNNER_TEMP", self.root.path())
-            .env("BOOTSTRAP_VERSION", "1.7.0")
+            .env("BOOTSTRAP_VERSION", HISTORICAL_RELEASE_FIXTURE)
             .env("GH_REPO", "eunsoogi/codexy")
             .env("FIXTURE_HEAD", HEAD)
             .env("FIXTURE_BASE", BASE)
