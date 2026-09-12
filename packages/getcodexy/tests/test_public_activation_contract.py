@@ -120,6 +120,44 @@ class PublicActivationContractTests(unittest.TestCase):
                 verified = verify_component(plugin, component, data["version"])
                 self.assertEqual(verified[Path(relative)], source.read_bytes())
 
+    def test_package_lifecycle_supplies_prepublication_wheel_and_runtime_inputs(
+        self,
+    ) -> None:
+        repository = Path(__file__).resolve().parents[3]
+        workflow = (repository / ".github/workflows/python-package.yml").read_text(
+            encoding="utf-8"
+        )
+        build = workflow.index("      - name: Build distribution")
+        wheels = workflow.index("      - name: Prepare MCP wheel fixtures")
+        focused = workflow.index("      - name: Run focused package tests")
+        self.assertLess(build, wheels)
+        self.assertLess(wheels, focused)
+        self.assertIn(
+            "UV_NO_INDEX=1 UV_FIND_LINKS=\"$CODEXY_SELECTED_MCP_WHEEL_DIR\"",
+            workflow,
+        )
+        fixture_helper = (
+            repository / ".github/scripts/prepare-mcp-wheel-fixtures.ps1"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "bash scripts/download-selected-runtime-package.sh dist/selected-runtime-package.tar.gz",
+            fixture_helper,
+        )
+        for field in (
+            "CODEXY_RUNTIME_CORE_DIR",
+            "CODEXY_RUNTIME_DEVTOOLS_DIR",
+            "runtime_source_commit",
+            "runtime_archive_version",
+            "_safe_extract_tar",
+        ):
+            self.assertIn(field, fixture_helper)
+        smoke = (repository / ".github/scripts/smoke-registered-mcp.ps1").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('"CORE"', smoke)
+        self.assertIn('"DEVTOOLS"', smoke)
+        self.assertIn("CODEXY_RUNTIME_${runtimePrefix}_DIR", smoke)
+
 
 if __name__ == "__main__":
     unittest.main()

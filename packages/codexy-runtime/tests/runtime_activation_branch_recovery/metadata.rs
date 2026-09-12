@@ -83,7 +83,7 @@ pub(super) fn make_uv_lock_stale(repo: &Path) -> Result<(), Box<dyn std::error::
     Ok(())
 }
 
-fn next_patch_version(version: &str) -> Result<String, Box<dyn std::error::Error>> {
+pub(super) fn next_patch_version(version: &str) -> Result<String, Box<dyn std::error::Error>> {
     let (major, remainder) = version.split_once('.').ok_or("major version")?;
     let (minor, patch) = remainder.split_once('.').ok_or("minor version")?;
     let patch = patch.parse::<u64>()?.checked_add(1).ok_or("patch overflow")?;

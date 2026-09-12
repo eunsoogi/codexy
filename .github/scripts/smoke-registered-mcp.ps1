@@ -46,6 +46,12 @@ function Invoke-McpRegistration {
   $command = [string]$entry.command
   if ([string]::IsNullOrWhiteSpace($command)) { throw "registered MCP command is empty: $Server" }
   Get-Command -Name $command -ErrorAction Stop | Out-Null
+  $runtimePrefix = if ($PluginRoot -eq "plugins/codexy") { "CORE" } elseif ($PluginRoot -eq "plugins/codexy-devtools") { "DEVTOOLS" } else { throw "unsupported registered MCP plugin root: $PluginRoot" }
+  $runtimeDir = [Environment]::GetEnvironmentVariable("CODEXY_RUNTIME_${runtimePrefix}_DIR")
+  if (-not [string]::IsNullOrWhiteSpace($runtimeDir)) {
+    if (-not [System.IO.Path]::IsPathRooted($runtimeDir) -or -not (Test-Path -LiteralPath $runtimeDir -PathType Container)) { throw "registered MCP runtime directory is not an absolute directory: $runtimeDir" }
+    $environment["CODEXY_RUNTIME_DIR"] = $runtimeDir
+  }
   $result = Invoke-McpProtocol -FileName $command -Arguments @($entry.args) -WorkingDirectory $resolvedRoot -Server $Server -ExpectedTools $ExpectedTools -Environment $environment -ClientName "registered-mcp-smoke"
   Write-Host (@{ plugin = $manifest.name; server = $Server; platform = $platform; command = $command; args = @($entry.args); initialize = "ok"; tools = @($result.Tools).Count } | ConvertTo-Json -Compress -Depth 20)
 }
