@@ -13,7 +13,7 @@ $result = Invoke-McpProtocol `
   -Arguments @("watcher", "--plugin-root", $pluginRoot, "--", "--stdio") `
   -WorkingDirectory $pluginRoot `
   -Server "watcher" `
-  -Environment @{} `
+  -Environment @{ CODEXY_RUNTIME_DIR = $env:CODEXY_RUNTIME_DIR } `
   -ClientName "candidate-wheel-windows-smoke"
 Write-Host (@{
     command = $command

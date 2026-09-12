@@ -76,6 +76,9 @@ function Invoke-McpProtocol {
   $start.RedirectStandardOutput = $true
   $start.RedirectStandardError = $true
   foreach ($argument in $Arguments) { $start.ArgumentList.Add([string]$argument) }
+  foreach ($key in @("CODEXY_RUNTIME_DIR", "CODEXY_RUNTIME_PACKAGE_PATH", "CODEXY_RUNTIME_PACKAGE_URL", "CODEXY_RUNTIME_ARTIFACTS_API_URL", "CODEXY_RUNTIME_PACKAGE_SHA256")) {
+    [void]$start.Environment.Remove($key)
+  }
   foreach ($key in $Environment.Keys) { $start.Environment[$key] = [string]$Environment[$key] }
   $process = [System.Diagnostics.Process]::new()
   $process.StartInfo = $start
