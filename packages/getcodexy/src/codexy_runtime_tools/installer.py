@@ -70,6 +70,11 @@ def execute(
     command = str(path)
     runtime_environment = os.environ.copy()
     runtime_environment.update(environment or {})
+    if os.name == "nt":
+        completed = subprocess.run(
+            [command, *arguments], env=runtime_environment, check=False
+        )
+        raise SystemExit(completed.returncode)
     os.execvpe(command, [command, *arguments], runtime_environment)
     raise AssertionError("exec returned unexpectedly")
 

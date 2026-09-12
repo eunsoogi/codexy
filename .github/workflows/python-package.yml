@@ -13,6 +13,8 @@ on:
       - "docs/getcodexy-component-installation.md"
       - "scripts/verify_public_marketplace_bundle.py"
       - "scripts/public_marketplace_bundle_support.py"
+      - ".github/scripts/prepare-mcp-wheel-fixtures.ps1"
+      - ".github/scripts/smoke-candidate-mcp-runtime.ps1"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/bootstrap-package.yml"
   push:
@@ -27,6 +29,8 @@ on:
       - "docs/getcodexy-component-installation.md"
       - "scripts/verify_public_marketplace_bundle.py"
       - "scripts/public_marketplace_bundle_support.py"
+      - ".github/scripts/prepare-mcp-wheel-fixtures.ps1"
+      - ".github/scripts/smoke-candidate-mcp-runtime.ps1"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/bootstrap-package.yml"
   workflow_dispatch:
@@ -156,12 +160,30 @@ jobs:
           )
           python -m unittest @componentTests
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Diagnose MCP bootstrap stages
+      - name: Build candidate and selected-version MCP wheels
         shell: pwsh
-        run: ./.github/scripts/diagnose-mcp-bootstrap.ps1
+        run: ./.github/scripts/prepare-mcp-wheel-fixtures.ps1
+      - name: Verify candidate wheel runtime handoff on native Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $bundleRoot = Join-Path $env:RUNNER_TEMP "codexy-public-marketplace-bundle"
+          $runtimeDir = Join-Path $bundleRoot "extracted/plugins/codexy/runtime"
+          if (-not (Test-Path -LiteralPath $runtimeDir -PathType Container)) { throw "verified public runtime directory is missing: $runtimeDir" }
+          $env:CODEXY_RUNTIME_DIR = $runtimeDir
+          $env:CODEXY_RUNTIME_CACHE_DIR = Join-Path $env:RUNNER_TEMP "codexy-candidate-runtime-cache"
+          & $env:GETCODEXY_CANDIDATE_RUNTIME --help
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./.github/scripts/smoke-candidate-mcp-runtime.ps1
       - name: Smoke registered MCP commands on native Windows
         shell: pwsh
-        run: ./.github/scripts/smoke-registered-mcp.ps1
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:UV_NO_INDEX = "1"
+          $env:UV_FIND_LINKS = $env:CODEXY_SELECTED_MCP_WHEEL_DIR
+          $env:UV_CACHE_DIR = Join-Path $env:RUNNER_TEMP "codexy-selected-version-uv-cache"
+          Remove-Item Env:CODEXY_RUNTIME_DIR -ErrorAction SilentlyContinue
+          ./.github/scripts/smoke-registered-mcp.ps1
       - name: Test dependency-aware GitHub activation
         shell: pwsh
         run: |

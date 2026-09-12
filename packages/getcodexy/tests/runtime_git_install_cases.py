@@ -83,6 +83,7 @@ class RuntimeGitInstallCases:
             self.assertFalse((install_root / "plugin.json").exists())
         with (
             mock.patch.dict("os.environ", {"PRESERVED": "yes"}, clear=True),
+            mock.patch("codexy_runtime_tools.installer.os.name", "posix"),
             mock.patch("codexy_runtime_tools.installer.os.execvpe") as execvpe,
             self.assertRaisesRegex(AssertionError, "exec returned unexpectedly"),
         ):
@@ -93,6 +94,26 @@ class RuntimeGitInstallCases:
             "/runtime",
             ["/runtime", "--stdio"],
             {"PRESERVED": "yes", "CODEXY_PLUGIN_ROOT": "/installed/plugin"},
+        )
+
+    def test_execute_uses_a_child_process_on_windows(self) -> None:
+        with (
+            mock.patch.dict("os.environ", {"PRESERVED": "yes"}, clear=True),
+            mock.patch("codexy_runtime_tools.installer.os.name", "nt"),
+            mock.patch(
+                "codexy_runtime_tools.installer.subprocess.run",
+                return_value=subprocess.CompletedProcess([], 23),
+            ) as run,
+            self.assertRaises(SystemExit) as raised,
+        ):
+            execute(
+                "/runtime", ["--stdio"], {"CODEXY_PLUGIN_ROOT": "/installed/plugin"}
+            )
+        self.assertEqual(raised.exception.code, 23)
+        run.assert_called_once_with(
+            ["/runtime", "--stdio"],
+            env={"PRESERVED": "yes", "CODEXY_PLUGIN_ROOT": "/installed/plugin"},
+            check=False,
         )
 
     def test_failed_git_install_never_publishes_its_staged_binary(self) -> None:

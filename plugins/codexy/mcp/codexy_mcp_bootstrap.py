@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -55,6 +56,8 @@ def main(arguments: list[str] | None = None) -> int:
     environment = os.environ.copy()
     environment["CODEXY_PLUGIN_ROOT"] = str(plugin_root)
     try:
+        if os.name == "nt":
+            return subprocess.run(command, env=environment, check=False).returncode
         os.execvpe(uvx, command, environment)
     except OSError as error:
         print(f"codexy_mcp_bootstrap could not start uvx: {error}", file=sys.stderr)

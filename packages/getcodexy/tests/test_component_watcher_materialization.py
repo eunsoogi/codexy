@@ -4,9 +4,11 @@ import json
 import os
 import shutil
 import stat
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 from unittest.mock import patch
 
 from codexy_runtime_tools import component_mcp_cache, mcp_bootstrap
@@ -155,6 +157,7 @@ class WatcherMaterializationTests(unittest.TestCase):
                 patch.object(
                     mcp_bootstrap.shutil, "which", return_value="/usr/bin/uvx"
                 ),
+                patch.object(mcp_bootstrap.os, "name", "posix"),
                 patch.object(
                     mcp_bootstrap.os,
                     "execvpe",
@@ -181,6 +184,33 @@ class WatcherMaterializationTests(unittest.TestCase):
                 ],
             )
             self.assertEqual(environment["CODEXY_PLUGIN_ROOT"], str(plugin))
+
+    def test_bootstrap_uses_a_child_process_on_windows(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            plugin = _copy_plugin(Path(temporary), "codexy-devtools")
+            with (
+                patch.object(mcp_bootstrap.Path, "cwd", return_value=plugin),
+                patch.object(
+                    mcp_bootstrap.shutil, "which", return_value="C:/uv/uvx.exe"
+                ),
+                patch.object(mcp_bootstrap.os, "name", "nt"),
+                patch.object(
+                    mcp_bootstrap.subprocess,
+                    "run",
+                    return_value=subprocess.CompletedProcess([], 23),
+                ) as run,
+            ):
+                result = mcp_bootstrap.main(["codegraph", "--stdio"])
+
+            self.assertEqual(result, 23)
+            command = run.call_args.args[0]
+            self.assertEqual(command[0], "C:/uv/uvx.exe")
+            self.assertEqual(command[2], f"getcodexy=={VERSION}")
+            self.assertEqual(command[-1], "--stdio")
+            self.assertEqual(
+                run.call_args.kwargs["env"]["CODEXY_PLUGIN_ROOT"], str(plugin)
+            )
+            self.assertFalse(run.call_args.kwargs.get("shell", False))
 
     def test_plugin_bootstraps_match_the_single_packaged_implementation(self) -> None:
         canonical = (
