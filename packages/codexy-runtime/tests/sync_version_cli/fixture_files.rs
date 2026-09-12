@@ -1,12 +1,13 @@
 pub(super) const REPLACED_FILES: &[&str] = &[
+    // Keep selected package metadata from the HEAD archive. Candidate
+    // preparation changes these files while preserving the selected plugin
+    // manifest, so copying them from the working tree would mix states.
     ".github/workflows/plugin-runtime-binaries.yml",
     ".github/workflows/python-package.yml",
     "packages/codexy-runtime/Cargo.toml",
     "packages/codexy-runtime/Cargo.lock",
     ".agents/plugins/release-publish-contract.json",
     ".agents/plugins/marketplace.json",
-    "packages/getcodexy/pyproject.toml",
-    "packages/getcodexy/uv.lock",
     "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
     "packages/codexy-runtime/src/version/mcp_config.rs",
     "plugins/codexy/.mcp.json",
