@@ -123,8 +123,7 @@ fn selected_release_projections_fail_closed_without_mutation() -> TestResult {
 #[test]
 fn candidate_keeps_the_selected_public_release_and_historical_fixtures() -> TestResult {
     let temporary = tempfile::tempdir()?;
-    let root = archive_repository(super::shared_repository_archive()?, &temporary, "candidate")?;
-    let selected = fixture_version(&root)?;
+    let (root, selected) = super::selected_fixture(&temporary, "candidate")?;
     let candidate = next_patch_version(&selected)?;
     let prepared = run_sync(&root, &["--prepare-candidate", &candidate])?;
     assert!(
