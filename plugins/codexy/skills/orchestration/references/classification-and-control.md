@@ -159,18 +159,5 @@ publication authority. A pending reviewer stays with the same reviewer until the
 real result arrives; it MUST NOT be interrupted, replaced, duplicated, or
 converted into a new approval request.
 
-## Retired review-state artifacts
-
-Review-count, ordered-history, transcript-import, native-recovery, reviewer-
-migration, post-cap, final-disposition, and `previous_control_state` inputs are
-retired. The runtime rejects them before compact selection, normalization, or
-live source reads. Historical records MAY remain immutable for audit or
-provenance, but MUST NOT be executed, rewritten, or used to establish active
-readiness. The detailed retired-surface notices remain in
-[review profiles](review-profiles.md), [review lifecycle](review-lifecycle.md),
-[native review history](native-review-history.md), and
-[authenticated finding-disposition CI](finding-disposition-ci.md).
-
-Light retains its no-reviewer route and MUST NOT carry legacy review-state
-fields. Headings, prose, optional receipts, and omitted legacy fields MUST NOT
-override direct current-head facts.
+Light retains its no-reviewer route. Headings, prose, and optional receipts MUST
+NOT override direct current-head facts.

@@ -56,14 +56,4 @@ and quota bookkeeping MUST NOT block the compact current-head path. They remain
 unknown evidence and MUST NOT be converted into a synthetic result or a new
 approval request.
 
-## Retired review-state artifacts
-
-Review-count, ordered-history, transcript-import, native-recovery, reviewer-
-migration, post-cap, and final-disposition fields and modes are retired. The
-runtime rejects their presence before compact selection, normalization, or live
-source reads. Historical records MAY remain immutable for audit or provenance,
-but they MUST NOT be executed, rewritten, or used to establish current-head
-readiness. Use only the compact current-head fields above for active review
-control.
-
 The executable profile contract remains in the packaged runtime validator.

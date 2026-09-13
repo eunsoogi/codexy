@@ -62,13 +62,3 @@ older record is absent. The owning child keeps implementation and
 review-response ownership, and the parent keeps merge and publication authority.
 The selected reviewer MUST NOT be interrupted, replaced, duplicated, or turned
 into a second review because a wait is inconvenient.
-
-## Retired review-state artifacts
-
-Review-count, ordered-history, transcript-import, native-recovery, reviewer-
-migration, post-cap, final-disposition, and `previous_control_state` inputs are
-retired. The runtime rejects them before compact selection, normalization, or
-live source reads. Historical records MAY remain immutable for audit or
-provenance, but they MUST NOT be executed, rewritten, or used to establish
-readiness, completion, merge, or another review. The compact current-head path
-above is the only active review-control lifecycle.

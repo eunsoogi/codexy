@@ -63,22 +63,6 @@ publication authority. The parent MUST NOT replace the child reviewer or patch
 its branch. A separately required connector review remains parent-owned and
 follows the documented connector procedure.
 
-## Retired historical review artifacts
-
-Pre-PR import envelopes, native host transcript recovery, and the
-`codexy-review-control --recover-native-review-history` mode are retired and
-MUST NOT be run. The runtime also rejects `nativeHistoryRecovery`,
-`native_history_recovery`, related provenance/count fields, and retired source
-locators before source reads, normalization, or output writes. Existing host
-transcripts, envelopes, receipts, projections, and historical records MAY remain
-immutable for audit or provenance, but MUST NOT be executed, rewritten, or used
-to establish current-head readiness.
-
-Active work MUST use the authenticated compact current-head review-control state
-and the current PR snapshot. An older review MAY be recorded as historical
-context, but it does not replace a fresh current-head result, waive findings, or
-authorize completion, merge, or another review.
-
 After opening a PR, read back the remote PR number, URL, title, body, state,
 draft state, base, head branch, exact head SHA, labels, and linked issue when
 the selected contract requires a readiness claim. Repository labels that apply

@@ -44,13 +44,6 @@ MUST rerun the relevant proof and recheck the new current head with the same
 selected reviewer. This path MUST NOT require full/delta counts, ordered
 history, quota exhaustion, or a parent decision merely because the head changed.
 
-Retired review-count, ordered-history, transcript-import, native-recovery,
-reviewer-migration, post-cap, and final-disposition fields and modes are
-unsupported by the runtime. If one is present, MUST treat the rejection as the
-expected boundary result and MUST NOT request historical reconstruction or live
-source reads. Historical artifacts MAY remain immutable for audit, but MUST NOT
-establish current-head readiness or select or replace a reviewer.
-
 Evidence reuse: for every reused check, MUST preserve the original invocation
 revision, environment, exact command, result, and execution state. MUST inspect
 the current diff and read back the relevant implementation,

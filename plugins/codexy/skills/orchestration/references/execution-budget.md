@@ -22,9 +22,6 @@ the gap.
   chosen profile requires one. `PASS`, `BLOCK`, and `UNOBSERVABLE` are actual
   results; `PENDING` and `RUNNING` remain observations of that same reviewer.
   This path has no fixed review-count, history, or disposition quota.
-- Retired history/transition paths are unsupported. Their fields, modes, and
-  quota or disposition records MUST be rejected before compact validation;
-  immutable historical records MUST NOT establish current-head readiness.
 - Additional reviewers, broad rechecks, or semantic evaluators MUST be tied to
   an explicit requirement or a concrete unresolved risk; they MUST NOT be an
   automatic stack.

@@ -75,12 +75,4 @@ genesis/import records, transcript reconstruction, invocation telemetry, quota
 bookkeeping, or a disposition ledger. A pending `PENDING` or `RUNNING` result
 MUST remain pending until the same reviewer returns its actual result.
 
-Retired review-count, ordered-history, transcript-import, native-recovery,
-reviewer-migration, post-cap, and final-disposition fields and modes are
-unsupported by the runtime. Their presence MUST be rejected before compact
-selection, normalization, live source reads, or output mutation. Historical
-artifacts MAY remain immutable for audit or provenance, but MUST NOT be executed,
-rewritten, used to establish current-head readiness, waive an actual finding, or
-authorize another review. These retired requirements MUST NOT be applied to a
-compact current-head control.
 """

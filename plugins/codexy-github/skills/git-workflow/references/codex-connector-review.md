@@ -14,11 +14,7 @@ On one frozen exact head, the parent MUST:
 4. verify the repaired exact head, CI, reviews, comments, and thread resolution.
 
 The owning child MUST NOT request connector review. It owns the repair and any
-still-authorized selected-review delta check. If an explicitly selected legacy
-review path has exhausted its recorded quota, it MUST repair every in-scope
-connector finding and return current-head proof without fabricating approval or
-requesting another selected or connector review. The compact current-head path
-has no selected-review quota to exhaust.
+still-authorized selected-review delta check.
 
 Automatic, per-push, duplicate, unchanged-head, and piecemeal requests are
 forbidden. Another connector review requires explicit maintainer authorization

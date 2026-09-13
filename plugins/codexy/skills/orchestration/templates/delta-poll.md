@@ -1,7 +1,4 @@
 <!-- Token-efficient orchestration event delta. MUST keep one block per active lane. -->
-<!-- Review-count, ordered-history, recovery, post-cap, and disposition fields
-     are retired. Preserve historical artifacts immutably; do not execute or
-     populate those fields in a current-head handoff. -->
 
 ## Lane
 
