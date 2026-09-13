@@ -25,11 +25,13 @@ read as a v2 test-first sequencing mandate.
 - Documentation, README, instruction-only skill prose, and reference Markdown
   MUST use direct structural readback, not manufactured RED, phrase mutations,
   or prose TDD.
-- A reproducible defect requires faithful RED before the fix. When reproduction
-  is unavailable, preserve that limitation, record the justified alternative,
-  and still provide behavioral regression proof. Permission, destructive-state,
-  and recovery risks require their invariants and failure expectations before
-  implementation, but do not require RED for every helper.
+- A reproducible engineering defect requires faithful RED before the fix. When
+  an engineering reproduction is unavailable, preserve that limitation, record
+  the justified alternative, and still provide behavioral regression proof.
+  Documentation and other non-engineering defects use proportional proof and do
+  not receive prose RED obligations. Permission, destructive-state, and recovery
+  risks require their invariants and failure expectations before implementation,
+  but do not require RED for every helper.
 - Mixed requests MUST apply these duties per boundary: behavioral tests remain
   required for engineering surfaces, while non-engineering surfaces use
   proportional proof.

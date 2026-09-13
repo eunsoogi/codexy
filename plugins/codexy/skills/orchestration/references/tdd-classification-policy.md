@@ -47,15 +47,16 @@ entries use `proportional_structural_or_behavioral_proof`.
 | Boundary fact                                   | Behavioral tests                  | Sequencing and pre-change duty                                                                   |
 | ----------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------ |
 | ordinary feature                                | required                          | `optional` unless explicitly mandated                                                            |
-| reproducible defect                             | required                          | `required` and `faithful_red_before_fix`                                                         |
-| unavailable defect reproduction                 | required                          | record `justified_alternative_before_change`; no manufactured RED                                |
+| reproducible engineering defect                 | required                          | `required` and `faithful_red_before_fix`                                                         |
+| unavailable engineering defect reproduction     | required                          | record `justified_alternative_before_change`; no manufactured RED                                |
 | behavior-preserving refactor                    | required                          | `optional` with `green_or_characterization_baseline`                                             |
 | permission, destructive-state, or recovery risk | required for engineering surfaces | establish the matching invariants before implementation; do not manufacture RED for every helper |
-| instruction-only or other non-engineering work  | not required                      | `not_applicable` plus proportional proof                                                         |
+| instruction-only or other non-engineering work  | not required                      | `not_applicable` plus proportional proof, including documentation defects                        |
 
 Mixed requests retain these duties independently: engineering boundaries keep
-behavioral verification, non-engineering boundaries keep proportional proof, and
-only their own explicit or defect-driven sequencing mode applies.
+behavioral verification, non-engineering boundaries keep proportional proof even
+when their purpose is defect repair, and only their own explicit or
+defect-driven sequencing mode applies.
 
 Empty boundaries, duplicate ids or risks, unknown kinds or enum values,
 malformed facts, unknown fields, and unsupported schema versions are rejected.

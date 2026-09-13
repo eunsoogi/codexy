@@ -83,7 +83,7 @@ fn obligation(boundary: &BoundaryRequest, engineering: bool) -> Value {
         "kind": boundary.kind,
         "engineering_tests_required": engineering,
         "tdd_mode": mode.as_str(),
-        "pre_change_obligations": pre_change_obligations(boundary, mode),
+        "pre_change_obligations": pre_change_obligations(boundary, mode, engineering),
         "proof_obligations": proof_obligations,
     })
 }
@@ -106,7 +106,14 @@ fn mode_for(boundary: &BoundaryRequest, engineering: bool) -> TddMode {
     }
 }
 
-fn pre_change_obligations(boundary: &BoundaryRequest, mode: TddMode) -> Vec<&'static str> {
+fn pre_change_obligations(
+    boundary: &BoundaryRequest,
+    mode: TddMode,
+    engineering: bool,
+) -> Vec<&'static str> {
+    if !engineering {
+        return Vec::new();
+    }
     let mut obligations = boundary
         .risks
         .iter()
