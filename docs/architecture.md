@@ -191,10 +191,11 @@ implementation, dependency or lock/configuration, fixtures, generated inputs,
 and environment, a current applicability assessment may preserve a passed check
 when its boundary and environment remain unchanged, including after unrelated
 prose-only or other metadata-only changes. A relevant source, dependency,
-fixture, generated-input, or environment change, previous failure, unresolved
-risk, or uncertain impact invalidates the affected evidence and requires the
-check again. A reviewer PASS is always bound to its exact head; an older PASS
-does not make a changed head current or allow affected checks to be skipped.
+lock/configuration, fixture, generated-input, or environment change, previous
+failure, unresolved risk, or uncertain impact invalidates the affected evidence
+and requires the check again. A reviewer PASS is always bound to its exact head;
+an older PASS does not make a changed head current or allow affected checks to
+be skipped.
 
 ```mermaid
 flowchart TD
