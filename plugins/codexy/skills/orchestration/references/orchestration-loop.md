@@ -194,8 +194,11 @@ Return format:
     evidence for code-touching lanes.
   - MUST include touched implementation-file LOC gate output for non-trivial code,
     validator, harness, or workflow-rule lanes.
-  - MUST include packaged Codexy reviewer gate findings or approval for the current
-    diff, exact head or file state, scope, verification outputs, and evidence.
+  - When the selected review profile requires a reviewer, MUST include packaged
+    Codexy reviewer gate findings or approval for the current diff, exact head or
+    file state, scope, verification outputs, and evidence. `light` lanes MUST
+    NOT require an LLM reviewer; `strict` lanes MUST retain the one selected
+    `codexy-sentinel` gate.
 ```
 
 The child thread MUST NOT merge, close issues, or claim final completion. It
