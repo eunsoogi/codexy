@@ -114,9 +114,6 @@ unassigned or out-of-scope edits.
   relevant check, `BLOCK`, `UNOBSERVABLE`, or actual finding remains blocking.
 - A second reviewer, broad recheck, semantic evaluator, connector review, or
   evidence artifact MUST be tied to an explicit requirement or concrete risk.
-  Retired history, recovery, transition, and disposition fields are rejected
-  before compact current-head selection; immutable historical records MAY remain
-  available for audit but MUST NOT establish active readiness.
 
 ## Completion-Handoff Validation
 
