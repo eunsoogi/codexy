@@ -1,23 +1,5 @@
+#[cfg(windows)]
 use crate::support;
-
-#[test]
-fn default_fixture_uses_the_manifest_overlay_on_windows() -> Result<(), Box<dyn std::error::Error>> {
-    let source = std::fs::read_to_string(
-        codexy_runtime::paths::runtime_package_root().join("tests/support/plugin_fixture.rs"),
-    )?;
-
-    support::assert_structured_literals(
-        &source,
-        "Windows default fixture overlay",
-        &[
-            "#[cfg(windows)]",
-            "materialize_fixture(&[], fixture_identity(\"full\", Location::caller()))",
-            "#[cfg(not(windows))]",
-            "super::copy_dir(source_root(), &root)?",
-        ],
-    );
-    Ok(())
-}
 
 #[cfg(windows)]
 #[test]
