@@ -6,6 +6,7 @@ use serde_json::Value;
 
 use super::{ARMED_TTL_MS, Binding, DIRECTORY, MAX_WAIT_MS};
 use crate::watcher::io::{ensure_dir, read_json, reject_link, safe_id};
+use crate::watcher::lock::LockGuard;
 
 pub(super) fn bindings_dir(root: &Path) -> Result<PathBuf> {
     let directory = root.join(DIRECTORY);
@@ -23,7 +24,7 @@ pub(super) fn cancellation_path(directory: &Path, nonce: &str) -> Result<PathBuf
     Ok(directory.join(format!("{nonce}.cancel")))
 }
 
-pub(super) fn live_bindings(directory: &Path, now: u64) -> Result<Vec<Binding>> {
+pub(super) fn live_bindings(root: &Path, directory: &Path, now: u64) -> Result<Vec<Binding>> {
     let mut bindings = Vec::new();
     for entry in fs::read_dir(directory)? {
         let entry = entry?;
@@ -40,7 +41,11 @@ pub(super) fn live_bindings(directory: &Path, now: u64) -> Result<Vec<Binding>> 
         if validate(&binding).is_err() {
             continue;
         }
-        if now >= binding.expires_at_ms {
+        if binding.status == "active" && active_wait(root, &binding)? {
+            bindings.push(binding);
+            continue;
+        }
+        if binding.status == "active" || now >= binding.expires_at_ms {
             remove_owned(&path);
             if let Ok(cancel) = cancellation_path(directory, &binding.nonce) {
                 remove_owned(&cancel);
@@ -50,6 +55,15 @@ pub(super) fn live_bindings(directory: &Path, now: u64) -> Result<Vec<Binding>> 
         bindings.push(binding);
     }
     Ok(bindings)
+}
+
+fn active_wait(root: &Path, binding: &Binding) -> Result<bool> {
+    let session_dir = root.join(&binding.watcher_session_id);
+    reject_link(&session_dir)?;
+    if !session_dir.is_dir() {
+        return Ok(false);
+    }
+    Ok(LockGuard::try_acquire(&session_dir.join("wait.lock"))?.is_none())
 }
 
 pub(super) fn validate(binding: &Binding) -> Result<()> {

@@ -48,13 +48,13 @@ impl Store {
         if cursor > session.next_sequence {
             bail!("watcher cursor is ahead of the session");
         }
-        let _request_binding = request_binding
-            .map(|nonce| super::request_binding::claim(&self.root, nonce, session_id, token))
-            .transpose()?;
         let _wait_lock = super::super::lock::LockGuard::try_acquire(
             &self.session_dir(session_id)?.join("wait.lock"),
         )?
         .context("watcher already has an active waiter")?;
+        let _request_binding = request_binding
+            .map(|nonce| super::request_binding::claim(&self.root, nonce, session_id, token))
+            .transpose()?;
         drop(transition);
         let deadline = Instant::now() + Duration::from_millis(timeout_ms);
         loop {

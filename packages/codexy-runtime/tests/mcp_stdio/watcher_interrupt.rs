@@ -3,11 +3,14 @@ use super::watcher_state::{initialize, open_session, tool_payload, watcher_clien
 use std::fs;
 use std::process::{Command, Stdio};
 use std::thread;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 const LONG_WAIT_MS: u64 = 3_600_000;
+
+#[path = "watcher_interrupt/request_binding_lifecycle.rs"]
+mod request_binding_lifecycle;
 
 fn waiting_until_true(
     observer: &mut McpClient,
@@ -44,85 +47,6 @@ fn wait_schema_exposes_an_optional_host_interrupt_binding() -> TestResult {
     let binding = &wait["inputSchema"]["properties"]["requestBinding"];
     assert_eq!(binding["type"], "string");
     assert_eq!(binding["maxLength"], 128);
-    Ok(())
-}
-
-#[test]
-fn native_interrupt_releases_only_the_bound_wait_and_preserves_the_session() -> TestResult {
-    let state = tempfile::tempdir()?;
-    let mut setup = watcher_client(state.path())?;
-    initialize(&mut setup)?;
-    let (session, parent_token, _) = open_session(&mut setup, "native-interrupt", 2)?;
-    drop(setup);
-
-    let binding = hook_call(
-        state.path(),
-        "--hook-pretool",
-        json!({
-            "hook_event_name": "PreToolUse",
-            "tool_name": "mcp__codexy-watcher__watcher_wait",
-            "session_id": "main-session",
-            "turn_id": "turn-1",
-            "tool_use_id": "tool-1",
-            "tool_input": {"sessionId": session, "parentToken": parent_token, "timeoutMs": LONG_WAIT_MS}
-        }),
-    )?["requestBinding"]
-        .as_str()
-        .ok_or("missing request binding")?
-        .to_owned();
-
-    let mut reader = watcher_client(state.path())?;
-    initialize(&mut reader)?;
-    reader.send_without_read(&json!({
-        "jsonrpc": "2.0", "id": 4, "method": "tools/call",
-        "params": {"name": "watcher_wait", "arguments": {
-            "sessionId": session, "parentToken": parent_token,
-            "timeoutMs": LONG_WAIT_MS, "requestBinding": binding
-        }}
-    }))?;
-    let mut observer = watcher_client(state.path())?;
-    initialize(&mut observer)?;
-    waiting_until_true(&mut observer, &session, &parent_token)?;
-    let record = binding_record(state.path(), &binding)?;
-    assert_eq!(record["status"], "active");
-    assert!(record["expiresAtMs"].as_u64().unwrap() >= now_ms() + LONG_WAIT_MS - 1_000);
-
-    let stale = hook_call(
-        state.path(), "--hook-interrupt",
-        json!({"hook_event_name": "Interrupt", "session_id": "wrong", "turn_id": "turn-1"}),
-    )?;
-    assert_eq!(stale["cancelled"], false);
-    let wrong_turn = hook_call(
-        state.path(), "--hook-interrupt",
-        json!({"hook_event_name": "Interrupt", "session_id": "main-session", "turn_id": "wrong-turn"}),
-    )?;
-    assert_eq!(wrong_turn["cancelled"], false);
-    let started = Instant::now();
-    let interrupt = hook_call(
-        state.path(), "--hook-interrupt",
-        json!({"hook_event_name": "Interrupt", "session_id": "main-session", "turn_id": "turn-1"}),
-    )?;
-    assert_eq!(interrupt["cancelled"], true);
-    let waited = tool_payload(&reader.read_frame()?)?;
-    assert!(started.elapsed() < Duration::from_secs(2));
-    assert_eq!(waited["status"], "cancelled");
-    assert_eq!(waited["nextCursor"], "0");
-
-    let mut replacement = watcher_client(state.path())?;
-    initialize(&mut replacement)?;
-    let health = replacement.send(&json!({
-        "jsonrpc": "2.0", "id": 5, "method": "tools/call",
-        "params": {"name": "watcher_health", "arguments": {
-            "sessionId": session, "token": parent_token
-        }}
-    }))?;
-    assert_eq!(tool_payload(&health)?["status"], "active");
-    assert_eq!(tool_payload(&health)?["waiting"], false);
-    let after_completion = hook_call(
-        state.path(), "--hook-interrupt",
-        json!({"hook_event_name": "Interrupt", "session_id": "main-session", "turn_id": "turn-1"}),
-    )?;
-    assert_eq!(after_completion["cancelled"], false);
     Ok(())
 }
 
@@ -177,11 +101,50 @@ fn armed_interrupt_is_preserved_until_wait_claims() -> TestResult {
     Ok(())
 }
 
-fn binding_record(state: &std::path::Path, nonce: &str) -> Result<Value, Box<dyn std::error::Error>> {
-    let path = state
+fn binding_path(state: &std::path::Path, nonce: &str) -> std::path::PathBuf {
+    state
         .join("codexy-watcher/.request-bindings")
-        .join(format!("{nonce}.json"));
+        .join(format!("{nonce}.json"))
+}
+
+fn binding_record(state: &std::path::Path, nonce: &str) -> Result<Value, Box<dyn std::error::Error>> {
+    let path = binding_path(state, nonce);
     Ok(serde_json::from_slice(&fs::read(path)?)?)
+}
+
+fn write_binding_record(
+    state: &std::path::Path,
+    nonce: &str,
+    record: &Value,
+) -> Result<(), Box<dyn std::error::Error>> {
+    fs::write(binding_path(state, nonce), serde_json::to_vec(record)?)?;
+    Ok(())
+}
+
+fn active_binding_until_true(
+    state: &std::path::Path,
+    nonce: &str,
+) -> Result<Value, Box<dyn std::error::Error>> {
+    let mut status = Value::Null;
+    for _ in 0..100 {
+        let record = binding_record(state, nonce)?;
+        status = record["status"].clone();
+        if status == "active" {
+            return Ok(record);
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    Err(format!("request binding did not become active: {status}").into())
+}
+
+fn binding_gone_until_true(state: &std::path::Path, nonce: &str) -> bool {
+    for _ in 0..100 {
+        if !binding_path(state, nonce).exists() {
+            return true;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    false
 }
 
 fn now_ms() -> u64 {

@@ -79,7 +79,7 @@ pub fn prepare_request_binding(payload: &Value) -> Result<String> {
     let directory = bindings_dir(&root)?;
     let _lock = LockGuard::acquire(&root.join(LOCK), 500)?;
     let now = now_ms();
-    let bindings = live_bindings(&directory, now)?;
+    let bindings = live_bindings(&root, &directory, now)?;
     if bindings
         .iter()
         .any(|binding| binding.main_session_id == main_session_id && binding.turn_id == turn_id)
@@ -116,7 +116,7 @@ pub fn interrupt_request_binding(payload: &Value) -> Result<bool> {
     let turn_id = text(payload.get("turn_id"), "turn_id", 256)?;
     let directory = bindings_dir(&root)?;
     let _lock = LockGuard::acquire(&root.join(LOCK), 500)?;
-    let matches = live_bindings(&directory, now_ms())?
+    let matches = live_bindings(&root, &directory, now_ms())?
         .into_iter()
         .filter(|binding| {
             matches!(binding.status.as_str(), "armed" | "active")
