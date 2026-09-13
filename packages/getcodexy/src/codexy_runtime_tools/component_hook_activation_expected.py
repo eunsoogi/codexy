@@ -18,6 +18,7 @@ _EVENT_LABELS = {
     "UserPromptSubmit": "userPromptSubmit",
     "SessionStart": "sessionStart",
     "Stop": "stop",
+    "Interrupt": "interrupt",
 }
 _EVENT_KEYS = {
     "PreToolUse": "pre_tool_use",
@@ -25,6 +26,7 @@ _EVENT_KEYS = {
     "UserPromptSubmit": "user_prompt_submit",
     "SessionStart": "session_start",
     "Stop": "stop",
+    "Interrupt": "interrupt",
 }
 
 

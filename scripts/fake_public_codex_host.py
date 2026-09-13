@@ -26,6 +26,7 @@ EVENTS = {
     "PreToolUse": ("preToolUse", "pre_tool_use"),
     "PermissionRequest": ("permissionRequest", "permission_request"),
     "UserPromptSubmit": ("userPromptSubmit", "user_prompt_submit"),
+    "Interrupt": ("interrupt", "interrupt"),
 }
 
 

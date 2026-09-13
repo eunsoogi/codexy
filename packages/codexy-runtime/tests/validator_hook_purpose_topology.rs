@@ -36,7 +36,7 @@ fn validator_rejects_unaccounted_lifecycle_and_duplicate_bindings()
 
     let output = validate_hooks(&plugin_root)?;
     assert!(!output.status.success());
-    assert!(output_text(&output).contains("only the two preventive concern events"));
+    assert!(output_text(&output).contains("declared preventive and lifecycle concern events"));
     for duplicate in [false, true] {
         let temp = tempfile::tempdir()?;
         let plugin_root = temp.path().join("codexy");

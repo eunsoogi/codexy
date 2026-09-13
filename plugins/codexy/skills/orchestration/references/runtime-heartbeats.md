@@ -71,11 +71,13 @@ cursor, omit `timeoutMs` for ordinary observation so the server selects
 `MAX_WAIT_MS` (currently 3,600,000 ms), and remain quiet in one tool await while
 no event is available. It MUST NOT emit reasoning, progress, short polls, or
 unrelated work for an empty timeout or unchanged progress. A same-connection
-`notifications/cancelled` for that request releases only the wait when the host
-propagates it and preserves the session; `watcher_cancel` is separate and
-durably ends the session. A task message or outer wait termination may leave the
-native wait active; report that limitation, use `watcher_cancel` only when
-authorized, and open a new assignment/session for fresh observation. A cancelled
+`notifications/cancelled` or the packaged `PreToolUse`/`Interrupt` binding route
+for that request releases only the wait when the host propagates it and
+preserves the session; `watcher_cancel` is separate and durably ends the
+session. A task message or outer wait termination may leave the native wait
+active when the host does not propagate `Interrupt`; report that limitation,
+use `watcher_cancel` only when authorized, and open a new assignment/session for
+fresh observation. A cancelled
 assignment MUST NOT be resumed. The Watcher has no long-lived release goal. If
 the host exposes a finite goal for the subagent, that goal MUST cover only the
 bounded observation assignment and MUST NOT be treated as issue or release

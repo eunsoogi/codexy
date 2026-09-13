@@ -7,9 +7,11 @@ COMMAND_HOOKS = (
     (_TOOL_PREFIX + "create_thread$", "codexy-child-thread-creation"),
     (r"^(?:(?:agents|multi_agent_v1)__)?spawn_agent$", "codexy-subagent-ownership"),
 )
+WATCHER_WAIT_HOOK = (r"^(?:mcp__[^ ]+__)?watcher_wait$", "codexy-watcher-interrupt")
+LIFECYCLE_HOOKS = (WATCHER_WAIT_HOOK,)
 LAUNCHERS = tuple(
     f"hooks/{stem}.{extension}"
-    for _, stem in COMMAND_HOOKS
+    for _, stem in (*COMMAND_HOOKS, *LIFECYCLE_HOOKS)
     for extension in ("sh", "cmd")
 )
 DEPENDENCIES = (
@@ -24,4 +26,7 @@ DEPENDENCIES = (
     "hooks/codexy_policy/envelope.py",
     "hooks/codexy_policy/timing.py",
     "hooks/codexy_policy/windows_timing.py",
+    "hooks/codexy-watcher-interrupt.sh",
+    "hooks/codexy-watcher-interrupt.cmd",
+    "hooks/codexy-watcher-interrupt.py",
 )

@@ -1,6 +1,6 @@
 {
-  "schema": "codexy.hooks.capability-contract.v2",
-  "contentDigest": "c25a0c782cd4e895",
+  "schema": "codexy.hooks.capability-contract.v3",
+  "contentDigest": "3b464922d512d7ff",
   "concerns": [
     {
       "concernId": "thread-delivery",
@@ -10,7 +10,7 @@
       "preventive": true,
       "entrypoints": ["codexy-thread-delivery.sh", "codexy-thread-delivery.cmd", "codexy-thread-delivery.py"],
       "diagnosticFamily": "CODEXY_THREAD_DELIVERY_",
-      "contentDigest": "9e4f25399295124c"
+      "contentDigest": "83b0ee219890c6bc"
     },
     {
       "concernId": "child-thread-creation",
@@ -24,7 +24,7 @@
         "codexy-child-thread-creation.py"
       ],
       "diagnosticFamily": "CODEXY_CHILD_THREAD_CREATION_",
-      "contentDigest": "0a2139a5a371413d"
+      "contentDigest": "aa59538103cd62bb"
     },
     {
       "concernId": "subagent-ownership",
@@ -38,7 +38,21 @@
         "codexy-subagent-ownership.py"
       ],
       "diagnosticFamily": "CODEXY_SUBAGENT_OWNERSHIP_",
-      "contentDigest": "52926abb2819fd77"
+      "contentDigest": "2ddc595b35333079"
+    },
+    {
+      "concernId": "watcher-wait-interruption",
+      "trigger": "^(?:mcp__[^ ]+__)?watcher_wait$",
+      "events": ["PreToolUse", "Interrupt"],
+      "inputContract": "codexy.hooks.watcher-wait-interruption.v1",
+      "preventive": false,
+      "entrypoints": [
+        "codexy-watcher-interrupt.sh",
+        "codexy-watcher-interrupt.cmd",
+        "codexy-watcher-interrupt.py"
+      ],
+      "diagnosticFamily": "CODEXY_WATCHER_INTERRUPT_",
+      "contentDigest": "dc45b36e81689d6f"
     }
   ]
 }

@@ -10,6 +10,7 @@ from pathlib import Path
 from .component_core_hooks import (
     COMMAND_HOOKS as _CORE_COMMAND_HOOKS,
     DEPENDENCIES as CORE_HOOK_DEPENDENCIES,
+    LIFECYCLE_HOOKS as _CORE_LIFECYCLE_HOOKS,
     LAUNCHERS as CORE_HOOK_LAUNCHERS,
 )
 from .component_integrity import MAX_COMPONENT_BYTES, _read_regular, valid_agent_toml
@@ -72,6 +73,19 @@ def _command_hook(matcher: str, launcher_stem: str, event: str) -> dict[str, obj
     }
 
 
+def _lifecycle_hook(launcher_stem: str, event: str) -> dict[str, object]:
+    return {
+        "hooks": [
+            {
+                "type": "command",
+                "command": f'"${{PLUGIN_ROOT}}/hooks/{launcher_stem}.sh" {event}',
+                "commandWindows": f'"${{PLUGIN_ROOT}}/hooks/{launcher_stem}.cmd" {event}',
+                "timeout": 3,
+            }
+        ]
+    }
+
+
 def _bash_hooks(event: str) -> list[dict[str, object]]:
     return [_command_hook("^Bash$", "codexy-destructive-command", event)]
 
@@ -115,11 +129,24 @@ def _title_hook(matcher: str, kind: str, event: str) -> dict[str, object]:
 HOOKS = {
     "core": {
         "hooks": {
-            event: [
-                _command_hook(matcher, launcher_stem, event)
+            "PermissionRequest": [
+                _command_hook(matcher, launcher_stem, "PermissionRequest")
                 for matcher, launcher_stem in _CORE_COMMAND_HOOKS
-            ]
-            for event in ("PermissionRequest", "PreToolUse")
+            ],
+            "PreToolUse": [
+                *[
+                    _command_hook(matcher, launcher_stem, "PreToolUse")
+                    for matcher, launcher_stem in _CORE_COMMAND_HOOKS
+                ],
+                *[
+                    _command_hook(matcher, launcher_stem, "PreToolUse")
+                    for matcher, launcher_stem in _CORE_LIFECYCLE_HOOKS
+                ],
+            ],
+            "Interrupt": [
+                _lifecycle_hook(launcher_stem, "Interrupt")
+                for _, launcher_stem in _CORE_LIFECYCLE_HOOKS
+            ],
         }
     },
     "github": {
@@ -192,11 +219,9 @@ def valid_registration(plugin: Path, component: str) -> bool:
 def _text(path: Path, root: Path) -> str:
     return _read_regular(root, path.relative_to(root), MAX_COMPONENT_BYTES).decode()
 
-
 def _regular(path: Path, root: Path, needle: str = "") -> bool:
     contents = _read_regular(root, path.relative_to(root), MAX_COMPONENT_BYTES)
     return bool(contents) and (not needle or valid_agent_toml(contents.decode(), path))
-
 
 def _launcher(path: Path, root: Path) -> bool:
     contents = _text(path, root) if _regular(path, root) else ""

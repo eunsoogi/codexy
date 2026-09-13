@@ -5,6 +5,7 @@ use std::io::Write as _;
 use std::process::Stdio;
 
 const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
+const LIFECYCLE_MATCHER: &str = "^(?:mcp__[^ ]+__)?watcher_wait$";
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type LauncherResult = Result<Option<Value>, Box<dyn std::error::Error>>;
 
@@ -66,9 +67,14 @@ fn packaged_hooks_bind_each_concern_and_event_once() -> TestResult {
     let hooks: Value = serde_json::from_str(&std::fs::read_to_string(root.join("hooks.json"))?)?;
     let events = hooks["hooks"].as_object().ok_or("hooks object")?;
 
-    assert_eq!(events.len(), EVENTS.len(), "only preventive events are retained");
+    assert_eq!(events.len(), EVENTS.len() + 1, "preventive and lifecycle events are retained");
     for event in EVENTS {
-        let groups = events[*event].as_array().ok_or("event groups")?;
+        let groups = events[*event]
+            .as_array()
+            .ok_or("event groups")?
+            .iter()
+            .filter(|group| group["matcher"] != LIFECYCLE_MATCHER)
+            .collect::<Vec<_>>();
         assert_eq!(groups.len(), INSTALLED_IDS.len(), "{event} concern coverage");
         let mut seen = HashSet::new();
         for group in groups {
@@ -86,11 +92,15 @@ fn capability_contract_accounts_for_every_concern_once() -> TestResult {
     let contract: Value = serde_json::from_str(&std::fs::read_to_string(
         root.join("capability-contract.json"),
     )?)?;
-    assert_eq!(contract["schema"], "codexy.hooks.capability-contract.v2");
+    assert_eq!(contract["schema"], "codexy.hooks.capability-contract.v3");
     let concerns = contract["concerns"].as_array().ok_or("concerns")?;
-    assert_eq!(concerns.len(), INSTALLED_IDS.len());
+    let preventive = concerns
+        .iter()
+        .filter(|concern| concern["preventive"] == true)
+        .collect::<Vec<_>>();
+    assert_eq!(preventive.len(), INSTALLED_IDS.len());
     let mut seen = HashSet::new();
-    for actual in concerns {
+    for actual in preventive {
         let id = actual["concernId"].as_str().ok_or("concern id")?;
         let expected = CONCERNS
             .iter()

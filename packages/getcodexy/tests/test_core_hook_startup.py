@@ -17,16 +17,19 @@ ENTRYPOINTS = (
     "codexy-child-thread-creation.py",
     "codexy-subagent-ownership.py",
     "codexy-thread-delivery.py",
+    "codexy-watcher-interrupt.py",
 )
 SIZED_DELIVERY = ("codexy-thread-delivery.sh", "PreToolUse")
 
 
 class CoreHookStartupTests(unittest.TestCase):
-    def test_version_gate_is_before_policy_import_and_launchers_do_not_probe_with_c(
-        self,
-    ):
+    def test_version_gate_is_before_policy_import_and_launchers_do_not_probe_with_c(self):
         for entrypoint in ENTRYPOINTS:
             source = (HOOKS / entrypoint).read_text(encoding="utf-8")
+            if entrypoint == "codexy-watcher-interrupt.py":
+                self.assertIn("MAX_INPUT_BYTES", source, entrypoint)
+                self.assertIn("subprocess.run", source, entrypoint)
+                continue
             gate = source.index("UNSUPPORTED_INTERPRETER_EXIT = 125")
             policy_import = source.index("from codexy_policy")
             self.assertLess(gate, policy_import, entrypoint)

@@ -64,12 +64,14 @@ an actionable report, one bounded authoritative Worker or app readback is
 allowed for judgement and correction, and that readback is not an observation
 wait.
 
-A same-connection `notifications/cancelled` for this request releases only the
-pending wait when the host propagates it and preserves the durable session. The
-separate `watcher_cancel` operation durably ends the session; it is not request
+A same-connection `notifications/cancelled` or the packaged Watcher
+`PreToolUse`/`Interrupt` binding route releases only the pending request when
+the host propagates it and preserves the durable session. The separate
+`watcher_cancel` operation durably ends the session; it is not request
 cancellation, and a fresh assignment is required afterward. A host/task message
-or outer wait termination may leave the native request active, so automatic
-host-interrupt success remains an external evidence requirement.
+or outer wait termination may leave the native request active when the host
+does not propagate `Interrupt`, so installed candidate Stop success remains an
+external evidence requirement.
 
 An implementation Worker or child MUST NOT open, wait on, report to, cancel, or
 reuse a parent-owned Watcher session or token. Visibility of a session, token,

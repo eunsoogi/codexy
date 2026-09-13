@@ -30,6 +30,8 @@ mod wrapper_runtime;
 mod watcher_protocol;
 #[path = "mcp_stdio/watcher_long_wait.rs"]
 mod watcher_long_wait;
+#[path = "mcp_stdio/watcher_interrupt.rs"]
+mod watcher_interrupt;
 #[path = "mcp_stdio/watcher_lock_lifecycle.rs"]
 mod watcher_lock_lifecycle;
 #[path = "mcp_stdio/watcher_recovery.rs"]

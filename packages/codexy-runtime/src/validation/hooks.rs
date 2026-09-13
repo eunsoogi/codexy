@@ -15,6 +15,7 @@ const HOOKS_PATH: &str = "hooks/hooks.json";
 const CORE_QUIET_EVENTS: &[&str] = &["SessionStart", "UserPromptSubmit"];
 const ALLOWED_EVENTS: &[&str] = &[
     "PermissionRequest",
+    "Interrupt",
     "PostCompact",
     "PostToolUse",
     "PreCompact",

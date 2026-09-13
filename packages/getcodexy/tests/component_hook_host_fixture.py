@@ -48,11 +48,13 @@ events = {
     "PreToolUse": "preToolUse",
     "PermissionRequest": "permissionRequest",
     "UserPromptSubmit": "userPromptSubmit",
+    "Interrupt": "interrupt",
 }
 event_keys = {
     "PreToolUse": "pre_tool_use",
     "PermissionRequest": "permission_request",
     "UserPromptSubmit": "user_prompt_submit",
+    "Interrupt": "interrupt",
 }
 
 def hook_rows():

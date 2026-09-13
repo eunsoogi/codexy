@@ -147,6 +147,7 @@ fn call_tool_inner(
                     "cursor",
                     "maxReports",
                     "timeoutMs",
+                    "requestBinding",
                 ],
             )?;
             let session = required_string(args.get("sessionId"), "sessionId")?;
@@ -157,6 +158,10 @@ fn call_tool_inner(
                     .context("watcher maxReports is out of range")?;
             let timeout =
                 optional_u64(args.get("timeoutMs"), "timeoutMs")?.unwrap_or(DEFAULT_WAIT_MS);
+            let request_binding = args
+                .get("requestBinding")
+                .map(|value| required_string(Some(value), "requestBinding"))
+                .transpose()?;
             if max_reports == 0 || max_reports > MAX_REPORTS {
                 bail!("watcher maxReports must be between 1 and {MAX_REPORTS}");
             }
@@ -170,6 +175,7 @@ fn call_tool_inner(
                 max_reports,
                 timeout,
                 cancellation,
+                request_binding.as_deref(),
             )?
         }
         "watcher_health" => {

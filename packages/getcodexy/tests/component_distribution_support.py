@@ -47,7 +47,7 @@ os.environ.setdefault("CODEXY_MATRIX_STATE", str(Path(os.environ["CODEX_HOME"]).
 state_path, root, version = Path(os.environ["CODEXY_MATRIX_STATE"]), Path(os.environ["CODEXY_MATRIX_MARKETPLACE"]).resolve(), os.environ["CODEXY_MATRIX_VERSION"]; state = json.loads(state_path.read_text())
 plugins = {"core": "codexy", "github": "codexy-github", "devtools": "codexy-devtools"}
 
-events = {"PreToolUse": ("preToolUse", "pre_tool_use"), "PermissionRequest": ("permissionRequest", "permission_request"), "UserPromptSubmit": ("userPromptSubmit", "user_prompt_submit")}
+events = {"PreToolUse": ("preToolUse", "pre_tool_use"), "PermissionRequest": ("permissionRequest", "permission_request"), "UserPromptSubmit": ("userPromptSubmit", "user_prompt_submit"), "Interrupt": ("interrupt", "interrupt")}
 
 def hook_rows():
     rows = []
