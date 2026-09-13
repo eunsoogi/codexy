@@ -7,6 +7,9 @@
   performs parent verification, coordinates squash merge, and syncs `main`.
 - A child Codex worktree thread owns implementation edits, local verification,
   and review-response fixes for its assigned issue or lane.
+- Durable delegation and multi-lane ownership preserve this ownership boundary
+  but do not select a strict workflow profile by themselves; profile selection
+  follows concrete risk, explicit audit, or materially shared integration risk.
 - Independent requested outcomes MUST be decomposed into separate issue-sized
   atomic child lanes before child thread, worktree, branch, or PR creation.
 - The root orchestrator MUST create, fork, or assign the owning child thread

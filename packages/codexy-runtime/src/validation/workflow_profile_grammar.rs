@@ -102,7 +102,7 @@ fn compound_signal(tokens: &[Token], index: usize) -> Option<usize> {
     let next = tokens.get(index + 1).map(|token| token.text.as_str());
     matches!(
         (token, next),
-        ("high", Some("risk")) | ("multi", Some("lane")) | ("merge", Some("sensitive"))
+        ("high", Some("risk")) | ("merge", Some("sensitive"))
     )
     .then_some(2)
     .or_else(|| {

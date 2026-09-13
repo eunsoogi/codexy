@@ -2,11 +2,9 @@
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
-fn formal_triggers_cannot_be_downgraded_to_light_or_standard() -> TestResult {
+fn risk_triggers_cannot_be_downgraded_to_light_or_standard() -> TestResult {
     for (name, evidence) in [
         ("strict requires formal evidence", "Workflow profile: strict"),
-        ("light durable delegation requires formal evidence", "Workflow profile: light\nDurable delegation: yes"),
-        ("standard multi-lane work requires formal evidence", "Workflow profile: standard\nMulti-lane ownership: yes"),
         ("light audit request requires formal evidence", "Workflow profile: light\nExplicit audit evidence: requested"),
     ] {
         assert_profile_result(name, evidence, false)?;
@@ -27,7 +25,45 @@ fn formal_triggers_cannot_be_downgraded_to_light_or_standard() -> TestResult {
 }
 
 #[test]
-fn ordinary_list_boundaries_preserve_only_active_formal_triggers() -> TestResult {
+fn collaboration_signals_follow_risk_without_bypassing_ownership() -> TestResult {
+    let delegated_child = format!(
+        "Workflow profile: light\nDurable delegation: yes\nMulti-lane ownership: yes\n{}",
+        formal_classification_for("parent-supplied", "child-owned")
+    );
+    assert_profile_result(
+        "low-risk delegated multi-lane work keeps its selected profile and owner record",
+        &delegated_child,
+        true,
+    )?;
+    assert_profile_result(
+        "independent multi-lane work keeps its selected profile",
+        &format!(
+            "Workflow profile: standard\nMulti-lane ownership: yes\n{}",
+            formal_classification()
+        ),
+        true,
+    )?;
+    for (name, evidence) in [
+        (
+            "bare delegation still requires complete ownership metadata",
+            "Workflow profile: light\nDurable delegation: yes",
+        ),
+        (
+            "bare multi-lane signal still requires complete ownership metadata",
+            "Workflow profile: standard\nMulti-lane ownership: yes",
+        ),
+        (
+            "partial delegated metadata still requires complete ownership metadata",
+            "Workflow profile: light\nDurable delegation: yes\nLane ownership: child-owned\nPlan tool call: update_plan",
+        ),
+    ] {
+        assert_profile_result(name, evidence, false)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn ordinary_list_boundaries_preserve_only_active_strict_signals() -> TestResult {
     for (name, evidence, expected) in [
         ("plus metadata stays active", "Workflow profile: light\n+ Task kind: security review", false),
         ("nested numeral-one metadata stays active", "Workflow profile: light\n1. 1. Task kind: security review", false),
@@ -95,7 +131,7 @@ fn strict_formal_profiles_are_owner_neutral_but_child_setup_is_not() -> TestResu
 #[test]
 fn workflow_profile_metadata_is_current_lane_active_markdown_and_unambiguous() -> TestResult {
     assert_profile_result(
-        "numbered trigger with rationale cannot downgrade light work",
+        "numbered collaboration signal still requires ownership evidence",
         "Workflow profile: light\n1. Durable delegation: yes because the lane persists",
         false,
     )?;
