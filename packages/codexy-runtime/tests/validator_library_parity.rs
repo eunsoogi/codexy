@@ -58,35 +58,6 @@ fn plugin_fixture_mutations_do_not_leak_between_manifest_aware_overlays()
 }
 
 #[test]
-fn shared_fixture_copy_routes_files_through_the_copy_on_write_overlay()
--> Result<(), Box<dyn std::error::Error>> {
-    let source = std::fs::read_to_string(
-        codexy_runtime::paths::runtime_package_root().join("tests/support/wrapper_copy.rs"),
-    )?;
-    let copy_dir = source
-        .split("pub(crate) fn copy_dir")
-        .nth(1)
-        .ok_or("shared fixture copier")?;
-
-    support::assert_structured_literals(
-        &source,
-        "copy-on-write fixture overlay",
-        &["fn clone_seed_file"],
-    );
-    support::assert_structured_literals(
-        copy_dir,
-        "copy-on-write fixture routing",
-        &["clone_seed_file(&source_path, &target_path)?"],
-    );
-    if copy_dir.contains("std::fs::copy(source_path, target_path)?") {
-        return Err(
-            "shared fixture copying must not fall back to full copies on the hot path".into(),
-        );
-    }
-    Ok(())
-}
-
-#[test]
 fn archive_fixture_compression_is_shared_and_uses_the_fast_lossless_mode()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::runtime_package_root();

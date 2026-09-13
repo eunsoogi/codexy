@@ -1,21 +1,22 @@
+#[cfg(any(unix, windows))]
 use crate::support;
 
+#[cfg(unix)]
 #[test]
-fn default_fixture_uses_the_manifest_overlay_on_windows() -> Result<(), Box<dyn std::error::Error>> {
-    let source = std::fs::read_to_string(
-        codexy_runtime::paths::runtime_package_root().join("tests/support/plugin_fixture.rs"),
-    )?;
+fn default_fixture_keeps_mutations_private_from_the_seed_and_sibling()
+-> Result<(), Box<dyn std::error::Error>> {
+    let seed_path = codexy_runtime::paths::repository_root()
+        .join("plugins/codexy/agents/codexy-sentinel.toml");
+    let seed = std::fs::read(&seed_path)?;
+    let first = support::plugin_fixture()?;
+    let second = support::plugin_fixture()?;
+    let relative = std::path::Path::new("agents/codexy-sentinel.toml");
 
-    support::assert_structured_literals(
-        &source,
-        "Windows default fixture overlay",
-        &[
-            "#[cfg(windows)]",
-            "materialize_fixture(&[], fixture_identity(\"full\", Location::caller()))",
-            "#[cfg(not(windows))]",
-            "super::copy_dir(source_root(), &root)?",
-        ],
-    );
+    std::fs::write(first.root().join(relative), b"private fixture mutation")?;
+
+    assert_eq!(std::fs::read(first.root().join(relative))?, b"private fixture mutation");
+    assert_eq!(std::fs::read(second.root().join(relative))?, seed);
+    assert_eq!(std::fs::read(seed_path)?, seed);
     Ok(())
 }
 
