@@ -14,27 +14,32 @@ pub(super) fn check_evidence(_plugin_root: &Path, evidence: &str) -> Vec<String>
     let active = current_active_lines(&evidence.to_ascii_lowercase());
     let lines = active.iter().map(String::as_str).collect::<Vec<_>>();
     let (mut profile, explicit, selection_error) = profile(&lines);
-    let formal_trigger =
-        has_formal_trigger(&lines) || has_strict_work_signal(&lines) || profile == "strict";
-    if formal_trigger && !explicit && selection_error.is_none() {
+    let collaboration_signal = has_collaboration_signal(&lines);
+    let strict_required =
+        has_explicit_audit_signal(&lines) || has_strict_work_signal(&lines) || profile == "strict";
+    if strict_required && !explicit && selection_error.is_none() {
         "strict".clone_into(&mut profile);
     }
     let mut errors = Vec::new();
     if let Some(error) = selection_error {
         errors.push(error);
     }
-    if formal_trigger && explicit && profile != "strict" {
-        errors.push("formal evidence triggers require the strict workflow profile".to_owned());
+    if strict_required && explicit && profile != "strict" {
+        errors.push("strict workflow signals require the strict workflow profile".to_owned());
     }
-    if formal_trigger
+    if (strict_required || collaboration_signal)
         && super::child_lane_classification_setup::formal_classification_complete_index_before(
             &lines,
             lines.len(),
         )
         .is_none()
     {
-        errors
-            .push("strict workflow evidence requires the formal orchestration contract".to_owned());
+        let message = if strict_required {
+            "strict workflow evidence requires the formal orchestration contract"
+        } else {
+            "delegation and multi-lane evidence require the formal ownership contract"
+        };
+        errors.push(message.to_owned());
     }
     errors
 }
@@ -60,15 +65,18 @@ fn profile(lines: &[&str]) -> (String, bool, Option<String>) {
     }
 }
 
-fn has_formal_trigger(lines: &[&str]) -> bool {
+fn has_explicit_audit_signal(lines: &[&str]) -> bool {
     lines.iter().any(|line| {
-        [
-            "durable delegation:",
-            "multi-lane ownership:",
-            "explicit audit evidence:",
-        ]
-        .iter()
-        .any(|prefix| line.starts_with(prefix) && affirmative(line.strip_prefix(prefix)))
+        let prefix = "explicit audit evidence:";
+        line.starts_with(prefix) && affirmative(line.strip_prefix(prefix))
+    })
+}
+
+fn has_collaboration_signal(lines: &[&str]) -> bool {
+    lines.iter().any(|line| {
+        ["durable delegation:", "multi-lane ownership:"]
+            .iter()
+            .any(|prefix| line.starts_with(prefix) && affirmative(line.strip_prefix(prefix)))
     })
 }
 

@@ -14,13 +14,24 @@ fn strict_signals_are_complete_and_negation_aware() -> TestResult {
         "high-consequence external-state mutation",
         "high-risk mutation",
         "high-risk guardrail",
-        "multi-lane coordination",
         "merge-sensitive change",
+        "cross-lane merge-sensitive integration",
     ] {
         assert_profile_result(
             "strict task kind requires formal proof",
             &format!("Task kind: {task_kind}"),
             false,
+        )?;
+    }
+    for task_kind in [
+        "multi-lane coordination",
+        "independent multi-lane work",
+        "durable delegated work",
+    ] {
+        assert_profile_result(
+            "collaboration shape alone does not require strict proof",
+            &format!("Task kind: {task_kind}"),
+            true,
         )?;
     }
     for task_kind in [

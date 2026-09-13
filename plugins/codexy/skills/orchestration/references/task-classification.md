@@ -1,5 +1,7 @@
-Strict/durable delegation/multi-lane ownership/explicit audit evidence MUST
-emit:
+Durable delegation and multi-lane ownership MUST emit the following record so
+ownership, scope, worktree, and handoff remain explicit. Those collaboration
+signals alone do not select the strict workflow profile. Explicit audit
+evidence and concrete strict-risk work MUST also emit:
 
 ```text
 Ownership metadata source: parent-supplied

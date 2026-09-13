@@ -3,7 +3,9 @@
 Codexy uses three profiles: `light`, `standard`, and `strict`. Light is the
 default for proportionate low-risk work. Standard covers non-trivial
 single-owner work. Strict is required for high-risk, security, release,
-multi-lane, and merge-sensitive work.
+explicit audit, materially shared executable-contract changes, and
+merge-sensitive work. Delegation and lane count alone do not select the strict
+profile.
 
 Strict work requires formal current-head proof and the applicable Sentinel
 review. The invariant floor includes destructive-action safety, preservation of
