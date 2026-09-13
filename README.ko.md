@@ -113,8 +113,8 @@ release를 실행합니다. Codex를 시작하는 host 환경의 `PATH`에서 `u
 - **담당 범위와 오케스트레이션.** 작업을 분류하고 목표, 계획, issue 단위
   branch/worktree 담당자를 정해 인수인계와 context compaction 뒤에도 근거를
   보존합니다.
-- **전문 에이전트와 검증.** 범위에 맞는 specialist를 선택하고, 실행 가능한
-  경계에만 TDD를 적용하며 실제 동작과 현재 파일 상태에 근거를 묶습니다.
+- **전문 에이전트와 검증.** 주장하는 표면에 맞춰 검증과 근거의 깊이를 정하고,
+  세부 경계 규칙은 연결된 문서에서 확인합니다.
 - **Instruction과 Wiki.** `AGENTS.md` 우선순위를 지키고,
   `init → ingest →
   compile → query → refresh` 흐름으로 출처와 freshness를
@@ -137,6 +137,14 @@ flowchart TD
     verify --> review["선택한 리뷰"]
     review --> finish["PR·병합 또는 명시적 인수인계"]
 ```
+
+### 검증 workflow
+
+Codexy는 목표와 중요한 위험에서 시작해 작업 범위를 issue 하나에 맞추고,
+요구사항에 따른 행동 검증을 유지합니다. test-first 순서는 경계별로 따로 정하고,
+검증 깊이는 주장하는 결과에 맞춥니다. 필요한 경우 비례적인 review를 추가하고
+근거가 충분하면 멈춥니다. 자세한 workflow와 현재 runtime 계약은 이 소개 뒤쪽의
+아키텍처 안내서에서 확인할 수 있습니다.
 
 ### 모델 역할과 추론 수준
 

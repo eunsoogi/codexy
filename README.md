@@ -137,9 +137,8 @@ The current source tree provides:
   precedence and readback. Core validates task-thread delivery metadata. The
   GitHub component adds workflow context and independent local safety checks; it
   does not admit, deny, or rewrite general GitHub mutations.
-- **Proof and engineering.** Apply TDD only to executable engineering
-  boundaries, run source-aligned validators and real-surface checks, and bind
-  completion and review evidence to the current file state or commit.
+- **Proof and engineering.** Match verification and evidence depth to the
+  claimed surface; detailed boundary rules live in the linked guides.
 - **LLM Wiki.** Maintain a bounded topic root through
   `init → ingest → compile → query → refresh`, with immutable raw sources,
   citations, provenance, freshness checks, and explicit knowledge gaps.
@@ -167,6 +166,15 @@ flowchart TD
     verify --> review["Profile-selected review"]
     review --> finish["PR, merge, or explicit handoff"]
 ```
+
+### Verification workflow
+
+Codexy starts with the goal and material risks, keeps the work issue-sized, and
+uses requirement-led behavioral verification. Test-first order is selected
+separately for each boundary, and verification depth follows the claimed result.
+It adds proportionate review when needed and stops when the evidence is
+sufficient. The architecture guide later in this introduction covers the
+detailed workflow and current runtime contracts.
 
 ### Model roles and reasoning effort
 
