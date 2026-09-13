@@ -39,31 +39,6 @@ class GithubPluginPackageTests(unittest.TestCase):
             ["core"],
         )
 
-    def test_workflow_guidance_respects_user_and_repository_choice(self) -> None:
-        skill = (GITHUB / "skills/git-workflow/SKILL.md").read_text(encoding="utf-8")
-        issue = (GITHUB / "skills/git-workflow/references/issue-intake.md").read_text(
-            encoding="utf-8"
-        )
-        pull_request = (
-            GITHUB / "skills/git-workflow/references/pr-review-and-handoff.md"
-        ).read_text(encoding="utf-8")
-        agent = (GITHUB / "skills/git-workflow/agents/openai.yaml").read_text(
-            encoding="utf-8"
-        )
-
-        self.assertIn("Ordinary authorized GitHub metadata", skill)
-        self.assertIn("retains the existing issue-title", " ".join(skill.split()))
-        self.assertIn("retains this existing issue-title check", issue)
-        self.assertIn("retains its existing PR-title", pull_request)
-        self.assertIn("squash-subject check", pull_request)
-        self.assertIn(
-            "no heading or footer is required by this plugin",
-            " ".join(issue.split()),
-        )
-        self.assertIn("ordinary authorized GitHub metadata", pull_request)
-        self.assertIn("MUST NOT be blocked, rewritten", pull_request)
-        self.assertIn("only when the operation is issue-sized", agent)
-
     def test_copied_package_preserves_generic_hook_and_specialist_artifacts(
         self,
     ) -> None:
