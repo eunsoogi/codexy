@@ -170,10 +170,11 @@ flowchart TD
 ### Verification workflow
 
 Codexy starts with the goal and material risks, keeps the work issue-sized, and
-uses verification that fits the claimed result. It adds proportionate review
-when needed and stops when the evidence is sufficient. The architecture guide
-later in this introduction covers the detailed workflow and current runtime
-contracts.
+uses requirement-led behavioral verification. Test-first order is selected
+separately for each boundary, and verification depth follows the claimed result.
+It adds proportionate review when needed and stops when the evidence is
+sufficient. The architecture guide later in this introduction covers the
+detailed workflow and current runtime contracts.
 
 ### Model roles and reasoning effort
 
