@@ -189,9 +189,12 @@ pub(super) fn check_topology(path: &Path, events: &Map<String, Value>) -> Result
 }
 
 fn entrypoints(launcher: &str) -> Vec<String> {
-    ["sh", "cmd", "py"]
-        .map(|extension| format!("{launcher}.{extension}"))
-        .to_vec()
+    let python = if launcher == "codexy-watcher-interrupt" {
+        "codexy_watcher_interrupt.py".to_owned()
+    } else {
+        format!("{launcher}.py")
+    };
+    vec![format!("{launcher}.sh"), format!("{launcher}.cmd"), python]
 }
 
 fn concern_digest(concern: &Expected) -> String {

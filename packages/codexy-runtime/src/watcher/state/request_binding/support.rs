@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
 
-use super::{Binding, DIRECTORY, MAX_TTL_MS};
+use super::{ARMED_TTL_MS, Binding, DIRECTORY, MAX_WAIT_MS};
 use crate::watcher::io::{ensure_dir, read_json, reject_link, safe_id};
 
 pub(super) fn bindings_dir(root: &Path) -> Result<PathBuf> {
@@ -65,13 +65,18 @@ pub(super) fn validate(binding: &Binding) -> Result<()> {
     ] {
         text(Some(&Value::String(value.clone())), label, 256)?;
     }
+    let max_lifetime = if binding.status == "active" {
+        ARMED_TTL_MS.saturating_add(MAX_WAIT_MS)
+    } else {
+        ARMED_TTL_MS
+    };
     if binding.parent_token_hash.len() != 64
         || !binding
             .parent_token_hash
             .bytes()
             .all(|byte| byte.is_ascii_hexdigit())
         || binding.expires_at_ms <= binding.created_at_ms
-        || binding.expires_at_ms - binding.created_at_ms > MAX_TTL_MS
+        || binding.expires_at_ms - binding.created_at_ms > max_lifetime
     {
         bail!("watcher request binding fields are invalid");
     }

@@ -69,8 +69,8 @@ A same-connection `notifications/cancelled` or the packaged Watcher
 the host propagates it and preserves the durable session. The separate
 `watcher_cancel` operation durably ends the session; it is not request
 cancellation, and a fresh assignment is required afterward. A host/task message
-or outer wait termination may leave the native request active when the host
-does not propagate `Interrupt`, so installed candidate Stop success remains an
+or outer wait termination may leave the native request active when the host does
+not propagate `Interrupt`, so installed candidate Stop success remains an
 external evidence requirement.
 
 An implementation Worker or child MUST NOT open, wait on, report to, cancel, or

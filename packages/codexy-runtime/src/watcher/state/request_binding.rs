@@ -5,6 +5,7 @@ use anyhow::{Context as _, Result, bail};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
+use super::MAX_WAIT_MS;
 use super::model::Session;
 use super::validation::{authorize_parent, ensure_live};
 use crate::watcher::io::{
@@ -22,7 +23,7 @@ use support::{
 const DIRECTORY: &str = ".request-bindings";
 const LOCK: &str = ".request-bindings.lock";
 const MAX_BINDINGS: usize = 128;
-const MAX_TTL_MS: u64 = 60_000;
+const ARMED_TTL_MS: u64 = 60_000;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -98,7 +99,7 @@ pub fn prepare_request_binding(payload: &Value) -> Result<String> {
         watcher_session_id: session_id,
         parent_token_hash: token_hash(&parent_token),
         created_at_ms: now,
-        expires_at_ms: now.saturating_add(MAX_TTL_MS),
+        expires_at_ms: now.saturating_add(ARMED_TTL_MS),
         status: "armed".to_owned(),
     };
     write_json(
@@ -118,7 +119,7 @@ pub fn interrupt_request_binding(payload: &Value) -> Result<bool> {
     let matches = live_bindings(&directory, now_ms())?
         .into_iter()
         .filter(|binding| {
-            binding.status == "active"
+            matches!(binding.status.as_str(), "armed" | "active")
                 && binding.main_session_id == main_session_id
                 && binding.turn_id == turn_id
         })
@@ -158,10 +159,12 @@ pub(super) fn claim(
     if token_hash(parent_token) != binding.parent_token_hash {
         bail!("watcher request binding capability is not authorized");
     }
-    if now_ms() >= binding.expires_at_ms {
+    let now = now_ms();
+    if now >= binding.expires_at_ms {
         bail!("watcher request binding has expired");
     }
     "active".clone_into(&mut binding.status);
+    binding.expires_at_ms = now.saturating_add(MAX_WAIT_MS);
     write_json(&path, &serde_json::to_value(binding)?)?;
     Ok(Guard {
         cancellation_path: cancellation_path(&directory, nonce)?,

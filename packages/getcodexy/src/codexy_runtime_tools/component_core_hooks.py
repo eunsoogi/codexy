@@ -28,5 +28,5 @@ DEPENDENCIES = (
     "hooks/codexy_policy/windows_timing.py",
     "hooks/codexy-watcher-interrupt.sh",
     "hooks/codexy-watcher-interrupt.cmd",
-    "hooks/codexy-watcher-interrupt.py",
+    "hooks/codexy_watcher_interrupt.py",
 )

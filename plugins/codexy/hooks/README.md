@@ -1,13 +1,13 @@
 # Codexy hooks
 
 Codex loads this directory as a plugin hook source and substitutes `PLUGIN_ROOT`
-before invoking each configured concern launcher. Admission hooks are
-stateless: a permitted operation writes zero bytes; a denied operation emits
-only the official event-native denial schema with its concern's diagnostic
-family. The Watcher lifecycle concern is the explicit exception: its
-`PreToolUse` handler binds an authenticated `watcher_wait` to an opaque,
-short-lived request record, and its synchronous `Interrupt` handler writes a
-request-only cancellation marker. Direct Watcher callers remain binding-free.
+before invoking each configured concern launcher. Admission hooks are stateless:
+a permitted operation writes zero bytes; a denied operation emits only the
+official event-native denial schema with its concern's diagnostic family. The
+Watcher lifecycle concern is the explicit exception: its `PreToolUse` handler
+binds an authenticated `watcher_wait` to an opaque, short-lived request record,
+and its synchronous `Interrupt` handler writes a request-only cancellation
+marker. Direct Watcher callers remain binding-free.
 
 When the native host supplies a bounded, host-authenticated
 `codexy_thread_delivery` v2 envelope, the installed Codexy plugin validates it
@@ -44,9 +44,9 @@ visibly rather than guessing.
 
 The admission launchers run Python isolated from user configuration and never
 install, cache, update, or mutate user state. The Watcher lifecycle launcher
-only writes the private request records described above. A trusted operator may set the
-absolute `CODEXY_CORE_HOOK_TIMING_FILE` environment variable to enable one
-bounded local JSONL record per core-hook decision. Each record contains only
+only writes the private request records described above. A trusted operator may
+set the absolute `CODEXY_CORE_HOOK_TIMING_FILE` environment variable to enable
+one bounded local JSONL record per core-hook decision. Each record contains only
 `event`, `concern`, integer nanosecond `elapsed`, and `decision`; the payload
 cannot choose the setting or path. The file is created private to its owner,
 rejects symlinks, non-regular or permissive targets, and stops before exceeding

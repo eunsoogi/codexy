@@ -10,13 +10,17 @@ from pathlib import Path
 
 MAX_INPUT_BYTES = 1024 * 1024
 EVENTS = ("PreToolUse", "Interrupt")
+UNSUPPORTED_INTERPRETER_EXIT = 125
+
+if sys.version_info < (3, 10):
+    raise SystemExit(UNSUPPORTED_INTERPRETER_EXIT)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument("--event", required=True, choices=EVENTS)
     event = parser.parse_args().event
-    raw = sys.stdin.buffer.read(MAX_INPUT_BYTES + 1)
+    raw = sys.stdin.buffer.read(1024 * 1024 + 1)
     if len(raw) > MAX_INPUT_BYTES:
         return 0
     try:
@@ -86,7 +90,11 @@ def _runtime() -> Path | None:
         candidates.append(Path(configured) / f"{name}{extension}")
     candidates.append(root / "runtime" / f"{name}{extension}")
     return next(
-        (candidate for candidate in candidates if candidate.is_file() and os.access(candidate, os.X_OK)),
+        (
+            candidate
+            for candidate in candidates
+            if candidate.is_file() and os.access(candidate, os.X_OK)
+        ),
         None,
     )
 
@@ -100,4 +108,9 @@ def _runtime_name() -> tuple[str, str]:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except SystemExit as error:
+        if error.code == UNSUPPORTED_INTERPRETER_EXIT:
+            raise SystemExit(1) from error
+        raise

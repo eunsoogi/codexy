@@ -1,8 +1,9 @@
 use super::*;
 use super::watcher_state::{initialize, open_session, tool_payload, watcher_client};
+use std::fs;
 use std::process::{Command, Stdio};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -82,12 +83,20 @@ fn native_interrupt_releases_only_the_bound_wait_and_preserves_the_session() -> 
     let mut observer = watcher_client(state.path())?;
     initialize(&mut observer)?;
     waiting_until_true(&mut observer, &session, &parent_token)?;
+    let record = binding_record(state.path(), &binding)?;
+    assert_eq!(record["status"], "active");
+    assert!(record["expiresAtMs"].as_u64().unwrap() >= now_ms() + LONG_WAIT_MS - 1_000);
 
     let stale = hook_call(
         state.path(), "--hook-interrupt",
         json!({"hook_event_name": "Interrupt", "session_id": "wrong", "turn_id": "turn-1"}),
     )?;
     assert_eq!(stale["cancelled"], false);
+    let wrong_turn = hook_call(
+        state.path(), "--hook-interrupt",
+        json!({"hook_event_name": "Interrupt", "session_id": "main-session", "turn_id": "wrong-turn"}),
+    )?;
+    assert_eq!(wrong_turn["cancelled"], false);
     let started = Instant::now();
     let interrupt = hook_call(
         state.path(), "--hook-interrupt",
@@ -115,6 +124,71 @@ fn native_interrupt_releases_only_the_bound_wait_and_preserves_the_session() -> 
     )?;
     assert_eq!(after_completion["cancelled"], false);
     Ok(())
+}
+
+#[test]
+fn armed_interrupt_is_preserved_until_wait_claims() -> TestResult {
+    let state = tempfile::tempdir()?;
+    let mut setup = watcher_client(state.path())?;
+    initialize(&mut setup)?;
+    let (session, parent_token, _) = open_session(&mut setup, "armed-interrupt", 2)?;
+    drop(setup);
+
+    let binding = hook_call(
+        state.path(),
+        "--hook-pretool",
+        json!({
+            "hook_event_name": "PreToolUse",
+            "tool_name": "mcp__codexy-watcher__watcher_wait",
+            "session_id": "armed-main",
+            "turn_id": "armed-turn",
+            "tool_use_id": "armed-tool",
+            "tool_input": {"sessionId": session, "parentToken": parent_token}
+        }),
+    )?["requestBinding"]
+        .as_str()
+        .ok_or("missing request binding")?
+        .to_owned();
+
+    let wrong_turn = hook_call(
+        state.path(),
+        "--hook-interrupt",
+        json!({"hook_event_name": "Interrupt", "session_id": "armed-main", "turn_id": "other-turn"}),
+    )?;
+    assert_eq!(wrong_turn["cancelled"], false);
+    let interrupt = hook_call(
+        state.path(),
+        "--hook-interrupt",
+        json!({"hook_event_name": "Interrupt", "session_id": "armed-main", "turn_id": "armed-turn"}),
+    )?;
+    assert_eq!(interrupt["cancelled"], true);
+
+    let mut reader = watcher_client(state.path())?;
+    initialize(&mut reader)?;
+    let waited = reader.send(&json!({
+        "jsonrpc": "2.0", "id": 4, "method": "tools/call",
+        "params": {"name": "watcher_wait", "arguments": {
+            "sessionId": session, "parentToken": parent_token,
+            "timeoutMs": LONG_WAIT_MS, "requestBinding": binding
+        }}
+    }))?;
+    assert_eq!(tool_payload(&waited)?["status"], "cancelled");
+    assert_eq!(tool_payload(&waited)?["nextCursor"], "0");
+    Ok(())
+}
+
+fn binding_record(state: &std::path::Path, nonce: &str) -> Result<Value, Box<dyn std::error::Error>> {
+    let path = state
+        .join("codexy-watcher/.request-bindings")
+        .join(format!("{nonce}.json"));
+    Ok(serde_json::from_slice(&fs::read(path)?)?)
+}
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock is before Unix epoch")
+        .as_millis() as u64
 }
 
 fn hook_call(

@@ -57,7 +57,7 @@ fn watcher_wait_interrupt_contract_is_a_lifecycle_concern() -> TestResult {
         serde_json::json!([
             "codexy-watcher-interrupt.sh",
             "codexy-watcher-interrupt.cmd",
-            "codexy-watcher-interrupt.py"
+            "codexy_watcher_interrupt.py"
         ])
     );
     Ok(())

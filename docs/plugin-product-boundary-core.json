@@ -20,7 +20,7 @@
         "plugins/codexy/hooks/codexy-subagent-ownership.py",
         "plugins/codexy/hooks/codexy-subagent-ownership.sh",
         "plugins/codexy/hooks/codexy-watcher-interrupt.cmd",
-        "plugins/codexy/hooks/codexy-watcher-interrupt.py",
+        "plugins/codexy/hooks/codexy_watcher_interrupt.py",
         "plugins/codexy/hooks/codexy-watcher-interrupt.sh"
       ],
       "target": "codexy",

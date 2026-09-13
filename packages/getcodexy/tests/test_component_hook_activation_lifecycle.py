@@ -49,7 +49,11 @@ class ComponentHookActivationLifecycleTests(unittest.TestCase):
 
 
 def _old_hook_rows(plugin: Path) -> list[dict[str, object]]:
-    events = {"PreToolUse": "preToolUse", "PermissionRequest": "permissionRequest", "Interrupt": "interrupt"}
+    events = {
+        "PreToolUse": "preToolUse",
+        "PermissionRequest": "permissionRequest",
+        "Interrupt": "interrupt",
+    }
     event_keys = {
         "PreToolUse": "pre_tool_use",
         "PermissionRequest": "permission_request",

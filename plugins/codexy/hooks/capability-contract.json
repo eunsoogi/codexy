@@ -1,6 +1,6 @@
 {
   "schema": "codexy.hooks.capability-contract.v3",
-  "contentDigest": "3b464922d512d7ff",
+  "contentDigest": "5886c2463a257d72",
   "concerns": [
     {
       "concernId": "thread-delivery",
@@ -49,10 +49,10 @@
       "entrypoints": [
         "codexy-watcher-interrupt.sh",
         "codexy-watcher-interrupt.cmd",
-        "codexy-watcher-interrupt.py"
+        "codexy_watcher_interrupt.py"
       ],
       "diagnosticFamily": "CODEXY_WATCHER_INTERRUPT_",
-      "contentDigest": "dc45b36e81689d6f"
+      "contentDigest": "2a1ececb391e6153"
     }
   ]
 }
