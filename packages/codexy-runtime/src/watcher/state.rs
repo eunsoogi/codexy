@@ -2,6 +2,8 @@ mod events;
 mod model;
 mod operations;
 mod recovery;
+#[allow(unreachable_pub)]
+pub mod request_binding;
 mod validation;
 mod wait;
 
@@ -14,6 +16,8 @@ use serde_json::{Value, json};
 use self::model::{Event, Health, Session};
 use super::io::{ensure_dir, now_ms, read_json, reject_link, safe_id, state_root, write_json};
 use super::lock::LockGuard;
+
+pub(super) use request_binding::{interrupt_request_binding, prepare_request_binding};
 
 pub(crate) const MAX_TARGETS: usize = 8;
 pub(crate) const MAX_EVENTS: usize = 64;

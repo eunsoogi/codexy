@@ -160,11 +160,18 @@ as permission to claim the server worked.
   the pending request when the host propagates it and preserves the durable
   session; `watcher_cancel` separately ends that session and requires a fresh
   assignment.
+- The core hook contract binds an authenticated parent `watcher_wait` in
+  `PreToolUse` with an opaque `requestBinding`; the synchronous `Interrupt` hook
+  writes a request-only cancellation marker consumed by the existing native 25
+  ms wait check. Direct callers remain binding-free compatible, while a wrong
+  turn/session, stale nonce, or durable `watcher_cancel` cannot release a
+  different request.
 - The source contract does not prove every host behavior. The verified host
   observation behind this contract showed that the one-hour request was bounded
   by an observed 300-second `tools/call` transport deadline; a host/task message
-  or outer wait termination may leave the native wait active. Zero model
-  execution and automatic host/user Stop-interrupt propagation remain unproven.
+  or outer wait termination may leave the native wait active when the host does
+  not propagate `Interrupt`. Candidate installation and actual host Stop proof
+  remain separate acceptance evidence.
 
 ## Implemented orchestration
 

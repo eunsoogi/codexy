@@ -9,7 +9,7 @@ fn wait_tool(name: &str, description: &str) -> ToolDef {
         description,
         json!({
             "type":"object", "additionalProperties":false,
-            "properties":{"sessionId":{"type":"string"},"parentToken":{"type":"string"},"cursor":{"type":["string","integer"]},"maxReports":{"type":"integer","minimum":1,"maximum":8},"timeoutMs":{"type":"integer","minimum":0,"maximum":MAX_WAIT_MS,"default":DEFAULT_WAIT_MS}},
+            "properties":{"sessionId":{"type":"string"},"parentToken":{"type":"string"},"cursor":{"type":["string","integer"]},"maxReports":{"type":"integer","minimum":1,"maximum":8},"timeoutMs":{"type":"integer","minimum":0,"maximum":MAX_WAIT_MS,"default":DEFAULT_WAIT_MS},"requestBinding":{"type":"string","maxLength":128}},
             "required":["sessionId","parentToken"]
         }),
     )
@@ -39,7 +39,7 @@ pub fn tools() -> Vec<ToolDef> {
         ),
         wait_tool(
             "watcher_wait",
-            "Wait for bounded material Watcher reports from a durable cross-process queue for up to 60 minutes. Omitting timeoutMs selects the maximum server-side wait of 3600000 ms; an explicit shorter value remains supported. A same-connection MCP notifications/cancelled request for this wait releases it when the host propagates the cancellation and preserves the durable session. watcher_cancel is separate: it durably ends the session and requires a fresh assignment for observation. A host/task message or outer wait termination may leave the native wait active. If the session TTL expires, returns status=expired with empty events and the unchanged nextCursor; the wait does not consume or modify the durable event log.",
+            "Wait for bounded material Watcher reports from a durable cross-process queue for up to 60 minutes. Omitting timeoutMs selects the maximum server-side wait of 3600000 ms; an explicit shorter value remains supported. The optional requestBinding is injected by the Codex PreToolUse hook and is validated against the authenticated parent capability; direct callers may omit it. A same-connection MCP notifications/cancelled request or supported host Interrupt releases only this request and preserves the durable session. watcher_cancel is separate: it durably ends the session and requires a fresh assignment for observation. If the session TTL expires, returns status=expired with empty events and the unchanged nextCursor; the wait does not consume or modify the durable event log.",
         ),
         ToolDef::new(
             "watcher_health",

@@ -8,8 +8,9 @@ use crate::paths::display_relative;
 use crate::validation::load_json;
 
 const PATH: &str = "hooks/capability-contract.json";
-const SCHEMA: &str = "codexy.hooks.capability-contract.v2";
-const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
+const SCHEMA: &str = "codexy.hooks.capability-contract.v3";
+const PREVENTIVE_EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
+const EVENT_ORDER: &[&str] = &["PermissionRequest", "PreToolUse", "Interrupt"];
 
 struct Expected {
     id: &'static str,
@@ -17,6 +18,8 @@ struct Expected {
     input: &'static str,
     launcher: &'static str,
     diagnostic: &'static str,
+    events: &'static [&'static str],
+    preventive: bool,
 }
 
 const CONCERNS: &[Expected] = &[
@@ -26,6 +29,8 @@ const CONCERNS: &[Expected] = &[
         input: "codexy.hooks.thread-delivery.v2",
         launcher: "codexy-thread-delivery",
         diagnostic: "CODEXY_THREAD_DELIVERY_",
+        events: PREVENTIVE_EVENTS,
+        preventive: true,
     },
     Expected {
         id: "child-thread-creation",
@@ -33,6 +38,8 @@ const CONCERNS: &[Expected] = &[
         input: "codexy.hooks.child-thread-creation.v1",
         launcher: "codexy-child-thread-creation",
         diagnostic: "CODEXY_CHILD_THREAD_CREATION_",
+        events: PREVENTIVE_EVENTS,
+        preventive: true,
     },
     Expected {
         id: "subagent-ownership",
@@ -40,6 +47,17 @@ const CONCERNS: &[Expected] = &[
         input: "codexy.hooks.subagent-ownership.v1",
         launcher: "codexy-subagent-ownership",
         diagnostic: "CODEXY_SUBAGENT_OWNERSHIP_",
+        events: PREVENTIVE_EVENTS,
+        preventive: true,
+    },
+    Expected {
+        id: "watcher-wait-interruption",
+        trigger: "^(?:mcp__[^ ]+__)?watcher_wait$",
+        input: "codexy.hooks.watcher-wait-interruption.v1",
+        launcher: "codexy-watcher-interrupt",
+        diagnostic: "CODEXY_WATCHER_INTERRUPT_",
+        events: &["PreToolUse", "Interrupt"],
+        preventive: false,
     },
 ];
 
@@ -83,9 +101,9 @@ pub(super) fn check(plugin_root: &Path) -> Result<()> {
         let entrypoints = entrypoints(expected.launcher);
         if actual.concern_id != expected.id
             || actual.trigger != expected.trigger
-            || actual.events.iter().map(String::as_str).collect::<Vec<_>>() != EVENTS
+            || actual.events.iter().map(String::as_str).collect::<Vec<_>>() != expected.events
             || actual.input_contract != expected.input
-            || !actual.preventive
+            || actual.preventive != expected.preventive
             || actual.entrypoints != entrypoints
             || actual.diagnostic_family != expected.diagnostic
             || actual.content_digest != concern_digest(expected)
@@ -107,28 +125,39 @@ pub(super) fn check(plugin_root: &Path) -> Result<()> {
 }
 
 pub(super) fn check_topology(path: &Path, events: &Map<String, Value>) -> Result<()> {
-    if events.len() != EVENTS.len() || EVENTS.iter().any(|event| !events.contains_key(*event)) {
+    if events.len() != EVENT_ORDER.len()
+        || EVENT_ORDER.iter().any(|event| !events.contains_key(*event))
+    {
         bail!(
-            "{} must configure only the two preventive concern events",
+            "{} must configure only the declared preventive and lifecycle concern events",
             display_relative(path)
         );
     }
-    for event in EVENTS {
+    for event in EVENT_ORDER {
         let groups = events[*event].as_array().with_context(|| {
             format!("{} {event} groups must be an array", display_relative(path))
         })?;
-        if groups.len() != CONCERNS.len() {
+        let concerns = CONCERNS
+            .iter()
+            .filter(|concern| concern.events.contains(event))
+            .collect::<Vec<_>>();
+        if groups.len() != concerns.len() {
             bail!(
                 "{} {event} must be a non-empty matcher group array and bind every concern exactly once",
                 display_relative(path)
             );
         }
-        for (group, concern) in groups.iter().zip(CONCERNS) {
+        for (group, concern) in groups.iter().zip(concerns) {
             let object = group
                 .as_object()
                 .context("concern group must be an object")?;
             let handlers = object.get("hooks").and_then(Value::as_array);
-            if object.get("matcher").and_then(Value::as_str) != Some(concern.trigger)
+            let matcher = if *event == "Interrupt" {
+                None
+            } else {
+                Some(concern.trigger)
+            };
+            if object.get("matcher").and_then(Value::as_str) != matcher
                 || handlers.is_none_or(|items| items.len() != 1)
             {
                 bail!(
@@ -160,9 +189,12 @@ pub(super) fn check_topology(path: &Path, events: &Map<String, Value>) -> Result
 }
 
 fn entrypoints(launcher: &str) -> Vec<String> {
-    ["sh", "cmd", "py"]
-        .map(|extension| format!("{launcher}.{extension}"))
-        .to_vec()
+    let python = if launcher == "codexy-watcher-interrupt" {
+        "codexy_watcher_interrupt.py".to_owned()
+    } else {
+        format!("{launcher}.py")
+    };
+    vec![format!("{launcher}.sh"), format!("{launcher}.cmd"), python]
 }
 
 fn concern_digest(concern: &Expected) -> String {
@@ -171,8 +203,13 @@ fn concern_digest(concern: &Expected) -> String {
         concern.trigger,
         concern.input,
         concern.diagnostic,
-        &EVENTS.join("\u{1f}"),
+        &concern.events.join("\u{1f}"),
         &entrypoints(concern.launcher).join("\u{1f}"),
+        if concern.preventive {
+            "preventive"
+        } else {
+            "lifecycle"
+        },
     ]
     .join("\0"))
 }

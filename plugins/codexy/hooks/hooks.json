@@ -68,6 +68,29 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "^(?:mcp__[^ ]+__)?watcher_wait$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-watcher-interrupt.sh\" PreToolUse",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-watcher-interrupt.cmd\" PreToolUse",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Interrupt": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-watcher-interrupt.sh\" Interrupt",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-watcher-interrupt.cmd\" Interrupt",
+            "timeout": 3
+          }
+        ]
       }
     ]
   }

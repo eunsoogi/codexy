@@ -49,10 +49,15 @@ class ComponentHookActivationLifecycleTests(unittest.TestCase):
 
 
 def _old_hook_rows(plugin: Path) -> list[dict[str, object]]:
-    events = {"PreToolUse": "preToolUse", "PermissionRequest": "permissionRequest"}
+    events = {
+        "PreToolUse": "preToolUse",
+        "PermissionRequest": "permissionRequest",
+        "Interrupt": "interrupt",
+    }
     event_keys = {
         "PreToolUse": "pre_tool_use",
         "PermissionRequest": "permission_request",
+        "Interrupt": "interrupt",
     }
     value = json.loads((plugin / "hooks/hooks.json").read_text(encoding="utf-8"))
     path = plugin / "hooks/hooks.json"

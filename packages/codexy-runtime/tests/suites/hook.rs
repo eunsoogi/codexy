@@ -25,6 +25,9 @@ mod validator_hook_safety_tokens;
 #[path = "../validator_hook_single_concern_topology.rs"]
 mod validator_hook_single_concern_topology;
 
+#[path = "../validator_hook_watcher_interrupt.rs"]
+mod validator_hook_watcher_interrupt;
+
 #[path = "../validator_github_hooks_topology.rs"]
 mod validator_github_hooks_topology;
 

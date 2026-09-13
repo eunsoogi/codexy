@@ -34,6 +34,7 @@ impl Store {
         max_reports: usize,
         timeout_ms: u64,
         cancellation: Option<&CancellationToken>,
+        request_binding: Option<&str>,
     ) -> Result<Value> {
         if max_reports == 0 || max_reports > MAX_REPORTS {
             bail!("watcher maxReports must be between 1 and {MAX_REPORTS}");
@@ -51,6 +52,9 @@ impl Store {
             &self.session_dir(session_id)?.join("wait.lock"),
         )?
         .context("watcher already has an active waiter")?;
+        let _request_binding = request_binding
+            .map(|nonce| super::request_binding::claim(&self.root, nonce, session_id, token))
+            .transpose()?;
         drop(transition);
         let deadline = Instant::now() + Duration::from_millis(timeout_ms);
         loop {
@@ -70,6 +74,11 @@ impl Store {
             if !pending.is_empty() {
                 let next = pending.last().map_or(cursor, |event| event.sequence);
                 return self.wait_result("event", next, &session, pending);
+            }
+            if let Some(nonce) = request_binding
+                && super::request_binding::cancelled(&self.root, nonce)?
+            {
+                return self.wait_result("cancelled", cursor, &session, Vec::new());
             }
             if timeout_ms == 0 || Instant::now() >= deadline {
                 return self.wait_result("timeout", cursor, &session, Vec::new());

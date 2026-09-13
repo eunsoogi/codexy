@@ -164,14 +164,14 @@ alter protected technical text.
 - The Orchestrator calls `watcher_wait` with its parent capability and cursor,
   validates each returned target/event, reads the relevant Worker/app surface,
   and sends or verifies any correction through the supported Worker route.
-- A same-connection `notifications/cancelled` for the pending request releases
-  only that wait when the host propagates it and preserves the durable session.
-  `watcher_cancel` is a separate authorized operation that durably ends the
-  session. A host/task message or outer wait termination may leave the native
-  wait active; if host cancellation is unavailable, report the limitation and
-  open a new assignment/session. A cancelled queue/cursor is readback only,
-  never continuity, and the assignment MUST NOT be resumed.
-
+- A same-connection `notifications/cancelled` or the packaged Watcher
+  `PreToolUse`/`Interrupt` binding route releases only that wait when the host
+  propagates it and preserves the durable session. `watcher_cancel` is a
+  separate authorized operation that durably ends the session. A host/task
+  message or outer wait termination may leave the native wait active when host
+  cancellation is unavailable; report the limitation and open a new
+  assignment/session. A cancelled queue/cursor is readback only, never
+  continuity, and the assignment MUST NOT be resumed.
 - The Orchestrator MUST own the exact overall task objective and MUST preserve
   its active goal through Watcher creation, reports, correction, review, and
   external waits. Creating a Watcher subagent MUST NOT create a second overall
