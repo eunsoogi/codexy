@@ -137,9 +137,8 @@ The current source tree provides:
   precedence and readback. Core validates task-thread delivery metadata. The
   GitHub component adds workflow context and independent local safety checks; it
   does not admit, deny, or rewrite general GitHub mutations.
-- **Proof and engineering.** Keep behavioral verification for executable
-  boundaries, choose test-first sequencing per boundary, and bind completion and
-  review evidence to the current file state or commit.
+- **Proof and engineering.** Match verification and evidence depth to the
+  claimed surface; detailed boundary rules live in the linked guides.
 - **LLM Wiki.** Maintain a bounded topic root through
   `init → ingest → compile → query → refresh`, with immutable raw sources,
   citations, provenance, freshness checks, and explicit knowledge gaps.
@@ -170,56 +169,11 @@ flowchart TD
 
 ### Verification workflow
 
-Codexy uses a requirement-led workflow: define acceptance criteria and material
-risks first, keep the implementation issue-sized, run the relevant behavioral
-checks, prove any claimed external behavior on its actual surface, add one
-proportionate review when the selected profile requires it, and stop when the
-agreed evidence is sufficient. The detailed
-[orchestration workflow](plugins/codexy/skills/orchestration/SKILL.md),
-[engineering workflow](plugins/codexy/skills/engineering/SKILL.md), and
-[completion proof](plugins/codexy/skills/proof-driven-completion/SKILL.md) own
-the boundary-specific rules; this introduction is a map, not a second checklist.
-
-Behavioral verification, test-first sequencing, and verification depth are
-separate decisions:
-
-| Boundary                           | Behavioral verification       | Test-first order                                   |
-| ---------------------------------- | ----------------------------- | -------------------------------------------------- |
-| Ordinary feature                   | Required                      | Optional unless the contract says otherwise        |
-| Reproducible engineering bug       | Required                      | Required: show faithful RED before the fix         |
-| Behavior-preserving refactor       | Required                      | Optional with a green or characterization baseline |
-| Documentation or instruction prose | Proportional structural proof | Not applicable; do not manufacture prose TDD       |
-
-Verification depth follows the claimed surface: structural readback can prove a
-documentation change, while a CLI, browser, app, package, or host claim needs
-that surface's evidence. Light, standard, and strict profiles are selected by
-risk and surface. Reuse execution evidence per individual check, not as whole-
-change readiness: after reading the current diff and the relevant
-implementation, dependencies or lock/configuration, fixtures, generated inputs,
-and environment, a current applicability assessment may preserve a passed check
-when its boundary and environment remain unchanged, including after unrelated
-prose-only or other metadata-only changes. A relevant source, dependency,
-lock/configuration, fixture, generated-input, or environment change, previous
-failure, unresolved risk, or uncertain impact invalidates the affected evidence
-and requires the check again. A reviewer PASS is always bound to its exact head;
-an older PASS does not make a changed head current or allow affected checks to
-be skipped.
-
-Native Watcher observation uses one quiet `watcher_wait`: omitting `timeoutMs`
-selects the server's bounded `MAX_WAIT_MS` (currently 3,600,000 ms), and a
-material report wakes the wait. An explicit shorter wait remains supported when
-a user deadline or confirmed host limit requires it. A same-connection
-`notifications/cancelled` releases only the pending request when the host
-propagates it and preserves the durable session; `watcher_cancel` is separate
-and durably ends the session, requiring a fresh assignment.
-
-This source contract does not prove every host behavior. In the verified host
-observation behind this contract, the one-hour request was bounded by an
-observed 300-second `tools/call` transport deadline; a host/task message or
-outer wait termination may leave the native wait active. Codexy does not claim
-zero model execution or automatic host/user Stop-interrupt propagation from this
-evidence. A source-tree change is not, by itself, proof of a published release
-or an already-running host session.
+Codexy starts with the goal and material risks, keeps the work issue-sized, and
+uses verification that fits the claimed result. It adds proportionate review
+when needed and stops when the evidence is sufficient. The architecture guide
+later in this introduction covers the detailed workflow and current runtime
+contracts.
 
 ### Model roles and reasoning effort
 
