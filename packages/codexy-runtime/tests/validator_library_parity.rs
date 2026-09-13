@@ -5,6 +5,8 @@ use std::process::{Command, Output};
 
 #[path = "validator_library_parity/fixture.rs"]
 mod fixture;
+#[path = "validator_manifest_isolation.rs"]
+mod manifest_isolation;
 
 use fixture::copy_plugin_fixture;
 
@@ -48,13 +50,7 @@ fn plugin_fixture_mutations_do_not_leak_between_manifest_aware_overlays()
     let mutable = Path::new(relative);
     let (_first_temp, first) = support::copy_plugin_fixture_with_mutable_files(&[mutable])?;
     let (_second_temp, second) = support::copy_plugin_fixture_with_mutable_files(&[mutable])?;
-    let original = std::fs::read_to_string(second.join(relative))?;
-
-    std::fs::write(first.join(relative), "{\"mutated\":true}\n")?;
-
-    assert_eq!(std::fs::read_to_string(second.join(relative))?, original);
-    assert_ne!(std::fs::read_to_string(first.join(relative))?, original);
-    Ok(())
+    manifest_isolation::assert_manifest_aware_overlay_isolation(&first, &second, mutable)
 }
 
 #[test]
