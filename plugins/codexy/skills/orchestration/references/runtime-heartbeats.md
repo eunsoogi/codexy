@@ -66,19 +66,23 @@ unresolved drift or failure requiring Orchestrator action, missing terminal
 delivery, or a ready external gate may be reported.
 
 The Orchestrator MUST keep the overall goal active and owned by itself while the
-Watcher subagent observes. It MAY use `watcher_wait` with the parent token and
-cursor for bounded waiting. A same-connection MCP cancellation propagated
-through authorized `watcher_cancel` releases the wait; real host/task interrupt
-success remains unproven/failed. A task message or outer wait termination may
-leave the native wait active; report the limitation, use `watcher_cancel` only
-when authorized, and open a new assignment/session for fresh observation. A
-cancelled assignment MUST NOT be resumed. The Watcher has no long-lived release
-goal. If the host exposes a finite goal for the subagent, that goal MUST cover
-only the bounded observation assignment and MUST NOT be treated as issue or
-release completion. The Watcher MUST keep its native turn active after each
-report and return to its `wait_threads` loop while an assigned target remains
-nonterminal; the Orchestrator may return control while that native turn
-continues. The Watcher may return only for full assignment completion, explicit
+Watcher subagent observes. It MUST call `watcher_wait` with the parent token and
+cursor, omit `timeoutMs` for ordinary observation so the server selects
+`MAX_WAIT_MS` (currently 3,600,000 ms), and remain quiet in one tool await while
+no event is available. It MUST NOT emit reasoning, progress, short polls, or
+unrelated work for an empty timeout or unchanged progress. A same-connection
+`notifications/cancelled` for that request releases only the wait when the host
+propagates it and preserves the session; `watcher_cancel` is separate and
+durably ends the session. A task message or outer wait termination may leave the
+native wait active; report that limitation, use `watcher_cancel` only when
+authorized, and open a new assignment/session for fresh observation. A cancelled
+assignment MUST NOT be resumed. The Watcher has no long-lived release goal. If
+the host exposes a finite goal for the subagent, that goal MUST cover only the
+bounded observation assignment and MUST NOT be treated as issue or release
+completion. The Watcher MUST keep its native turn active after each report and
+return to its `wait_threads` loop while an assigned target remains nonterminal;
+the Orchestrator may return control while that native turn continues. The
+Watcher may return only for full assignment completion, explicit
 user/Orchestrator cancellation, or a verified host limitation. An implementation
 Worker or child MUST NOT open, wait on, report to, cancel, or reuse the
 parent-owned Watcher session or token; visible session metadata is not

@@ -60,6 +60,20 @@ pub(super) fn open_session(
     ))
 }
 
+pub(super) fn wait_request_without_timeout(
+    request_id: u64,
+    session: &str,
+    parent_token: &str,
+    cursor: &str,
+) -> Value {
+    json!({
+        "jsonrpc": "2.0", "id": request_id, "method": "tools/call",
+        "params": {"name": "watcher_wait", "arguments": {
+            "sessionId": session, "parentToken": parent_token, "cursor": cursor
+        }}
+    })
+}
+
 #[test]
 #[ignore = "explicit burst stress: requires every competing RPC to succeed within the lock bound"]
 fn concurrent_reports_and_health_leave_a_restartable_event_log() -> Result<(), String> {

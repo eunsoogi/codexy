@@ -103,12 +103,11 @@ fn long_wait_returns_a_material_event_without_timeout_polling() -> TestResult {
 
     let mut reader = watcher_client(state.path())?;
     initialize(&mut reader)?;
-    reader.send_without_read(&wait_request(
+    reader.send_without_read(&super::watcher_state::wait_request_without_timeout(
         4,
         &session,
         &parent_token,
         "0",
-        LONG_WAIT_MS,
     ))?;
     let mut observer = watcher_client(state.path())?;
     initialize(&mut observer)?;
@@ -235,8 +234,8 @@ fn wait_schema_documents_the_long_poll_bounds() -> TestResult {
         .and_then(|tools| tools.iter().find(|tool| tool["name"] == "watcher_wait"))
         .ok_or("watcher_wait schema is missing")?;
     let timeout = &wait["inputSchema"]["properties"]["timeoutMs"];
-    assert_eq!(timeout["default"], 600_000);
-    assert_eq!(timeout["maximum"], 3_600_000);
+    assert_eq!(timeout["default"], 3_600_000);
+    assert_eq!(timeout["default"], timeout["maximum"]);
     let description = wait["description"]
         .as_str()
         .ok_or("watcher_wait description is missing")?;
@@ -244,5 +243,7 @@ fn wait_schema_documents_the_long_poll_bounds() -> TestResult {
     assert!(description.contains("empty events"));
     assert!(description.contains("unchanged nextCursor"));
     assert!(description.contains("does not consume or modify the durable event log"));
+    assert!(description.contains("notifications/cancelled"));
+    assert!(description.contains("watcher_cancel is separate"));
     Ok(())
 }
