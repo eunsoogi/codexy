@@ -13,8 +13,11 @@ applicable methods only. Proof-driven completion owns final audit.
 - [Diagnosis](references/diagnosis.md) for wrong or unexplained behavior.
 - [Specification](references/specification.md) for unclear outcomes or proof.
 - [Domain modeling](references/domain-modeling.md) for domain boundaries.
-- [Test-driven development](references/test-driven-development.md) only for an
-  executable boundary classified `engineering_tdd_required`.
+- [Test-driven development](references/test-driven-development.md) for an
+  engineering boundary whose v2 obligation has `engineering_tests_required`;
+  faithful RED/GREEN is required only when that boundary's `tdd_mode` is
+  `required`. A v1 `engineering_tdd_required` result is legacy-compatible input
+  and MUST NOT be applied as a v2 sequencing mandate.
 - [Refactoring](references/refactoring.md) for behavior-preserving structure.
 - MUST select [Performance review](references/performance-review.md) only for
   explicit cost or test-efficiency review requests.
@@ -25,9 +28,12 @@ applicable methods only. Proof-driven completion owns final audit.
 1. MUST read authorities and diff; MUST keep one outcome and exclusions.
 2. MUST record expected/current behavior, riskiest edge, proof, and questions
    before editing.
-3. MUST establish faithful pre-change proof. RED/GREEN applies only when
-   classified; instruction-only work MUST use readback and MUST NOT manufacture
-   RED.
+3. MUST establish faithful pre-change proof. For v2, every engineering boundary
+   with `engineering_tests_required` needs requirement-linked behavioral
+   verification; RED/GREEN applies only to that boundary when `tdd_mode` is
+   `required`. Optional refactors may use a GREEN or characterization baseline,
+   and instruction-only work MUST use proportional readback and MUST NOT
+   manufacture RED. Mixed requests follow their boundary obligations.
 4. MUST make the smallest spec-backed change and preserve public contracts.
 5. MUST select checks from the changed executable boundaries, affected
    requirements, integration risk, explicit user/repository checks, and current

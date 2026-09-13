@@ -80,7 +80,11 @@ task/thread
 - BLOCK receipt:
 - repair plan:
 - in-scope issue-contract/root-defect findings:
-- engineering_tdd_required:
+- engineering_tdd_required (v1 compatibility):
+- engineering_tests_required (v2):
+- tdd_mode (v2 summary; boundary_obligations are authoritative):
+- boundary_obligations (v2 per-boundary tests, sequencing, pre-change, and proof
+  duties):
 - RED/GREEN or proportional boundary proof:
 - terminal proof:
 - post-third disposition (not applicable, PASS, final repair, or maintainer
