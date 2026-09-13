@@ -5,8 +5,7 @@ use crate::support::TestResult;
 
 #[test]
 fn resolver_classifies_engineering_non_engineering_and_mixed_boundaries() -> TestResult {
-    let fixture = policy::fixture()?;
-    for (boundaries, expected) in [
+    for (index, (boundaries, expected)) in [
         (
             json!(["production_code"]),
             json!({"classification":"engineering","engineering_tdd_required":true,"tdd_boundaries":["production_code"],"proportional_proof_boundaries":[]}),
@@ -35,28 +34,44 @@ fn resolver_classifies_engineering_non_engineering_and_mixed_boundaries() -> Tes
             json!(["validator", "documentation"]),
             json!({"classification":"mixed","engineering_tdd_required":true,"tdd_boundaries":["validator"],"proportional_proof_boundaries":["documentation"]}),
         ),
-    ] {
-        policy::assert_v1(fixture.root(), boundaries, expected)?;
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        if index == 0 {
+            let root = policy::cli_root()?;
+            policy::assert_v1_cli(root.path(), boundaries, expected)?;
+        } else {
+            policy::assert_v1(boundaries, expected)?;
+        }
     }
     Ok(())
 }
 
 #[test]
 fn resolver_rejects_unknown_or_incomplete_machine_owned_requests() -> TestResult {
-    let fixture = policy::fixture()?;
-    for request in [
+    for (index, request) in [
         json!({"schema":"codexy.tdd-classification-request.v1","boundaries":[]}),
         json!({"schema":"codexy.tdd-classification-request.v1","boundaries":["markdown"]}),
         json!({"schema":"codexy.tdd-classification-request.v1","boundaries":["documentation","markdown"]}),
         json!({"schema":"codexy.tdd-classification-request.v1","boundaries":["documentation","documentation"]}),
         json!({"schema":"codexy.tdd-classification-request.v1","boundaries":["documentation"],"unexpected":true}),
         json!({"schema":"other","boundaries":["documentation"]}),
-    ] {
-        policy::assert_rejected(
-            fixture.root(),
-            request,
-            "invalid v1 classification request passed",
-        )?;
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        if index == 0 {
+            let root = policy::cli_root()?;
+            policy::assert_cli_rejected(
+                root.path(),
+                request,
+                "TDD classification request must contain unique boundaries",
+                "invalid v1 CLI classification request passed",
+            )?;
+        } else {
+            policy::assert_rejected(request, "invalid v1 classification request passed")?;
+        }
     }
     Ok(())
 }

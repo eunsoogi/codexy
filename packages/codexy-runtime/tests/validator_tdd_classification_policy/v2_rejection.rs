@@ -5,7 +5,6 @@ use crate::support::TestResult;
 
 #[test]
 fn resolver_v2_rejects_ambiguous_or_incomplete_policy_facts() -> TestResult {
-    let fixture = policy::fixture()?;
     let invalid = [
         policy::request(vec![]),
         policy::request(vec![
@@ -85,10 +84,9 @@ fn resolver_v2_rejects_ambiguous_or_incomplete_policy_facts() -> TestResult {
         json!({"schema":"codexy.tdd-classification-request.v2","boundaries":[policy::boundary("blank", "production_code", "feature", &[], false, None)],"boundaries":[]}),
     ];
     for request in invalid {
-        policy::assert_rejected(fixture.root(), request, "ambiguous v2 request passed")?;
+        policy::assert_rejected(request, "ambiguous v2 request passed")?;
     }
     policy::assert_text_rejected(
-        fixture.root(),
         r#"{"schema":"codexy.tdd-classification-request.v2","boundaries":[],"boundaries":[]}"#,
         "duplicate JSON keys passed",
     )?;

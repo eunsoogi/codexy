@@ -8,7 +8,6 @@ const PROPORTIONAL: &[&str] = &["proportional_structural_or_behavioral_proof"];
 
 #[test]
 fn documentation_defect_keeps_proportional_proof_without_red() -> TestResult {
-    let fixture = policy::fixture()?;
     let request = policy::request(vec![policy::boundary(
         "docs-defect",
         "documentation",
@@ -32,12 +31,11 @@ fn documentation_defect_keeps_proportional_proof_without_red() -> TestResult {
             PROPORTIONAL,
         )],
     );
-    policy::assert_v2(fixture.root(), request, expected)
+    policy::assert_v2(request, expected)
 }
 
 #[test]
 fn mixed_engineering_and_documentation_defects_keep_separate_duties() -> TestResult {
-    let fixture = policy::fixture()?;
     let request = policy::request(vec![
         policy::boundary(
             "code-defect",
@@ -81,5 +79,5 @@ fn mixed_engineering_and_documentation_defects_keep_separate_duties() -> TestRes
             ),
         ],
     );
-    policy::assert_v2(fixture.root(), request, expected)
+    policy::assert_v2(request, expected)
 }
