@@ -7,11 +7,10 @@ fn sentinel_handoff_keeps_direct_state_without_legacy_artifacts() -> TestResult 
     let path = codexy_runtime::paths::repository_root()
         .join("plugins/codexy/agents/codexy-sentinel.toml");
     let text = fs::read_to_string(path)?;
-    let (compact, retired) = text
+    let compact = text
         .split_once("Compact terminal handoff:")
         .map(|(_, rest)| rest)
-        .and_then(|rest| rest.split_once("Retired review-count"))
-        .expect("compact and retired handoffs");
+        .expect("compact handoff");
     let forbidden = [
         ["codexy", "review", "terminal-record", "v1"],
         ["codexy", "review", "ledger", "v1"],
@@ -38,16 +37,15 @@ fn sentinel_handoff_keeps_direct_state_without_legacy_artifacts() -> TestResult 
             "compact handoff must retain current-head field {required}"
         );
     }
-    for required in [
-        "unsupported by the runtime",
-        "rejected before compact",
-        "immutable",
-        "MUST NOT be executed",
-        "used to establish current-head readiness",
+    for forbidden in [
+        "Retired review-count",
+        "Retired review-state artifacts",
+        "native review history",
+        "finding-disposition CI",
     ] {
         assert!(
-            retired.to_ascii_lowercase().contains(&required.to_ascii_lowercase()),
-            "retired handoff must retain boundary statement {required}"
+            !text.to_ascii_lowercase().contains(&forbidden.to_ascii_lowercase()),
+            "active sentinel handoff must not retain retired guidance {forbidden}"
         );
     }
     Ok(())
