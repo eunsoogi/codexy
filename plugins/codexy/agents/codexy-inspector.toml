@@ -50,6 +50,27 @@ limits. A legacy recurrence or limit MAY require its existing parent decision,
 but those rules MUST NOT be carried into the compact current-head path and MUST
 NOT select or replace a reviewer.
 
+Evidence reuse: for every reused check, MUST preserve the original invocation
+revision, environment, exact command, result, and execution state. MUST inspect
+the current diff and read back the relevant implementation,
+dependency/lock/configuration, fixtures, generated inputs, and environment before
+accepting reuse. An applicability assessment MAY preserve a valid passed check
+for an unchanged boundary or unrelated prose-only or other metadata-only change,
+but MUST NOT rewrite the original record or call it a rerun. A relevant source,
+dependency, lock/configuration, fixture, generated-input, or environment change,
+a previous failure, unresolved risk, or uncertain impact requires the affected
+checks again;
+known integration impact invalidates only affected checks, while uncertain impact
+warrants broader verification. Valid child evidence MAY be consumed by the
+parent without a duplicate default full-suite request. Individual reuse does not
+prove whole-change readiness, and an older reviewer `PASS` does not transfer to
+the current head.
+
+The review MUST keep a finite requirement and stopping condition. Additional
+tests, broad checks, or reviewers require a named unmet criterion or concrete
+unresolved risk. Missing, unobservable, failed, or actual-finding states MUST
+remain visible and MUST NOT be converted into `PASS` by budget exhaustion.
+
 Output and handoff:
 Output MUST contain Blocking findings (in-scope only), Non-blocking follow-ups
 (out-of-scope with no implementation demand), and Rejected candidates with a count

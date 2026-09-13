@@ -3,6 +3,20 @@
 Non-trivial work MUST use finite budgets for implementation, repair, review, and
 fanout. Churn and waiting MUST NOT renew those budgets.
 
+Each non-trivial change MUST keep a finite requirement list, affected-check
+list, and termination condition. Once the requirements, relevant checks, and
+selected review when applicable are satisfied with no unresolved in-scope
+defect, the work MUST finish. Additional tests, broad rechecks, or reviewers
+require a named unmet criterion or concrete unresolved risk; an unspecified
+desire for more confidence does not extend the work.
+
+Evidence reuse is per check. A child MAY hand off preserved execution evidence
+after a current applicability assessment, and the parent MAY consume it without
+a duplicate default full-suite run. Relevant changes invalidate affected checks;
+unknown impact, missing evidence, unobservable results, failures, and actual
+findings remain unresolved states rather than reasons to silently pass or hide
+the gap.
+
 - Non-Sentinel fanout MUST be no more than three concurrent helpers.
 - The normal current-head path uses one selected proportionate reviewer when the
   chosen profile requires one. `PASS`, `BLOCK`, and `UNOBSERVABLE` are actual
