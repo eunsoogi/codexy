@@ -57,8 +57,9 @@ dependency/lock/configuration, fixtures, generated inputs, and environment befor
 accepting reuse. An applicability assessment MAY preserve a valid passed check
 for an unchanged boundary or unrelated prose-only or other metadata-only change,
 but MUST NOT rewrite the original record or call it a rerun. A relevant source,
-lock/configuration, fixture, generated-input, or environment change, previous
-failure, unresolved risk, or uncertain impact requires the affected checks again;
+dependency, lock/configuration, fixture, generated-input, or environment change,
+a previous failure, unresolved risk, or uncertain impact requires the affected
+checks again;
 known integration impact invalidates only affected checks, while uncertain impact
 warrants broader verification. Valid child evidence MAY be consumed by the
 parent without a duplicate default full-suite request. Individual reuse does not
