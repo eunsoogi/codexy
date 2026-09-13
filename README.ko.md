@@ -113,8 +113,8 @@ release를 실행합니다. Codex를 시작하는 host 환경의 `PATH`에서 `u
 - **담당 범위와 오케스트레이션.** 작업을 분류하고 목표, 계획, issue 단위
   branch/worktree 담당자를 정해 인수인계와 context compaction 뒤에도 근거를
   보존합니다.
-- **전문 에이전트와 검증.** 범위에 맞는 specialist를 선택하고, 실행 가능한
-  경계에만 TDD를 적용하며 실제 동작과 현재 파일 상태에 근거를 묶습니다.
+- **전문 에이전트와 검증.** 실행 가능한 경계의 행동 검증은 유지하고, test-first
+  순서는 경계별로 정하며 실제 동작과 현재 파일 상태에 근거를 묶습니다.
 - **Instruction과 Wiki.** `AGENTS.md` 우선순위를 지키고,
   `init → ingest →
   compile → query → refresh` 흐름으로 출처와 freshness를
@@ -137,6 +137,49 @@ flowchart TD
     verify --> review["선택한 리뷰"]
     review --> finish["PR·병합 또는 명시적 인수인계"]
 ```
+
+### 검증 workflow
+
+Codexy는 요구사항을 기준으로 작업합니다. 수용 기준과 중요한 위험을 먼저 정하고,
+구현 범위를 issue 하나에 맞게 유지하고, 관련 행동 검증을 실행하고, 외부 동작을
+주장할 때는 실제 표면에서 증명하고, 선택한 profile이 요구할 때만 비례적인 review
+하나를 추가한 뒤, 합의한 근거가 충분해지면 멈춥니다.
+[orchestration workflow](plugins/codexy/skills/orchestration/SKILL.md),
+[engineering workflow](plugins/codexy/skills/engineering/SKILL.md),
+[completion proof](plugins/codexy/skills/proof-driven-completion/SKILL.md)가
+경계별 상세 규칙을 담당하며, 이 소개 문서는 별도의 checklist가 아니라 전체
+흐름을 보여 줍니다.
+
+행동 검증, test-first 순서, 검증 깊이는 서로 다른 결정입니다.
+
+| 경계                        | 행동 검증          | test-first 순서                            |
+| --------------------------- | ------------------ | ------------------------------------------ |
+| 일반 feature                | 필요               | 계약에서 요구하지 않으면 선택              |
+| 재현 가능한 engineering bug | 필요               | 필요: 수정 전에 faithful RED 확인          |
+| 동작 보존 refactor          | 필요               | 선택: green 또는 characterization baseline |
+| 문서 또는 instruction prose | 비례적인 구조 검증 | 해당 없음: prose TDD를 만들지 않음         |
+
+검증 깊이는 주장하는 표면에 맞춥니다. 문서 변경은 구조 readback으로 증명할 수
+있지만, CLI·browser·app·package·host 동작을 주장하려면 해당 표면의 근거가
+필요합니다. Light·standard·strict profile은 위험과 표면에 따라 선택합니다. 기존
+근거는 경계, 환경, 현재 head가 여전히 일치할 때만 재사용할 수 있으며, 이전
+reviewer PASS가 바뀐 head를 현재 상태로 만들거나 필요한 검사를 생략하게 하지는
+않습니다.
+
+Native Watcher 관찰은 조용한 `watcher_wait` 한 번으로 대기합니다. `timeoutMs`를
+생략하면 서버의 제한된 최대값 `MAX_WAIT_MS`(현재 3,600,000 ms)를 선택하고,
+중요한 report가 도착하면 대기가 풀립니다. 사용자 deadline이나 확인된 host 제한이
+있으면 더 짧은 명시적 대기도 사용할 수 있습니다. 같은 연결의
+`notifications/cancelled`는 host가 전달할 때 pending request만 풀고 durable
+session을 보존합니다. `watcher_cancel`은 별개로 session을 영구히 종료하며,
+이후에는 새 assignment가 필요합니다.
+
+이 source 계약만으로 모든 host 동작을 증명할 수는 없습니다. 이 계약과 함께
+확인한 host 관찰에서는 one-hour request가 관찰된 300초 `tools/call` transport
+deadline으로 제한됐고, host/task message나 외부 wait 종료가 native wait를 남길
+수 있습니다. 이 근거만으로 model 실행 0회나 자동 host/user Stop-interrupt 전달을
+주장하지 않습니다. Source-tree 변경은 그 자체로 공개 release나 이미 실행 중인
+host session의 증거가 아닙니다.
 
 ### 모델 역할과 추론 수준
 

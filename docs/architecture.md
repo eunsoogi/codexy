@@ -153,6 +153,18 @@ as permission to claim the server worked.
   separate. A direct plugin-subprocess probe can establish the first three, but
   `verified` remains `unknown` without host/session evidence; `unknown` is
   non-proof for that observation and does not by itself classify overall health.
+- Native Watcher observation uses one quiet `watcher_wait`: omitting `timeoutMs`
+  selects the bounded server maximum `MAX_WAIT_MS` (currently 3,600,000 ms),
+  while an explicit shorter wait remains supported for a user deadline or a
+  confirmed host limit. Same-connection `notifications/cancelled` releases only
+  the pending request when the host propagates it and preserves the durable
+  session; `watcher_cancel` separately ends that session and requires a fresh
+  assignment.
+- The source contract does not prove every host behavior. The verified host
+  observation behind this contract showed that the one-hour request was bounded
+  by an observed 300-second `tools/call` transport deadline; a host/task message
+  or outer wait termination may leave the native wait active. Zero model
+  execution and automatic host/user Stop-interrupt propagation remain unproven.
 
 ## Implemented orchestration
 
@@ -160,6 +172,21 @@ The main flow comes from `orchestration`, `git-workflow`, `engineering`, and
 `proof-driven-completion`. Routing context selects the owner and execution lane;
 verification and readiness checks are separate hard gates and cannot be replaced
 by contextual hook messages.
+
+The method is requirement-led. Acceptance criteria and material risks come
+before issue-sized implementation, then the owner runs the relevant behavioral
+checks and proves any claimed external surface on that surface. Executable
+boundaries retain behavioral verification; test-first sequencing is separate:
+reproducible defects require faithful RED before the fix, ordinary features and
+behavior-preserving refactors may use optional ordering with the appropriate
+baseline, and documentation or instruction prose uses structural proof instead
+of manufactured RED. The
+[engineering skill](../plugins/codexy/skills/engineering/SKILL.md) defines these
+choices, while
+[proof-driven completion](../plugins/codexy/skills/proof-driven-completion/SKILL.md)
+audits the final current-state claim. Light, standard, and strict profiles
+follow risk and surface; prior evidence remains reusable only when its boundary,
+environment, and exact head still match.
 
 ```mermaid
 flowchart TD
