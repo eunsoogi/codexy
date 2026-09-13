@@ -99,5 +99,11 @@ Stable handoff identity covers the workflow classification and selected
 references. Volatile identity covers the current safety and verification state.
 Full conversation, full tool bodies, and full agent trees are never forwarded.
 
+Route identifiers select existing authorities; they are not a second
+verification checklist. The selected sequencing, profile, budget, review, and
+final-proof references define only their applicable obligations. Collaboration
+shape may require ownership metadata, but MUST NOT by itself add strict or
+historical-review guidance.
+
 The executable route and retention contract is maintained by the packaged
 runtime validator.

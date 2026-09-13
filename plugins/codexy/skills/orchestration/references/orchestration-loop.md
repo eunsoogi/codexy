@@ -15,10 +15,12 @@
    - MUST use the available `codegraph` MCP to map relevant code files and
      neighbors when the selected task has a code or repository surface.
 2. Plan:
-   - MUST create a short `update_plan` with atomic outcomes.
-   - MUST mark exactly one step `in_progress`.
-   - MUST carry classification evidence into the plan before branch, worktree,
-     child-thread, implementation, PR, or review-response actions.
+   - Keep plan state when the selected profile or lane contract requires it.
+     Light and standard work MUST NOT require a visible goal/plan receipt from
+     this loop alone.
+   - When a plan exists, MUST carry classification evidence into it before
+     branch, worktree, child-thread, implementation, PR, or review-response
+     actions.
    - For delegated outcomes, MUST record one Worker owner, the saved project
      identity, the Watcher identity when authorized, the callback channels, and
      one current next action. MUST NOT require a fixed checkpoint count or
@@ -90,6 +92,11 @@
      the branch unless a maintainer explicitly reassigns implementation
      ownership.
 5. MUST verify:
+   - Let the selected references own the obligation: engineering behavior
+     follows `$engineering`, instruction-only and documentation work uses
+     proportional structural readback, review references own current-head
+     review, and `$proof-driven-completion` owns final claims. This loop MUST
+     NOT add a universal test, review, or evidence checklist.
    - MUST run local checks in the owning worktree.
    - MUST drive the selected external surface directly when the task changes
      GitHub, browser/desktop, CLI, plugin, marketplace, documents/artifacts,
@@ -146,7 +153,7 @@ Required evidence:
 Classification evidence:
 Review feedback route:
 Parent verification:
-Return evidence:
+Return evidence for strict or explicitly audited lanes:
   - Goal tool usage or unavailable-goal-tool fallback
   - Todo/plan tool usage or unavailable-todo-tool fallback
   - Touched implementation-file LOC gate output or not-applicable rationale
@@ -155,6 +162,8 @@ Return evidence:
     rationale tied to atomicity, tiny scope, or unavailable tooling
   - Packaged Codexy reviewer gate result for the current diff, exact head or
     file state, scope, verification outputs, and evidence
+For light and standard lanes, return only evidence required by the selected
+route; do not create a universal receipt or evaluation gate.
 Child execution discipline:
 Stop if:
 ```
