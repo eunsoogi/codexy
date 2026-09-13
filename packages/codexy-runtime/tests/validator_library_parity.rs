@@ -5,7 +5,7 @@ use std::process::{Command, Output};
 
 #[path = "validator_library_parity/fixture.rs"]
 mod fixture;
-#[path = "validator_manifest_isolation.rs"]
+#[path = "validator_manifest_isolation/mod.rs"]
 mod manifest_isolation;
 
 use fixture::copy_plugin_fixture;

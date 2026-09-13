@@ -14,7 +14,7 @@ mod readonly_escape;
 mod reset_writability;
 #[path = "validator_fixture_parallel_isolation/mutable_materialization.rs"]
 mod mutable_materialization;
-#[path = "validator_manifest_isolation.rs"]
+#[path = "validator_manifest_isolation/mod.rs"]
 mod manifest_isolation;
 
 #[test]
