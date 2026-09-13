@@ -193,9 +193,16 @@ separate decisions:
 Verification depth follows the claimed surface: structural readback can prove a
 documentation change, while a CLI, browser, app, package, or host claim needs
 that surface's evidence. Light, standard, and strict profiles are selected by
-risk and surface. Existing evidence is reusable only while its boundary,
-environment, and current head still match; an older reviewer PASS does not make
-a changed head current or allow affected checks to be skipped.
+risk and surface. Reuse execution evidence per individual check, not as whole-
+change readiness: after reading the current diff and the relevant
+implementation, dependencies or lock/configuration, fixtures, generated inputs,
+and environment, a current applicability assessment may preserve a passed check
+when its boundary and environment remain unchanged, including after unrelated
+prose-only or other metadata-only changes. A relevant source, dependency,
+fixture, generated-input, or environment change, previous failure, unresolved
+risk, or uncertain impact invalidates the affected evidence and requires the
+check again. A reviewer PASS is always bound to its exact head; an older PASS
+does not make a changed head current or allow affected checks to be skipped.
 
 Native Watcher observation uses one quiet `watcher_wait`: omitting `timeoutMs`
 selects the server's bounded `MAX_WAIT_MS` (currently 3,600,000 ms), and a

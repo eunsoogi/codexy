@@ -162,9 +162,14 @@ Codexy는 요구사항을 기준으로 작업합니다. 수용 기준과 중요�
 검증 깊이는 주장하는 표면에 맞춥니다. 문서 변경은 구조 readback으로 증명할 수
 있지만, CLI·browser·app·package·host 동작을 주장하려면 해당 표면의 근거가
 필요합니다. Light·standard·strict profile은 위험과 표면에 따라 선택합니다. 기존
-근거는 경계, 환경, 현재 head가 여전히 일치할 때만 재사용할 수 있으며, 이전
-reviewer PASS가 바뀐 head를 현재 상태로 만들거나 필요한 검사를 생략하게 하지는
-않습니다.
+실행 근거는 전체 변경이 아니라 개별 check 단위로 재사용 여부를 판단합니다. 현재
+diff와 관련 구현, dependency·lock/configuration, fixture, generated input,
+환경을 읽어 현재 applicability를 확인한 뒤, 해당 경계와 환경이 변하지 않았으면
+이전 통과 결과를 재사용할 수 있습니다. 관련 source·dependency·fixture·generated
+input·환경 변경, 이전 실패, 해결되지 않은 위험, 영향이 불확실한 경우에는 영향을
+받는 check를 다시 실행해야 합니다. 이 재사용은 전체 변경의 readiness를 증명하지
+않습니다. Reviewer PASS는 항상 그 exact head에 묶이며, 이전 PASS가 바뀐 head를
+현재 상태로 만들거나 필요한 검사를 생략하게 하지는 않습니다.
 
 Native Watcher 관찰은 조용한 `watcher_wait` 한 번으로 대기합니다. `timeoutMs`를
 생략하면 서버의 제한된 최대값 `MAX_WAIT_MS`(현재 3,600,000 ms)를 선택하고,
