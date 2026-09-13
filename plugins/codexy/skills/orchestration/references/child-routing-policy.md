@@ -17,6 +17,12 @@ not copy the sender settings. Parent-to-generic-child delivery MUST use
 `medium`. Both fields MUST be explicit. Unsupported or mismatched recipient
 settings MUST fail closed instead of falling back to the sender route.
 
+Child selection owns recipient and model routing, not verification policy. The
+closed route in [context tiers](context-tiers.md) selects profile, sequencing,
+finite-work, review, and final-proof references only when applicable.
+Collaboration shape requires ownership metadata where the contract says so, but
+MUST NOT by itself select a strict profile or historical-review path.
+
 ## Review routing
 
 For a child-owned implementation lane, the owning child MUST delegate the

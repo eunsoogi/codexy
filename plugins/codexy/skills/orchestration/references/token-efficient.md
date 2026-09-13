@@ -7,8 +7,8 @@ skill when a thread is recovering from compaction, receiving child terminal
 state, routing review feedback, or preparing a handoff that might otherwise
 repeat large unchanged artifacts.
 
-This skill is not a shortcut around `$proof-driven-completion`. It changes how
-evidence is summarized and refreshed, not which gates are required.
+This skill summarizes current proof and byte comparisons without changing which
+obligations apply; token billing and wall-time savings remain unmeasured.
 
 Task-to-task prompts, progress and callback messages, handoffs, and tool prompt
 fields MUST be treated as user-visible and MUST follow the shared
@@ -36,9 +36,9 @@ a reviewer verdict or fallback-eligible. The owning lane MUST retain the same
 reviewer and wait for its natural terminal result. A live Sentinel MUST report
 its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally.
 
-## Required Proof Gates
+## Proof State To Retain
 
-MUST NOT compress away these current facts for an active lane:
+MUST retain these state slots for an active lane:
 
 - issue and PR numbers,
 - branch and worktree path,

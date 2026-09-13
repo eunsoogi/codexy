@@ -17,6 +17,17 @@ proof; it MAY require evidence collection or leave authorized reversible work in
 progress, but it MUST NOT by itself require a new approval to continue that
 work.
 
+Verification procedure remains owned by the selected references:
+[workflow profiles](references/workflow-profiles.md) selects the profile,
+[TDD classification policy](references/tdd-classification-policy.md) selects
+per-boundary sequencing and proof,
+[execution budget](references/execution-budget.md) bounds finite work and
+evidence reuse, [review profiles](references/review-profiles.md) and
+[review lifecycle](references/review-lifecycle.md) own current-head review, and
+[proof-driven completion](../proof-driven-completion/SKILL.md) owns final
+claims. Do not restate these policies here or preload them for an unrelated
+route.
+
 ### Readable communication boundary
 
 All assistant-authored text that a person may see MUST follow the shared
