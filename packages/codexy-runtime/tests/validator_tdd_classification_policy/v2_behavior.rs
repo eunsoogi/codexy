@@ -6,7 +6,6 @@ use crate::support::TestResult;
 
 #[test]
 fn resolver_v2_separates_behavioral_tests_from_test_first_sequencing() -> TestResult {
-    let fixture = policy::fixture()?;
     let cases = [
         case(
             policy::boundary("feature", "production_code", "feature", &[], false, None),
@@ -220,9 +219,10 @@ fn resolver_v2_separates_behavioral_tests_from_test_first_sequencing() -> TestRe
             ),
         ),
     ];
-    cases
-        .into_iter()
-        .try_for_each(|(request, expected)| policy::assert_v2(fixture.root(), request, expected))
+    let mut cases = cases.into_iter();
+    let (request, expected) = cases.next().expect("v2 behavior cases");
+    policy::assert_v2_cli(policy::cli_root()?.path(), request, expected)?;
+    cases.try_for_each(|(request, expected)| policy::assert_v2(request, expected))
 }
 
 const PROPORTIONAL: &[&str] = &["proportional_structural_or_behavioral_proof"];

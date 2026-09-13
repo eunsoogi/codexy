@@ -2,23 +2,37 @@ use std::{path::Path, process::Command};
 
 use serde_json::{Value, json};
 
-use crate::support::{self, TestResult};
+use crate::support::TestResult;
 
 pub(super) const BEHAVIOR: &[&str] = &["requirement_linked_behavioral_verification"];
 
-pub(super) fn fixture() -> TestResult<support::PluginFixture> {
-    Ok(support::plugin_fixture()?)
+pub(super) fn cli_root() -> TestResult<tempfile::TempDir> {
+    Ok(tempfile::tempdir()?)
 }
 
-pub(super) fn resolve(root: &Path, request: Value) -> TestResult<std::process::Output> {
-    resolve_text(root, &serde_json::to_string(&request)?)
+fn resolve(request: Value) -> TestResult<Value> {
+    resolve_text(&serde_json::to_string(&request)?)
 }
 
-pub(super) fn resolve_text(root: &Path, request: &str) -> TestResult<std::process::Output> {
+fn resolve_text(request: &str) -> TestResult<Value> {
+    // The production resolver currently does not read plugin_root, so the
+    // repository's actual path is sufficient without copying a fixture.
+    let plugin_root = codexy_runtime::paths::plugin_root();
+    Ok(codexy_runtime::validation::resolve_tdd_classification(
+        &plugin_root,
+        request,
+    )?)
+}
+
+fn resolve_cli(root: &Path, request: Value) -> TestResult<std::process::Output> {
+    resolve_cli_text(root, &serde_json::to_string(&request)?)
+}
+
+fn resolve_cli_text(root: &Path, request: &str) -> TestResult<std::process::Output> {
     let temporary = tempfile::tempdir()?;
     let request_path = temporary.path().join("request.json");
     std::fs::write(&request_path, request.as_bytes())?;
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
+    let output = Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
         .args([
             "--plugin-root",
             root.to_str().ok_or("plugin root")?,
@@ -26,35 +40,71 @@ pub(super) fn resolve_text(root: &Path, request: &str) -> TestResult<std::proces
             "--tdd-classification-request-file",
         ])
         .arg(request_path)
-        .output()?)
+        .output()?;
+    Ok(output)
 }
 
-pub(super) fn assert_v1(root: &Path, boundaries: Value, expected: Value) -> TestResult {
-    let output = resolve(
+pub(super) fn assert_v1(boundaries: Value, expected: Value) -> TestResult {
+    assert_eq!(
+        resolve(
+            json!({"schema":"codexy.tdd-classification-request.v1","boundaries":boundaries}),
+        )?,
+        expected
+    );
+    Ok(())
+}
+
+pub(super) fn assert_v1_cli(
+    root: &Path,
+    boundaries: Value,
+    expected: Value,
+) -> TestResult {
+    let output = resolve_cli(
         root,
         json!({"schema":"codexy.tdd-classification-request.v1","boundaries":boundaries}),
     )?;
-    assert_success(&output, "v1 resolver failed");
-    assert_eq!(serde_json::from_slice::<Value>(&output.stdout)?, expected);
+    assert_output(&output, expected, "v1 CLI resolver failed")
+}
+
+pub(super) fn assert_v2(request: Value, expected: Value) -> TestResult {
+    assert_eq!(resolve(request)?, expected);
     Ok(())
 }
 
-pub(super) fn assert_v2(root: &Path, request: Value, expected: Value) -> TestResult {
-    let output = resolve(root, request)?;
-    assert_success(&output, "v2 resolver failed");
-    assert_eq!(serde_json::from_slice::<Value>(&output.stdout)?, expected);
+pub(super) fn assert_v2_cli(
+    root: &Path,
+    request: Value,
+    expected: Value,
+) -> TestResult {
+    let output = resolve_cli(root, request)?;
+    assert_output(&output, expected, "v2 CLI resolver failed")
+}
+
+pub(super) fn assert_rejected(request: Value, message: &str) -> TestResult {
+    let result = resolve(request);
+    assert!(result.is_err(), "{message}: {result:?}");
     Ok(())
 }
 
-pub(super) fn assert_rejected(root: &Path, request: Value, message: &str) -> TestResult {
-    let output = resolve(root, request)?;
+pub(super) fn assert_text_rejected(request: &str, message: &str) -> TestResult {
+    let result = resolve_text(request);
+    assert!(result.is_err(), "{message}: {result:?}");
+    Ok(())
+}
+
+pub(super) fn assert_cli_rejected(
+    root: &Path,
+    request: Value,
+    expected_error: &str,
+    message: &str,
+) -> TestResult {
+    let output = resolve_cli(root, request)?;
     assert!(!output.status.success(), "{message}");
-    Ok(())
-}
-
-pub(super) fn assert_text_rejected(root: &Path, request: &str, message: &str) -> TestResult {
-    let output = resolve_text(root, request)?;
-    assert!(!output.status.success(), "{message}");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(expected_error),
+        "{message}: expected stderr to contain {expected_error:?}, got {stderr}"
+    );
     Ok(())
 }
 
@@ -105,4 +155,14 @@ fn assert_success(output: &std::process::Output, message: &str) {
         "{message}: {}",
         String::from_utf8_lossy(&output.stderr)
     );
+}
+
+fn assert_output(
+    output: &std::process::Output,
+    expected: Value,
+    message: &str,
+) -> TestResult {
+    assert_success(output, message);
+    assert_eq!(serde_json::from_slice::<Value>(&output.stdout)?, expected);
+    Ok(())
 }
