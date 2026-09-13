@@ -14,6 +14,8 @@ mod readonly_escape;
 mod reset_writability;
 #[path = "validator_fixture_parallel_isolation/mutable_materialization.rs"]
 mod mutable_materialization;
+#[path = "validator_manifest_isolation/mod.rs"]
+mod manifest_isolation;
 
 #[test]
 fn parallel_manifest_aware_fixture_mutations_preserve_each_overlay_and_the_seed()
@@ -84,18 +86,14 @@ fn parallel_manifest_aware_fixture_mutations_preserve_each_overlay_and_the_seed(
 fn declared_mutations_use_the_manifest_aware_materialization_boundary()
 -> Result<(), Box<dyn std::error::Error>> {
     let declared = Path::new(".codex-plugin/plugin.json");
-    let seed_path = codexy_runtime::paths::repository_root()
-        .join("plugins/codexy")
-        .join(declared);
-    let seed = std::fs::read_to_string(&seed_path)?;
     let first = support::plugin_fixture_with_mutable_files(&[declared])?;
     let second = support::plugin_fixture_with_mutable_files(&[declared])?;
 
-    std::fs::write(first.root().join(declared), "{\"mutated\":true}\n")?;
-
-    assert_eq!(std::fs::read_to_string(second.root().join(declared))?, seed);
-    assert_eq!(std::fs::read_to_string(seed_path)?, seed);
-    Ok(())
+    manifest_isolation::assert_manifest_aware_overlay_isolation(
+        first.root(),
+        second.root(),
+        declared,
+    )
 }
 
 #[test]
