@@ -40,23 +40,45 @@ applicable methods only. Proof-driven completion owns final audit.
    evidence. MUST keep required repository CI and run each named authentic
    surface needed for the claimed outcome; broader checks are justified when the
    affected boundary or integration risk reaches them.
-6. MUST reuse an adequate existing result only while the relevant boundary,
-   environment, and evidence remain valid. MUST rerun it when a relevant change,
-   failure, changed environment, or unresolved concern invalidates it; MUST NOT
-   treat older evidence as current only because it passed.
-7. Within already authorized work, MUST run disposable checks, repair failures
+6. Before reusing any execution evidence, MUST read back the current diff and
+   the relevant implementation, dependency/lock/configuration, fixtures,
+   generated inputs, and environment. Each item MUST be classified as unchanged,
+   changed, or uncertain for the check being considered.
+7. MUST preserve each execution record's original revision, environment, exact
+   command, result, and execution state. A later applicability assessment MAY
+   explain why that result still covers an unchanged boundary, but MUST NOT
+   rewrite its provenance, revision, or claim that the check ran again.
+8. A valid passed check MAY be reused for that individual check after the
+   applicability assessment when the boundary and environment remain unchanged,
+   including an unrelated prose-only or other metadata-only change. A relevant
+   implementation, dependency, lock/configuration, shared fixture,
+   generated-input, or environment change, a previous failure, an unresolved
+   risk, or uncertain impact MUST invalidate the affected evidence and require
+   the affected checks again. Integration changes invalidate only affected
+   evidence when their impact is known; uncertain integration impact warrants
+   broader checks.
+9. Within already authorized work, MUST run disposable checks, repair failures
    caused by the change in the assigned scope, and rerun affected checks without
    repeated permission. MUST inspect ambiguous fixture or production effects;
    host denials and authorization for external or destructive operations remain
    authoritative.
-8. MUST clean temporary artifacts and map each changed file to the issue.
+10. MUST clean temporary artifacts and map each changed file to the issue.
 
 ## Shared evidence and handoff
 
-Evidence MUST bind input, expected/actual, invocation, cleanup, and state or
-head. Narrow checks prove only their boundary; external claims need authentic
-proof. MUST NOT hide failures or accept formatting-only LOC reduction. MUST stop
-on scope, authority, behavior, or proof conflict.
+Evidence MUST bind input, expected/actual, original invocation revision,
+environment, exact command, result, cleanup, and state or head. When reuse is
+proposed, existing handoff fields and prose MUST also explain the current
+applicability assessment. Narrow checks prove only their boundary; external
+claims need authentic proof. Reusing one check MUST NOT be presented as
+whole-change readiness. A child MAY supply valid execution evidence for the
+parent to consume after the same applicability assessment; the parent MUST NOT
+run a duplicate full suite by default solely to repeat unchanged evidence. The
+integrated final state still requires current requirements, affected checks, and
+required CI. This policy MUST NOT create an evidence service, hash ledger,
+universal receipt schema, new review quota, or extra default reviewer. MUST NOT
+hide missing, unobservable, or failed results or accept formatting-only LOC
+reduction. MUST stop on scope, authority, behavior, or proof conflict.
 
 Handoff MUST name methods, outcome, files, contracts, proof, external results,
 cleanup, skips, risks, and next action.

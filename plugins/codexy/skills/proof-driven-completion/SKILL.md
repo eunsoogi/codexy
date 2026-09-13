@@ -15,20 +15,28 @@ claim when proof is absent, stale, too weak, or contradictory.
 
 1. MUST restate the requested outcome and make a finite list only from its
    explicit requirements, named files, commands, external states, and
-   deliverables.
+   deliverables. The list MUST include a stopping condition: finish when the
+   required criteria, affected checks, and selected review when applicable are
+   satisfied with no unresolved in-scope defect.
 2. For each item, MUST name the evidence that would prove it. MUST use file
    content or diff for files, parsers for structured data, tests for executable
    behavior, and the authentic CLI, GitHub, browser, desktop, plugin,
    marketplace, or release surface for externally observable claims.
-3. MUST inspect the current authoritative state. Current head and current
+3. For every reused execution result, MUST preserve its original invocation
+   revision, environment, exact command, result, and execution state. A current
+   applicability assessment MUST remain separate from that historical execution
+   record and MUST be based on current diff/readback of relevant implementation,
+   dependency/lock/configuration, fixtures, generated inputs, and environment.
+   It MUST identify whether the boundary is unchanged, changed, or uncertain.
+4. MUST inspect the current authoritative state. Current head and current
    external state MUST win over memory, intent, plans, and output from older
    revisions.
-4. `proved` means current evidence matches every stated requirement; MUST NOT
+5. `proved` means current evidence matches every stated requirement; MUST NOT
    invent extra gates. `contradicted` conflicts; `incomplete` is partial or
    stale; `too weak` uses the wrong scope or surface; `missing` is absent or
    unrun proof. A missing required proof makes completion `missing`, not
    `incomplete`.
-5. MUST continue until every required item is proved. Otherwise MUST stop the
+6. MUST continue until every required item is proved. Otherwise MUST stop the
    completion claim, name the unmet item, and identify one concrete next action.
 
 ## Invariants
@@ -39,6 +47,24 @@ claim when proof is absent, stale, too weak, or contradictory.
   states and MUST NOT substitute for one another.
 - Evidence from an older head MUST NOT prove the current head. An unresolved
   external gate keeps the corresponding requirement incomplete.
+- Evidence reuse is per individual check, not whole-change readiness. A valid
+  passed check MAY be reused after current applicability assessment for an
+  unchanged boundary or unrelated prose-only or other metadata-only change. A
+  relevant source, dependency, lock/configuration, shared fixture,
+  generated-input, or environment change, a previous failure, unresolved risk,
+  or uncertain impact requires the affected checks again. Integration changes
+  invalidate only affected evidence when their impact is known; uncertain impact
+  warrants broader checks.
+- The owning child MAY supply preserved execution evidence for the parent to
+  consume; that does not require a duplicate default full-suite run. The final
+  integrated state still needs current requirements, affected checks, required
+  CI, and any selected review when applicable. A reviewer `PASS` from an older
+  head is never automatically inherited, and a current-head reviewer does not
+  make an old execution result a new run.
+- Additional tests, reviews, or broad checks MUST name an unmet requirement or
+  concrete unresolved risk. Budget exhaustion MUST retain the actual missing,
+  unobservable, or failed state and MUST NOT authorize `PASS`, conceal a
+  finding, or extend the requirement list indefinitely.
 - For governed files, MUST use the canonical touched-LOC producer. Every file
   MUST be at or below 250 physical lines, and blank-line deletion or collapsed
   readable content MUST NOT count as structural remediation.
