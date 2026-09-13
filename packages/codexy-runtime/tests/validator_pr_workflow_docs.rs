@@ -50,8 +50,23 @@ fn pr_review_handoff_status_capture_does_not_dirty_clean_worktree()
             "headRefOid": "068dbb247b7755035223c91ee39f26830f3c1609",
             "localHeadOid": "068dbb247b7755035223c91ee39f26830f3c1609",
             "remoteHeadOid": "068dbb247b7755035223c91ee39f26830f3c1609",
+            "repository": "eunsoogi/codexy",
+            "baseRefName": "main",
+            "baseRefOid": "0000000000000000000000000000000000000001",
+            "url": "https://github.com/eunsoogi/codexy/pull/242",
+            "capture": {
+                "provider": "github",
+                "method": "graphql",
+                "authenticated": true,
+                "owningIssue": {
+                    "repository": "eunsoogi/codexy",
+                    "number": 242,
+                    "url": "https://github.com/eunsoogi/codexy/issues/242",
+                    "association": "owner-assignment"
+                }
+            },
             "reviewDecision": "NOT_REQUIRED",
-            "reviewControl": {"schema":"codexy.review-control-state.v1","profile":"light","decision":"NOT_REQUIRED"},
+            "reviewControl": {"schema":"codexy.review-control-state.v1","profile":"light"},
             "worktreeStatus": status_text,
             "reviewThreads": {"pageInfo":{"hasNextPage":false},"nodes":[]}
         })

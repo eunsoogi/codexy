@@ -13,11 +13,11 @@ pub fn resolve_review_profile(plugin_root: &Path, request: &str) -> Result<serde
     review_control::resolve_profile(plugin_root, request)
 }
 
-/// Keeps the legacy packet entry point non-blocking.
+/// Retains the public packet entry point as an explicit unsupported operation.
 ///
 /// # Errors
 ///
-/// Returns an error for malformed packets, stale repository evidence, or invalid durable review transitions.
+/// Returns an explicit unsupported-operation error.
 pub fn check_review_packet(
     plugin_root: &Path,
     repository_root: &Path,
@@ -27,12 +27,11 @@ pub fn check_review_packet(
     review_control::check_packet(plugin_root, repository_root, ledger_path, packet)
 }
 
-/// Keeps the legacy measurement entry point non-blocking.
+/// Retains the public measurement entry point as an explicit unsupported operation.
 ///
 /// # Errors
 ///
-/// Returns an error for malformed unavailable state or whenever no independent
-/// Codex task/tool authority is exposed for an observed report.
+/// Returns an explicit unsupported-operation error.
 pub fn check_review_economics(
     plugin_root: &Path,
     repository_root: &Path,
@@ -57,11 +56,11 @@ pub fn build_review_pr_state(
     review_control::build_pr_state(plugin_root, repository_root, base, control, previous)
 }
 
-/// Imports complete, pre-PR reviewer history into one authenticated current PR snapshot.
+/// Retains the public pre-PR import entry point as an explicit unsupported operation.
 ///
 /// # Errors
 ///
-/// Returns an error for incomplete source evidence, invalid identities, or missing Git ancestry.
+/// Returns an explicit unsupported-operation error.
 pub fn import_pre_pr_review_history(
     plugin_root: &Path,
     repository_root: &Path,
@@ -71,12 +70,11 @@ pub fn import_pre_pr_review_history(
     review_control::import_pre_pr_history(plugin_root, repository_root, current, envelope)
 }
 
-/// Recovers complete post-PR native review history without admitting readiness.
+/// Retains the public native-history recovery entry point as an explicit unsupported operation.
 ///
 /// # Errors
 ///
-/// Returns an error for unauthenticated or stale current snapshots, incomplete
-/// source pages, conflicting facts, or an existing review history.
+/// Returns an explicit unsupported-operation error.
 pub fn recover_native_review_history(
     plugin_root: &Path,
     current: &str,
@@ -98,12 +96,11 @@ pub fn produce_review_control(
     review_control::produce(plugin_root, repository_root, request)
 }
 
-/// Checks whether one authenticated mixed-finding post-cap review may run.
+/// Retains the public next-review eligibility entry point as an explicit unsupported operation.
 ///
 /// # Errors
 ///
-/// Returns an error for stale snapshots, forged inputs, incomplete sources, or
-/// a predecessor that is not the exact two-event delta BLOCK state.
+/// Returns an explicit unsupported-operation error.
 pub fn check_next_review_eligibility(
     plugin_root: &Path,
     repository_root: &Path,

@@ -1,6 +1,7 @@
 <!-- Token-efficient orchestration event delta. MUST keep one block per active lane. -->
-<!-- This template is for an explicitly selected legacy review-history path. A
-     normal current-head review uses direct fields and leaves this ledger empty. -->
+<!-- Review-count, ordered-history, recovery, post-cap, and disposition fields
+     are retired. Preserve historical artifacts immutably; do not execute or
+     populate those fields in a current-head handoff. -->
 
 ## Lane
 
@@ -20,19 +21,14 @@
 - changed ids:
 - stale or demoted:
 
-## Issue Review Ledger
+## Current-head Review
 
-- issue:
-- terminal_review_count (PASS/BLOCK/UNOBSERVABLE only, maximum three):
-- terminal_review_limit (must remain three for reviewer-backed profiles):
-- terminal_review_history (ordered full, delta, and optional
-  required_current_head events):
-- authoritative prior PR snapshot / exact direct-state match confirmed:
-- exact history prefix and +1 count transition confirmed:
-- reviewer / exact head / terminal verdict for each counted review:
-- remaining_reviews:
-- final-repair-no-review state after a third BLOCK:
-- compaction, fresh-goal, and reauthorization carry-forward confirmed:
+- selected profile:
+- policy reviewer:
+- exact reviewed head:
+- terminal result or non-terminal status:
+- unresolved findings:
+- current-head verification:
 
 ## External Gate Wait
 
@@ -74,47 +70,6 @@ task/thread
 - eligible material events:
 - unchanged observations suppressed:
 - terminal delete/disable action:
-
-## Sentinel BLOCK Repair
-
-- BLOCK receipt:
-- repair plan:
-- in-scope issue-contract/root-defect findings:
-- engineering_tdd_required (v1 compatibility):
-- engineering_tests_required (v2):
-- tdd_mode (v2 summary; boundary_obligations are authoritative):
-- boundary_obligations (v2 per-boundary tests, sequencing, pre-change, and proof
-  duties):
-- RED/GREEN or proportional boundary proof:
-- terminal proof:
-- post-third disposition (not applicable, PASS, final repair, or maintainer
-  disposition):
-- final disposition form (not applicable, repaired-head, or same-head
-  evidence-only):
-- final disposition authority locator and live-source reread at producer, build,
-  and handoff:
-- final authority exact repository/issue/PR/base/head, OWNER/MEMBER immutable
-  decision, exact-head all-success CI, and complete resolved review threads:
-- immutable third BLOCK history and terminal_review_count=3 preserved:
-- final source-repair evidence/final-tree diff is non-empty and
-  finding-path-only, or same-head evidence refresh has no artificial source
-  edit:
-- synthetic PASS/UNOBSERVABLE, fourth profile review, and ordinary-gate waiver:
-- post-cap reason (mandatory_base_integration, in_scope_contract_root_repair,
-  authenticated_external_finding_repair, or authenticated_finding_disposition):
-- prior reviewed head (must equal the delta head):
-- qualifying-change from/to heads and evidence commit in Git ancestry:
-- authenticated current/previous PR snapshots, baseRefOid transition, and
-  finding_ids plus recorded-path linkage when root repair applies:
-- authenticated external-finding source envelope produced from the locator-only
-  `authenticated_external_finding_locator` through a fixed live GitHub GraphQL
-  read, with its raw response and deterministic projection, source identity
-  bound to the live projection, observed delta head, exact finding IDs, and
-  every recorded affected path when external repair applies; persisted
-  `capture.raw` equality/re-projection is offline integrity evidence, not
-  authentication:
-- fourth profile review: prohibited after the third terminal verdict
-- remaining tests/validators/CI/threads/ownership/safety/LOC/merge gates:
 
 ## New Child Setup
 

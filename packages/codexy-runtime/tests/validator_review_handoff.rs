@@ -7,11 +7,11 @@ fn sentinel_handoff_keeps_direct_state_without_legacy_artifacts() -> TestResult 
     let path = codexy_runtime::paths::repository_root()
         .join("plugins/codexy/agents/codexy-sentinel.toml");
     let text = fs::read_to_string(path)?;
-    let (compact, legacy) = text
+    let (compact, retired) = text
         .split_once("Compact terminal handoff:")
         .map(|(_, rest)| rest)
-        .and_then(|rest| rest.split_once("Explicit legacy handoff:"))
-        .expect("compact and explicit legacy handoffs");
+        .and_then(|rest| rest.split_once("Retired review-count"))
+        .expect("compact and retired handoffs");
     let forbidden = [
         ["codexy", "review", "terminal-record", "v1"],
         ["codexy", "review", "ledger", "v1"],
@@ -39,21 +39,15 @@ fn sentinel_handoff_keeps_direct_state_without_legacy_artifacts() -> TestResult 
         );
     }
     for required in [
-        "full",
-        "delta",
-        "terminal_review_count",
-        "terminal_review_limit",
-        "terminal_review_history",
-        "required_current_head",
-        "mandatory_base_integration",
-        "in_scope_contract_root_repair",
-        "qualifying_change",
-        "evidence commit",
-        "persisted prior PR snapshot",
+        "unsupported by the runtime",
+        "rejected before compact",
+        "immutable",
+        "MUST NOT be executed",
+        "used to establish current-head readiness",
     ] {
         assert!(
-            legacy.to_ascii_lowercase().contains(&required.to_ascii_lowercase()),
-            "legacy handoff must retain direct-state field {required}"
+            retired.to_ascii_lowercase().contains(&required.to_ascii_lowercase()),
+            "retired handoff must retain boundary statement {required}"
         );
     }
     Ok(())

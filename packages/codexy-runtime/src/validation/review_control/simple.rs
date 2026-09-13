@@ -3,31 +3,16 @@ use std::path::Path;
 use serde_json::{Map, Value};
 
 use super::super::{policy, snapshot};
-use super::CONTROL_SCHEMA;
+use super::{CONTROL_SCHEMA, request};
 
 const TERMINAL_RESULTS: [&str; 3] = ["PASS", "BLOCK", "UNOBSERVABLE"];
 const PENDING_RESULTS: [&str; 2] = ["PENDING", "RUNNING"];
-const BOOKKEEPING_FIELDS: [&str; 11] = [
-    "full_review_count",
-    "delta_review_count",
-    "terminal_review_count",
-    "terminal_review_limit",
-    "terminal_review_history",
-    "post_cap_re_review",
-    "final_disposition",
-    "reviewer_migration",
-    "pre_pr_import",
-    "native_history_recovery",
-    "native_history_provenance",
-];
-
 pub(super) fn is_simple(control: &Map<String, Value>) -> bool {
-    !BOOKKEEPING_FIELDS
-        .iter()
-        .any(|field| control.contains_key(*field))
+    request::is_compact_control(control)
 }
 
 pub(super) fn check_control(plugin_root: &Path, control: &Value) -> Result<(), String> {
+    request::reject_retired_control(control)?;
     let object = control
         .as_object()
         .ok_or_else(|| "review control state must be an object".to_owned())?;
@@ -39,6 +24,7 @@ pub(super) fn check_pr_state(
     state: &Value,
     require_pass: bool,
 ) -> Result<(), String> {
+    request::reject_retired_inputs(state)?;
     snapshot::check(state, "current")?;
     let object = state
         .get("reviewControl")

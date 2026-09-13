@@ -6,6 +6,9 @@ pub(super) fn check(plugin_root: &Path, handoff: &str, pr_state: &str) -> Vec<St
         Ok(value) => value,
         Err(error) => return vec![format!("completion handoff PR state JSON error: {error}")],
     };
+    if let Err(error) = super::review_control::reject_retired_inputs(&state) {
+        return vec![error];
+    }
     if let Some(error) = pr_state_input_error(&state) {
         return vec![error];
     }
@@ -45,29 +48,7 @@ pub(super) fn check(plugin_root: &Path, handoff: &str, pr_state: &str) -> Vec<St
 }
 
 fn has_direct_control(state: &Value) -> bool {
-    let Some(control) = state.get("reviewControl").and_then(Value::as_object) else {
-        return false;
-    };
-    let has_direct_fields = [
-        "reviewer",
-        "reviewed_head",
-        "terminal_result",
-        "unresolved_findings",
-        "full_review_count",
-        "delta_review_count",
-        "issue_number",
-        "terminal_review_count",
-        "terminal_review_limit",
-        "terminal_review_history",
-        "post_cap_re_review",
-        "final_disposition",
-    ]
-    .iter()
-    .any(|field| control.contains_key(*field));
-    has_direct_fields
-        || !["decision", "evidence", "ledger"]
-            .iter()
-            .any(|field| control.contains_key(*field))
+    state.get("reviewControl").is_some()
 }
 
 fn pr_state_input_error(state: &Value) -> Option<String> {

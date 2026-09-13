@@ -9,6 +9,8 @@ mod direct_state;
 mod compact;
 #[path = "validator_pr_state_capture/connector.rs"]
 mod connector;
+#[path = "validator_pr_state_capture/retired.rs"]
+mod retired;
 
 const BASE_OID: &str = "0000000000000000000000000000000000000001";
 const HEAD_OID: &str = "0000000000000000000000000000000000000002";
@@ -22,7 +24,7 @@ fn direct_review_control_accepts_state_without_ceremony() -> TestResult {
     assert_eq!(control["reviewed_head"], HEAD_OID);
     assert_eq!(control["terminal_result"], "PASS");
     assert_eq!(control["unresolved_findings"], json!([]));
-    assert_eq!(control["full_review_count"], 1);
+    assert!(control.get("full_review_count").is_none());
     assert!(state.get("capture").is_some());
     assert!(control.get("ledger").is_none());
     assert!(control.get("packet").is_none());
@@ -30,60 +32,49 @@ fn direct_review_control_accepts_state_without_ceremony() -> TestResult {
 }
 
 #[test]
-fn direct_review_control_rejects_the_closed_negative_cases() -> TestResult {
-    for legacy in ["", "decision", "evidence", "ledger"] {
-        for mutate in [
-            |control: &mut Value| {
-                control["profile"] = json!("standard");
-            },
-            |control: &mut Value| {
-                control["reviewer"]["name"] = json!("codexy-inspector");
-            },
-            |control: &mut Value| {
-                control["reviewed_head"] = json!("stale");
-            },
-            |control: &mut Value| {
-                control["terminal_result"] = json!("BLOCK");
-            },
-            |control: &mut Value| {
-                control["unresolved_findings"] = json!(["f-1"]);
-            },
-            |control: &mut Value| {
-                control["full_review_count"] = json!(2);
-                control["delta_review_count"] = json!(2);
-            },
-            |control: &mut Value| {
-                control["profile"] = json!("standard");
-                control["reviewer"] = json!({
-                    "name": "codexy-inspector",
-                    "model": "gpt-5.6-sol",
-                    "reasoning_effort": "medium"
-                });
-            },
-        ] {
-            let mut control = direct_state::strict_control(725, HEAD_OID);
-            mutate(&mut control);
-            control[legacy] = json!({});
-            assert!(
-                !validate_readiness(control)?.status.success(),
-                "direct-state negative case must remain blocked"
-            );
-        }
+fn direct_review_control_rejects_faults_and_retired_shortcuts() -> TestResult {
+    let mut cases = Vec::new();
+    let mut wrong_profile = direct_state::strict_control(725, HEAD_OID);
+    wrong_profile["profile"] = json!("standard");
+    cases.push(wrong_profile);
+    let mut wrong_reviewer = direct_state::strict_control(725, HEAD_OID);
+    wrong_reviewer["reviewer"]["name"] = json!("codexy-inspector");
+    cases.push(wrong_reviewer);
+    let mut stale_head = direct_state::strict_control(725, HEAD_OID);
+    stale_head["reviewed_head"] = json!("stale");
+    cases.push(stale_head);
+    let mut blocked = direct_state::strict_control(725, HEAD_OID);
+    blocked["terminal_result"] = json!("BLOCK");
+    cases.push(blocked);
+    let mut findings = direct_state::strict_control(725, HEAD_OID);
+    findings["unresolved_findings"] = json!(["f-1"]);
+    cases.push(findings);
+    for field in [
+        "full_review_count",
+        "delta_review_count",
+        "terminal_review_count",
+        "terminal_review_limit",
+        "terminal_review_history",
+        "post_cap_re_review",
+        "final_disposition",
+        "reviewer_migration",
+        "pre_pr_import",
+        "native_history_recovery",
+        "native_history_provenance",
+        "decision",
+        "evidence",
+        "ledger",
+    ] {
+        let mut control = direct_state::strict_control(725, HEAD_OID);
+        control[field] = json!(null);
+        cases.push(control);
     }
-    Ok(())
-}
-#[test]
-fn direct_review_control_requires_explicit_delta_count() -> TestResult {
-    let mut control = direct_state::strict_control(725, HEAD_OID);
-    control
-        .as_object_mut()
-        .expect("direct review control object")
-        .remove("delta_review_count");
-    let output = validate_readiness(control)?;
-    assert!(
-        !output.status.success(),
-        "missing delta review count must remain blocked"
-    );
+    for control in cases {
+        assert!(
+            !validate_readiness(control)?.status.success(),
+            "direct-state negative case must remain blocked"
+        );
+    }
     Ok(())
 }
 #[test]

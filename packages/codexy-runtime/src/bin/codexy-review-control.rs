@@ -50,67 +50,39 @@ struct Cli {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let root = cli.plugin_root.unwrap_or_else(paths::plugin_root);
     if cli.recover_native_history {
-        let current = fs::read_to_string(cli.base_pr_state_file.ok_or_else(|| {
-            anyhow::anyhow!("native history recovery requires --current-pr-state-file")
-        })?)?;
-        let input = fs::read_to_string(
-            cli.input
-                .ok_or_else(|| anyhow::anyhow!("native history recovery requires --input"))?,
-        )?;
-        let output = cli
-            .output
-            .ok_or_else(|| anyhow::anyhow!("native history recovery requires --output"))?;
-        let state = validation::recover_native_review_history(&root, &current, &input)?;
-        fs::write(output, serde_json::to_vec_pretty(&state)?)?;
-    } else if cli.check_next_review_eligibility {
-        let repository_root = cli
-            .repository_root
-            .unwrap_or_else(|| paths::repository_root().to_path_buf());
-        let current = fs::read_to_string(
-            cli.base_pr_state_file
-                .ok_or_else(|| anyhow::anyhow!("--current-pr-state-file is required"))?,
-        )?;
-        let previous = fs::read_to_string(
-            cli.previous_pr_state_file
-                .ok_or_else(|| anyhow::anyhow!("--previous-pr-state-file is required"))?,
-        )?;
-        let request = fs::read_to_string(
-            cli.input
-                .ok_or_else(|| anyhow::anyhow!("--input is required"))?,
-        )?;
-        let output = cli
-            .output
-            .ok_or_else(|| anyhow::anyhow!("--output is required"))?;
-        let receipt = validation::check_next_review_eligibility(
-            &root,
-            &repository_root,
-            &current,
-            &previous,
-            &request,
-        )?;
-        fs::write(output, serde_json::to_vec_pretty(&receipt)?)?;
-    } else if cli.import_pre_pr_history {
-        let current = fs::read_to_string(cli.base_pr_state_file.ok_or_else(|| {
-            anyhow::anyhow!("pre-PR history import requires --current-pr-state-file")
-        })?)?;
-        let envelope = fs::read_to_string(
-            cli.input
-                .ok_or_else(|| anyhow::anyhow!("pre-PR history import requires --input"))?,
-        )?;
-        let output = cli
-            .output
-            .ok_or_else(|| anyhow::anyhow!("pre-PR history import requires --output"))?;
-        let state = validation::import_pre_pr_review_history(
-            &root,
-            &cli.repository_root
-                .unwrap_or_else(|| paths::repository_root().to_path_buf()),
-            &current,
-            &envelope,
-        )?;
-        fs::write(output, serde_json::to_vec_pretty(&state)?)?;
-    } else if cli.produce_review_control {
+        anyhow::bail!(
+            "legacy review-control processing is no longer supported: native review-history recovery is retired"
+        );
+    }
+    if cli.check_next_review_eligibility {
+        anyhow::bail!(
+            "legacy review-control processing is no longer supported: next-review eligibility is retired"
+        );
+    }
+    if cli.import_pre_pr_history {
+        anyhow::bail!(
+            "legacy review-control processing is no longer supported: pre-PR history import is retired"
+        );
+    }
+    if cli.capture_economics {
+        anyhow::bail!(
+            "legacy review-control processing is no longer supported: review economics capture is retired"
+        );
+    }
+    if cli.check_packet {
+        anyhow::bail!(
+            "legacy review-control processing is no longer supported: review packet validation is retired"
+        );
+    }
+    if cli.check_economics {
+        anyhow::bail!(
+            "legacy review-control processing is no longer supported: review economics validation is retired"
+        );
+    }
+
+    let root = cli.plugin_root.unwrap_or_else(paths::plugin_root);
+    if cli.produce_review_control {
         let input = fs::read_to_string(
             cli.input
                 .ok_or_else(|| anyhow::anyhow!("review-control producer requires --input"))?,
@@ -127,19 +99,6 @@ fn main() -> Result<()> {
         fs::write(
             output,
             serde_json::to_vec_pretty(&produced["control_state"])?,
-        )?;
-    } else if cli.capture_economics {
-        let request = serde_json::json!({
-            "schema":"codexy.review-economics-capture-request.v1",
-            "observer_command":cli.observer_command.ok_or_else(|| anyhow::anyhow!("--observer-command is required"))?,
-            "trusted_receipt":cli.trusted_receipt.ok_or_else(|| anyhow::anyhow!("--trusted-receipt is required"))?,
-            "output":cli.output.ok_or_else(|| anyhow::anyhow!("--output is required"))?
-        });
-        validation::check_review_economics(
-            &root,
-            &cli.repository_root
-                .unwrap_or_else(|| paths::repository_root().to_path_buf()),
-            &serde_json::to_string(&request)?,
         )?;
     } else if cli.build_pr_state {
         let repository_root = cli
@@ -179,32 +138,6 @@ fn main() -> Result<()> {
             "{}",
             serde_json::to_string(&validation::resolve_review_profile(&root, &input)?)?
         );
-    } else if cli.check_packet {
-        let input = fs::read_to_string(
-            cli.input
-                .ok_or_else(|| anyhow::anyhow!("--input is required"))?,
-        )?;
-        validation::check_review_packet(
-            &root,
-            &cli.repository_root
-                .unwrap_or_else(|| paths::repository_root().to_path_buf()),
-            &cli.ledger
-                .ok_or_else(|| anyhow::anyhow!("--ledger is required with --check-packet"))?,
-            &input,
-        )?;
-        println!("review packet validation ok");
-    } else if cli.check_economics {
-        let input = fs::read_to_string(
-            cli.input
-                .ok_or_else(|| anyhow::anyhow!("--input is required"))?,
-        )?;
-        validation::check_review_economics(
-            &root,
-            &cli.repository_root
-                .unwrap_or_else(|| paths::repository_root().to_path_buf()),
-            &input,
-        )?;
-        println!("review economics validation ok");
     } else {
         anyhow::bail!("exactly one review-control mode is required");
     }

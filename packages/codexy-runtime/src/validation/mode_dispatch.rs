@@ -84,18 +84,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
 fn review_lifecycle_errors(plugin_root: &Path, evidence: &str) -> Vec<String> {
     workflow_profile_evidence::current_active_lines(evidence)
         .into_iter()
-        .filter(|line| {
-            serde_json::from_str::<serde_json::Value>(line).is_ok_and(|record| {
-                record.get("reviewed_head").is_some()
-                    && record.get("profile").is_some()
-                    && record.get("reviewer").is_some()
-            })
-        })
-        .filter(|line| {
-            !review_control::is_lifecycle_terminal(plugin_root, line)
-                && !review_control::is_lifecycle_pending(plugin_root, line)
-        })
-        .map(|_| "review lifecycle evidence must contain direct terminal fields".to_owned())
+        .filter_map(|line| review_control::lifecycle_error(plugin_root, &line))
         .collect()
 }
 
