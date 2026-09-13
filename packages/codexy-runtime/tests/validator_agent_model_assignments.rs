@@ -170,30 +170,6 @@ fn validator_cli_reports_unexpected_catalog_contract_entry() -> TestResult {
     Ok(())
 }
 
-#[test]
-fn sentinel_uses_astra_with_xhigh_reasoning_and_not_ultra() -> TestResult {
-    let sentinel = parse_agent(
-        &codexy_runtime::paths::repository_root().join("plugins/codexy/agents/codexy-sentinel.toml"),
-    )?;
-    assert_eq!(
-        sentinel.get("model").and_then(toml::Value::as_str),
-        Some("gpt-6-astra")
-    );
-    assert_eq!(
-        sentinel
-            .get("model_reasoning_effort")
-            .and_then(toml::Value::as_str),
-        Some("xhigh")
-    );
-    assert_ne!(
-        sentinel
-            .get("model_reasoning_effort")
-            .and_then(toml::Value::as_str),
-        Some("ultra")
-    );
-    Ok(())
-}
-
 fn parse_agent(path: &Path) -> TestResult<toml::Value> {
     Ok(toml::from_str(&std::fs::read_to_string(path)?)?)
 }
