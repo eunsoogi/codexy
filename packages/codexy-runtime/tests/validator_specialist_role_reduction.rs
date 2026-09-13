@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, path::Path, process::Command};
 
 use serde_json::json;
 
-use crate::support::{TestResult, copy_plugin_fixture};
+use crate::support::{TestResult, copy_plugin_fixture_with_mutable_files};
 
 const CURRENT: [&str; 8] = [
     "codexy-architect",
@@ -36,7 +36,11 @@ fn retired_specialists_are_not_registered_or_callable() -> TestResult {
 
 #[test]
 fn historical_prose_does_not_define_current_role_contract() -> TestResult {
-    let (temp, plugin_root) = copy_plugin_fixture()?;
+    let mutable_files = [
+        Path::new("skills/orchestration/SKILL.md"),
+        Path::new("skills/orchestration/references/classification-and-control.md"),
+    ];
+    let (temp, plugin_root) = copy_plugin_fixture_with_mutable_files(&mutable_files)?;
     let docs_root = temp.path().join("docs");
     std::fs::create_dir_all(&docs_root)?;
     std::fs::write(
@@ -118,7 +122,8 @@ fn assert_retired_specialists(plugin_root: &Path) -> TestResult {
 fn assert_catalog_mutation_is_detected(
     mutate: impl FnOnce(String) -> String,
 ) -> TestResult {
-    let (_temp, plugin_root) = copy_plugin_fixture()?;
+    let mutable_files = [Path::new("agents/catalog.toml")];
+    let (_temp, plugin_root) = copy_plugin_fixture_with_mutable_files(&mutable_files)?;
     let catalog_path = plugin_root.join("agents/catalog.toml");
     let catalog = std::fs::read_to_string(&catalog_path)?;
     let mutated = mutate(catalog);
