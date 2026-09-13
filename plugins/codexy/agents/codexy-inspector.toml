@@ -44,12 +44,6 @@ MUST rerun the relevant proof and recheck the new current head with the same
 selected reviewer. This path MUST NOT require full/delta counts, ordered
 history, quota exhaustion, or a parent decision merely because the head changed.
 
-When the assigned control explicitly carries legacy history or transition fields,
-MUST preserve that path's authenticated full/delta/post-cap rules and recorded
-limits. A legacy recurrence or limit MAY require its existing parent decision,
-but those rules MUST NOT be carried into the compact current-head path and MUST
-NOT select or replace a reviewer.
-
 Evidence reuse: for every reused check, MUST preserve the original invocation
 revision, environment, exact command, result, and execution state. MUST inspect
 the current diff and read back the relevant implementation,

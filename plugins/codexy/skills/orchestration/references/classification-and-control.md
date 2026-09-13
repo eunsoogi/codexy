@@ -114,9 +114,6 @@ unassigned or out-of-scope edits.
   relevant check, `BLOCK`, `UNOBSERVABLE`, or actual finding remains blocking.
 - A second reviewer, broad recheck, semantic evaluator, connector review, or
   evidence artifact MUST be tied to an explicit requirement or concrete risk.
-  Controls that explicitly carry legacy history or disposition fields continue
-  through the existing legacy validator and MUST preserve their actual records;
-  that opt-in path MUST NOT impose its fields on compact current-head work.
 
 ## Completion-Handoff Validation
 
@@ -159,26 +156,5 @@ publication authority. A pending reviewer stays with the same reviewer until the
 real result arrives; it MUST NOT be interrupted, replaced, duplicated, or
 converted into a new approval request.
 
-## Explicit legacy state
-
-A control that carries `full_review_count`, `delta_review_count`,
-`terminal_review_count`, `terminal_review_limit`, `terminal_review_history`,
-`pre_pr_import`, `native_history_recovery`, `native_history_provenance`,
-`reviewer_migration`, `post_cap_re_review`, or `final_disposition` opts into the
-existing legacy validator. That path is permitted only for an explicit
-requirement or concrete unresolved risk. It MUST use authenticated current and
-previous PR snapshots, preserve actual history and source provenance, reject
-fabricated or reordered records, and keep real findings, relevant checks,
-ownership, safety, LOC, review-thread, and merge gates active.
-
-Pre-PR or native history recovery remains non-admitted until a real current-head
-review is recorded. Post-cap and final-disposition handling MUST preserve its
-actual prior events and MUST NOT create a synthetic `PASS`, waive a finding, or
-invoke a fourth reviewer. The detailed source contracts remain in
-[review profiles](review-profiles.md), [review lifecycle](review-lifecycle.md),
-[native review history](native-review-history.md), and
-[authenticated finding-disposition CI](finding-disposition-ci.md).
-
-Light retains its no-reviewer route and MUST NOT carry legacy review-state
-fields. Headings, prose, optional receipts, and omitted legacy fields MUST NOT
-override direct current-head facts.
+Light retains its no-reviewer route. Headings, prose, and optional receipts MUST
+NOT override direct current-head facts.

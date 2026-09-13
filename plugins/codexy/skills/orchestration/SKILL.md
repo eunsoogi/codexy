@@ -162,10 +162,9 @@ messages.
 ### Review and communicate
 
 - MUST read [review profiles](references/review-profiles.md) when selecting a
-  proportionate current-head reviewer or an explicit legacy review path.
+  proportionate current-head reviewer.
 - MUST read [review lifecycle](references/review-lifecycle.md) when waiting for,
-  repairing from, or handing off a current-head reviewer result or legacy
-  review-state result.
+  repairing from, or handing off a current-head reviewer result.
 - MUST read
   [plain-language user replies](references/plain-language-user-replies.md) when
   writing any user-visible message, including task/agent prompts, callbacks,

@@ -43,17 +43,11 @@ fn build_pr_state_accepts_unequal_authenticated_issue_and_pr_numbers() -> TestRe
 }
 
 #[test]
-fn build_pr_state_preserves_history_for_unequal_issue_and_pr_numbers() -> TestResult {
+fn build_pr_state_accepts_a_new_current_head_without_history() -> TestResult {
     let issue_number = 11;
     let pr_number = 17;
     let previous_control = direct_state::strict_control(issue_number, HEAD_OID);
-    let mut current_control = direct_state::strict_control(issue_number, NEXT_HEAD_OID);
-    current_control["delta_review_count"] = json!(1);
-    current_control["terminal_review_count"] = json!(2);
-    current_control["terminal_review_history"] = json!([
-        direct_state::review_event("strict-full-1", "full", HEAD_OID, "PASS"),
-        direct_state::review_event("strict-delta-1", "delta", NEXT_HEAD_OID, "PASS")
-    ]);
+    let current_control = direct_state::strict_control(issue_number, NEXT_HEAD_OID);
     let previous = snapshot(
         pr_number,
         issue_number,
@@ -65,17 +59,14 @@ fn build_pr_state_preserves_history_for_unequal_issue_and_pr_numbers() -> TestRe
     let (result, state) = run_build(&current, &current_control, &previous)?;
     assert!(
         result.status.success(),
-        "unequal identities must preserve a valid history transition: {}",
+        "unequal identities must accept a valid current-head review: {}",
         String::from_utf8_lossy(&result.stderr)
     );
     let state = state.expect("successful transition must write PR state");
     assert_eq!(state["number"], json!(pr_number));
     assert_eq!(state["capture"]["owningIssue"]["number"], json!(issue_number));
-    assert_eq!(state["reviewControl"]["terminal_review_count"], json!(2));
-    assert_eq!(
-        state["reviewControl"]["terminal_review_history"][0],
-        previous_control["terminal_review_history"][0]
-    );
+    assert_eq!(state["reviewControl"], current_control);
+    assert_eq!(previous_control["reviewed_head"], HEAD_OID);
     Ok(())
 }
 

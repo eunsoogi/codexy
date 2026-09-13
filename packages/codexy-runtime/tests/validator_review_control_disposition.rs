@@ -4,7 +4,7 @@ use crate::support::TestResult;
 use serde_json::json;
 
 #[test]
-fn finding_disposition_producer_rejects_caller_source_and_capture() -> TestResult {
+fn finding_disposition_producer_rejects_retired_input_before_source_access() -> TestResult {
     let temporary = tempfile::tempdir()?;
     let input = temporary.path().join("input.json");
     let output = temporary.path().join("control.json");
@@ -29,7 +29,8 @@ fn finding_disposition_producer_rejects_caller_source_and_capture() -> TestResul
         .output()?;
     assert!(!result.status.success());
     assert!(
-        String::from_utf8_lossy(&result.stderr).contains("caller-supplied external finding source")
+        String::from_utf8_lossy(&result.stderr)
+            .contains("legacy review-control processing is no longer supported")
     );
     assert!(!output.exists());
     Ok(())

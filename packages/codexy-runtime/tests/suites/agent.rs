@@ -58,20 +58,11 @@ mod validator_review_control_disposition;
 #[path = "../validator_review_control_lifecycle.rs"]
 mod validator_review_control_lifecycle;
 
-#[path = "../validator_review_control_import.rs"]
-mod validator_review_control_import;
-
-#[path = "../validator_review_control_import_contract.rs"]
-mod validator_review_control_import_contract;
-
 #[path = "../validator_review_control_identity.rs"]
 mod validator_review_control_identity;
 
 #[path = "../validator_completion_handoff_review_identity.rs"]
 mod validator_completion_handoff_review_identity;
-
-#[path = "../validator_review_control_migration.rs"]
-mod validator_review_control_migration;
 
 #[path = "../validator_prompt_host_limits.rs"]
 mod validator_prompt_host_limits;
@@ -99,66 +90,3 @@ mod validator_review_handoff;
 
 #[path = "../validator_pr_state_capture.rs"]
 mod validator_pr_state_capture;
-
-#[path = "../validator_post_cap_review.rs"]
-mod validator_post_cap_review;
-
-#[path = "../validator_post_cap_review_negatives.rs"]
-mod validator_post_cap_review_negatives;
-
-#[path = "../validator_post_cap_external_finding.rs"]
-#[cfg(unix)]
-mod validator_post_cap_external_finding;
-
-#[path = "../validator_actions_external_finding.rs"]
-#[cfg(unix)]
-mod validator_actions_external_finding;
-
-#[path = "../validator_actions_external_finding_identity.rs"]
-#[cfg(unix)]
-mod validator_actions_external_finding_identity;
-
-#[path = "../validator_actions_external_finding_negatives.rs"]
-#[cfg(unix)]
-mod validator_actions_external_finding_negatives;
-
-#[path = "../validator_actions_cli_compat.rs"]
-#[cfg(unix)]
-mod validator_actions_cli_compat;
-
-#[path = "../validator_post_cap_external_finding_negatives.rs"]
-#[cfg(unix)]
-mod validator_post_cap_external_finding_negatives;
-
-#[path = "../validator_post_cap_finding_disposition.rs"]
-#[cfg(unix)]
-mod validator_post_cap_finding_disposition;
-
-#[path = "../validator_post_cap_finding_disposition_handoff.rs"]
-#[cfg(unix)]
-mod validator_post_cap_finding_disposition_handoff;
-
-#[path = "../validator_post_cap_finding_disposition_negatives.rs"]
-#[cfg(unix)]
-mod validator_post_cap_finding_disposition_negatives;
-
-#[path = "../validator_post_cap_finding_disposition_preamble_negatives.rs"]
-#[cfg(unix)]
-mod validator_post_cap_finding_disposition_preamble_negatives;
-
-#[path = "../validator_review_control_pre_verdict.rs"]
-#[cfg(unix)]
-mod validator_review_control_pre_verdict;
-
-#[path = "../validator_review_control_pre_verdict_negatives.rs"]
-#[cfg(unix)]
-mod validator_review_control_pre_verdict_negatives;
-
-#[path = "../validator_final_disposition.rs"]
-mod validator_final_disposition;
-
-#[path = "../validator_final_disposition_edges.rs"]
-mod validator_final_disposition_edges;
-
-#[path = "../validator_final_disposition_witness.rs"]
-mod validator_final_disposition_witness;

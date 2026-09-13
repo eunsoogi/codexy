@@ -75,16 +75,4 @@ genesis/import records, transcript reconstruction, invocation telemetry, quota
 bookkeeping, or a disposition ledger. A pending `PENDING` or `RUNNING` result
 MUST remain pending until the same reviewer returns its actual result.
 
-Explicit legacy handoff: only when the control explicitly carries the legacy
-history or disposition fields named in `review-profiles.md`, MUST preserve the
-authenticated prior snapshots, reviewer tuples, heads, findings, source
-provenance, and transition constraints enforced by the packaged validator,
-including full/delta events, `terminal_review_count`,
-`terminal_review_limit`, `terminal_review_history`, and any
-`required_current_head` transition such as `mandatory_base_integration`,
-`in_scope_contract_root_repair`, or `qualifying_change` bound to an evidence commit.
-The persisted prior PR snapshot remains authoritative for that path.
-Legacy recovery or disposition output MUST NOT establish current-head readiness
-by itself, waive an actual finding, or authorize a fourth review. These legacy
-requirements MUST NOT be applied to a compact current-head control.
 """

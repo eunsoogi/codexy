@@ -56,22 +56,4 @@ and quota bookkeeping MUST NOT block the compact current-head path. They remain
 unknown evidence and MUST NOT be converted into a synthetic result or a new
 approval request.
 
-## Explicit legacy review-state path
-
-Controls that contain `full_review_count`, `delta_review_count`,
-`terminal_review_count`, `terminal_review_limit`, `terminal_review_history`,
-`pre_pr_import`, `native_history_recovery`, `native_history_provenance`,
-`reviewer_migration`, `post_cap_re_review`, or `final_disposition` opt into the
-existing legacy transition path. That path is used only when an explicit
-requirement or a concrete unresolved risk needs historical reconstruction or a
-bounded disposition. Its validators MUST preserve actual reviewer tuples, heads,
-findings, source provenance, and authentic GitHub or host evidence; they MUST
-reject fabricated history, synthetic verdicts, and caller-supplied authority.
-
-Pre-PR imports and native recovery remain non-admitted until a real current-head
-review is available. Post-cap and final-disposition transitions MUST preserve
-their actual prior history and continue to enforce code, relevant checks,
-ownership, safety, thread, LOC, and merge gates. None of these legacy paths may
-waive a real finding or authorize a fourth reviewer.
-
 The executable profile contract remains in the packaged runtime validator.

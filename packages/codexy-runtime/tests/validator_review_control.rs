@@ -7,128 +7,11 @@ use serde_json::json;
 mod direct_state;
 #[path = "validator_review_control/connector.rs"]
 mod connector;
+#[path = "validator_review_control/retired.rs"]
+mod retired;
 
 const BASE_OID: &str = "0000000000000000000000000000000000000001";
 const HEAD_OID: &str = "0000000000000000000000000000000000000002";
-
-#[test]
-fn external_finding_producer_rejects_matching_caller_source_and_capture() -> TestResult {
-    let temporary = tempfile::tempdir()?;
-    let input = temporary.path().join("input.json");
-    let output = temporary.path().join("control.json");
-    let source = json!({
-        "schema": "codexy.review-control-external-finding.v1",
-        "capture": {
-            "provider": "github",
-            "method": "graphql",
-            "authenticated": true,
-            "raw": {"caller": "forged"}
-        }
-    });
-    fs::write(
-        &input,
-        serde_json::to_vec(&json!({
-            "control_state": {"schema": "codexy.review-control-state.v1", "profile": "strict"},
-            "authenticated_external_finding": source,
-            "authenticated_external_finding_capture": {
-                "provider": "github",
-                "method": "graphql",
-                "authenticated": true,
-                "raw": {"caller": "forged"}
-            }
-        }))?,
-    )?;
-    let result = Command::new(env!("CARGO_BIN_EXE_codexy-review-control"))
-        .args(["--produce-review-control", "--input"])
-        .arg(&input)
-        .args(["--output"])
-        .arg(&output)
-        .output()?;
-    assert!(
-        !result.status.success(),
-        "external producer accepted matching caller source and capture"
-    );
-    assert!(
-        String::from_utf8_lossy(&result.stderr).contains("caller-supplied external finding"),
-        "legacy caller source diagnostic must be explicit: {}",
-        String::from_utf8_lossy(&result.stderr)
-    );
-    assert!(!output.exists());
-    Ok(())
-}
-
-#[test]
-fn external_finding_producer_requires_a_live_locator_for_typed_repair() -> TestResult {
-    let temporary = tempfile::tempdir()?;
-    let input = temporary.path().join("input.json");
-    let output = temporary.path().join("control.json");
-    fs::write(
-        &input,
-        serde_json::to_vec(&json!({
-            "control_state": {
-                "schema": "codexy.review-control-state.v1",
-                "profile": "strict",
-                "post_cap_re_review": {
-                    "reason": "authenticated_external_finding_repair"
-                }
-            }
-        }))?,
-    )?;
-    let result = Command::new(env!("CARGO_BIN_EXE_codexy-review-control"))
-        .args(["--produce-review-control", "--input"])
-        .arg(&input)
-        .args(["--output"])
-        .arg(&output)
-        .output()?;
-    assert!(!result.status.success());
-    assert!(
-        String::from_utf8_lossy(&result.stderr).contains("authenticated_external_finding_locator"),
-        "typed external repair must require a live locator: {}",
-        String::from_utf8_lossy(&result.stderr)
-    );
-    assert!(!output.exists());
-    Ok(())
-}
-
-#[test]
-fn external_finding_producer_rejects_invalid_locator_before_github_read() -> TestResult {
-    let temporary = tempfile::tempdir()?;
-    let input = temporary.path().join("input.json");
-    let output = temporary.path().join("control.json");
-    fs::write(
-        &input,
-        serde_json::to_vec(&json!({
-            "control_state": {
-                "schema": "codexy.review-control-state.v1",
-                "profile": "strict",
-                "post_cap_re_review": {
-                    "reason": "authenticated_external_finding_repair"
-                }
-            },
-            "authenticated_external_finding_locator": {
-                "repository": "eunsoogi/codexy",
-                "owningIssue": 0,
-                "pullRequest": 938,
-                "reviewThread": "PRRT_fake",
-                "reviewComment": "PRRC_fake"
-            }
-        }))?,
-    )?;
-    let result = Command::new(env!("CARGO_BIN_EXE_codexy-review-control"))
-        .args(["--produce-review-control", "--input"])
-        .arg(&input)
-        .args(["--output"])
-        .arg(&output)
-        .output()?;
-    assert!(!result.status.success());
-    assert!(
-        String::from_utf8_lossy(&result.stderr).contains("positive GraphQL integer"),
-        "invalid locator must fail before gh: {}",
-        String::from_utf8_lossy(&result.stderr)
-    );
-    assert!(!output.exists());
-    Ok(())
-}
 
 #[test]
 fn review_control_producer_writes_only_direct_state() -> TestResult {
@@ -189,6 +72,54 @@ fn review_control_producer_accepts_light_controls_without_reviewer_state() -> Te
             expected
         );
     }
+    Ok(())
+}
+
+#[test]
+fn producer_rejects_retired_shortcuts_in_a_direct_control() -> TestResult {
+    for field in ["decision", "evidence", "ledger"] {
+        let mut control = direct_state::strict_control(725, HEAD_OID);
+        control[field] = serde_json::Value::Null;
+        retired::assert_retired_request(control)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn build_pr_state_rejects_retired_previous_before_current_normalization() -> TestResult {
+    let temporary = tempfile::tempdir()?;
+    let current = temporary.path().join("current.json");
+    let control = temporary.path().join("control.json");
+    let previous = temporary.path().join("previous.json");
+    let output = temporary.path().join("output.json");
+    let sentinel = b"preserve this output";
+    fs::write(&current, b"{}")?;
+    fs::write(
+        &control,
+        serde_json::to_vec(&direct_state::strict_control(725, HEAD_OID))?,
+    )?;
+    fs::write(
+        &previous,
+        br#"{"reviewControl":{"full_review_count":null}}"#,
+    )?;
+    fs::write(&output, sentinel)?;
+
+    let result = Command::new(env!("CARGO_BIN_EXE_codexy-review-control"))
+        .args(["--build-pr-state", "--base-pr-state-file"])
+        .arg(&current)
+        .args(["--review-control-state-file"])
+        .arg(&control)
+        .args(["--previous-pr-state-file"])
+        .arg(&previous)
+        .args(["--output"])
+        .arg(&output)
+        .output()?;
+    assert!(!result.status.success());
+    assert!(
+        String::from_utf8_lossy(&result.stderr)
+            .contains("legacy review-control processing is no longer supported")
+    );
+    assert_eq!(fs::read(&output)?, sentinel);
     Ok(())
 }
 

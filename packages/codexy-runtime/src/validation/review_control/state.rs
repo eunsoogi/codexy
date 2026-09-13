@@ -1,95 +1,31 @@
 use std::path::Path;
 
-use serde_json::{Map, Value, json};
+use serde_json::Value;
 
-use super::{history, migration, policy, pre_pr, snapshot};
+use super::request;
 
-#[path = "state/check.rs"]
-mod check;
-#[path = "state/lifecycle.rs"]
-mod lifecycle;
-#[path = "state/native_history.rs"]
-mod native_history;
 #[path = "simple.rs"]
 mod simple;
 
 pub(super) const CONTROL_SCHEMA: &str = "codexy.review-control-state.v1";
 
-const TERMINAL_RESULTS: [&str; 3] = ["PASS", "BLOCK", "UNOBSERVABLE"];
-
 pub(super) fn is_lifecycle_terminal(plugin_root: &Path, record: &str) -> bool {
     let Ok(value) = serde_json::from_str::<Value>(record) else {
         return false;
     };
-    if value.as_object().is_some_and(simple::is_simple) {
-        return simple::is_terminal(plugin_root, &value);
-    }
-    lifecycle::is_terminal(plugin_root, record)
+    request::reject_retired_control(&value).is_ok() && simple::is_terminal(plugin_root, &value)
 }
 
 pub(super) fn is_lifecycle_pending(plugin_root: &Path, record: &str) -> bool {
     let Ok(value) = serde_json::from_str::<Value>(record) else {
         return false;
     };
-    value.as_object().is_some_and(simple::is_simple) && simple::is_pending(plugin_root, &value)
-}
-
-pub(super) fn is_simple_control(control: &Value) -> bool {
-    control.as_object().is_some_and(simple::is_simple)
+    request::reject_retired_control(&value).is_ok() && simple::is_pending(plugin_root, &value)
 }
 
 pub(super) fn check_control(plugin_root: &Path, control: &Value) -> Result<(), String> {
-    if is_simple_control(control) {
-        return simple::check_control(plugin_root, control);
-    }
-    let light = control.get("profile").and_then(Value::as_str) == Some("light");
-    let head = control
-        .get("final_disposition")
-        .and_then(Value::as_object)
-        .and_then(|disposition| disposition.get("head_oid"))
-        .and_then(Value::as_str)
-        .filter(|head| !head.is_empty())
-        .or_else(|| {
-            control
-                .get("reviewed_head")
-                .and_then(Value::as_str)
-                .filter(|head| !head.is_empty())
-        })
-        .or_else(|| light.then_some("light-review"))
-        .ok_or_else(|| "review control state must bind reviewed_head".to_owned())?;
-    let state = json!({"headRefOid": head, "reviewControl": control});
-    if !light {
-        control
-            .get("issue_number")
-            .and_then(Value::as_u64)
-            .ok_or_else(|| "review control state must contain numeric issue_number".to_owned())?;
-    }
-    check::with_mode(
-        plugin_root,
-        &state,
-        false,
-        ReviewerMode::Current,
-        StateSource::ControlOnly,
-    )
-}
-
-pub(super) fn check_native_history_predecessor(
-    plugin_root: &Path,
-    state: &Value,
-) -> Result<(), String> {
-    native_history::check_predecessor(plugin_root, state)
-}
-
-#[derive(Clone, Copy)]
-enum ReviewerMode {
-    Current,
-    Legacy,
-}
-
-#[derive(Clone, Copy)]
-enum StateSource {
-    ControlOnly,
-    PrSnapshot,
+    request::reject_retired_inputs(control)?;
+    simple::check_control(plugin_root, control)
 }
 
 pub(super) fn check_pr_state(
@@ -97,43 +33,6 @@ pub(super) fn check_pr_state(
     state: &Value,
     require_pass: bool,
 ) -> Result<(), String> {
-    if state.get("reviewControl").is_some_and(is_simple_control) {
-        return simple::check_pr_state(plugin_root, state, require_pass);
-    }
-    if state
-        .get("reviewControl")
-        .and_then(Value::as_object)
-        .is_some_and(|control| control.contains_key("native_history_recovery"))
-    {
-        return Err("native history recovery is not eligible for current PR admission".into());
-    }
-    if let Some(control) = state.get("reviewControl").and_then(Value::as_object)
-        && control.contains_key("native_history_provenance")
-    {
-        native_history::check_provenance(state, control)?;
-    }
-    check::with_mode(
-        plugin_root,
-        state,
-        require_pass,
-        ReviewerMode::Current,
-        StateSource::PrSnapshot,
-    )
-}
-
-pub(super) fn check_pr_state_predecessor(plugin_root: &Path, state: &Value) -> Result<(), String> {
-    check::with_mode(
-        plugin_root,
-        state,
-        false,
-        ReviewerMode::Legacy,
-        StateSource::PrSnapshot,
-    )
-}
-
-fn count(value: &Map<String, Value>, key: &str) -> Result<u64, String> {
-    value
-        .get(key)
-        .and_then(Value::as_u64)
-        .ok_or_else(|| format!("review control state must contain numeric {key}"))
+    request::reject_retired_inputs(state)?;
+    simple::check_pr_state(plugin_root, state, require_pass)
 }
