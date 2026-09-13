@@ -1,9 +1,7 @@
-use std::process::{Command, Output};
-
 use crate::support;
 
 #[test]
-fn validator_cli_rejects_empty_nickname_entries() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_in_process_rejects_empty_nickname_entries() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
@@ -12,7 +10,7 @@ fn validator_cli_rejects_empty_nickname_entries() -> Result<(), Box<dyn std::err
     planner.push_str("\nnickname_candidates = [\"\", \"Plan\"]\n");
     std::fs::write(&planner_path, planner)?;
 
-    let output = validator(&plugin_root)?;
+    let output = support::validator_in_process(&plugin_root, "--check-roles")?;
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("nickname_candidates must be a list of non-empty strings"));
@@ -20,7 +18,8 @@ fn validator_cli_rejects_empty_nickname_entries() -> Result<(), Box<dyn std::err
 }
 
 #[test]
-fn validator_cli_rejects_non_custom_agent_fields() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_in_process_rejects_non_custom_agent_fields() -> Result<(), Box<dyn std::error::Error>>
+{
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
@@ -29,7 +28,7 @@ fn validator_cli_rejects_non_custom_agent_fields() -> Result<(), Box<dyn std::er
     planner.push_str("\ndisplay_name = \"Planner\"\n");
     std::fs::write(&planner_path, planner)?;
 
-    let output = validator(&plugin_root)?;
+    let output = support::validator_in_process(&plugin_root, "--check-roles")?;
 
     assert!(!output.status.success());
     assert!(
@@ -39,7 +38,7 @@ fn validator_cli_rejects_non_custom_agent_fields() -> Result<(), Box<dyn std::er
 }
 
 #[test]
-fn validator_cli_rejects_agent_missing_developer_instructions()
+fn validator_in_process_rejects_agent_missing_developer_instructions()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
@@ -49,7 +48,7 @@ fn validator_cli_rejects_agent_missing_developer_instructions()
     let planner = planner.replace("developer_instructions = \"\"\"\n", "removed = \"\"\"\n");
     std::fs::write(&planner_path, planner)?;
 
-    let output = validator(&plugin_root)?;
+    let output = support::validator_in_process(&plugin_root, "--check-roles")?;
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("developer_instructions must be a non-empty string"));
@@ -57,7 +56,7 @@ fn validator_cli_rejects_agent_missing_developer_instructions()
 }
 
 #[test]
-fn validator_cli_allows_supported_custom_agent_config_layers()
+fn validator_in_process_allows_supported_custom_agent_config_layers()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
@@ -69,14 +68,15 @@ fn validator_cli_allows_supported_custom_agent_config_layers()
     );
     std::fs::write(&planner_path, planner)?;
 
-    let output = validator(&plugin_root)?;
+    let output = support::validator_in_process(&plugin_root, "--check-roles")?;
 
     assert!(output.status.success(), "stderr:\n{}", stderr(&output));
     Ok(())
 }
 
 #[test]
-fn validator_cli_rejects_invalid_mcp_tools_config() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_in_process_rejects_invalid_mcp_tools_config() -> Result<(), Box<dyn std::error::Error>>
+{
     let fragment = "\n[mcp_servers.example_mcp]\ncommand = \"example_mcp\"\ntools = \"bad\"\n";
     let expected = "mcp_servers.example_mcp.tools must be a table";
     let output = validate_planner_fragment(fragment)?;
@@ -90,7 +90,7 @@ fn validator_cli_rejects_invalid_mcp_tools_config() -> Result<(), Box<dyn std::e
 }
 
 #[test]
-fn validator_cli_rejects_non_table_skills() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_in_process_rejects_non_table_skills() -> Result<(), Box<dyn std::error::Error>> {
     let fragment = "\nskills = []\n";
     let output = validate_planner_fragment(fragment)?;
     assert!(!output.status.success());
@@ -99,7 +99,8 @@ fn validator_cli_rejects_non_table_skills() -> Result<(), Box<dyn std::error::Er
 }
 
 #[test]
-fn validator_cli_rejects_array_shaped_mcp_servers() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_in_process_rejects_array_shaped_mcp_servers() -> Result<(), Box<dyn std::error::Error>>
+{
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
@@ -108,7 +109,7 @@ fn validator_cli_rejects_array_shaped_mcp_servers() -> Result<(), Box<dyn std::e
     planner.push_str("\nmcp_servers = [\"example_mcp\"]\n");
     std::fs::write(&planner_path, planner)?;
 
-    let output = validator(&plugin_root)?;
+    let output = support::validator_in_process(&plugin_root, "--check-roles")?;
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("mcp_servers must be a table"));
@@ -116,7 +117,8 @@ fn validator_cli_rejects_array_shaped_mcp_servers() -> Result<(), Box<dyn std::e
 }
 
 #[test]
-fn validator_cli_rejects_table_shaped_skills_config() -> Result<(), Box<dyn std::error::Error>> {
+fn validator_in_process_rejects_table_shaped_skills_config()
+-> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
@@ -125,7 +127,7 @@ fn validator_cli_rejects_table_shaped_skills_config() -> Result<(), Box<dyn std:
     planner.push_str("\n[skills.config]\n\"codexy:qa\" = { enabled = true }\n");
     std::fs::write(&planner_path, planner)?;
 
-    let output = validator(&plugin_root)?;
+    let output = support::validator_in_process(&plugin_root, "--check-roles")?;
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("skills.config must be an array"));
@@ -133,8 +135,8 @@ fn validator_cli_rejects_table_shaped_skills_config() -> Result<(), Box<dyn std:
 }
 
 #[test]
-fn validator_cli_rejects_unsupported_skills_config_fields() -> Result<(), Box<dyn std::error::Error>>
-{
+fn validator_in_process_rejects_unsupported_skills_config_fields()
+-> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
@@ -143,7 +145,7 @@ fn validator_cli_rejects_unsupported_skills_config_fields() -> Result<(), Box<dy
     planner.push_str("\n[[skills.config]]\nname = \"codexy:qa\"\n");
     std::fs::write(&planner_path, planner)?;
 
-    let output = validator(&plugin_root)?;
+    let output = support::validator_in_process(&plugin_root, "--check-roles")?;
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("skills.config.name is not part"));
@@ -151,8 +153,8 @@ fn validator_cli_rejects_unsupported_skills_config_fields() -> Result<(), Box<dy
 }
 
 #[test]
-fn validator_cli_rejects_unsupported_skills_config_layers() -> Result<(), Box<dyn std::error::Error>>
-{
+fn validator_in_process_rejects_unsupported_skills_config_layers()
+-> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
@@ -161,7 +163,7 @@ fn validator_cli_rejects_unsupported_skills_config_layers() -> Result<(), Box<dy
     planner.push_str("\n[skills.unsupported]\nfoo = true\n");
     std::fs::write(&planner_path, planner)?;
 
-    let output = validator(&plugin_root)?;
+    let output = support::validator_in_process(&plugin_root, "--check-roles")?;
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("skills.unsupported is not part"));
@@ -175,17 +177,9 @@ fn copy_fixture(plugin_root: &std::path::Path) -> std::io::Result<()> {
     )
 }
 
-fn validator(plugin_root: &std::path::Path) -> Result<Output, Box<dyn std::error::Error>> {
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root path")?,
-            "--check-roles",
-        ])
-        .output()?)
-}
-
-fn validate_planner_fragment(fragment: &str) -> Result<Output, Box<dyn std::error::Error>> {
+fn validate_planner_fragment(
+    fragment: &str,
+) -> Result<std::process::Output, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("codexy");
     copy_fixture(&plugin_root)?;
@@ -193,7 +187,7 @@ fn validate_planner_fragment(fragment: &str) -> Result<Output, Box<dyn std::erro
     let mut planner = std::fs::read_to_string(&planner_path)?;
     planner.push_str(fragment);
     std::fs::write(&planner_path, planner)?;
-    validator(&plugin_root)
+    support::validator_in_process(&plugin_root, "--check-roles")
 }
 
 fn stderr(output: &std::process::Output) -> String {

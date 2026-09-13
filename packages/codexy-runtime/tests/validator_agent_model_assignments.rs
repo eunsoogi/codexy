@@ -108,7 +108,7 @@ fn packaged_agents_match_the_independent_role_contract() -> TestResult {
 }
 
 #[test]
-fn validator_cli_rejects_every_role_model_regression() -> TestResult {
+fn validator_in_process_rejects_every_role_model_regression() -> TestResult {
     let fixture = agent_fixture(EXPECTED_AGENTS.iter().map(|expected| expected.filename))?;
     for expected in EXPECTED_AGENTS {
         assert_rejected(
@@ -126,7 +126,7 @@ fn validator_cli_rejects_every_role_model_regression() -> TestResult {
 }
 
 #[test]
-fn validator_cli_rejects_every_role_effort_regression() -> TestResult {
+fn validator_in_process_rejects_every_role_effort_regression() -> TestResult {
     let fixture = agent_fixture(EXPECTED_AGENTS.iter().map(|expected| expected.filename))?;
     for expected in EXPECTED_AGENTS {
         assert_rejected(
@@ -147,7 +147,7 @@ fn validator_cli_rejects_every_role_effort_regression() -> TestResult {
 }
 
 #[test]
-fn validator_cli_reports_missing_catalog_contract_entry() -> TestResult {
+fn validator_in_process_reports_missing_catalog_contract_entry() -> TestResult {
     let fixture = catalog_fixture()?;
     assert_rejected(
         validate_catalog_replacement(&fixture, "  \"codexy-architect.toml\",\n", "")?,
@@ -157,7 +157,7 @@ fn validator_cli_reports_missing_catalog_contract_entry() -> TestResult {
 }
 
 #[test]
-fn validator_cli_reports_unexpected_catalog_contract_entry() -> TestResult {
+fn validator_in_process_reports_unexpected_catalog_contract_entry() -> TestResult {
     let fixture = catalog_fixture()?;
     assert_rejected(
         validate_catalog_replacement(

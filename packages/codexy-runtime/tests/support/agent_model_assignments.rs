@@ -39,7 +39,7 @@ pub(crate) fn validate_agent_replacement(
         &path,
         agent.replacen(&needle, &format!("{field} = {replacement:?}"), 1),
     )?;
-    validator(fixture.root())
+    validator_in_process(fixture.root())
 }
 
 pub(crate) fn validate_catalog_replacement(
@@ -52,7 +52,7 @@ pub(crate) fn validate_catalog_replacement(
     let path = fixture.root().join(relative);
     let catalog = std::fs::read_to_string(&path)?;
     std::fs::write(&path, catalog.replacen(needle, replacement, 1))?;
-    validator(fixture.root())
+    validator_in_process(fixture.root())
 }
 
 pub(crate) fn public_contract_import_check() -> TestResult<Output> {
@@ -178,13 +178,6 @@ pub(crate) fn assert_privacy_diagnostic(output: &Output) -> TestResult {
     .into())
 }
 
-fn validator(plugin_root: &Path) -> TestResult<Output> {
-    super::profile_metrics::record("validator_cli");
-    Ok(Command::new(env!("CARGO_BIN_EXE_codexy-validate"))
-        .args([
-            "--plugin-root",
-            plugin_root.to_str().ok_or("plugin root path")?,
-            "--check-roles",
-        ])
-        .output()?)
+fn validator_in_process(plugin_root: &Path) -> TestResult<Output> {
+    super::validator_in_process(plugin_root, "--check-roles")
 }
