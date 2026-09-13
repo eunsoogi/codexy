@@ -52,11 +52,24 @@ cancels it, or a verified host limitation prevents continuation.
 For a native Watcher route, only the assigned Watcher MAY call `wait_threads` to
 observe its assigned Worker or task targets. The Orchestrator MUST await reports
 through `watcher_wait` and MUST NOT call `wait_threads` for those targets.
-Fallback, unavailable, and host-transition branches MUST report the real
-limitation and recover the supported Watcher route; they MUST NOT re-authorize
-direct parent polling. After an actionable report, one bounded authoritative
-Worker or app readback is allowed for judgement and correction, and that
-readback is not an observation wait.
+Callers MUST omit `timeoutMs` for ordinary observation so the server selects the
+maximum `MAX_WAIT_MS` (currently 3,600,000 ms); a shorter value requires an
+explicit reason such as a user-requested deadline or a confirmed host limit.
+While that request is pending, the Orchestrator MUST stay in one quiet tool
+await and MUST NOT emit reasoning, progress messages, short polls, or unrelated
+work merely because no event has arrived. Fallback, unavailable, and
+host-transition branches MUST report the real limitation and recover the
+supported Watcher route; they MUST NOT re-authorize direct parent polling. After
+an actionable report, one bounded authoritative Worker or app readback is
+allowed for judgement and correction, and that readback is not an observation
+wait.
+
+A same-connection `notifications/cancelled` for this request releases only the
+pending wait when the host propagates it and preserves the durable session. The
+separate `watcher_cancel` operation durably ends the session; it is not request
+cancellation, and a fresh assignment is required afterward. A host/task message
+or outer wait termination may leave the native request active, so automatic
+host-interrupt success remains an external evidence requirement.
 
 An implementation Worker or child MUST NOT open, wait on, report to, cancel, or
 reuse a parent-owned Watcher session or token. Visibility of a session, token,

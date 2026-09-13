@@ -39,7 +39,7 @@ pub fn tools() -> Vec<ToolDef> {
         ),
         wait_tool(
             "watcher_wait",
-            "Wait for bounded material Watcher reports from a durable cross-process queue for up to 60 minutes. A same-connection MCP cancellation notification releases the wait when the host propagates it; a host/task message or outer wait termination may leave it active. If host cancellation is unavailable, use authorized watcher_cancel to end the session, then open a new assignment/session for a fresh observation. If the session TTL expires, returns status=expired with empty events and the unchanged nextCursor; the wait does not consume or modify the durable event log.",
+            "Wait for bounded material Watcher reports from a durable cross-process queue for up to 60 minutes. Omitting timeoutMs selects the maximum server-side wait of 3600000 ms; an explicit shorter value remains supported. A same-connection MCP notifications/cancelled request for this wait releases it when the host propagates the cancellation and preserves the durable session. watcher_cancel is separate: it durably ends the session and requires a fresh assignment for observation. A host/task message or outer wait termination may leave the native wait active. If the session TTL expires, returns status=expired with empty events and the unchanged nextCursor; the wait does not consume or modify the durable event log.",
         ),
         ToolDef::new(
             "watcher_health",
