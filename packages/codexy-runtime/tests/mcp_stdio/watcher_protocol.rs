@@ -110,6 +110,17 @@ fn watcher_wait_is_released_by_mcp_cancellation_without_consuming_later_events(
         }}
     }))?;
     assert_eq!(tool_payload(&replacement)?["status"], "timeout");
+    let session_after_request_cancel = client.send(&json!({
+        "jsonrpc":"2.0","id":42,"method":"tools/call",
+        "params":{"name":"watcher_health","arguments":{
+            "sessionId":session,"token":parent_token
+        }}
+    }))?;
+    assert_eq!(
+        tool_payload(&session_after_request_cancel)?["status"],
+        "active",
+        "request cancellation must preserve the durable session"
+    );
     client.send_without_read(&json!({
         "jsonrpc":"2.0","id":5,"method":"tools/call",
         "params":{"name":"watcher_health","arguments":{

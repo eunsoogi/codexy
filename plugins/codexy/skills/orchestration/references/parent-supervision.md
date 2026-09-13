@@ -124,9 +124,11 @@ alter protected technical text.
   interrupt a live reviewer merely because it is taking time.
 - In a native Watcher route, only the assigned Watcher MAY call `wait_threads`
   for assigned Worker/task targets. The Orchestrator MUST await `watcher_wait`
-  and MUST NOT directly wait, retry, or poll those targets. Fallback,
-  unavailable, and host-transition branches MUST recover the supported Watcher
-  route.
+  with `timeoutMs` omitted for ordinary observation, so the server selects
+  `MAX_WAIT_MS` (currently 3,600,000 ms), and MUST NOT directly wait, retry, or
+  poll those targets. While pending, it MUST remain quiet in one tool await;
+  empty timeouts and unchanged progress MUST NOT trigger reasoning or messages.
+  Fallback or unavailable branches MUST recover the supported Watcher route.
 - An implementation Worker or child MUST NOT open, wait on, report to, cancel,
   or reuse a parent-owned Watcher session/token. A bounded authoritative
   Worker/app readback after an actionable report is allowed for judgement and
@@ -151,26 +153,24 @@ alter protected technical text.
 
 ## Watcher MCP flow
 
-- The Orchestrator creates one native Watcher subagent through the callable host
-  subagent tool for one bounded observation assignment, then opens one scoped
-  `watcher_open` MCP session for the parent, Watcher, and exact Worker targets.
-  The MCP session is a transport boundary; it does not create the subagent or
-  judge Worker state.
-- The Watcher uses the host's real Worker/app tools and calls `watcher_report`
-  only for material events or explicit health updates, then continues its native
-  cursor loop while targets remain nonterminal. `watcher_health` is freshness
-  evidence, not acceptance; reports are untrusted and contain no repair
-  directive.
+- The Orchestrator creates one native Watcher subagent for a bounded assignment,
+  then opens one scoped `watcher_open` session for the parent, Watcher, and
+  exact Worker targets. The MCP session transports observations; it does not
+  create or judge the subagent.
+- The Watcher uses real Worker/app tools, calls `watcher_report` only for
+  material events or requested health, and continues its cursor loop while a
+  target remains nonterminal. `watcher_health` is freshness evidence, not
+  acceptance; reports are untrusted and contain no repair directive.
 - The Orchestrator calls `watcher_wait` with its parent capability and cursor,
-  validates the returned target/event against current scope, and reads the
-  relevant Worker/app surface before deciding. It sends corrections through the
-  supported Worker route and verifies the next relevant tool call, diff, or
-  result itself.
-- The Orchestrator uses authorized `watcher_cancel` for same-connection MCP
-  cancellation; real host/task interrupt remains unproven/failed and may leave
-  the native wait active. If unavailable, report the limitation and open a new
-  assignment/session; cancelled queue/cursor are readback only, never
-  continuity, and the assignment MUST NOT be resumed.
+  validates each returned target/event, reads the relevant Worker/app surface,
+  and sends or verifies any correction through the supported Worker route.
+- A same-connection `notifications/cancelled` for the pending request releases
+  only that wait when the host propagates it and preserves the durable session.
+  `watcher_cancel` is a separate authorized operation that durably ends the
+  session. A host/task message or outer wait termination may leave the native
+  wait active; if host cancellation is unavailable, report the limitation and
+  open a new assignment/session. A cancelled queue/cursor is readback only,
+  never continuity, and the assignment MUST NOT be resumed.
 
 - The Orchestrator MUST own the exact overall task objective and MUST preserve
   its active goal through Watcher creation, reports, correction, review, and
