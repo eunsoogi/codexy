@@ -12,8 +12,8 @@ First classify the requested outcome:
   preserve the [requirement → replacement oracle → retained unique regression]
   chain, but it MUST NOT claim a runtime improvement from a lower test count.
   CPU, RSS, disk, process, and similar profiling MUST NOT be required solely to
-  justify an independently proven duplicate removal. MUST reuse existing
-  metrics when available and record an unavailable value as `not measured`.
+  justify an independently proven duplicate removal. MUST reuse existing metrics
+  when available and record an unavailable value as `not measured`.
 - A runtime performance optimization makes a cost or speed claim. It MUST use
   the comparable workload and cost evidence below, including setup or compile
   cost when that cost belongs to the requested path.

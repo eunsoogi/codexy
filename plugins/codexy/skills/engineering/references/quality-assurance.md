@@ -16,24 +16,24 @@ MUST turn each completion claim into observable evidence.
    detect different failures or protect different boundaries.
 4. Derive affected checks from changed executable boundaries, their callers,
    shared fixtures or dependencies, and the repository's existing suite and CI
-   definitions. An unknown dependency or cross-cutting change expands the
-   check set; it MUST NOT be silently skipped. A permanent impact graph is not
+   definitions. An unknown dependency or cross-cutting change expands the check
+   set; it MUST NOT be silently skipped. A permanent impact graph is not
    required.
 5. MUST run automated checks that cover the changed or claimed requirements
    first. MUST drive each user-visible or externally observable surface actually
    changed or claimed, using the channel required by that surface; a CLI
    behavior claim requires real CLI execution, while a documentation-only
    correction does not require installing unrelated components. A cheap local
-   check MUST NOT replace required CLI, browser, desktop, package, CI,
-   security, or platform evidence. MUST preserve authentic evidence and report
-   cleanup and failures.
+   check MUST NOT replace required CLI, browser, desktop, package, CI, security,
+   or platform evidence. MUST preserve authentic evidence and report cleanup and
+   failures.
 6. Distinguish a prose-only instruction edit from a behavior-changing
    instruction. Prose-only work uses structural readback and MUST NOT invent
    wording assertions or prose TDD. A behavior-changing instruction uses the
-   existing bounded semantic-evaluation procedure only when its behavior or
-   risk warrants it; it is not required for every documentation PR. A prose
-   review or structural readback is not model-execution evidence; a later
-   integrated evaluation remains a separate owned surface.
+   existing bounded semantic-evaluation procedure only when its behavior or risk
+   warrants it; it is not required for every documentation PR. A prose review or
+   structural readback is not model-execution evidence; a later integrated
+   evaluation remains a separate owned surface.
 7. Bind PASS to the exact file state or head and account for temporary files,
    ports, sessions, screenshots, traces, and worktrees.
 

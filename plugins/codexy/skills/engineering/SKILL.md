@@ -27,9 +27,9 @@ applicable methods only. Proof-driven completion owns final audit.
 
 Before editing, MUST establish the short
 [change contract](references/specification.md#change-contract): requested
-behavior, preserved behavior, non-goals, material risks, and evidence needed
-for completion. Issue or plan lines are enough for a small change; a separate
-PRD or test plan MUST NOT be required by default.
+behavior, preserved behavior, non-goals, material risks, and evidence needed for
+completion. Issue or plan lines are enough for a small change; a separate PRD or
+test plan MUST NOT be required by default.
 
 For each changed boundary, MUST decide these independently:
 
@@ -50,8 +50,7 @@ selection.
 
 1. MUST read authorities and diff; MUST keep one outcome and exclusions.
 2. MUST record expected/current behavior, riskiest edge, proof, and questions
-   before editing, using the change contract to anchor any new or replaced
-   test.
+   before editing, using the change contract to anchor any new or replaced test.
 3. MUST establish faithful pre-change proof. For v2, every engineering boundary
    with `engineering_tests_required` needs requirement-linked behavioral
    verification; RED/GREEN applies only to that boundary when `tdd_mode` is
@@ -60,13 +59,13 @@ selection.
    manufacture RED. Mixed requests follow their boundary obligations.
 4. MUST make the smallest spec-backed change and preserve public contracts.
 5. MUST select the cheapest faithful checks from the changed executable
-   boundaries, affected requirements, integration risk, explicit
-   user/repository checks, and current evidence. MUST keep required repository
-   CI and run each named authentic surface needed for the claimed outcome;
-   broader checks are justified when the affected boundary or integration risk
-   reaches them. MUST NOT automatically repeat unit, integration, or
-   end-to-end proof when it observes the same failure; retain separate levels
-   only for distinct failure modes.
+   boundaries, affected requirements, integration risk, explicit user/repository
+   checks, and current evidence. MUST keep required repository CI and run each
+   named authentic surface needed for the claimed outcome; broader checks are
+   justified when the affected boundary or integration risk reaches them. MUST
+   NOT automatically repeat unit, integration, or end-to-end proof when it
+   observes the same failure; retain separate levels only for distinct failure
+   modes.
 6. Before reusing any execution evidence, MUST read back the current diff and
    the relevant implementation, dependency/lock/configuration, fixtures,
    generated inputs, and environment. Each item MUST be classified as unchanged,
@@ -93,8 +92,9 @@ selection.
 11. MUST stop when the requirement list, affected checks, and selected review
     when applicable are satisfied with no unresolved in-scope defect. Further
     checks or reviewers require a named unmet criterion or concrete unresolved
-    risk. Use the shared [execution budget](../orchestration/references/execution-budget.md)
-    and [proof-driven completion](../proof-driven-completion/SKILL.md) rules by
+    risk. Use the shared
+    [execution budget](../orchestration/references/execution-budget.md) and
+    [proof-driven completion](../proof-driven-completion/SKILL.md) rules by
     reference; do not add a local quota, evidence ledger, grader, or permission
     gate.
 

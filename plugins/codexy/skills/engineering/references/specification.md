@@ -22,20 +22,19 @@ Before editing, MUST record a short contract in the issue or plan:
 - Evidence needed: the smallest faithful checks and authentic surfaces that can
   prove the requested behavior.
 
-For a small change, these five points may be a few lines. A separate PRD or
-test plan MUST NOT be created unless the scope needs one.
+For a small change, these five points may be a few lines. A separate PRD or test
+plan MUST NOT be created unless the scope needs one.
 
 ## Requirement-led test choices
 
 For every new or replaced test, name the requirement or distinct regression it
-protects, the faulty behavior that would fail it, and the source of its
-expected result. Expected results MUST come from the agreed contract or an
-independent observation, never only from the current implementation output.
-A test that only repeats an implementation detail or copies the current output
-without exposing a contract violation is not a distinct oracle.
-Keep this behavioral-test decision separate from test-first order and
-verification depth; their boundary-specific rules live in
-[test-driven development](test-driven-development.md) and
+protects, the faulty behavior that would fail it, and the source of its expected
+result. Expected results MUST come from the agreed contract or an independent
+observation, never only from the current implementation output. A test that only
+repeats an implementation detail or copies the current output without exposing a
+contract violation is not a distinct oracle. Keep this behavioral-test decision
+separate from test-first order and verification depth; their boundary-specific
+rules live in [test-driven development](test-driven-development.md) and
 [quality assurance](quality-assurance.md).
 
 ## Constraints

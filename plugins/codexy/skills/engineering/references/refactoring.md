@@ -18,10 +18,10 @@ MUST improve structure while preserving behavior and public contracts.
 
 MUST NOT weaken, delete, skip, or rewrite tests just to pass a refactor.
 
-An independently justified duplicate-test removal or merge is allowed only
-when its preserved oracle is explicit. Classify the behavior boundary first
-and retain the security, error, platform, and state-transition invariants that
-the change still needs to protect. Mutation or fault injection is targeted to
+An independently justified duplicate-test removal or merge is allowed only when
+its preserved oracle is explicit. Classify the behavior boundary first and
+retain the security, error, platform, and state-transition invariants that the
+change still needs to protect. Mutation or fault injection is targeted to
 uncertain important coverage; it is not a default obligation for every edit.
 
 ## Governed LOC contract
