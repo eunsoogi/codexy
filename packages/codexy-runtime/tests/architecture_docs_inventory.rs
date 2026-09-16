@@ -11,6 +11,8 @@ mod cargo_targets;
 mod repository_skills;
 #[path = "architecture_docs_inventory/module_roots.rs"]
 mod module_roots;
+#[path = "architecture_docs_inventory/readme_skills.rs"]
+mod readme_skills;
 
 #[derive(Debug, Eq, PartialEq)]
 struct Agent {
@@ -60,10 +62,10 @@ fn readmes_link_to_the_public_guide_and_mermaid_workflows_are_present() -> TestR
     let english = std::fs::read_to_string(root.join("README.md"))?;
     let korean = std::fs::read_to_string(root.join("README.ko.md"))?;
 
-    assert_eq!(link_count(&english, "docs/architecture.md"), 1);
-    assert_eq!(link_count(&korean, "docs/architecture.md"), 1);
+    assert_eq!(readme_skills::link_count(&english, "docs/architecture.md"), 1);
+    assert_eq!(readme_skills::link_count(&korean, "docs/architecture.md"), 1);
     assert_eq!(guide.matches("```mermaid").count(), 2);
-    assert!(has_word(&guide, "configured") && has_word(&guide, "callable"));
+    assert!(readme_skills::has_word(&guide, "configured") && readme_skills::has_word(&guide, "callable"));
     assert_local_links(root, &root.join("docs/architecture.md"), &guide)?;
     assert_local_links(root, &root.join("README.md"), &english)?;
     assert_local_links(root, &root.join("README.ko.md"), &korean)?;
@@ -234,17 +236,4 @@ fn assert_local_links(root: &Path, source: &Path, text: &str) -> Result<(), Stri
         }
     }
     Ok(())
-}
-
-fn link_count(text: &str, expected: &str) -> usize {
-    text.split("](")
-        .skip(1)
-        .filter_map(|remainder| remainder.split(')').next())
-        .filter(|target| *target == expected)
-        .count()
-}
-
-fn has_word(text: &str, expected: &str) -> bool {
-    text.split(|character: char| !character.is_ascii_alphanumeric())
-        .any(|word| word.eq_ignore_ascii_case(expected))
 }
