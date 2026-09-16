@@ -7,8 +7,8 @@ from typing import cast
 from .envelope import Diagnostic, Request
 
 FIELDS = ("model", "thinking")
-EXPECTED_CHILD = ("gpt-5.6-luna", "max")
-EXPECTED_PARENT = ("gpt-6-astra", "medium")
+WORKER_ROUTE = ("gpt-5.6-luna", "max")
+ORCHESTRATOR_ROUTE = ("gpt-6-astra", "medium")
 ROUTING_SCHEMA = "codexy.thread-delivery.v2"
 ROUTING_FIELDS = frozenset(
     {
@@ -21,6 +21,8 @@ ROUTING_FIELDS = frozenset(
         "target_thinking",
     }
 )
+# These direction values are serialized host-envelope identifiers. Their
+# product roles are Orchestrator-to-Worker and Worker-to-Orchestrator.
 DIRECTIONS = frozenset({"root_to_child", "child_to_parent"})
 
 
@@ -64,7 +66,7 @@ def forbidden(request: Request) -> bool | str | Diagnostic:
     if metadata["target_thread_id"] == metadata["sender_thread_id"]:
         return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
 
-    expected = EXPECTED_PARENT if direction == "child_to_parent" else EXPECTED_CHILD
+    expected = ORCHESTRATOR_ROUTE if direction == "child_to_parent" else WORKER_ROUTE
     if (metadata["target_model"], metadata["target_thinking"]) != expected:
         return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
     if data["model"] != expected[0]:
@@ -121,17 +123,17 @@ def _missing_field_diagnostic(fields: list[str], direction: str | None) -> Diagn
 
 def _route(direction: str | None) -> str:
     if direction == "child_to_parent":
-        return f"child-to-parent delivery requires {_PARENT_ROUTE}"
+        return f"Worker-to-Orchestrator delivery requires {_ORCHESTRATOR_ROUTE}"
     if direction == "root_to_child":
-        return f"root-to-child delivery requires {_CHILD_ROUTE}"
+        return f"Orchestrator-to-Worker delivery requires {_WORKER_ROUTE}"
     return "thread delivery requires explicit authenticated host routing metadata"
 
 
-_PARENT_ROUTE = (
-    "threadId=<authenticated parent>, model='gpt-6-astra', and thinking='medium'"
+_ORCHESTRATOR_ROUTE = (
+    "threadId=<authenticated Orchestrator>, model='gpt-6-astra', and thinking='medium'"
 )
-_CHILD_ROUTE = (
-    "threadId=<authenticated child>, model='gpt-5.6-luna', and thinking='max'"
+_WORKER_ROUTE = (
+    "threadId=<authenticated Worker>, model='gpt-5.6-luna', and thinking='max'"
 )
 _MISSING_IDENTITY = (
     "Missing authenticated session_id; MUST NOT retry blindly. "
@@ -155,7 +157,7 @@ _MISMATCHED_ROUTING = (
 )
 _WRONG_RECIPIENT = (
     "Wrong recipient route; MUST set threadId to the authenticated host target "
-    f"and MUST use {_PARENT_ROUTE} or {_CHILD_ROUTE}, then MUST correct the route "
+    f"and MUST use {_ORCHESTRATOR_ROUTE} or {_WORKER_ROUTE}, then MUST correct the route "
     "and MUST retry once. MUST NOT guess a thread ID."
 )
 

@@ -68,7 +68,7 @@ fn installed_thread_delivery_matcher_covers_both_canonical_tool_names() -> TestR
 
 #[cfg(windows)]
 #[test]
-fn native_windows_child_launcher_runtime_failure_emits_valid_permission_denial() -> TestResult {
+fn native_windows_worker_launcher_runtime_failure_emits_valid_permission_denial() -> TestResult {
     let temp = tempfile::tempdir()?;
     let launcher = temp.path().join(WINDOWS_LAUNCHER);
     std::fs::copy(
@@ -105,7 +105,7 @@ fn exact_wave_zero_omitted_field_call_is_rejected_before_mutation() -> TestResul
             "hook_event_name": "PreToolUse",
             "tool_name": tool,
             "tool_input": {
-                "prompt": "Implement Codexy #598 in a child worktree.",
+                "prompt": "Implement Codexy #598 in a Worker worktree.",
                 "target": {
                     "type": "project",
                     "projectId": "local-224c2c9dc15d156b4c0bcd62c02aa630",
@@ -120,9 +120,9 @@ fn exact_wave_zero_omitted_field_call_is_rejected_before_mutation() -> TestResul
 }
 
 #[test]
-fn generic_worker_pair_is_admitted_and_arbitrary_pairs_are_rejected() -> TestResult {
+fn worker_pair_is_admitted_and_arbitrary_pairs_are_rejected() -> TestResult {
     let cases = [
-        ("generic default", json!({"model":"gpt-5.6-luna","thinking":"max"}), false),
+        ("Worker default", json!({"model":"gpt-5.6-luna","thinking":"max"}), false),
         ("explicit Terra", json!({"model":"gpt-5.6-terra","thinking":"high"}), true),
         ("explicit Sol", json!({"model":"gpt-5.6-sol","thinking":"medium"}), true),
     ];

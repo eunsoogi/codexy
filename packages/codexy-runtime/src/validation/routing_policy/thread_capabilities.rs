@@ -18,7 +18,7 @@ pub(super) fn validate_operation(operation: &str) -> Result<()> {
     if matches!(operation, "create_thread" | "send_message_to_thread") {
         Ok(())
     } else {
-        bail!("child routing request names an unsupported Codex thread operation")
+        bail!("Worker routing request names an unsupported Codex thread operation")
     }
 }
 
