@@ -159,13 +159,15 @@ fn watcher_wait_is_released_by_mcp_cancellation_without_consuming_later_events(
     }))?;
     assert_eq!(conflict["error"]["message"], "watcher eventId conflicts with an existing report");
 
+    let started = std::time::Instant::now();
     let waited = client.send(&json!({
         "jsonrpc":"2.0","id":7,"method":"tools/call",
         "params":{"name":"watcher_wait","arguments":{
-            "sessionId":session,"parentToken":parent_token,"cursor":0,"timeoutMs":1000
+            "sessionId":session,"parentToken":parent_token,"cursor":0,"timeoutMs":300_000
         }}
     }))?;
     let waited = tool_payload(&waited)?;
+    assert!(started.elapsed() < Duration::from_secs(2));
     assert_eq!(waited["status"], "event");
     assert_eq!(waited["events"].as_array().ok_or("events")?.len(), 1);
     let cursor = waited["nextCursor"].clone();

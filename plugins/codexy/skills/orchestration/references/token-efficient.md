@@ -71,15 +71,15 @@ MUST use this flow after compaction and before handoff:
    Reserve heartbeat scheduling for scheduled monitoring or unavailable
    `wait_threads`. For a native Watcher route, only the assigned Watcher MAY
    call `wait_threads` for its Worker/task targets. The Orchestrator MUST await
-   `watcher_wait`; new callers MUST omit `timeoutMs` so the server selects
-   `MAX_WAIT_MS` (currently 3,600,000 ms); explicit shorter waits need a reason.
-   The Orchestrator MUST stay quiet in the pending tool await. Fallback,
-   unavailable, or host-transition branches MUST report the actual limitation,
-   recover the supported Watcher route, and MUST NOT authorize direct parent
-   polling or unbounded `read_thread`. After an actionable Watcher report, one
-   bounded authoritative Worker/app readback for judgement/correction is
-   allowed; it is not an observation wait. An implementation Worker or child
-   MUST NOT open, wait on, report to, cancel, or reuse a parent-owned Watcher
+   `watcher_wait`; MUST omit `timeoutMs` for the five-minute 300,000 ms default;
+   explicit `timeoutMs=300000` is equivalent; `MAX_WAIT_MS=3,600,000 ms`. See
+   [parent-supervision.md](parent-supervision.md) for host/transport limits.
+   Short waits MUST have a reason; pending unchanged state MUST stay quiet;
+   fallback branches MUST report limits, recover the route, and MUST NOT
+   authorize direct Orchestrator polling or unbounded `read_thread`. After an
+   actionable report, one bounded authoritative Worker/app readback is allowed
+   for judgement; it is not an observation wait. Implementation Workers MUST NOT
+   open, wait on, report to, cancel, or reuse an Orchestrator-owned Watcher
    session or token; visibility is not a capability grant. The Watcher MUST NOT
    create or own the Orchestrator goal. A Watcher callback or observation is
    material only when its event identity is new and Orchestrator action is
@@ -88,7 +88,7 @@ MUST use this flow after compaction and before handoff:
    successful tests, resolved command mistakes, commits, and queued CI MUST
    remain internal; they MUST NOT wake the Orchestrator. For absence
    classifications, apply [observation-evidence.md](observation-evidence.md).
-   Workers MUST send compact deltas for terminal child state, their
+   Workers MUST send compact deltas for terminal Worker state, their
    fatal/gate/final callbacks, PR creation, a required external check-state
    change, actionable review feedback, or review-thread resolution. Watchers
    MUST send their own compact deltas for observation-channel failure or

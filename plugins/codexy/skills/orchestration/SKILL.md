@@ -52,17 +52,27 @@ cancels it, or a verified host limitation prevents continuation.
 For a native Watcher route, only the assigned Watcher MAY call `wait_threads` to
 observe its assigned Worker or task targets. The Orchestrator MUST await reports
 through `watcher_wait` and MUST NOT call `wait_threads` for those targets.
-Callers MUST omit `timeoutMs` for ordinary observation so the server selects the
-maximum `MAX_WAIT_MS` (currently 3,600,000 ms); a shorter value requires an
-explicit reason such as a user-requested deadline or a confirmed host limit.
-While that request is pending, the Orchestrator MUST stay in one quiet tool
-await and MUST NOT emit reasoning, progress messages, short polls, or unrelated
-work merely because no event has arrived. Fallback, unavailable, and
-host-transition branches MUST report the real limitation and recover the
-supported Watcher route; they MUST NOT re-authorize direct parent polling. After
-an actionable report, one bounded authoritative Worker or app readback is
-allowed for judgement and correction, and that readback is not an observation
-wait.
+Callers MUST omit `timeoutMs` for ordinary observation so the MCP server selects
+the five-minute default (currently 300,000 ms); explicit `timeoutMs=300000` is
+equivalent. The MCP still supports the maximum `MAX_WAIT_MS` (currently
+3,600,000 ms). The Watcher host's separate `wait_threads` limit MUST be read
+from and reported as the actual host limit. If it supports 300,000 ms, the
+Watcher MUST use `wait_threads(timeoutMs=300000)` for ordinary semantic event
+observation. If it is shorter, the Watcher MUST use that confirmed actual
+maximum and report the evidence; callers MUST use 120,000 ms only when
+confirmed. Tool-output yield intervals or response-refresh cadence MUST be
+treated separately from the semantic event-wait timeout and MUST NOT shorten or
+replace it. When a 300-second MCP transport deadline is confirmed,
+`timeoutMs=295000` is the documented empty-wait margin. A shorter wait MUST have
+an explicit reason such as a user-requested deadline, a confirmed host limit, or
+a diagnostic purpose. While that request is pending, the Orchestrator MUST stay
+in one quiet tool await and MUST NOT emit reasoning, progress messages, short
+polls, or unrelated work merely because no event has arrived. Fallback,
+unavailable, and host-transition branches MUST report the real limitation and
+recover the supported Watcher route; they MUST NOT re-authorize direct
+Orchestrator polling. After an actionable report, one bounded authoritative
+Worker or app readback is allowed for judgement and correction, and that
+readback is not an observation wait.
 
 A same-connection `notifications/cancelled` or the packaged Watcher
 `PreToolUse`/`Interrupt` binding route releases only the pending request when
@@ -73,10 +83,10 @@ or outer wait termination may leave the native request active when the host does
 not propagate `Interrupt`, so installed candidate Stop success remains an
 external evidence requirement.
 
-An implementation Worker or child MUST NOT open, wait on, report to, cancel, or
-reuse a parent-owned Watcher session or token. Visibility of a session, token,
-or parent transcript does not grant that capability. Ordinary Worker and
-non-Watcher routes retain their explicitly defined wait behavior.
+Implementation Workers MUST NOT use an Orchestrator-owned Watcher session or
+token. Visibility of a session, token, or parent transcript does not grant that
+capability. Ordinary Worker and non-Watcher routes retain their explicitly
+defined wait behavior.
 
 ### Native Watcher report route
 
