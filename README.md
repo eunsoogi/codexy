@@ -277,8 +277,11 @@ state:
 Voice updates wait for confirmed dispatch, distinguish active and terminal
 states, and never duplicate dispatch or cancel durable work after an
 interruption. They omit raw logs and opaque identifiers and keep verification,
-PR/merge, and release phases separate. If native screen or thread tools are
-unavailable, the limit is stated; #611 remains an external host dependency.
+PR/merge, and release phases separate. Native screen or thread tools depend on
+the active host and control surface. The closed #611 investigation documents
+bounded containment: rediscover the current host route after a transition and
+start a fresh Desktop-origin thread when the full catalog is required. It does
+not establish universal host parity or make mutations safe.
 
 ### Inventory and public boundaries
 

@@ -242,6 +242,10 @@ Worker는 유한한 실행 목표를 맡습니다. Watcher는 전체 목표를 �
 음성 전용 routing·표현 계층입니다. 담당자, child 조정, 근거, thread 상태의 최종
 권한은 일반 오케스트레이션에 있습니다. 확인되지 않은 상태를 추측하지 않고, 원시
 log와 불투명한 식별자를 말하지 않으며, PR·merge·release 단계도 구분합니다.
+Native screen·thread 도구는 현재 host와 control surface에 의존합니다. 종료된
+#611 조사에서 문서화한 제한적 대응은 전환 후 현재 host route를 다시 확인하고,
+전체 catalog가 필요하면 Desktop에서 새 thread를 시작하는 것입니다. 이는 모든
+host의 parity를 보장하거나 mutation을 안전하게 만든다는 뜻은 아닙니다.
 
 ### 상세 문서와 공개 경계
 

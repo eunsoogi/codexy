@@ -63,8 +63,8 @@ and validation proves the packaged paths match the repository layout.
      exceptions,
    - Codexy MCP config includes packaged `lsp` and `codegraph` servers when the
      plugin advertises LSP or code exploration behavior,
-   - specialist agent or custom agent TOMLs parse and MUST NOT define a child
-     orchestrator when the invoking thread is the orchestrator,
+   - specialist agent or custom agent TOMLs parse and MUST NOT define a
+     competing Orchestrator when the invoking thread is the Orchestrator,
    - Codexy specialist agent TOMLs use Codex custom-agent compatible fields so
      the registration bridge can project them into the stable marker-owned
      `$CODEX_HOME/agents/codexy/` discovery subtree without versioned cache
@@ -75,12 +75,13 @@ and validation proves the packaged paths match the repository layout.
      delegates exist under
      `skills/orchestration/scripts/bootstrap_codexy_github_agent.py` and
      `skills/orchestration/scripts/register_codexy_agents.py`,
-   - Codexy reviewer agent metadata identifies it as the mandatory gate at the
-     end of every non-trivial atomic work unit,
+   - Codexy reviewer agent metadata follows the selected profile: light uses no
+     LLM reviewer; standard uses one `codexy-inspector` when the profile or
+     change requires independent review; strict uses one `codexy-sentinel`,
    - thread/worktree orchestration wording includes handoff fields, evidence,
-     stop conditions, and parent verification,
-   - child-owned PR review feedback is routed back to the owning child thread
-     and revalidated there before the parent thread merges,
+     stop conditions, and Orchestrator verification,
+   - Worker-owned PR review feedback is routed back to the owning Worker task
+     and revalidated there before the Orchestrator merges,
    - for Codexy plugin prep specifically,
      `scripts/validate-plugin-config.sh --check` passes when that validator is
      present in the revision being prepared,
@@ -117,9 +118,9 @@ Risks:
 - MUST NOT claim LSP, MCP, specialist agent TOML, custom agent TOML, or
   thread/worktree readiness without parser evidence and the plugin config
   validator when it is available.
-- MUST NOT let the parent thread silently patch child-owned plugin architecture
-  feedback. MUST route review feedback to the owning child thread and MUST
-  require that thread's verification evidence before marketplace readiness.
+- MUST NOT let the Orchestrator silently patch Worker-owned plugin architecture
+  feedback. MUST route review feedback to the owning Worker task and MUST
+  require that task's verification evidence before marketplace readiness.
 - MUST NOT add root-level plugin manifests when the canonical layout is
   `plugins/<plugin>/.codex-plugin/plugin.json`.
 - MUST NOT present plugin-internal `.codex/agents/*.toml` files as canonical or
@@ -136,7 +137,7 @@ Risks:
 - LSP and MCP config MUST require parser validation and, when the plugin being
   prepared is Codexy, `scripts/validate-plugin-config.sh --check`.
 - Custom agent TOMLs and specialist agent definitions MUST require parser
-  validation and evidence that no separate orchestrator agent competes with the
+  validation and evidence that no separate Orchestrator agent competes with the
   invoking thread.
 - Skill bundles MUST require frontmatter and metadata validation.
 - Asset references MUST require file-existence checks from the plugin root.
