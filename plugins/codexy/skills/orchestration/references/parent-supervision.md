@@ -121,12 +121,13 @@ alter protected technical text.
   unchanged status, read full transcripts, rerun tests to watch progress, or
   interrupt a live reviewer merely because it is taking time.
 - In a native Watcher route, only the assigned Watcher MAY call `wait_threads`
-  for assigned Worker/task targets. The Orchestrator MUST await `watcher_wait`
-  with `timeoutMs` omitted for ordinary observation, so the server selects
-  `MAX_WAIT_MS` (currently 3,600,000 ms), and MUST NOT directly wait, retry, or
-  poll those targets. While pending, it MUST remain quiet in one tool await;
-  empty timeouts and unchanged progress MUST NOT trigger reasoning or messages.
-  Fallback or unavailable branches MUST recover the supported Watcher route.
+  for Worker/task targets. The Orchestrator MUST await `watcher_wait` with
+  omitted `timeoutMs` selecting the five-minute default (300,000 ms); explicit
+  `timeoutMs=300000` is equivalent; `MAX_WAIT_MS` remains 3,600,000 ms. Host
+  `wait_threads` is separate (120,000 ms here); 300-second transport makes
+  `timeoutMs=295000` the empty-wait margin. Short waits need reason; MUST NOT
+  repeat polls. Pending unchanged state MUST stay quiet; fallback branches MUST
+  report actual limits and recover the route.
 - An implementation Worker MUST NOT open, wait on, report to, cancel, or reuse
   an Orchestrator-owned Watcher session/token. A bounded authoritative
   Worker/app readback after an actionable report is allowed for judgement and

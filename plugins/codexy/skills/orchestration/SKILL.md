@@ -52,17 +52,22 @@ cancels it, or a verified host limitation prevents continuation.
 For a native Watcher route, only the assigned Watcher MAY call `wait_threads` to
 observe its assigned Worker or task targets. The Orchestrator MUST await reports
 through `watcher_wait` and MUST NOT call `wait_threads` for those targets.
-Callers MUST omit `timeoutMs` for ordinary observation so the server selects the
-maximum `MAX_WAIT_MS` (currently 3,600,000 ms); a shorter value requires an
-explicit reason such as a user-requested deadline or a confirmed host limit.
-While that request is pending, the Orchestrator MUST stay in one quiet tool
-await and MUST NOT emit reasoning, progress messages, short polls, or unrelated
-work merely because no event has arrived. Fallback, unavailable, and
-host-transition branches MUST report the real limitation and recover the
-supported Watcher route; they MUST NOT re-authorize direct parent polling. After
-an actionable report, one bounded authoritative Worker or app readback is
-allowed for judgement and correction, and that readback is not an observation
-wait.
+Callers MUST omit `timeoutMs` for ordinary observation so the MCP server selects
+the five-minute default (currently 300,000 ms); explicit `timeoutMs=300000` is
+equivalent. The MCP still supports the maximum `MAX_WAIT_MS` (currently
+3,600,000 ms). The Watcher host's separate `wait_threads` limit may be shorter;
+use and report its actual limit. On this host, it is 120,000 ms, and the
+300-second MCP transport deadline justifies `timeoutMs=295000` for an empty
+wait; this exception MUST NOT become repeated short polling. A shorter wait
+requires an explicit reason such as a user-requested deadline, a confirmed host
+limit, or a diagnostic purpose. While that request is pending, the Orchestrator
+MUST stay in one quiet tool await and MUST NOT emit reasoning, progress
+messages, short polls, or unrelated work merely because no event has arrived.
+Fallback, unavailable, and host-transition branches MUST report the real
+limitation and recover the supported Watcher route; they MUST NOT re-authorize
+direct parent polling. After an actionable report, one bounded authoritative
+Worker or app readback is allowed for judgement and correction, and that
+readback is not an observation wait.
 
 A same-connection `notifications/cancelled` or the packaged Watcher
 `PreToolUse`/`Interrupt` binding route releases only the pending request when

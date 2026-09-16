@@ -67,10 +67,15 @@ delivery, or a ready external gate may be reported.
 
 The Orchestrator MUST keep the overall goal active and owned by itself while the
 Watcher subagent observes. It MUST call `watcher_wait` with the parent token and
-cursor, omit `timeoutMs` for ordinary observation so the server selects
-`MAX_WAIT_MS` (currently 3,600,000 ms), and remain quiet in one tool await while
-no event is available. It MUST NOT emit reasoning, progress, short polls, or
-unrelated work for an empty timeout or unchanged progress. A same-connection
+cursor, omit `timeoutMs` for ordinary observation so the MCP server selects the
+five-minute default (300,000 ms); explicit `timeoutMs=300000` is equivalent, and
+the maximum `MAX_WAIT_MS` remains 3,600,000 ms. The separate host `wait_threads`
+limit may be shorter; this host supports at most 120,000 ms, and its 300-second
+MCP transport deadline justifies explicit `timeoutMs=295000` for an empty wait;
+shorter waits need a stated reason, and this exception MUST NOT become repeated
+short polling. It MUST remain quiet in one tool await while no event is
+available. It MUST NOT emit reasoning, progress, short polls, or unrelated work
+for an empty timeout or unchanged progress. A same-connection
 `notifications/cancelled` or the packaged `PreToolUse`/`Interrupt` binding route
 for that request releases only the wait when the host propagates it and
 preserves the session; `watcher_cancel` is separate and durably ends the
