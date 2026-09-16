@@ -44,8 +44,13 @@ The Orchestrator waits through `watcher_wait` and judges each returned report.
 Ordinary observation callers MUST omit `timeoutMs` so the MCP server selects
 the five-minute default (300,000 ms); explicit `timeoutMs=300000` is equivalent.
 The MCP maximum `MAX_WAIT_MS` remains 3,600,000 ms. The Watcher host's separate
-`wait_threads` limit MUST be read from the actual host; callers MUST use 120,000 ms
-only when confirmed. When a 300-second MCP transport deadline is confirmed,
+`wait_threads` limit MUST be read and reported from the actual host. If it
+supports 300,000 ms, the Watcher MUST use `wait_threads(timeoutMs=300000)` for
+ordinary semantic event observation. If it is shorter, the Watcher MUST use that
+confirmed actual maximum and report the evidence; callers MUST use 120,000 ms
+only when confirmed. Tool-output yield intervals or response-refresh cadence
+MUST be treated separately from the semantic event-wait timeout and MUST NOT
+shorten or replace it. When a 300-second MCP transport deadline is confirmed,
 explicit `timeoutMs=295000` is the documented empty-wait margin. A shorter wait
 MUST have a stated reason; this margin MUST NOT become repeated short polling.
 While that request is pending, the

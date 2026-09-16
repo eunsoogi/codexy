@@ -70,31 +70,36 @@ Watcher subagent observes. It MUST call `watcher_wait` with the parent token and
 cursor, and MUST omit `timeoutMs` for ordinary observation so the MCP server
 selects the five-minute default (300,000 ms); explicit `timeoutMs=300000` is
 equivalent, and the maximum `MAX_WAIT_MS` remains 3,600,000 ms. The separate
-host `wait_threads` limit MUST be read from the actual host; callers MUST use
-120,000 ms only when confirmed. When a 300-second MCP transport deadline is
-confirmed, `timeoutMs=295000` is the documented empty-wait margin. Shorter waits
-MUST have a stated reason, and this margin MUST NOT become repeated short
-polling. It MUST remain quiet in one tool await while no event is available. It
-MUST NOT emit reasoning, progress, short polls, or unrelated work for an empty
-timeout or unchanged progress. A same-connection `notifications/cancelled` or
-the packaged `PreToolUse`/`Interrupt` binding route for that request releases
-only the wait when the host propagates it and preserves the session;
-`watcher_cancel` is separate and durably ends the session. A task message or
-outer wait termination may leave the native wait active when the host does not
-propagate `Interrupt`; report that limitation, use `watcher_cancel` only when
-authorized, and open a new assignment/session for fresh observation. A cancelled
-assignment MUST NOT be resumed. The Watcher has no long-lived release goal. If
-the host exposes a finite goal for the subagent, that goal MUST cover only the
-bounded observation assignment and MUST NOT be treated as issue or release
-completion. The Watcher MUST keep its native turn active after each report and
-return to its `wait_threads` loop while an assigned target remains nonterminal;
-the Orchestrator may return control while that native turn continues. The
-Watcher may return only for full assignment completion, explicit
-user/Orchestrator cancellation, or a verified host limitation. Implementation
-Workers MUST NOT use an Orchestrator-owned Watcher session or token; visible
-session metadata is not authority. The Orchestrator MUST inspect the relevant
-Worker/app surface after a material report, decide and instruct the Worker, and
-verify the resulting call or diff.
+host `wait_threads` limit MUST be read and reported from the actual host. If it
+supports 300,000 ms, the Watcher MUST use `wait_threads(timeoutMs=300000)` for
+ordinary semantic event observation. If it is shorter, the Watcher MUST use the
+confirmed actual maximum and report the evidence; callers MUST use 120,000 ms
+only when confirmed. Tool-output yield intervals or response-refresh cadence
+MUST be treated separately from the semantic event-wait timeout and MUST NOT
+shorten or replace it. When a 300-second MCP transport deadline is confirmed,
+`timeoutMs=295000` is the documented empty-wait margin. Shorter waits MUST have
+a stated reason, and this margin MUST NOT become repeated short polling. It MUST
+remain quiet in one tool await while no event is available. It MUST NOT emit
+reasoning, progress, short polls, or unrelated work for an empty timeout or
+unchanged progress. A same-connection `notifications/cancelled` or the packaged
+`PreToolUse`/`Interrupt` binding route for that request releases only the wait
+when the host propagates it and preserves the session; `watcher_cancel` is
+separate and durably ends the session. A task message or outer wait termination
+may leave the native wait active when the host does not propagate `Interrupt`;
+report that limitation, use `watcher_cancel` only when authorized, and open a
+new assignment/session for fresh observation. A cancelled assignment MUST NOT be
+resumed. The Watcher has no long-lived release goal. If the host exposes a
+finite goal for the subagent, that goal MUST cover only the bounded observation
+assignment and MUST NOT be treated as issue or release completion. The Watcher
+MUST keep its native turn active after each report and return to its
+`wait_threads` loop while an assigned target remains nonterminal; the
+Orchestrator may return control while that native turn continues. The Watcher
+may return only for full assignment completion, explicit user/Orchestrator
+cancellation, or a verified host limitation. Implementation Workers MUST NOT use
+an Orchestrator-owned Watcher session or token; visible session metadata is not
+authority. The Orchestrator MUST inspect the relevant Worker/app surface after a
+material report, decide and instruct the Worker, and verify the resulting call
+or diff.
 
 ## Eligibility And Discovery
 

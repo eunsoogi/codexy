@@ -119,24 +119,24 @@ alter protected technical text.
   `wait_threads` with batched targets. Unchanged cursors, bounded timeouts, and
   long commands are not stalls; Codex MUST NOT repeat status, read transcripts,
   rerun tests, or interrupt a reviewer merely because it is taking time.
-- Native Watcher routes: only the assigned Watcher MAY call `wait_threads` for
-  Worker/task targets; the Orchestrator MUST await `watcher_wait`, omitting
-  `timeoutMs` for five-minute default (300,000 ms); explicit `timeoutMs=300000`
-  is equivalent; `MAX_WAIT_MS` stays 3,600,000 ms. The actual host's separate
-  `wait_threads` limit MUST be read; callers MUST use 120,000 ms only when
-  confirmed. A confirmed 300-second MCP transport makes `timeoutMs=295000` the
-  documented empty-wait margin. A shorter wait MUST have a stated reason;
-  callers MUST NOT repeat short polls. The Orchestrator MUST NOT directly wait,
-  retry, or poll targets; empty waits or unchanged progress MUST NOT trigger
-  reasoning or messages. Fallbacks MUST report limits and recover the route.
-- Implementation Workers MUST NOT use an Orchestrator-owned Watcher
-  session/token. One bounded authoritative Worker/app readback is allowed after
-  an actionable report for judgement, not observation.
-- Inside a native Watcher turn, the observation loop MUST use `wait_threads` and
-  each target's latest cursor, inspect the relevant actual Worker result, report
-  any material event, and wait again while any assigned target remains
-  nonterminal. One report, one Worker completion, an empty timeout, or unchanged
-  progress is nonterminal and MUST NOT end that turn.
+- Native Watcher routes: only the assigned Watcher MAY call `wait_threads`; the
+  Orchestrator MUST await `watcher_wait`, omitting `timeoutMs` for the 300,000
+  ms default; explicit `timeoutMs=300000` is equivalent; `MAX_WAIT_MS` stays
+  3,600,000 ms. The host limit MUST be read and reported: if it supports 300,000
+  ms, the Watcher MUST use `wait_threads(timeoutMs=300000)` as the semantic
+  event wait; otherwise, it MUST use the confirmed actual maximum. Output-yield
+  cadence is separate; MUST NOT shorten or replace the semantic wait. With a
+  confirmed 300-second MCP transport, `timeoutMs=295000` is the empty-wait
+  margin. Shorter waits MUST have a reason and MUST NOT become repeated polls.
+  The Orchestrator MUST NOT wait, retry, or poll targets; empty waits or
+  unchanged state MUST NOT trigger reasoning or messages. Fallbacks MUST report
+  and recover.
+- Implementation Workers MUST NOT use Orchestrator-owned Watcher session/token.
+  One bounded readback after an actionable report is judgement-only.
+- Inside a native Watcher turn, the loop MUST use `wait_threads` with each
+  target's latest cursor, inspect and report material Worker events, and wait
+  again while a target remains nonterminal. Reports, Worker completion, empty
+  timeouts, and unchanged progress are nonterminal and MUST NOT end the turn.
 - When an actionable signal arrives, the Orchestrator MUST send one grouped,
   actionable correction to the existing worker: observed deviation, smallest
   repair, required evidence, and next permitted step. An acknowledgement is not
