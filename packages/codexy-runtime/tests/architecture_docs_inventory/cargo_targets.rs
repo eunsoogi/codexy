@@ -2,7 +2,6 @@ use std::{collections::BTreeSet, env, path::Path, process::Command};
 
 use crate::support::TestResult;
 
-const INVENTORY_TESTS: usize = 8;
 const RUNTIME_MANIFEST: &str = "packages/codexy-runtime/Cargo.toml";
 const SELECTION_PROBE: &str = "CODEXY_ARCHITECTURE_INVENTORY_SELECTION_PROBE";
 
@@ -64,16 +63,33 @@ pub(super) fn assert_executes_inventory_tests(
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    if output.status.success()
-        && transcript.contains(&format!("running {INVENTORY_TESTS} tests"))
-        && transcript.contains(&format!("test result: ok. {INVENTORY_TESTS} passed;"))
-    {
+    if output.status.success() && inventory_test_count(&transcript).is_some() {
         Ok(())
     } else {
         Err(format!(
-            "documented Cargo command did not execute {INVENTORY_TESTS} inventory tests: {transcript}"
+            "documented Cargo command did not execute the discovered inventory tests: {transcript}"
         ))
     }
+}
+
+fn inventory_test_count(transcript: &str) -> Option<usize> {
+    let running = transcript
+        .lines()
+        .find_map(|line| line.strip_prefix("running ")?.strip_suffix(" tests")?.parse::<usize>().ok())?;
+    let passed = transcript.lines().find_map(|line| {
+        line.strip_prefix("test result: ok. ")?
+            .split_once(" passed;")?
+            .0
+            .parse::<usize>()
+            .ok()
+    })?;
+    let selected = transcript
+        .lines()
+        .filter(|line| {
+            line.starts_with("test system::architecture_docs_inventory::") && line.ends_with(" ... ok")
+        })
+        .count();
+    (running > 0 && running == passed && running == selected).then_some(running)
 }
 
 fn documented_command(guide: &str) -> Result<DocumentedCommand, String> {
