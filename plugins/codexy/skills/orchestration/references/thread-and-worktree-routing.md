@@ -67,7 +67,7 @@ before execution. The call is non-blocking: a ready `threadId`/`hostId` is an
 actual task identity, while a setup `clientThreadId` is only a pending setup
 identity and MUST NOT be passed to tools that require `threadId`.
 
-Neither route MUST NOT replace the native goal or the designated Watcher with
+Both routes MUST NOT replace the native goal or the designated Watcher with
 text, an app-server/CLI path, a fake task, or a silent fallback. Source tests,
 configuration, and app-server transcripts MUST NOT substitute for actual host
 task creation and ownership readback. If the required host route is unsupported,

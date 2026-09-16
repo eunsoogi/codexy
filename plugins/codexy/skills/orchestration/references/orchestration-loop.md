@@ -62,8 +62,10 @@
      specialist whose stated scope clearly matches the task surface, or record a
      concrete skip rationale. It MUST NOT count that specialist as the Codex
      child-thread/worktree owner for an issue-sized implementation lane.
-   - For issue-sized implementation lanes, the root orchestrator MUST start or
-     fork a separate Codex thread in a worktree when the tool is available.
+   - For an explicitly requested child-owned implementation lane, the root
+     orchestrator MUST start or fork a separate Codex thread in a worktree when
+     the tool is available. A current-task-owned lane MUST NOT be dispatched to
+     another task merely because it needs a branch, worktree, or PR.
    - The Orchestrator MUST summon the packaged `codexy-watcher` specialist
      through the callable native-subagent API (`spawn_agent` or its versioned
      multi-agent equivalent) with the Worker's exact target identities. The

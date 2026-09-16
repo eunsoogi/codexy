@@ -15,10 +15,13 @@
   but do not select a strict workflow profile by themselves; profile selection
   follows concrete risk, explicit audit, or materially shared integration risk.
 - Independent requested outcomes MUST be decomposed into separate issue-sized
-  atomic child lanes before child thread, worktree, branch, or PR creation.
-- The root orchestrator MUST create, fork, or assign the owning child thread
-  before implementation patches begin for any lane that needs a branch,
-  worktree, PR, durable child context, or review-response ownership.
+  atomic lanes before creating separate child tasks, worktrees, branches, or
+  PRs. A need for any of those surfaces MUST NOT by itself choose a child-owned
+  route.
+- For a child-owned lane, the root orchestrator MUST create, fork, or assign the
+  owning child thread before implementation patches begin. A current-task-owned
+  lane MUST remain in the current task when no separate task was explicitly
+  requested, even when it needs a branch, worktree, or PR.
 - The orchestrator MUST NOT directly fix child-owned review feedback unless a
   maintainer explicitly reassigns the lane to the orchestrator or the feedback
   belongs to the orchestrator's own scoped lane.
