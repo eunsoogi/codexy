@@ -27,10 +27,10 @@ arrangement; the Worker's finite idle-wait and actually observed `blocked`
 recovery remain governed by the existing lifecycle.
 
 Configuration metadata, separate from role identity, MUST remain: Orchestrator
-and child-to-parent delivery use `gpt-6-astra`/`medium`; Worker, parent-to-child
-delivery, and Watcher use `gpt-5.6-luna`/`max`; the configured inspector uses
-`gpt-5.6-sol`/`medium`. Every applicable app delivery MUST name its model and
-thinking effort.
+and child-to-parent delivery use `gpt-6-astra`/`medium`; generic Worker
+creation, Worker parent-to-child delivery, and Watcher use `gpt-5.6-luna`/`max`;
+the configured inspector uses `gpt-5.6-sol`/`medium`. Every applicable app
+delivery MUST name its model and thinking effort.
 
 ## Message visibility and style
 

@@ -5,6 +5,14 @@ forbidden. Generic work defaults to `gpt-5.6-luna` at `max`; when that route is
 unavailable, it fails closed to the root or named-specialist route. Simple work
 uses the same Luna route when all simple predicates are complete.
 
+The native `create_thread` child-creation admission hook MUST enforce that
+generic Worker pair, including rejecting omissions and caller-selected model or
+thinking changes before mutation. Native specialists remain a separate
+catalogued route with their assigned settings; a caller-written role or prompt
+MUST NOT authorize a generic Worker override. Requested fields and source-level
+hook admission do not prove effective host state; that remains unverified until
+the host supplies trusted model readback.
+
 For bounded native observation of assigned Codex Workers, the Orchestrator MUST
 select the packaged `codexy-watcher` specialist and summon it through the host's
 native subagent facility. It MUST NOT substitute a generic subagent or treat a

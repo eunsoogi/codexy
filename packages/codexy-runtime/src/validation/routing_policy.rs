@@ -11,6 +11,10 @@ use routes::{child_to_root_route, parent_to_generic_route, selected_general_rout
 use thread_capabilities::ThreadCapabilities;
 
 const REQUEST_SCHEMA: &str = "codexy.child-routing-request.v1";
+const GENERIC_MODEL: &str = "gpt-5.6-luna";
+const GENERIC_THINKING: &str = "max";
+const PARENT_MODEL: &str = "gpt-6-astra";
+const PARENT_THINKING: &str = "medium";
 
 pub(super) struct Policy {
     pub(super) schema: String,
@@ -139,16 +143,16 @@ fn contract() -> Policy {
     Policy {
         schema: "codexy.child-routing-policy.v1".to_owned(),
         generic: Route {
-            model: "gpt-5.6-luna".to_owned(),
-            thinking: "max".to_owned(),
+            model: GENERIC_MODEL.to_owned(),
+            thinking: GENERIC_THINKING.to_owned(),
         },
         named_specialist: Specialist {
             catalog: "agents/catalog.toml".to_owned(),
             caller_overrides: "forbidden".to_owned(),
         },
         simple: Simple {
-            model: "gpt-5.6-luna".to_owned(),
-            thinking: "max".to_owned(),
+            model: GENERIC_MODEL.to_owned(),
+            thinking: GENERIC_THINKING.to_owned(),
             all_required: [
                 "fixed_scope",
                 "deterministic_oracle",
@@ -162,12 +166,12 @@ fn contract() -> Policy {
         fallback: "root_or_named_specialist".to_owned(),
         delivery: Delivery {
             parent_to_generic: Route {
-                model: "gpt-5.6-luna".to_owned(),
-                thinking: "max".to_owned(),
+                model: GENERIC_MODEL.to_owned(),
+                thinking: GENERIC_THINKING.to_owned(),
             },
             child_to_root: Route {
-                model: "gpt-6-astra".to_owned(),
-                thinking: "medium".to_owned(),
+                model: PARENT_MODEL.to_owned(),
+                thinking: PARENT_THINKING.to_owned(),
             },
         },
     }
@@ -200,12 +204,12 @@ fn validate(policy: &Policy) -> Result<()> {
         "no_unresolved_decision",
     ];
     if policy.schema != "codexy.child-routing-policy.v1"
-        || policy.generic.model != "gpt-5.6-luna"
-        || policy.generic.thinking != "max"
+        || policy.generic.model != GENERIC_MODEL
+        || policy.generic.thinking != GENERIC_THINKING
         || policy.named_specialist.catalog != "agents/catalog.toml"
         || policy.named_specialist.caller_overrides != "forbidden"
-        || policy.simple.model != "gpt-5.6-luna"
-        || policy.simple.thinking != "max"
+        || policy.simple.model != GENERIC_MODEL
+        || policy.simple.thinking != GENERIC_THINKING
         || !policy
             .simple
             .all_required
@@ -213,10 +217,10 @@ fn validate(policy: &Policy) -> Result<()> {
             .map(String::as_str)
             .eq(required)
         || policy.fallback != "root_or_named_specialist"
-        || policy.delivery.parent_to_generic.model != "gpt-5.6-luna"
-        || policy.delivery.parent_to_generic.thinking != "max"
-        || policy.delivery.child_to_root.model != "gpt-6-astra"
-        || policy.delivery.child_to_root.thinking != "medium"
+        || policy.delivery.parent_to_generic.model != GENERIC_MODEL
+        || policy.delivery.parent_to_generic.thinking != GENERIC_THINKING
+        || policy.delivery.child_to_root.model != PARENT_MODEL
+        || policy.delivery.child_to_root.thinking != PARENT_THINKING
     {
         bail!(
             "child routing policy must retain the closed named-specialist-first fail-closed contract"
