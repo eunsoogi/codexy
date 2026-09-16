@@ -7,6 +7,10 @@
   performs parent verification, coordinates squash merge, and syncs `main`.
 - A child Codex worktree thread owns implementation edits, local verification,
   and review-response fixes for its assigned issue or lane.
+- `$planning` owns plan content, plan updates, and plan-file rules.
+  Orchestration owns task classification, ownership, assignment, worktree,
+  dispatch, execution coordination, and merge; a plan MUST NOT transfer those
+  authorities.
 - Durable delegation and multi-lane ownership preserve this ownership boundary
   but do not select a strict workflow profile by themselves; profile selection
   follows concrete risk, explicit audit, or materially shared integration risk.
@@ -49,11 +53,12 @@ Child implementation threads assigned a non-trivial lane MUST run their own
 execution loop instead of treating the parent handoff as permission for
 unassigned or out-of-scope edits.
 
-- MUST use real goal tools when available. MUST use `create_goal`, `get_goal`,
-  and `update_goal` for lane state; prose-only `Goal:` text is fallback
-  documentation, not proof of goal-tool use. If goal tooling is unavailable,
-  MUST keep a visible textual goal with success criteria, update it as evidence
-  changes, and report the unavailable-tool fallback in handoff evidence.
+- MUST use the native goal tools for lane state: `create_goal`, `get_goal`, and
+  `update_goal`. A native goal object and actual state/transition readback are
+  mandatory for normal execution; prose-only `Goal:` text MUST NOT substitute
+  for the goal API. If the native goal surface is unavailable, MUST report the
+  exact limitation and required action, and MUST NOT start or claim execution
+  that depends on it.
 - MUST keep real todo/plan state current with `update_plan` or the active todo
   surface when available, updating statuses from discovery through handoff.
   Prose-only `Todo:` text is not proof of todo/plan tooling. Using only goal or
@@ -85,15 +90,19 @@ unassigned or out-of-scope edits.
   packaging, version, marketplace, manifest, tag, or rollback work; the optional
   `codexy-github` plugin's `codexy-weaver` for GitHub integration when
   installed; and the reviewer selected only by `review-profiles.md` for the
-  final reviewer gate. Orchestration owns planning; generic owning children use
-  the engineering workflow for diagnosis, TDD, QA, and refactoring and directly
-  own scoped implementation, documentation, and handoff. They MUST NOT recreate
-  removed specialists as aliases.
+  final reviewer gate. `$planning` owns plan creation, updates, and plan-file
+  rules; orchestration owns classification, ownership, assignment, worktree,
+  dispatch, execution coordination, and merge. Generic owning children use the
+  engineering workflow for technical design, diagnosis, TDD, QA, refactoring,
+  implementation, and verification of one atomic issue, and directly own scoped
+  documentation and handoff. They MUST NOT recreate removed specialists as
+  aliases.
 - If multi-agent tooling is available, "not useful" is acceptable only with a
   concrete rationale tied to atomicity, tiny scope, or the absence of separable
   work.
-- If a required execution tool is unavailable, say so in the thread and use the
-  closest available fallback. MUST NOT silently skip the discipline.
+- If a required execution tool is unavailable, MUST report the exact limitation
+  and required action. MUST NOT use a different tool or prose substitute to
+  claim the same contract, and MUST NOT silently skip the discipline.
 - Before handoff, PR readiness, completion, or parent acceptance, the child MUST
   follow the proportionate current-head contract in `review-profiles.md`:
   `light` has no LLM reviewer, `standard` uses

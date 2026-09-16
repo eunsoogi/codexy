@@ -15,12 +15,26 @@
    - MUST use the available `codegraph` MCP to map relevant code files and
      neighbors when the selected task has a code or repository surface.
 2. Plan:
+   - MUST select [`$planning`](../../planning/SKILL.md) for an explicit
+     plan-creation or plan-update request, or when genuinely necessary
+     decomposition is required for large work. `$planning` is the source of
+     instructions for plan content, updates, and plan-file rules. Orchestration
+     MUST NOT duplicate those rules or re-enter planning when it is already
+     selected and in progress.
+   - A plan-only request MUST return the planning result and MUST NOT create an
+     issue, branch, worktree, child task, or implementation. When execution is
+     authorized for one atomic issue, orchestration MUST NOT require a plan file
+     or a new approval for ordinary implementation choices. An existing plan's
+     completion marker MUST NOT prove current execution or verification.
+   - When a plan exists for the selected planning workflow, orchestration MUST
+     carry its classification, ownership, and dependency evidence into the
+     planning handoff or update request before execution actions; `$planning`
+     remains authoritative for the plan content and file state. An
+     execution-authorized atomic issue MUST NOT receive a new plan solely for
+     this handoff.
    - Keep plan state when the selected profile or lane contract requires it.
      Light and standard work MUST NOT require a visible goal/plan receipt from
      this loop alone.
-   - When a plan exists, MUST carry classification evidence into it before
-     branch, worktree, child-thread, implementation, PR, or review-response
-     actions.
    - For delegated outcomes, MUST record one Worker owner, the saved project
      identity, the Watcher identity when authorized, the callback channels, and
      one current next action. MUST NOT require a fixed checkpoint count or
@@ -154,7 +168,9 @@ Classification evidence:
 Review feedback route:
 Parent verification:
 Return evidence for strict or explicitly audited lanes:
-  - Goal tool usage or unavailable-goal-tool fallback
+  - Native goal-tool usage and active-state readback; if the required native
+    goal surface is unavailable, record the exact limitation and required
+    action without claiming execution proof
   - Todo/plan tool usage or unavailable-todo-tool fallback
   - Touched implementation-file LOC gate output or not-applicable rationale
   - Codegraph findings and LSP status or unavailable/not-applicable evidence
@@ -186,7 +202,9 @@ Required evidence:
 Stop condition:
 Parent verification:
 Return format:
-  - MUST include goal tool usage or unavailable-goal-tool fallback.
+  - MUST include native goal-tool usage and active-state readback; if the
+    required native goal surface is unavailable, include the exact limitation
+    and required action without claiming execution proof.
   - MUST include todo/plan tool usage or unavailable-todo-tool fallback.
   - MUST include multi-agent usage or a concrete not-useful/unavailable-tool
     rationale.

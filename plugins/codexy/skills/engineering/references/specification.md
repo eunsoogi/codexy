@@ -5,7 +5,9 @@
 MUST turn intent into one observable contract before editing.
 
 1. Extract requirements, exclusions, assumptions, criteria, and open questions.
-2. Define one issue-sized outcome and owner; split unrelated work.
+2. Confirm one orchestration-assigned issue-sized outcome and owner; report
+   unrelated outcomes to orchestration rather than splitting or reassigning them
+   here.
 3. Define happy-path, riskiest-edge, regression, and applicable external proof.
 4. Map every changed file to a requirement and reconcile the final diff and
    current evidence against all criteria.
@@ -21,6 +23,11 @@ Before editing, MUST record a short contract in the issue or plan:
   unsafe or misleading.
 - Evidence needed: the smallest faithful checks and authentic surfaces that can
   prove the requested behavior.
+
+This contract does not by itself request a plan file. When planning is selected,
+MUST send plan-content or plan-file changes through `$planning`; engineering
+owns the technical design, implementation, and verification within the assigned
+issue.
 
 For a small change, these five points may be a few lines. A separate PRD or test
 plan MUST NOT be created unless the scope needs one.

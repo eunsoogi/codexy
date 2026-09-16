@@ -8,6 +8,12 @@ description: MUST use for diagnosis, specification, domain modeling, test-driven
 MUST move one issue-sized outcome from evidence to verified behavior. Select
 applicable methods only. Proof-driven completion owns final audit.
 
+Engineering owns the technical design, implementation, and verification of one
+assigned atomic issue. Orchestration owns classification, ownership, assignment,
+worktree, dispatch, execution coordination, and merge; `$planning` owns plan
+content, updates, and plan-file rules. Engineering MUST NOT recreate those
+authorities.
+
 ## Method selection
 
 - [Diagnosis](references/diagnosis.md) for wrong or unexplained behavior.
@@ -30,6 +36,13 @@ Before editing, MUST establish the short
 behavior, preserved behavior, non-goals, material risks, and evidence needed for
 completion. Issue or plan lines are enough for a small change; a separate PRD or
 test plan MUST NOT be required by default.
+
+An execution-authorized atomic issue MUST proceed through engineering without a
+new plan file or an extra planning or review stage; any applicable repository or
+profile-selected review remains authoritative. It MUST NOT return to planning
+for every technical decision. Engineering MUST propose a change to the parent
+plan only when scope, success criteria, or dependencies change; ordinary
+implementation choices remain within the assigned issue.
 
 For each changed boundary, MUST decide these independently:
 
