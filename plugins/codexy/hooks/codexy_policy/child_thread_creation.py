@@ -33,7 +33,10 @@ def _non_empty_string(value: object) -> bool:
 def _missing_field_diagnostic(fields: list[str]) -> Diagnostic:
     names = " and ".join(fields)
     code = "MISSING_ROUTE_FIELDS" if len(fields) > 1 else f"MISSING_{fields[0].upper()}"
-    return Diagnostic(code, f"Missing {names}; {_REQUIRED_ROUTE}. MUST correct the field and MUST retry once.")
+    return Diagnostic(
+        code,
+        f"Missing {names}; {_REQUIRED_ROUTE}. MUST correct the field and MUST retry once.",
+    )
 
 
 _REQUIRED_ROUTE = (
