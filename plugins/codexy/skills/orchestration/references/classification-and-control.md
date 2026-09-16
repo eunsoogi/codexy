@@ -27,6 +27,43 @@
   outcomes into atomic issues, threads, worktrees, branches, and PRs before
   resuming.
 
+## App Task Creation Authority
+
+Before creating or routing a separate Codex app task, the Orchestrator MUST
+check these facts independently:
+
+- Tool availability: `create_thread` MUST be callable through the current Codex
+  app surface and its actual contract MUST be available. A source, connector, or
+  app-server registration alone MUST NOT prove availability.
+- Invocation authority: a separate task MAY be created only when the current
+  user request explicitly asks for a new app task and the requested target is
+  within the authorized scope. Issue complexity, a needed branch/worktree/PR, or
+  a parent handoff MUST NOT by itself authorize another task.
+- Existing active owner: the Orchestrator MUST inspect the current task and
+  active child ownership for the same issue or lane before creating. A GitHub
+  assignee, branch, or visible task summary MUST NOT substitute for an
+  active-owner readback.
+
+When the current task is the assigned owner and no separate task was requested,
+the current-task route MUST continue under its native goal; it MUST NOT invoke
+`create_thread` merely to obtain an issue branch, worktree, or PR. When an
+active child already owns the issue or lane, the parent MUST keep that child as
+owner and send correction instructions through the supported task route; it MUST
+NOT implement in the parent or create a duplicate owner. An explicitly requested
+new-task route MUST create the task only after the three checks and MUST verify
+the returned task identity, owner, target project/worktree, and native goal
+before execution.
+
+Both routes MUST preserve branch/worktree isolation, code ownership,
+verification, the designated Watcher, and assigned model policies. A text-only
+record MAY capture the requested objective and exact unavailable-goal
+limitation, but it MUST NOT replace a native goal, authorize normal execution,
+or prove progress or completion. If a required task-creation, goal, Watcher, or
+host capability is unavailable, the agent MUST report the exact unsupported
+state and required action; it MUST NOT use an app-server/CLI bypass, fake task,
+silent fallback, or completion claim. It MUST NOT report an app-server/CLI path,
+fake task invisible to the user, or unverified native agent as an app task.
+
 ## Compaction And Continuation
 
 MUST treat loss of the active `@Codexy` or Codexy plugin workflow contract after

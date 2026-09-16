@@ -12,6 +12,9 @@
      worker, watcher, and native-reviewer surfaces before routing work.
    - MUST separate hard requirements, preferences, assumptions, and non-goals.
    - MUST identify the observable surface that proves the request worked.
+   - MUST decide separate app-task creation from branch/worktree/PR need by
+     checking the callable tool, current user authority, and existing owner as
+     independent facts.
    - MUST use the available `codegraph` MCP to map relevant code files and
      neighbors when the selected task has a code or repository surface.
 2. Plan:
@@ -90,6 +93,14 @@
    - MUST give each lane an assignment, issue, branch, worktree path, allowed
      paths, read-first files, deliverable, required evidence, verification
      command or surface, stop condition, and return format.
+   - If the current task owns the lane and no new task was explicitly requested,
+     MUST continue in the current task under its native goal and MUST NOT create
+     another app task. If an active child owns the lane, the parent MUST send
+     correction instructions to that owner and MUST NOT take over implementation
+     or create a duplicate owner.
+   - If a new app task was explicitly requested, MUST use the actual callable
+     `create_thread` contract, verify the returned task and owner before
+     execution, and MUST NOT use an app-server/CLI bypass or fake task.
 4. Integrate:
    - MUST re-read files and outputs before trusting child results.
    - MUST preserve user changes and unrelated work.
@@ -117,6 +128,11 @@
      spreadsheets/data, research/wiki, or project settings behavior.
    - MUST keep evidence tied to the exact commit, PR head, file state, or
      runtime surface being claimed.
+   - An app-task creation claim MUST use actual host creation and ownership
+     readback; source tests, configuration, or app-server transcripts MUST NOT
+     substitute for that evidence. If a required native goal or host route is
+     unavailable, MUST report the exact limitation and required action without
+     claiming execution progress or completion from text alone.
    - For supervision, MUST exercise the actual subagent creation, Worker-to-
      Watcher task-message delivery, MCP `watcher_report`/`watcher_wait`
      delivery, Worker readback, and Orchestrator-goal path. Report the
@@ -130,6 +146,8 @@
      stop, wait, draft-only, or leave-open behavior.
    - MUST report what changed, what proved it, what was not run, and remaining
      risk.
+   - MUST report the current request, callable task contract, selected route,
+     actual owner, and execution result separately.
    - MUST report measured and unmeasured Worker/Watcher usage separately, retain
      actual review history, and state unsupported wake, transfer, or recovery
      behavior instead of inventing it.
