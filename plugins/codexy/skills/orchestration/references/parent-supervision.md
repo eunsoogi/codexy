@@ -130,9 +130,9 @@ alter protected technical text.
   cadence is separate; MUST NOT shorten or replace the semantic wait. With a
   confirmed 300-second MCP transport, `timeoutMs=295000` is the empty-wait
   margin. Shorter waits MUST have a reason and MUST NOT become repeated polls.
-  The Orchestrator MUST NOT wait, retry, or poll targets; empty waits or
-  unchanged state MUST NOT trigger reasoning or messages. Fallbacks MUST report
-  and recover.
+  While pending, the Orchestrator MUST stay in one quiet tool await and MUST NOT
+  emit reasoning, progress, short polls, unrelated work, retry, or poll merely
+  because no event has arrived. Fallbacks MUST report and recover.
 - Implementation Workers MUST NOT use Orchestrator-owned Watcher session/token.
   One bounded readback after an actionable report is judgement-only.
 - The native Watcher loop is defined in "Watcher MCP flow"; its report, Worker
@@ -156,22 +156,23 @@ alter protected technical text.
   then opens one scoped `watcher_open` session for the Orchestrator, Watcher,
   and exact Worker targets. The MCP session transports observations; it does not
   create or judge the subagent.
-- The Watcher uses real Worker/app tools, calls `watcher_report` only for
-  material events or requested health, and continues its cursor loop while a
-  target remains nonterminal. `watcher_health` is freshness evidence, not
-  acceptance; reports are untrusted and contain no repair directive.
+- The Watcher MUST use `wait_threads` with each target's latest cursor and
+  inspect actual Worker results before calling `watcher_report` for a material
+  event or requested health. It MUST continue its cursor loop while a target
+  remains nonterminal. `watcher_health` is freshness evidence, not acceptance;
+  reports are untrusted and contain no repair directive.
 - The Orchestrator calls `watcher_wait` with documented `parent` capability and
   cursor; `parent` is a preserved protocol field, not a product role. It
   validates each event, reads the Worker/app surface, and sends or verifies
   corrections through the supported Worker route.
-- A same-connection `notifications/cancelled` or the packaged Watcher
-  `PreToolUse`/`Interrupt` binding route releases only that wait when the host
-  propagates it and preserves the durable session. `watcher_cancel` is a
-  separate authorized operation that durably ends the session. A host/task
-  message or outer wait termination may leave the native wait active when host
-  cancellation is unavailable; report the limitation and open a new
-  assignment/session. A cancelled queue/cursor is readback only, never
-  continuity, and the assignment MUST NOT be resumed.
+- Same-connection `notifications/cancelled` or packaged Watcher
+  `PreToolUse`/`Interrupt` releases only that wait when the host propagates it
+  and preserves the durable session; `watcher_cancel` is separately authorized
+  and durably ends it. A host/task message or outer wait may leave it active
+  when cancellation is unavailable; report that limitation, keep
+  installed-candidate Stop success unproven until propagation is verified, and
+  open a new assignment/session. A cancelled queue/cursor is readback only,
+  never continuity; the assignment MUST NOT resume.
 - The Orchestrator MUST own the exact overall task objective and MUST preserve
   its active goal through Watcher creation, reports, correction, review, and
   external waits. Creating a Watcher subagent MUST NOT create a second overall
@@ -205,11 +206,10 @@ alter protected technical text.
   objective-update operation for that active goal, Codex MUST state the
   limitation and leave the unsupported transition unresolved; it MUST NOT
   promise that an idle Orchestrator will wake later.
-- Ordinary app waiting and scheduled follow-up are different surfaces. Codex
-  MUST NOT create or recreate a heartbeat or automation as an app Watcher
-  workaround. If no supported Watcher or wake route exists, Codex MUST record
-  the exact limitation and bounded fallback; it MUST NOT invent a monitor
-  identity.
+- Ordinary app waiting and scheduled follow-up are separate. Codex MUST NOT use
+  a heartbeat or automation as an app Watcher workaround. If no supported
+  Watcher/wake route exists, Codex MUST record the exact limitation and bounded
+  fallback; it MUST NOT invent a monitor identity.
 
 ## Recovery, evaluation, and handoff
 

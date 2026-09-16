@@ -55,9 +55,9 @@ those targets directly. Workers MUST NOT use an Orchestrator-owned Watcher
 session or token. A Watcher report or finite goal MUST NOT transfer ownership or
 prove issue completion. A native reviewer's own terminal delivery follows its
 review route and MUST NOT be treated as Worker observation or permission for
-direct Orchestrator polling. Read `parent-supervision.md` for exact wait values,
-host-limit, quiet-wait, fallback, report, interruption, cancellation, and
-non-Watcher conditions before execution.
+direct Orchestrator polling. MUST read `parent-supervision.md` for exact wait
+values, host-limit, quiet-wait, fallback, report, interruption, cancellation,
+and non-Watcher conditions before execution.
 
 ### Planning and execution boundary
 
@@ -133,7 +133,8 @@ re-enter planning when it is already selected and in progress.
 - MUST read [token-efficient coordination](references/token-efficient.md) when
   recovering context, polling, or preparing a compact handoff.
 - MUST read [runtime heartbeats](references/runtime-heartbeats.md) when waiting
-  for child events or deciding whether scheduled monitoring applies.
+  for Worker events, handling an ordinary Worker idle-wait handoff, or deciding
+  whether scheduled monitoring applies.
 - MUST read [goal transition reporting](references/goal-transition-reporting.md)
   when delivering child goal state or a terminal transition to the parent.
 - MUST read [parent stop preflight](references/parent-stop-preflight.md) before

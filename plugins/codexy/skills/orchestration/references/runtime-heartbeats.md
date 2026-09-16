@@ -100,30 +100,38 @@ The following lifecycle applies to ordinary Workers and other owners; the
 Orchestrator remains the owner of the overall goal while a Watcher subagent is
 active. A Watcher report MUST NOT create, replace, or transfer that goal.
 
-A successfully registered heartbeat is runtime-owned waiting. The owner MUST
-retain its active goal and plan only while an immediately executable in-scope
-obligation remains, record `goal state=active` and `goal transition=none`, and
-return control without completing or blocking the goal. When no immediately
-executable obligation remains and only an external event or explicit
-Orchestrator wake can advance work, the owner MUST send the idle-wait handoff
-defined in `goal-transition-reporting.md`, complete the finite execution phase,
-and leave the task idle without claiming issue, implementation, transfer, or
-release completion. This finite phase is distinct from the Orchestrator's
-overall goal and a Watcher's bounded observation assignment; neither a phase
-completion nor a Watcher report proves release completion. A qualifying event
-MUST create a fresh short-lived execution goal and current plan before any edit,
-proof, review response, publication, or merge work. The awakened owner MUST
-first read the actual lifecycle state and MUST continue a matching active
-objective; if the state is null or complete, it MAY create the fresh goal and
-MUST read back `active`. A different unfinished objective requires a supported
-lifecycle disposition and MUST NOT be overwritten. An observed `blocked` state
-remains governed by the existing `goal-lifecycle` recovery authority; this
-reference MUST NOT replace or restate that recovery sequence. The awakened owner
-MUST consume the event in the same turn and MUST delete or disable the heartbeat
-when no further observation is required. It MUST record the resulting lifecycle
-state in the compact lane delta. When cleanup is needed, the owner MUST delete
-the heartbeat by id or disable it with a paused status and the heartbeat's full
-update fields; it MUST record which terminal action occurred.
+A successfully registered heartbeat is runtime-owned waiting. An ordinary Worker
+or other non-Orchestrator owner MUST retain its active goal and plan only while
+an immediately executable in-scope obligation remains, record
+`goal state=active` and `goal transition=none`, and return control without
+completing or blocking the goal. When no immediately executable obligation
+remains and only an external event or explicit Orchestrator wake can advance
+work, the owner MUST first determine whether the current finite execution phase
+is satisfied. If satisfied, it MUST send the idle-wait handoff defined in
+`goal-transition-reporting.md`, complete only that finite phase, and leave the
+task idle without claiming issue, implementation, transfer, or release
+completion. If unmet, it MUST retain the honest goal state required by the
+existing lifecycle authority and return through a supported wait or
+terminal-delivery path; it MUST NOT use administrative completion merely to
+clear the handoff. This finite phase is distinct from the Orchestrator's overall
+goal and a Watcher's bounded observation assignment; neither a phase completion
+nor a Watcher report proves release completion. After a finite phase completes
+with no active execution goal, a qualifying event MUST create a fresh
+short-lived execution goal and current plan before any edit, proof, review
+response, publication, or merge work. If an unmet active finite goal was
+retained, a qualifying event MUST resume its existing authorized goal and plan
+instead of creating a duplicate. The awakened owner MUST first read the actual
+lifecycle state and MUST continue a matching active objective; if the state is
+null or complete, it MAY create the fresh goal and MUST read back `active`. A
+different unfinished objective requires a supported lifecycle disposition and
+MUST NOT be overwritten. An observed `blocked` state remains governed by the
+existing `goal-lifecycle` recovery authority; this reference MUST NOT replace or
+restate that recovery sequence. The awakened owner MUST consume the event in the
+same turn and MUST delete or disable the heartbeat when no further observation
+is required. It MUST record the resulting lifecycle state in the compact lane
+delta. When cleanup is needed, the owner MUST delete the heartbeat by id or
+disable it with a paused status and the heartbeat's full update fields; it MUST
+record which terminal action occurred.
 
 ## Unavailable And Sentinel Boundaries
 

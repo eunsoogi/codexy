@@ -38,8 +38,8 @@ branch, worktree, PR, durable child context, or review-response ownership:
    tooling is unavailable. MUST continue discovery before reporting a blocker.
 9. For delegated supervision, MUST read back the saved project identity and
    actual Worker creating tool, plus the callable native-subagent tool and exact
-   Watcher identity, before edits. Use
-   [parent-supervision.md](parent-supervision.md) as the canonical source for
+   Watcher identity before edits. MUST read
+   [parent-supervision.md](parent-supervision.md), the canonical source for
    role/model assignments, report routing, waits, limits, interruption, and
    fallback. The Watcher MUST remain observation-only and MUST NOT become
    another implementation owner.
@@ -52,9 +52,9 @@ branch, worktree, PR, durable child context, or review-response ownership:
 11. Only the assigned Watcher MAY call `wait_threads` for Worker targets. The
     Orchestrator MUST await `watcher_wait` and MUST NOT directly wait, retry, or
     poll them. A native reviewer's terminal delivery is a separate surface and
-    MUST NOT authorize Worker observation. Use the canonical supervision
-    reference for host-limit, quiet-wait, interruption, cancellation, and
-    fallback details.
+    MUST NOT authorize Worker observation. MUST read
+    [parent-supervision.md](parent-supervision.md) before this wait route for
+    host-limit, quiet-wait, interruption, cancellation, and fallback details.
 12. Before implementation starts, the Orchestrator MUST give the Worker the
     exact Watcher task and supported task-message route for ordinary reports.
     The Worker MUST NOT receive a Watcher session token or call Watcher MCP

@@ -17,26 +17,29 @@ structured fields to remove repetition while keeping surrounding prose and
 protected technical text intact.
 
 Live Sentinel observation MUST be read-only and event-driven. Generic task and
-ledger polling remains permitted. The Watcher MUST NOT directly observe, read,
-wait on, or poll a native Sentinel; its observation targets MUST remain limited
-to its assigned Workers and their scoped artifact or tool-call channel. Both the
-Worker owner and the root Orchestrator MUST NOT message, interrupt, replace,
-duplicate, follow up with, or poll a live Sentinel. When only a native-reviewer
-event remains pending, the Worker MUST NOT start unchanged model-continuation
-turns or poll the reviewer. Once the current finite execution phase is
-satisfied, the Worker MUST use the existing finite idle-wait handoff; that
-finite phase transition MUST be reported separately and MUST NOT be treated as
-completion of an unmet issue, release, or long-lived goal. If the current finite
-phase objective is genuinely unmet, the Worker MUST retain its honest goal state
-and return control through the supported wait or terminal-delivery path; it MUST
-NOT force-complete the unmet goal or edit goal-lifecycle state merely to escape
-the wait. A bounded wait with no event is a non-terminal `PENDING` observation,
-and an independently observed live reviewer is `RUNNING`; neither observation is
-a reviewer verdict or fallback-eligible. The owning lane MUST retain the same
-reviewer and wait for its natural terminal result. A live Sentinel MUST report
-its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally. A native
-reviewer's terminal delivery is its own non-Watcher surface and MUST NOT be
-treated as Worker host observation.
+ledger polling remains permitted only for the owner's own non-Watcher target,
+including a native reviewer's terminal delivery. The Orchestrator MUST NOT use
+it for Worker host observation or targets assigned to a native Watcher. The
+Watcher MUST NOT directly observe, read, wait on, or poll a native Sentinel; its
+observation targets MUST remain limited to its assigned Workers and their scoped
+artifact or tool-call channel. Both the Worker owner and the root Orchestrator
+MUST NOT message, interrupt, replace, duplicate, follow up with, or poll a live
+Sentinel. When only a native-reviewer event remains pending, the Worker MUST NOT
+start unchanged model-continuation turns or poll the reviewer. Once the current
+finite execution phase is satisfied, the Worker MUST use the existing finite
+idle-wait handoff; that finite phase transition MUST be reported separately and
+MUST NOT be treated as completion of an unmet issue, release, or long-lived
+goal. If the current finite phase objective is genuinely unmet, the Worker MUST
+retain its honest goal state and return control through the supported wait or
+terminal-delivery path; it MUST NOT force-complete the unmet goal or edit
+goal-lifecycle state merely to escape the wait. A bounded wait with no event is
+a non-terminal `PENDING` observation, and an independently observed live
+reviewer is `RUNNING`; neither observation is a reviewer verdict or
+fallback-eligible. The owning lane MUST retain the same reviewer and wait for
+its natural terminal result. A live Sentinel MUST report its own terminal
+`PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally. A native reviewer's
+terminal delivery is its own non-Watcher surface and MUST NOT be treated as
+Worker host observation.
 
 ## Proof State To Retain
 
@@ -164,13 +167,14 @@ shared message rule.
 
 ## Runtime Heartbeats
 
-Heartbeat registration, bounded schedules, state fingerprints, cleanup, and
-ordinary Worker lifecycle are defined in
+Heartbeat registration, bounded schedules, state fingerprints, cleanup, ordinary
+Worker lifecycle, and idle-wait handoffs are defined in
 [runtime-heartbeats.md](runtime-heartbeats.md). MUST read that reference before
-using a heartbeat. A heartbeat MUST NOT replace the native Watcher route or the
-live Sentinel's event-driven no-poll boundary. The Orchestrator retains the
-active overall goal while the Watcher observes and MUST record those goal and
-bounded-assignment states separately.
+using a heartbeat or handling an ordinary Worker idle-wait handoff. A heartbeat
+MUST NOT replace the native Watcher route or the live Sentinel's event-driven
+no-poll boundary. The Orchestrator retains the active overall goal while the
+Watcher observes and MUST record those goal and bounded-assignment states
+separately.
 
 For repeat handoffs, copy [the delta-poll template](../templates/delta-poll.md)
 and fill only the current slots. MUST keep the template output in the thread or
