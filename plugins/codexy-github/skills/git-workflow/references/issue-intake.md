@@ -34,36 +34,44 @@ conversation and MUST include each of these facts:
 
 ```markdown
 ## Background
+
 <problem, affected behavior, and current evidence>
 
 ## Objectives
+
 <observable outcomes and the artifact or contract this issue produces>
 
 ## Scope and exclusions
+
 <concrete paths or behavior in scope, followed by explicit non-goals>
 
 ## Prerequisite artifacts
-- <actual issue number or artifact> — <the required output or contract, not only an ID>
+
+- <actual issue number or artifact> — <the required output or contract, not only
+  an ID>
 
 ## Completion criteria
+
 <observable conditions that show this issue is complete>
 
 ## Verification
+
 <exact checks, readbacks, or authentic surfaces that prove the criteria>
 
 ## Owned paths
+
 <exact files or directories this issue may change>
 
 ## Stop/report conditions
+
 <failure or decision boundary and the owner of the next decision>
 ```
 
-MUST preserve plan exclusions, dependency order, and read-only boundaries in
-the issue body. MUST NOT publish only a `.plans/<topic>.md` path or a
-conversation link in place of the background, objectives, scope, prerequisites,
-completion, verification, ownership, or stop conditions. A plan's completion or
-ownership claim MUST NOT replace live Git, GitHub, goal, review, or verification
-evidence.
+MUST preserve plan exclusions, dependency order, and read-only boundaries in the
+issue body. MUST NOT publish only a `.plans/<topic>.md` path or a conversation
+link in place of the background, objectives, scope, prerequisites, completion,
+verification, ownership, or stop conditions. A plan's completion or ownership
+claim MUST NOT replace live Git, GitHub, goal, review, or verification evidence.
 
 When a plan contains draft task or dependency IDs, MUST convert each to the
 actual GitHub issue number returned by authorized creation before using it as a

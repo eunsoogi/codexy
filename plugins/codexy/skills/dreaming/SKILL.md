@@ -26,11 +26,11 @@ demoted, while a current exact-head failure remains active.
 ## Active plan recovery
 
 When the task already provides one active plan or an exact plan path, MUST read
-only that plan as recovery context after refreshing live state. MUST NOT discover
-or select another plan.
+only that plan as recovery context after refreshing live state. MUST NOT
+discover or select another plan.
 
-- MUST treat the plan as an auxiliary record, not authority over the native goal,
-  current owner, worktree, Git/GitHub state, review, proof, or completion.
+- MUST treat the plan as an auxiliary record, not authority over the native
+  goal, current owner, worktree, Git/GitHub state, review, proof, or completion.
 - MUST compare its objective, current evidence, preserved behavior, scope,
   dependency inputs, decisions, assumptions, unknowns, and stop condition with
   the refreshed live state. Keep confirmed facts in `Remember`.
