@@ -117,21 +117,21 @@ alter protected technical text.
 
 - For ordinary non-Watcher app-task waits, Codex MUST prefer cursor-based
   `wait_threads` with batched targets. Unchanged cursors, bounded timeouts, and
-  legitimate long commands are not stalls. Codex MUST NOT emit repeated
-  unchanged status, read full transcripts, rerun tests to watch progress, or
-  interrupt a live reviewer merely because it is taking time.
-- In a native Watcher route, only the assigned Watcher MAY call `wait_threads`
-  for Worker/task targets. The Orchestrator MUST await `watcher_wait` with
-  omitted `timeoutMs` selecting the five-minute default (300,000 ms); explicit
-  `timeoutMs=300000` is equivalent; `MAX_WAIT_MS` remains 3,600,000 ms. Host
-  `wait_threads` is separate (120,000 ms here); 300-second transport makes
-  `timeoutMs=295000` the empty-wait margin. Short waits need reason; MUST NOT
-  repeat polls. Pending unchanged state MUST stay quiet; fallback branches MUST
-  report actual limits and recover the route.
-- An implementation Worker MUST NOT open, wait on, report to, cancel, or reuse
-  an Orchestrator-owned Watcher session/token. A bounded authoritative
-  Worker/app readback after an actionable report is allowed for judgement and
-  correction, not observation waiting.
+  long commands are not stalls; Codex MUST NOT repeat status, read transcripts,
+  rerun tests, or interrupt a reviewer merely because it is taking time.
+- Native Watcher routes: only the assigned Watcher MAY call `wait_threads` for
+  Worker/task targets; the Orchestrator MUST await `watcher_wait`, omitting
+  `timeoutMs` for five-minute default (300,000 ms); explicit `timeoutMs=300000`
+  is equivalent; `MAX_WAIT_MS` stays 3,600,000 ms. The actual host's separate
+  `wait_threads` limit MUST be read; callers MUST use 120,000 ms only when
+  confirmed. A confirmed 300-second MCP transport makes `timeoutMs=295000` the
+  documented empty-wait margin. A shorter wait MUST have a stated reason;
+  callers MUST NOT repeat short polls. The Orchestrator MUST NOT directly wait,
+  retry, or poll targets; empty waits or unchanged progress MUST NOT trigger
+  reasoning or messages. Fallbacks MUST report limits and recover the route.
+- Implementation Workers MUST NOT use an Orchestrator-owned Watcher
+  session/token. One bounded authoritative Worker/app readback is allowed after
+  an actionable report for judgement, not observation.
 - Inside a native Watcher turn, the observation loop MUST use `wait_threads` and
   each target's latest cursor, inspect the relevant actual Worker result, report
   any material event, and wait again while any assigned target remains

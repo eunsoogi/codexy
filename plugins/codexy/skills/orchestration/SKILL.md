@@ -55,17 +55,17 @@ through `watcher_wait` and MUST NOT call `wait_threads` for those targets.
 Callers MUST omit `timeoutMs` for ordinary observation so the MCP server selects
 the five-minute default (currently 300,000 ms); explicit `timeoutMs=300000` is
 equivalent. The MCP still supports the maximum `MAX_WAIT_MS` (currently
-3,600,000 ms). The Watcher host's separate `wait_threads` limit may be shorter;
-use and report its actual limit. On this host, it is 120,000 ms, and the
-300-second MCP transport deadline justifies `timeoutMs=295000` for an empty
-wait; this exception MUST NOT become repeated short polling. A shorter wait
-requires an explicit reason such as a user-requested deadline, a confirmed host
-limit, or a diagnostic purpose. While that request is pending, the Orchestrator
-MUST stay in one quiet tool await and MUST NOT emit reasoning, progress
-messages, short polls, or unrelated work merely because no event has arrived.
-Fallback, unavailable, and host-transition branches MUST report the real
-limitation and recover the supported Watcher route; they MUST NOT re-authorize
-direct parent polling. After an actionable report, one bounded authoritative
+3,600,000 ms). The Watcher host's separate `wait_threads` limit MUST be read
+from and reported as the actual host limit; callers MUST use 120,000 ms only
+when confirmed. When a 300-second MCP transport deadline is confirmed,
+`timeoutMs=295000` is the documented empty-wait margin. A shorter wait MUST have
+an explicit reason such as a user-requested deadline, a confirmed host limit, or
+a diagnostic purpose. While that request is pending, the Orchestrator MUST stay
+in one quiet tool await and MUST NOT emit reasoning, progress messages, short
+polls, or unrelated work merely because no event has arrived. Fallback,
+unavailable, and host-transition branches MUST report the real limitation and
+recover the supported Watcher route; they MUST NOT re-authorize direct
+Orchestrator polling. After an actionable report, one bounded authoritative
 Worker or app readback is allowed for judgement and correction, and that
 readback is not an observation wait.
 
@@ -78,10 +78,10 @@ or outer wait termination may leave the native request active when the host does
 not propagate `Interrupt`, so installed candidate Stop success remains an
 external evidence requirement.
 
-An implementation Worker or child MUST NOT open, wait on, report to, cancel, or
-reuse a parent-owned Watcher session or token. Visibility of a session, token,
-or parent transcript does not grant that capability. Ordinary Worker and
-non-Watcher routes retain their explicitly defined wait behavior.
+Implementation Workers MUST NOT use an Orchestrator-owned Watcher session or
+token. Visibility of a session, token, or parent transcript does not grant that
+capability. Ordinary Worker and non-Watcher routes retain their explicitly
+defined wait behavior.
 
 ### Native Watcher report route
 

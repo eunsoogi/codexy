@@ -20,7 +20,7 @@ identity or observation proof.
 
 Only this assigned Watcher MAY call `wait_threads` for the assigned Worker or
 task targets. The Orchestrator MUST await `watcher_wait`; the Watcher MUST NOT
-authorize or perform direct parent polling on its behalf. Fallback, unavailable,
+authorize or perform direct Orchestrator polling on its behalf. Fallback, unavailable,
 and host-transition branches MUST report
 the actual limitation so the Orchestrator can recover the supported route.
 
@@ -44,10 +44,11 @@ The Orchestrator waits through `watcher_wait` and judges each returned report.
 Ordinary observation callers MUST omit `timeoutMs` so the MCP server selects
 the five-minute default (300,000 ms); explicit `timeoutMs=300000` is equivalent.
 The MCP maximum `MAX_WAIT_MS` remains 3,600,000 ms. The Watcher host's separate
-`wait_threads` limit may be shorter; this host supports at most 120,000 ms, and
-its 300-second transport deadline justifies explicit `timeoutMs=295000` for an
-empty wait. A shorter wait requires a stated reason; this exception MUST NOT
-become repeated short polling. While that request is pending, the
+`wait_threads` limit MUST be read from the actual host; callers MUST use 120,000 ms
+only when confirmed. When a 300-second MCP transport deadline is confirmed,
+explicit `timeoutMs=295000` is the documented empty-wait margin. A shorter wait
+MUST have a stated reason; this margin MUST NOT become repeated short polling.
+While that request is pending, the
 Orchestrator MUST remain quiet in one tool await; an empty timeout or unchanged
 progress MUST NOT trigger reasoning, status text, short polling, or unrelated
 work. A same-connection `notifications/cancelled` for the request releases only
