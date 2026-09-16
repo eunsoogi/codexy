@@ -1,6 +1,6 @@
 # Actionable plan template
 
-Use only the sections needed by the request. A small plan MAY omit empty
+MUST use only the sections needed by the request. A small plan MAY omit empty
 sections, but it MUST keep the facts and boundaries that affect execution.
 
 ```markdown
@@ -51,7 +51,7 @@ updated: <current date or evidence time>
 - Dependency inputs: <producer ID plus required artifact or contract>
 - Completion: <observable condition>
 - Verification: <exact check or authentic surface>
-- Exclusions: <what this item must not change>
+- Exclusions: <what this item MUST NOT change>
 - Stop/report: <failure or decision boundary and owner>
 
 ## Order and parallelism
@@ -63,6 +63,6 @@ updated: <current date or evidence time>
 <selected path, save/update result, or not saved and why>
 ```
 
-Each item MUST stand alone. A dependency ID without its required output is not
-enough. Verification MUST prove the item's stated condition, not merely that a
-plan file exists.
+Each item MUST stand alone. A dependency ID without its required output MUST NOT
+suffice. Verification MUST prove the item's stated condition; it MUST NOT merely
+show that a plan file exists.

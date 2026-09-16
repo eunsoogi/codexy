@@ -21,34 +21,35 @@ one is required, and MUST use `$orchestration` for ownership, issue, branch,
 worktree, GitHub, review, or goal decisions. A plan MUST NOT become a text
 replacement for a native goal or a new receipt contract.
 
-For a goal-controlled task, use the actual native goal object and verify its
-current state and transitions through the existing goal authority. MUST NOT
-replace it with a text goal or bypass its API. If a plan includes Workers, event
-waits, or a Watcher, preserve the existing read-only Watcher observation,
-deduplication, parent judgment, and parent-await route; the parent MUST NOT wait
-on Workers directly. Preserve the assigned model, reasoning, host, and
-permission policy, and report a missing capability instead of silently falling
-back.
+For a goal-controlled task, MUST use the actual native goal object and MUST
+verify its current state and transitions through the existing goal authority.
+MUST NOT replace it with a text goal or bypass its API. If a plan includes
+Workers, event waits, or a Watcher, it MUST preserve the existing read-only
+Watcher observation, deduplication, parent judgment, and parent-await route; the
+parent MUST NOT wait on Workers directly. It MUST preserve the assigned model,
+reasoning, host, and permission policy, and MUST report a missing capability; it
+MUST NOT silently fall back.
 
 ## Prepare the plan
 
-1. Determine whether the request asks to save or update a plan, or only to show
-   output. Explicit read-only, output-only, and shared-plan choices MUST be
+1. MUST determine whether the request asks to save or update a plan, or only to
+   show output. Explicit read-only, output-only, and shared-plan choices MUST be
    honored.
-2. Use the latest available sources that matter: the current request, current
-   task or issue, repository instructions, relevant files, and named external
-   state. Memory or history MAY help when requested or useful, but MUST NOT be a
-   mandatory collection step for every plan.
-3. Separate the following facts in the plan: objective, current evidence,
+2. MUST use the latest available sources that matter: the current request,
+   current task or issue, repository instructions, relevant files, and named
+   external state. Memory or history MAY help when requested or useful, but MUST
+   NOT be a mandatory collection step for every plan.
+3. MUST separate the following facts in the plan: objective, current evidence,
    behavior to preserve, scope and exclusions, decisions, assumptions, and
-   unknowns. Mark an unknown instead of filling it with an inference.
-4. For a small request, provide a short plan. MUST NOT force Waves, GitHub
+   unknowns. MUST mark an unknown instead of filling it with an inference.
+4. For a small request, MUST provide a short plan. MUST NOT force Waves, GitHub
    issues, a separate review, or other ceremony unless the request or current
    authority requires it.
 
-Use the [plan template](references/plan-template.md) when a reusable plan
-document is useful. The plan's wording MUST use `MUST` for mandatory work and
-`MUST NOT` for prohibitions when it gives instructions to an agent.
+The agent MAY use the [plan template](references/plan-template.md) when a
+reusable plan document is useful. The plan's wording MUST use `MUST` for
+mandatory work and `MUST NOT` for prohibitions when it gives instructions to an
+agent.
 
 ## Work-item contract
 
@@ -63,47 +64,48 @@ conversation or a parent plan. It MUST include:
 - explicit exclusions; and
 - stop or report conditions, including the owner of the next decision.
 
-Do not hide a shared contract or file conflict inside an item. State which
-artifact is produced, who consumes it, and what must be true before the item can
-start.
+MUST NOT hide a shared contract or file conflict inside an item. MUST state
+which artifact is produced, who consumes it, and what MUST be true before the
+item can start.
 
 ## Order and parallelism
 
-Map path overlaps, shared contracts, generated inputs, and dependency outputs
-before choosing an order. Put prerequisite work before its consumers. Propose
-parallel work only when the items have disjoint writes, independent inputs, and
-no shared contract that requires serialized judgment. Otherwise keep the order
-explicit and explain the dependency.
+MUST map path overlaps, shared contracts, generated inputs, and dependency
+outputs before choosing an order. MUST put prerequisite work before its
+consumers. MUST propose parallel work only when the items have disjoint writes,
+independent inputs, and no shared contract that requires serialized judgment.
+Otherwise, MUST keep the order explicit and MUST explain the dependency.
 
 ## Save and update
 
-When saving or updating is requested or implied, use
-[local storage rules](references/storage.md). Select a destination in this
+When saving or updating is requested or implied, MUST use the
+[local storage rules](references/storage.md). MUST select a destination in this
 order: the user's exact path, one existing active plan for the same topic, then
-the default path. A path conflict or more than one matching active plan is the
-only planning ambiguity that requires a confirmation; preserve the plan output
-and report the conflict while waiting.
+the default path. MUST treat a path conflict or more than one matching active
+plan as the only planning ambiguity that requires a confirmation; MUST preserve
+the plan output and MUST report the conflict while waiting.
 
-Before an update, read the selected file and identify its topic and state. MUST
-preserve unrelated files, user-authored content, shared-plan status, and a
-completed or archived state. MUST NOT untrack a tracked plan. Update only the
-same-topic plan fields that the request covers, and never overwrite
+Before an update, MUST read the selected file and MUST identify its topic and
+state. MUST preserve unrelated files, user-authored content, shared-plan status,
+and a completed or archived state. MUST NOT untrack a tracked plan. MUST update
+only the same-topic plan fields that the request covers, and MUST NOT overwrite
 user-authored lines. If a user edit conflicts with the update or the file has no
-safe same-topic boundary, preserve the original, do not overwrite it, and report
-the limitation.
+safe same-topic boundary, MUST preserve the original, MUST NOT overwrite it, and
+MUST report the limitation.
 
 A read-only or output-only request MUST NOT create `.plans`, change an exclude
-file, or write a plan. If exclusion cannot be applied, report that fact and
-continue with the permitted plan output or save; MUST NOT claim that the file is
-ignored.
+file, or write a plan. If exclusion cannot be applied, MUST report that fact and
+MUST continue with the permitted plan output or save; MUST NOT claim that the
+file is ignored.
 
 ## Report
 
-Return the plan, its selected sources, and the selected path or `not saved`.
-Distinguish current evidence from assumptions and unresolved questions. Report
-whether a file was created, updated, preserved, or left unchanged. Keep issue
-creation, execution, deployment, native goal state, verification, review, and
-release as separate outcomes owned by their existing authorities.
+MUST return the plan, its selected sources, and the selected path or
+`not saved`. MUST distinguish current evidence from assumptions and unresolved
+questions. MUST report whether a file was created, updated, preserved, or left
+unchanged. MUST keep issue creation, execution, deployment, native goal state,
+verification, review, and release as separate outcomes owned by their existing
+authorities.
 
-Do not add an MCP server, planner agent, execution database, personal history,
+MUST NOT add an MCP server, planner agent, execution database, personal history,
 new model policy, or structured receipt requirement to make planning work.
