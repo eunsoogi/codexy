@@ -87,8 +87,10 @@ and report the conflict while waiting.
 Before an update, read the selected file and identify its topic and state. MUST
 preserve unrelated files, user-authored content, shared-plan status, and a
 completed or archived state. MUST NOT untrack a tracked plan. Update only the
-same-topic plan content that the request covers; if the file has no safe
-same-topic boundary, do not overwrite it and report the limitation.
+same-topic plan fields that the request covers, and never overwrite
+user-authored lines. If a user edit conflicts with the update or the file has
+no safe same-topic boundary, preserve the original, do not overwrite it, and
+report the limitation.
 
 A read-only or output-only request MUST NOT create `.plans`, change an exclude
 file, or write a plan. If exclusion cannot be applied, report that fact and

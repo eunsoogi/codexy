@@ -10,7 +10,7 @@ output-only requests do not write.
 ## Destination precedence
 
 1. Use the user's exact path when one is supplied.
-2. Otherwise use one existing active plan whose topic matches the request.
+2. Otherwise use one existing active plan for the same task or topic.
 3. Otherwise use the default path:
    - Git project: repository root `.plans/<topic>.md`.
    - Non-Git directory: current working directory `.plans/<topic>.md`.
@@ -53,9 +53,11 @@ report that Git exclusion is not applicable.
 
 Read the target before writing. Preserve unrelated headings, user edits,
 completed or archived status, and every other plan file. Replace only the
-same-topic active plan content covered by the request. If no safe boundary can
-be identified, leave the file unchanged, return the new plan as output, and
-report that it was not saved.
+same-topic active plan fields covered by the request. Never overwrite
+user-authored lines; when a user edit conflicts with the update, preserve the
+original, return the new plan as output, and report the conflict. If no safe
+boundary can be identified, leave the file unchanged, return the new plan as
+output, and report that it was not saved.
 
 ## Verification scenarios
 
