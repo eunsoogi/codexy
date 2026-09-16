@@ -90,9 +90,6 @@ mod session_audit_event_runtime;
 #[path = "../skill_boundary_taxonomy.rs"]
 mod skill_boundary_taxonomy;
 
-#[path = "../session_audit_parent_bounds.rs"]
-mod session_audit_parent_bounds;
-
 pub(crate) mod stage_budget_test_support {
     use serde_json::{Value, json};
 
@@ -172,20 +169,11 @@ pub(crate) mod stage_budget_test_support {
     }
 }
 
-#[path = "../session_audit_receipt.rs"]
-mod session_audit_receipt;
-
 #[path = "../session_audit_receipt_contract.rs"]
 mod session_audit_receipt_contract;
 
 #[path = "../session_audit_receipt_review_feedback.rs"]
 mod session_audit_receipt_review_feedback;
-
-#[path = "../session_audit_stage_budget.rs"]
-mod session_audit_stage_budget;
-
-#[path = "../session_audit_stage_budget_continuity.rs"]
-mod session_audit_stage_budget_continuity;
 
 #[path = "../validator_lsp_readiness.rs"]
 mod validator_lsp_readiness;
