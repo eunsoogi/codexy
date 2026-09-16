@@ -128,29 +128,29 @@ release를 실행합니다. Codex를 시작하는 host 환경의 `PATH`에서 `u
 
 ## Skill 목록
 
-설치되는 배포본에는 다음 skill이 포함됩니다. 각 행에서 정확한 이름과 짧은
-목적, 컴포넌트, 실제 `SKILL.md` 원문 링크를 확인할 수 있습니다.
+설치되는 배포본에는 다음 skill이 포함됩니다. 각 행에서 정확한 이름과 짧은 목적,
+컴포넌트, 실제 `SKILL.md` 원문 링크를 확인할 수 있습니다.
 
-| Skill | 목적 | 컴포넌트 |
-| ----- | ---- | -------- |
-| [agents-md-authoring](plugins/codexy/skills/agents-md-authoring/SKILL.md) | `AGENTS.md` 지침 파일을 만들고, 검토하고, 옮기고, 범위를 정합니다. | `core` |
-| [blind-read](plugins/codexy/skills/blind-read/SKILL.md) | 한 가지 artifact와 행동을 새 독자의 관점에서 해석합니다. | `core` |
-| [decision-rationale](plugins/codexy/skills/decision-rationale/SKILL.md) | 이미 선택한 결정의 이유와 근거를 살핍니다. | `core` |
-| [dreaming](plugins/codexy/skills/dreaming/SKILL.md) | context compaction 뒤에 유지할 사실과 진행 중인 일을 복원합니다. | `core` |
-| [engineering](plugins/codexy/skills/engineering/SKILL.md) | 하나의 결과를 진단하고, 구체화하고, 구현하고, 리팩터링하고, 검증합니다. | `core` |
-| [frame-alternatives](plugins/codexy/skills/frame-alternatives/SKILL.md) | 주어진 제약 안에서 신뢰할 수 있는 대안을 제시합니다. | `core` |
-| [goal-lifecycle](plugins/codexy/skills/goal-lifecycle/SKILL.md) | 실제 goal 상태를 사용하고 오래된 blocked 실행 기록을 복구합니다. | `core` |
-| [orchestration](plugins/codexy/skills/orchestration/SKILL.md) | 담당, 실행, 근거, 인수인계, review 경로를 분류하고 조정합니다. | `core` |
-| [plan-stress-test](plugins/codexy/skills/plan-stress-test/SKILL.md) | 명시적으로 선택한 하나의 중요한 plan을 점검하며 자동 리뷰 단계가 아닙니다. | `core` |
-| [planning](plugins/codexy/skills/planning/SKILL.md) | 실행 권한을 가져오지 않고 실행 가능한 project plan을 만들고 갱신합니다. | `core` |
-| [project-brief](plugins/codexy/skills/project-brief/SKILL.md) | 기록된 현재 project 상태를 읽기 전용 brief로 정리합니다. | `core` |
-| [proof-driven-completion](plugins/codexy/skills/proof-driven-completion/SKILL.md) | 모든 완료 주장을 현재의 권위 있는 근거와 연결합니다. | `core` |
-| [prune-artifact-claims](plugins/codexy/skills/prune-artifact-claims/SKILL.md) | 하나의 artifact를 하나의 기준 source에 맞춰 오래된 주장을 정리합니다. | `core` |
-| [realtime-voice-orchestration](plugins/codexy/skills/realtime-voice-orchestration/SKILL.md) | 명시적으로 요청한 realtime voice 작업을 담당자에게 연결합니다. | `core` |
-| [wiki](plugins/codexy/skills/wiki/SKILL.md) | 하나의 범위 있는 source 기반 topic knowledge base를 만들고 운영합니다. | `core` |
-| [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md) | issue, branch, worktree, PR, review, merge, main 동기화 workflow를 관리합니다. | `github` |
-| [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md) | 저장소 구조와 dependency edge를 정해진 범위에서 탐색합니다. | `devtools` |
-| [lsp](plugins/codexy-devtools/skills/lsp/SKILL.md) | 언어 인식 symbol, reference, definition, diagnostic을 요청합니다. | `devtools` |
+| Skill                                                                                       | 목적                                                                           | 컴포넌트   |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ---------- |
+| [agents-md-authoring](plugins/codexy/skills/agents-md-authoring/SKILL.md)                   | `AGENTS.md` 지침 파일을 만들고, 검토하고, 옮기고, 범위를 정합니다.             | `core`     |
+| [blind-read](plugins/codexy/skills/blind-read/SKILL.md)                                     | 한 가지 artifact와 행동을 새 독자의 관점에서 해석합니다.                       | `core`     |
+| [decision-rationale](plugins/codexy/skills/decision-rationale/SKILL.md)                     | 이미 선택한 결정의 이유와 근거를 살핍니다.                                     | `core`     |
+| [dreaming](plugins/codexy/skills/dreaming/SKILL.md)                                         | context compaction 뒤에 유지할 사실과 진행 중인 일을 복원합니다.               | `core`     |
+| [engineering](plugins/codexy/skills/engineering/SKILL.md)                                   | 하나의 결과를 진단하고, 구체화하고, 구현하고, 리팩터링하고, 검증합니다.        | `core`     |
+| [frame-alternatives](plugins/codexy/skills/frame-alternatives/SKILL.md)                     | 주어진 제약 안에서 신뢰할 수 있는 대안을 제시합니다.                           | `core`     |
+| [goal-lifecycle](plugins/codexy/skills/goal-lifecycle/SKILL.md)                             | 실제 goal 상태를 사용하고 오래된 blocked 실행 기록을 복구합니다.               | `core`     |
+| [orchestration](plugins/codexy/skills/orchestration/SKILL.md)                               | 담당, 실행, 근거, 인수인계, review 경로를 분류하고 조정합니다.                 | `core`     |
+| [plan-stress-test](plugins/codexy/skills/plan-stress-test/SKILL.md)                         | 명시적으로 선택한 하나의 중요한 plan을 점검하며 자동 리뷰 단계가 아닙니다.     | `core`     |
+| [planning](plugins/codexy/skills/planning/SKILL.md)                                         | 실행 권한을 가져오지 않고 실행 가능한 project plan을 만들고 갱신합니다.        | `core`     |
+| [project-brief](plugins/codexy/skills/project-brief/SKILL.md)                               | 기록된 현재 project 상태를 읽기 전용 brief로 정리합니다.                       | `core`     |
+| [proof-driven-completion](plugins/codexy/skills/proof-driven-completion/SKILL.md)           | 모든 완료 주장을 현재의 권위 있는 근거와 연결합니다.                           | `core`     |
+| [prune-artifact-claims](plugins/codexy/skills/prune-artifact-claims/SKILL.md)               | 하나의 artifact를 하나의 기준 source에 맞춰 오래된 주장을 정리합니다.          | `core`     |
+| [realtime-voice-orchestration](plugins/codexy/skills/realtime-voice-orchestration/SKILL.md) | 명시적으로 요청한 realtime voice 작업을 담당자에게 연결합니다.                 | `core`     |
+| [wiki](plugins/codexy/skills/wiki/SKILL.md)                                                 | 하나의 범위 있는 source 기반 topic knowledge base를 만들고 운영합니다.         | `core`     |
+| [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md)                          | issue, branch, worktree, PR, review, merge, main 동기화 workflow를 관리합니다. | `github`   |
+| [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md)                              | 저장소 구조와 dependency edge를 정해진 범위에서 탐색합니다.                    | `devtools` |
+| [lsp](plugins/codexy-devtools/skills/lsp/SKILL.md)                                          | 언어 인식 symbol, reference, definition, diagnostic을 요청합니다.              | `devtools` |
 
 `plugin-marketplace-prep`, `release-engineering`, `skill-evaluation` 같은 저장소
 전용 유지보수 skill은 `.agents/skills`에 남아 있으며 설치 기능에 포함되지
@@ -165,11 +165,10 @@ release를 실행합니다. Codex를 시작하는 host 환경의 `PATH`에서 `u
 $planning 이 issue를 각 단계의 담당자, 근거, 종료 조건이 있는 세 단계 plan으로 나눠줘.
 ```
 
-`planning`은 계획 내용을 맡고, `orchestration`은 담당자와 인수인계를 포함한
-실행 조정을 맡습니다. `engineering`은 개별 구현과 그 검증을 맡습니다. planning
-요청만으로 작업이 배정되거나 실행 권한이 생기지는 않습니다.
-`plan-stress-test`는 명시적으로 선택해야 하는 자문 점검이며 자동 리뷰 단계가
-아닙니다.
+`planning`은 계획 내용을 맡고, `orchestration`은 담당자와 인수인계를 포함한 실행
+조정을 맡습니다. `engineering`은 개별 구현과 그 검증을 맡습니다. planning
+요청만으로 작업이 배정되거나 실행 권한이 생기지는 않습니다. `plan-stress-test`는
+명시적으로 선택해야 하는 자문 점검이며 자동 리뷰 단계가 아닙니다.
 
 ### 오케스트레이션 한눈에 보기
 

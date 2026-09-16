@@ -55,7 +55,7 @@ fn readme_inventory_rejects_omissions_duplicates_components_and_links() -> TestR
     let duplicate = english.replacen(&row, &format!("{row}\n{row}"), 1);
     assert!(inventory::documented(&root, &duplicate, &expected, "duplicate").is_err());
 
-    let component = row.replacen("| `core` |", "| `github` |", 1);
+    let component = row.replacen("`core`", "`github`", 1);
     let component_error = english.replacen(&row, &component, 1);
     assert!(inventory::documented(&root, &component_error, &expected, "component").is_err());
 

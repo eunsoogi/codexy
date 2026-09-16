@@ -158,26 +158,26 @@ The installed distribution contains these skills. Each row names the skill,
 summarizes its purpose, identifies its component, and links to the actual
 `SKILL.md` source.
 
-| Skill | Purpose | Component |
-| ----- | ------- | --------- |
-| [agents-md-authoring](plugins/codexy/skills/agents-md-authoring/SKILL.md) | Create, review, move, or scope `AGENTS.md` instruction files. | `core` |
-| [blind-read](plugins/codexy/skills/blind-read/SKILL.md) | Let a fresh reader interpret one named artifact and action. | `core` |
-| [decision-rationale](plugins/codexy/skills/decision-rationale/SKILL.md) | Inspect the stated reason and evidence for an existing choice. | `core` |
-| [dreaming](plugins/codexy/skills/dreaming/SKILL.md) | Recover durable facts and active work after context compaction. | `core` |
-| [engineering](plugins/codexy/skills/engineering/SKILL.md) | Diagnose, specify, implement, refactor, and verify one outcome. | `core` |
-| [frame-alternatives](plugins/codexy/skills/frame-alternatives/SKILL.md) | Surface credible alternatives against supplied constraints. | `core` |
-| [goal-lifecycle](plugins/codexy/skills/goal-lifecycle/SKILL.md) | Use real goal states and recover stale blocked execution records. | `core` |
-| [orchestration](plugins/codexy/skills/orchestration/SKILL.md) | Classify ownership, execution, evidence, handoffs, and review routing. | `core` |
-| [plan-stress-test](plugins/codexy/skills/plan-stress-test/SKILL.md) | Explicitly opt in to challenge one important plan; it is not an automatic review stage. | `core` |
-| [planning](plugins/codexy/skills/planning/SKILL.md) | Create or update an actionable project plan without taking execution authority. | `core` |
-| [project-brief](plugins/codexy/skills/project-brief/SKILL.md) | Give a read-only brief of recorded current project state. | `core` |
-| [proof-driven-completion](plugins/codexy/skills/proof-driven-completion/SKILL.md) | Match each completion claim to current authoritative proof. | `core` |
-| [prune-artifact-claims](plugins/codexy/skills/prune-artifact-claims/SKILL.md) | Refresh one artifact against one governing source by pruning stale claims. | `core` |
-| [realtime-voice-orchestration](plugins/codexy/skills/realtime-voice-orchestration/SKILL.md) | Route explicitly requested realtime voice work to the owner. | `core` |
-| [wiki](plugins/codexy/skills/wiki/SKILL.md) | Build or operate one bounded, source-backed topic knowledge base. | `core` |
-| [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md) | Manage issue, branch, worktree, PR, review, merge, and main-sync workflow. | `github` |
-| [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md) | Explore bounded repository structure and dependency edges. | `devtools` |
-| [lsp](plugins/codexy-devtools/skills/lsp/SKILL.md) | Request language-aware symbols, references, definitions, or diagnostics. | `devtools` |
+| Skill                                                                                       | Purpose                                                                                 | Component  |
+| ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------- |
+| [agents-md-authoring](plugins/codexy/skills/agents-md-authoring/SKILL.md)                   | Create, review, move, or scope `AGENTS.md` instruction files.                           | `core`     |
+| [blind-read](plugins/codexy/skills/blind-read/SKILL.md)                                     | Let a fresh reader interpret one named artifact and action.                             | `core`     |
+| [decision-rationale](plugins/codexy/skills/decision-rationale/SKILL.md)                     | Inspect the stated reason and evidence for an existing choice.                          | `core`     |
+| [dreaming](plugins/codexy/skills/dreaming/SKILL.md)                                         | Recover durable facts and active work after context compaction.                         | `core`     |
+| [engineering](plugins/codexy/skills/engineering/SKILL.md)                                   | Diagnose, specify, implement, refactor, and verify one outcome.                         | `core`     |
+| [frame-alternatives](plugins/codexy/skills/frame-alternatives/SKILL.md)                     | Surface credible alternatives against supplied constraints.                             | `core`     |
+| [goal-lifecycle](plugins/codexy/skills/goal-lifecycle/SKILL.md)                             | Use real goal states and recover stale blocked execution records.                       | `core`     |
+| [orchestration](plugins/codexy/skills/orchestration/SKILL.md)                               | Classify ownership, execution, evidence, handoffs, and review routing.                  | `core`     |
+| [plan-stress-test](plugins/codexy/skills/plan-stress-test/SKILL.md)                         | Explicitly opt in to challenge one important plan; it is not an automatic review stage. | `core`     |
+| [planning](plugins/codexy/skills/planning/SKILL.md)                                         | Create or update an actionable project plan without taking execution authority.         | `core`     |
+| [project-brief](plugins/codexy/skills/project-brief/SKILL.md)                               | Give a read-only brief of recorded current project state.                               | `core`     |
+| [proof-driven-completion](plugins/codexy/skills/proof-driven-completion/SKILL.md)           | Match each completion claim to current authoritative proof.                             | `core`     |
+| [prune-artifact-claims](plugins/codexy/skills/prune-artifact-claims/SKILL.md)               | Refresh one artifact against one governing source by pruning stale claims.              | `core`     |
+| [realtime-voice-orchestration](plugins/codexy/skills/realtime-voice-orchestration/SKILL.md) | Route explicitly requested realtime voice work to the owner.                            | `core`     |
+| [wiki](plugins/codexy/skills/wiki/SKILL.md)                                                 | Build or operate one bounded, source-backed topic knowledge base.                       | `core`     |
+| [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md)                          | Manage issue, branch, worktree, PR, review, merge, and main-sync workflow.              | `github`   |
+| [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md)                              | Explore bounded repository structure and dependency edges.                              | `devtools` |
+| [lsp](plugins/codexy-devtools/skills/lsp/SKILL.md)                                          | Request language-aware symbols, references, definitions, or diagnostics.                | `devtools` |
 
 Repository-only maintenance skills such as `plugin-marketplace-prep`,
 `release-engineering`, and `skill-evaluation` remain under `.agents/skills` and

@@ -212,6 +212,7 @@ fn valid_header(cells: &[String]) -> bool {
 }
 
 pub(super) fn guidance(text: &str, language: &str) -> Result<(), String> {
+    let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
     for marker in [
         "$planning",
         "`planning`",
@@ -219,7 +220,7 @@ pub(super) fn guidance(text: &str, language: &str) -> Result<(), String> {
         "`engineering`",
         "plan-stress-test",
     ] {
-        if !text.contains(marker) {
+        if !normalized.contains(marker) {
             return Err(format!("{language} README misses {marker} guidance"));
         }
     }
@@ -234,7 +235,7 @@ pub(super) fn guidance(text: &str, language: &str) -> Result<(), String> {
         ["계획 내용", "실행 조정", "개별 구현", "자동 리뷰 단계가 아닙니다"]
     };
     for marker in role_markers {
-        if !text.contains(marker) {
+        if !normalized.contains(marker) {
             return Err(format!("{language} README misses role distinction {marker}"));
         }
     }
