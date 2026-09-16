@@ -17,10 +17,11 @@ structured fields to remove repetition while keeping surrounding prose and
 protected technical text intact.
 
 Live Sentinel observation MUST be read-only and event-driven. Generic task and
-ledger polling remains permitted only for the owner's own non-Watcher target,
-including a native reviewer's terminal delivery. The Orchestrator MUST NOT use
-it for Worker host observation or targets assigned to a native Watcher. The
-Watcher MUST NOT directly observe, read, wait on, or poll a native Sentinel; its
+ledger polling remains permitted only for the owner's own non-Watcher target.
+Native-reviewer terminal delivery remains event-driven and MUST NOT be polled;
+it is not a polling exception. The Orchestrator MUST NOT use generic polling for
+Worker host observation or targets assigned to a native Watcher. The Watcher
+MUST NOT directly observe, read, wait on, or poll a native Sentinel; its
 observation targets MUST remain limited to its assigned Workers and their scoped
 artifact or tool-call channel. Both the Worker owner and the root Orchestrator
 MUST NOT message, interrupt, replace, duplicate, follow up with, or poll a live
