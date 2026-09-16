@@ -98,12 +98,12 @@ messages.
 ### Planning and execution boundary
 
 `$planning` is the source of instructions for plan content, plan updates, and
-local plan-file rules. Select it for an explicit plan-creation or plan-update
-request, or when genuinely necessary decomposition is required for large work.
-Orchestration remains authoritative for task classification, ownership,
-assignment, worktree, dispatch, execution coordination, and merge. A plan is a
-supporting artifact: it MUST NOT create execution authority, replace a native
-goal, or prove that execution or verification occurred.
+local plan-file rules. MUST select it for an explicit plan-creation or
+plan-update request, or when genuinely necessary decomposition is required for
+large work. Orchestration remains authoritative for task classification,
+ownership, assignment, worktree, dispatch, execution coordination, and merge. A
+plan is a supporting artifact: it MUST NOT create execution authority, replace a
+native goal, or prove that execution or verification occurred.
 
 A plan-only request MUST return the planning result and MUST NOT create an
 issue, branch, worktree, child task, or implementation. When execution is

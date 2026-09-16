@@ -15,12 +15,12 @@
    - MUST use the available `codegraph` MCP to map relevant code files and
      neighbors when the selected task has a code or repository surface.
 2. Plan:
-   - Select [`$planning`](../../planning/SKILL.md) for an explicit plan-creation
-     or plan-update request, or when genuinely necessary decomposition is
-     required for large work. `$planning` is the source of instructions for plan
-     content, updates, and plan-file rules. Orchestration MUST NOT duplicate
-     those rules or re-enter planning when it is already selected and in
-     progress.
+   - MUST select [`$planning`](../../planning/SKILL.md) for an explicit
+     plan-creation or plan-update request, or when genuinely necessary
+     decomposition is required for large work. `$planning` is the source of
+     instructions for plan content, updates, and plan-file rules. Orchestration
+     MUST NOT duplicate those rules or re-enter planning when it is already
+     selected and in progress.
    - A plan-only request MUST return the planning result and MUST NOT create an
      issue, branch, worktree, child task, or implementation. When execution is
      authorized for one atomic issue, orchestration MUST NOT require a plan file

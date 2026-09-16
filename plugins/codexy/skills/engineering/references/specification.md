@@ -25,8 +25,9 @@ Before editing, MUST record a short contract in the issue or plan:
   prove the requested behavior.
 
 This contract does not by itself request a plan file. When planning is selected,
-send plan-content or plan-file changes through `$planning`; engineering owns the
-technical design, implementation, and verification within the assigned issue.
+MUST send plan-content or plan-file changes through `$planning`; engineering
+owns the technical design, implementation, and verification within the assigned
+issue.
 
 For a small change, these five points may be a few lines. A separate PRD or test
 plan MUST NOT be created unless the scope needs one.
