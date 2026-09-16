@@ -8,8 +8,9 @@
    - MUST read the latest request, active project instructions, active issue,
      and relevant local skills.
    - When the issue includes delegated app-thread supervision, MUST read
-     [parent supervision](parent-supervision.md) and distinguish the parent,
-     worker, watcher, and native-reviewer surfaces before routing work.
+     [parent supervision](parent-supervision.md) and distinguish the
+     Orchestrator, Worker, Watcher, and native-reviewer surfaces before routing
+     work.
    - MUST separate hard requirements, preferences, assumptions, and non-goals.
    - MUST identify the observable surface that proves the request worked.
    - MUST decide separate app-task creation from branch/worktree/PR need by
@@ -66,28 +67,15 @@
      orchestrator MUST start or fork a separate Codex thread in a worktree when
      the tool is available. A current-task-owned lane MUST NOT be dispatched to
      another task merely because it needs a branch, worktree, or PR.
-   - The Orchestrator MUST summon the packaged `codexy-watcher` specialist
-     through the callable native-subagent API (`spawn_agent` or its versioned
-     multi-agent equivalent) with the Worker's exact target identities. The
-     Watcher observes and reports through the core Watcher MCP; it MUST NOT
-     become an independent app task, edit Worker files, correct Workers, decide
-     acceptance, or recruit a second watcher. The same native Watcher turn MUST
-     repeat `wait_threads`, actual Worker-result inspection, material reporting,
-     and the next wait while any assigned target remains nonterminal. A report,
-     one Worker completion, or an empty timeout MUST NOT end that turn; return
-     is reserved for full assignment completion, explicit cancellation, or a
-     verified host limitation.
-   - Only the assigned Watcher MAY call `wait_threads` for its assigned Worker
-     or task targets. The Orchestrator MUST await `watcher_wait` and MUST NOT
-     directly wait on those targets; fallback, unavailable, and host-transition
-     branches MUST recover the supported Watcher route rather than authorize
-     parent polling.
-   - The assignment MUST give the Worker the exact Watcher task and the host's
-     supported task-message route for ordinary progress, completion, findings,
-     and attention reports. The Watcher deduplicates unchanged reports and
-     relays only meaningful changes or required decisions; it MUST NOT direct
-     the Worker. A verified unavailable route or concrete emergency permits one
-     marked direct-parent fallback, not routine duplicate reporting.
+   - Native Watcher creation, exact Worker targets, report delivery, wait
+     ownership, quiet waiting, deduplication, host limits, interruption, and
+     fallback MUST follow [parent-supervision.md](parent-supervision.md). The
+     Orchestrator MUST use the packaged native Watcher route; only the assigned
+     Watcher MAY wait on its Worker/task targets, and the Orchestrator MUST
+     await `watcher_wait` without directly polling them. The Worker MUST use the
+     supplied task-message route for ordinary reports. The Watcher MUST remain
+     read-only and MUST NOT direct the Worker. A native reviewer's own terminal
+     delivery is a separate surface and MUST NOT authorize Worker observation.
    - MUST complete lane assignment before implementation edits begin. An
      Orchestrator may prepare issue text, branch name, worktree path, and
      handoff text, but MUST NOT patch implementation files for the child-owned

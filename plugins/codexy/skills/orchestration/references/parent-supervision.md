@@ -2,9 +2,9 @@
 
 Codex MUST use this reference when an Orchestrator coordinates issue-sized work
 through Codex app tasks, a Watcher, Worker callbacks, drift correction, or a
-long-lived release goal. It defines evidence and authority boundaries; it does
-not create a scheduler, replace goal-lifecycle, or choose a repository's GitHub
-policy.
+long-lived release goal. It is the canonical detailed source for delegated
+supervision, evidence, and authority boundaries; it does not create a scheduler,
+replace goal-lifecycle, or choose a repository's GitHub policy.
 
 ## Canonical role mapping
 
@@ -70,13 +70,13 @@ alter protected technical text.
 
 ## Two observation channels
 
-- Native Watcher assignments route ordinary Worker progress, completion,
-  findings, attention, gate, fatal-error, and final-result reports to the exact
-  assigned Watcher task. Each report MUST carry its source Worker task and
-  issue/PR lane (or an explicit no-PR marker); the Watcher MUST validate current
-  assignment, keep distinct tasks/lanes separate, deduplicate identities, and
-  report only action-required deltas through `watcher_report`. Goal and terminal
-  receipts remain direct-Orchestrator; reports are signals, not acceptance.
+- Native Watcher assignments route each ordinary Worker report to its exact
+  Watcher task. Reports MUST carry source Worker task and issue/PR lane (or an
+  explicit no-PR marker); Workers MUST NOT infer targets from transcript
+  visibility. The Watcher MUST validate assignment, separate tasks/lanes,
+  deduplicate identities, and relay action-required deltas through
+  `watcher_report`. Goal and terminal receipts remain direct-Orchestrator;
+  reports are signals, not acceptance.
 - A verified-unavailable route or concrete emergency permits one marked
   direct-Orchestrator fallback; Worker MUST report one limitation and MUST NOT
   resume routine direct reporting or duplicate it. Routine reads and
@@ -115,10 +115,12 @@ alter protected technical text.
 
 ## Waiting and direct correction
 
-- For ordinary non-Watcher app-task waits, Codex MUST prefer cursor-based
-  `wait_threads` with batched targets. Unchanged cursors, bounded timeouts, and
-  long commands are not stalls; Codex MUST NOT repeat status, read transcripts,
-  rerun tests, or interrupt a reviewer merely because it is taking time.
+- For ordinary non-Watcher app-task waits, the observation owner MUST prefer
+  cursor-based `wait_threads` with batched targets. Unchanged cursors, bounded
+  timeouts, and long commands are not stalls; Codex MUST NOT poll, repeat
+  status, read transcripts, rerun tests, or interrupt reviewers solely for
+  elapsed time. A native reviewer's terminal delivery is a non-Watcher target;
+  the Orchestrator MUST NOT observe Worker targets assigned to a native Watcher.
 - Native Watcher routes: only the assigned Watcher MAY call `wait_threads`; the
   Orchestrator MUST await `watcher_wait`, omitting `timeoutMs` for the 300,000
   ms default; explicit `timeoutMs=300000` is equivalent; `MAX_WAIT_MS` stays
@@ -133,10 +135,8 @@ alter protected technical text.
   and recover.
 - Implementation Workers MUST NOT use Orchestrator-owned Watcher session/token.
   One bounded readback after an actionable report is judgement-only.
-- Inside a native Watcher turn, the loop MUST use `wait_threads` with each
-  target's latest cursor, inspect and report material Worker events, and wait
-  again while a target remains nonterminal. Reports, Worker completion, empty
-  timeouts, and unchanged progress are nonterminal and MUST NOT end the turn.
+- The native Watcher loop is defined in "Watcher MCP flow"; its report, Worker
+  completion, empty timeout, or unchanged progress MUST NOT end the turn.
 - When an actionable signal arrives, the Orchestrator MUST send one grouped,
   actionable correction to the existing worker: observed deviation, smallest
   repair, required evidence, and next permitted step. An acknowledgement is not
@@ -205,11 +205,11 @@ alter protected technical text.
   objective-update operation for that active goal, Codex MUST state the
   limitation and leave the unsupported transition unresolved; it MUST NOT
   promise that an idle Orchestrator will wake later.
-- Ordinary app waiting and an explicitly scheduled follow-up are different
-  surfaces. Codex MUST NOT create or recreate a heartbeat or automation as a
-  workaround for an app Watcher. If no supported Watcher or wake route exists,
-  Codex MUST record the exact limitation and bounded fallback and MUST NOT
-  invent a monitor identity.
+- Ordinary app waiting and scheduled follow-up are different surfaces. Codex
+  MUST NOT create or recreate a heartbeat or automation as an app Watcher
+  workaround. If no supported Watcher or wake route exists, Codex MUST record
+  the exact limitation and bounded fallback; it MUST NOT invent a monitor
+  identity.
 
 ## Recovery, evaluation, and handoff
 
