@@ -235,7 +235,9 @@ flowchart TD
         observation -->|PENDING or RUNNING| wait_review["Retain the same reviewer and wait for an event"]
         wait_review --> observation
         observation -->|Terminal result| verdict{"Selected reviewer verdict"}
-        verdict -->|BLOCK| delta["One same-reviewer delta recheck"]
+        verdict -->|BLOCK| repair["Repair findings in the owning lane"]
+        repair --> affected["Run affected verification"]
+        affected --> delta["Same reviewer recheck on the new current head"]
         delta --> observation
         verdict -->|UNOBSERVABLE| blocked["Readiness remains blocked"]
         verdict -->|PASS| head_gate{"Exact-head proof still current?"}
