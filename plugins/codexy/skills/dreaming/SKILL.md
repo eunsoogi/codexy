@@ -33,7 +33,7 @@ discover or select another plan.
   goal, current owner, worktree, Git/GitHub state, review, proof, or completion.
 - MUST compare its objective, current evidence, preserved behavior, scope,
   dependency inputs, decisions, assumptions, unknowns, and stop condition with
-  the refreshed live state. Keep confirmed facts in `Remember`.
+  the refreshed live state. MUST keep confirmed facts in `Remember`.
 - When a plan claim conflicts with current evidence, MUST keep the live fact in
   `Remember` or `Fix`, put the stale plan claim in `Forget or demote`, and
   explain the difference in the refreshed output. MUST NOT silently reconcile

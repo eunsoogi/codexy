@@ -25,8 +25,8 @@ A request to create, save, refresh, or update a plan is a handoff to
 that request before reading or writing plan state. MUST NOT execute a plan
 update, select a plan path, or turn a plan into an assignment from this
 read-only skill. A plan mentioned alongside a status request does not expand the
-read boundary; report only explicitly named current task, Git/PR, proof, and
-release facts.
+read boundary; MUST report only explicitly named current task, Git/PR, proof,
+and release facts.
 
 ## Read boundary
 

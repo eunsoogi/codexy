@@ -26,11 +26,11 @@ handoff with the canonical issue or pull request when one exists.
 
 ## Transfer an authorized plan into an issue
 
-A plan is supporting input and MUST NOT grant issue-creation authority. Use this
-section only after the existing authorization, duplicate, taxonomy, assignee,
-milestone, and owner checks are satisfied. When an authorized issue is derived
-from a plan, its body MUST be understandable without the plan file or prior
-conversation and MUST include each of these facts:
+A plan is supporting input and MUST NOT grant issue-creation authority. MUST use
+this section only after the existing authorization, duplicate, taxonomy,
+assignee, milestone, and owner checks are satisfied. When an authorized issue is
+derived from a plan, its body MUST be understandable without the plan file or
+prior conversation and MUST include each of these facts:
 
 ```markdown
 ## Background
@@ -77,7 +77,7 @@ When a plan contains draft task or dependency IDs, MUST convert each to the
 actual GitHub issue number returned by authorized creation before using it as a
 reference. After each registration, MUST read back the actual issue body and
 metadata from GitHub; a draft ID or local plan reference is not registration
-proof. Do not create or register issues merely because a plan was requested.
+proof. MUST NOT create or register issues merely because a plan was requested.
 
 ## Issue title
 
