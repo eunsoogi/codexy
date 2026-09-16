@@ -7,9 +7,10 @@
   performs parent verification, coordinates squash merge, and syncs `main`.
 - A child Codex worktree thread owns implementation edits, local verification,
   and review-response fixes for its assigned issue or lane.
-- `$planning` owns plan content, plan updates, and plan-file rules. Orchestration
-  owns task classification, ownership, assignment, worktree, dispatch, execution
-  coordination, and merge; a plan MUST NOT transfer those authorities.
+- `$planning` owns plan content, plan updates, and plan-file rules.
+  Orchestration owns task classification, ownership, assignment, worktree,
+  dispatch, execution coordination, and merge; a plan MUST NOT transfer those
+  authorities.
 - Durable delegation and multi-lane ownership preserve this ownership boundary
   but do not select a strict workflow profile by themselves; profile selection
   follows concrete risk, explicit audit, or materially shared integration risk.
