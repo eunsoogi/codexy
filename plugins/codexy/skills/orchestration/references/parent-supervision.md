@@ -21,9 +21,10 @@ When this arrangement is authorized, Codex MUST keep these roles distinct:
 - The Worker is a separate app task that owns the implementation branch, files,
   verification, and its finite execution goal.
 
-The Watcher and Worker share model and reasoning effort but are distinct tasks
-and owners. Only the Orchestrator has the goal prohibition here; the Worker's
-finite idle-wait and observed `blocked` recovery follow the existing lifecycle.
+The Watcher and Worker share model and reasoning effort but are not the same
+task or owner. The goal prohibition applies only to the Orchestrator in this
+arrangement; the Worker's finite idle-wait and actually observed `blocked`
+recovery remain governed by the existing lifecycle.
 
 Configuration metadata MUST remain separate from role identity: Orchestrator and
 Worker-to-Orchestrator delivery use `gpt-6-astra`/`medium`; Worker creation,
@@ -76,14 +77,12 @@ alter protected technical text.
   assignment, keep distinct tasks/lanes separate, deduplicate identities, and
   report only action-required deltas through `watcher_report`. Goal and terminal
   receipts remain direct-Orchestrator; reports are signals, not acceptance.
-- A verified-unavailable route or emergency permits a marked direct-Orchestrator
-  fallback; Worker MUST report one limitation and MUST NOT resume or duplicate
-  routine reports. Only actionable failure, drift, missing delivery, or a ready
-  gate may wake the Orchestrator.
-- The Watcher MUST NOT wake the Orchestrator for internal reads, receipts, or
-  liveness-only goal status; only an actual lifecycle transition, unresolved
-  drift or failure requiring action, missing terminal delivery, or a ready
-  external gate may produce a callback or receipt.
+- A verified-unavailable route or concrete emergency permits one marked
+  direct-Orchestrator fallback; Worker MUST report one limitation and MUST NOT
+  resume routine direct reporting or duplicate it. Routine reads and
+  liveness-only goal status MUST remain internal; the Watcher MUST NOT wake the
+  Orchestrator. Only actionable lifecycle/drift, failure, missing delivery, or a
+  ready gate may wake the Orchestrator.
 - New or changed evidence alone is not notification-eligible. Normal progressing
   work, intermediate successful tests, resolved command mistakes, commits, and
   queued CI MUST remain internal while the Workers are actively progressing. A

@@ -15,9 +15,9 @@ before mutation. The installed concern and launcher retain their
 `child_thread_creation` identifiers for compatibility. Native specialists remain
 a separate catalogued route with their assigned settings; a caller-written role
 or prompt MUST NOT authorize a Worker override. Requested fields and
-source-level hook admission do not prove effective host state; actual host
-readback is excluded from this issue's completion gate and MUST be recorded as
-excluded/not performed.
+source-level hook admission do not prove effective host state; missing
+observations MUST be recorded as unavailable/not observed, not claimed as
+observed.
 
 For bounded native observation of assigned Codex Workers, the Orchestrator MUST
 select the packaged `codexy-watcher` specialist and summon it through the host's
