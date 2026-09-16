@@ -38,6 +38,42 @@ child-owned implementation lane through another surface.
    exact discovery evidence. MUST stop parent implementation routing until a
    real owner is assigned or a maintainer changes the lane requirement.
 
+## App Task Creation Route
+
+`create_thread` is a separate-task creation operation, not a branch/worktree
+allocator. Its callable contract permits it only for an explicit current user
+request for a new app task. A need for an issue branch, worktree, PR, or
+implementation assignment, and task complexity, MUST NOT be treated as that
+request.
+
+Before calling `create_thread`, the Orchestrator MUST read back separately:
+
+- the actual callable tool and its invocation contract;
+- the current user authority for a separate new task; and
+- the current task and existing active owner for the same issue or lane.
+
+When no separate task was requested and the current task owns the lane, the
+current-task route MUST continue under its native goal without calling
+`create_thread`. When an active child already owns the lane, the parent MUST
+send correction instructions through the supported task route and MUST NOT
+implement in the parent or create a duplicate owner. A GitHub assignee, issue,
+branch, PR, or delegated prompt MUST NOT substitute for an active-owner
+readback.
+
+When a separate task was explicitly requested and no existing owner conflict
+remains, the Orchestrator MUST use the actual `create_thread` tool and MUST
+verify its returned task identity, owner, project, worktree, and native goal
+before execution. The call is non-blocking: a ready `threadId`/`hostId` is an
+actual task identity, while a setup `clientThreadId` is only a pending setup
+identity and MUST NOT be passed to tools that require `threadId`.
+
+Both routes MUST NOT replace the native goal or the designated Watcher with
+text, an app-server/CLI path, a fake task, or a silent fallback. Source tests,
+configuration, and app-server transcripts MUST NOT substitute for actual host
+task creation and ownership readback. If the required host route is unsupported,
+the agent MUST report the exact limitation and required action and MUST
+distinguish planning or reading preparation from execution completion.
+
 ## Codex App Worktree Creation Preflight
 
 MUST use this when calling Codex app thread/worktree tools such as `fork_thread`
@@ -45,9 +81,10 @@ or `create_thread` with a worktree environment.
 
 The supported `create_thread(worktree)` contract owns worktree-path allocation.
 This project-side preflight preserves known ownership and collision safeguards;
-it does not reserve host paths or prove atomic exclusion. MUST NOT require an
-additional undocumented reservation API or implement a replacement host
-allocator.
+it does not reserve host paths or prove atomic exclusion. MUST NOT treat a
+worktree requirement as authority to create a separate app task, and MUST NOT
+require an additional undocumented reservation API or implement a replacement
+host allocator.
 
 ## Live Worktree Setup Preflight
 
