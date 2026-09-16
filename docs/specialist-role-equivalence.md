@@ -9,7 +9,7 @@ preserves former capabilities without retaining removed callable aliases.
 | `codexy-auditor`      | Retain      | Acceptance evidence and observable QA.                                |
 | `codexy-cartographer` | Retain      | Read-only repository and ownership mapping.                           |
 | `codexy-forge`        | Remove      | The generic owning child performs scoped implementation.              |
-| `codexy-pathfinder`   | Remove      | Orchestration owns classification, planning, and approach selection.  |
+| `codexy-pathfinder`   | Remove      | Planning owns plan content and updates; orchestration owns classification and execution coordination; engineering owns the atomic technical approach. |
 | `codexy-scribe`       | Remove      | The owning child drafts its own documentation and handoff.            |
 | `codexy-sculptor`     | Remove      | The engineering workflow owns behavior-preserving refactoring.        |
 | `codexy-sentinel`     | Retain      | Independent strict review; fixed at `gpt-6-astra` / `xhigh`.          |
