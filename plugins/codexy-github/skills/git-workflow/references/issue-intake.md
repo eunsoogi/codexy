@@ -24,6 +24,53 @@ exact duplicate exists, an existing owner covers the work, or the selected
 metadata cannot be verified from the repository. Preserve the result as a
 handoff with the canonical issue or pull request when one exists.
 
+## Transfer an authorized plan into an issue
+
+A plan is supporting input and MUST NOT grant issue-creation authority. Use this
+section only after the existing authorization, duplicate, taxonomy, assignee,
+milestone, and owner checks are satisfied. When an authorized issue is derived
+from a plan, its body MUST be understandable without the plan file or prior
+conversation and MUST include each of these facts:
+
+```markdown
+## Background
+<problem, affected behavior, and current evidence>
+
+## Objectives
+<observable outcomes and the artifact or contract this issue produces>
+
+## Scope and exclusions
+<concrete paths or behavior in scope, followed by explicit non-goals>
+
+## Prerequisite artifacts
+- <actual issue number or artifact> — <the required output or contract, not only an ID>
+
+## Completion criteria
+<observable conditions that show this issue is complete>
+
+## Verification
+<exact checks, readbacks, or authentic surfaces that prove the criteria>
+
+## Owned paths
+<exact files or directories this issue may change>
+
+## Stop/report conditions
+<failure or decision boundary and the owner of the next decision>
+```
+
+MUST preserve plan exclusions, dependency order, and read-only boundaries in
+the issue body. MUST NOT publish only a `.plans/<topic>.md` path or a
+conversation link in place of the background, objectives, scope, prerequisites,
+completion, verification, ownership, or stop conditions. A plan's completion or
+ownership claim MUST NOT replace live Git, GitHub, goal, review, or verification
+evidence.
+
+When a plan contains draft task or dependency IDs, MUST convert each to the
+actual GitHub issue number returned by authorized creation before using it as a
+reference. After each registration, MUST read back the actual issue body and
+metadata from GitHub; a draft ID or local plan reference is not registration
+proof. Do not create or register issues merely because a plan was requested.
+
 ## Issue title
 
 The installed component retains this existing issue-title check on supported
@@ -67,4 +114,6 @@ State the tests, checks, or readbacks that will prove the acceptance criteria.
 Use an authenticated GitHub connector or API readback after mutation. Confirm
 the issue number, URL, title, state, labels, milestone, assignee, and body from
 GitHub. The authenticated readback is authoritative; a local request or local
-output alone is not proof of issue creation or metadata.
+output alone is not proof of issue creation or metadata. For a plan-derived
+issue, also confirm that the read-back body contains the self-contained plan
+facts and actual issue-number references required above.
