@@ -35,11 +35,12 @@ git -C "$repo_root" check-ignore -v --no-index -- .plans/<topic>.md
 
 Resolve the plan target relative to `repo_root`, and run all target-relative
 checks with `git -C "$repo_root"`; a bare `git check-ignore` can inspect the
-caller's directory instead. Use the exact `git rev-parse --git-path info/exclude`
-result, resolved to an absolute path, rather than assuming `.git` is a
-directory. This supports a `.git` file and linked worktree. Read existing
-`.gitignore`, the returned repository exclude file, and any configured global
-exclude only as needed; preserve every existing line.
+caller's directory instead. Use the exact
+`git rev-parse --git-path info/exclude` result, resolved to an absolute path,
+rather than assuming `.git` is a directory. This supports a `.git` file and
+linked worktree. Read existing `.gitignore`, the returned repository exclude
+file, and any configured global exclude only as needed; preserve every existing
+line.
 
 If `/.plans/` is not already an effective rule, append that one rule to the
 repository-local exclude file before saving the default untracked plan. Do not
@@ -66,12 +67,11 @@ output, and report that it was not saved.
 When storage behavior is in scope, observe the same plan request twice in a
 temporary Git repository, a linked worktree, and a non-Git directory. The first
 run must choose the documented destination; the second must update only the
-same-topic active plan and preserve an unrelated file and existing content.
-For Git cases, read back the root-anchored `git -C <root> check-ignore -v` and
-the exact exclude file to confirm one effective `/.plans/` rule and no duplicate
-line. For the linked
-worktree, confirm the root and exclude paths come from Git rather than a
-hard-coded `.git` directory. For the non-Git case, confirm the cwd `.plans`
-path and report that Git exclusion is not applicable. These observations are
-proportional evidence for the skill; an independent semantic or installed
-surface evaluation remains a separate responsibility.
+same-topic active plan and preserve an unrelated file and existing content. For
+Git cases, read back the root-anchored `git -C <root> check-ignore -v` and the
+exact exclude file to confirm one effective `/.plans/` rule and no duplicate
+line. For the linked worktree, confirm the root and exclude paths come from Git
+rather than a hard-coded `.git` directory. For the non-Git case, confirm the cwd
+`.plans` path and report that Git exclusion is not applicable. These
+observations are proportional evidence for the skill; an independent semantic or
+installed surface evaluation remains a separate responsibility.

@@ -23,10 +23,10 @@ replacement for a native goal or a new receipt contract.
 
 For a goal-controlled task, use the actual native goal object and verify its
 current state and transitions through the existing goal authority. MUST NOT
-replace it with a text goal or bypass its API. If a plan includes Workers,
-event waits, or a Watcher, preserve the existing read-only Watcher observation,
-deduplication, parent judgment, and parent-await route; the parent MUST NOT
-wait on Workers directly. Preserve the assigned model, reasoning, host, and
+replace it with a text goal or bypass its API. If a plan includes Workers, event
+waits, or a Watcher, preserve the existing read-only Watcher observation,
+deduplication, parent judgment, and parent-await route; the parent MUST NOT wait
+on Workers directly. Preserve the assigned model, reasoning, host, and
 permission policy, and report a missing capability instead of silently falling
 back.
 
@@ -88,14 +88,14 @@ Before an update, read the selected file and identify its topic and state. MUST
 preserve unrelated files, user-authored content, shared-plan status, and a
 completed or archived state. MUST NOT untrack a tracked plan. Update only the
 same-topic plan fields that the request covers, and never overwrite
-user-authored lines. If a user edit conflicts with the update or the file has
-no safe same-topic boundary, preserve the original, do not overwrite it, and
-report the limitation.
+user-authored lines. If a user edit conflicts with the update or the file has no
+safe same-topic boundary, preserve the original, do not overwrite it, and report
+the limitation.
 
 A read-only or output-only request MUST NOT create `.plans`, change an exclude
 file, or write a plan. If exclusion cannot be applied, report that fact and
-continue with the permitted plan output or save; MUST NOT claim that the file
-is ignored.
+continue with the permitted plan output or save; MUST NOT claim that the file is
+ignored.
 
 ## Report
 
