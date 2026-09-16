@@ -1,4 +1,4 @@
-# Parent Supervision
+# Orchestrator Supervision (compatibility filename: `parent-supervision.md`)
 
 Codex MUST use this reference when an Orchestrator coordinates issue-sized work
 through Codex app tasks, a Watcher, Worker callbacks, drift correction, or a
@@ -26,10 +26,11 @@ task or owner. The goal prohibition applies only to the Orchestrator in this
 arrangement; the Worker's finite idle-wait and actually observed `blocked`
 recovery remain governed by the existing lifecycle.
 
-Configuration metadata, separate from role identity, MUST remain: Orchestrator
-and child-to-parent delivery use `gpt-6-astra`/`medium`; Worker, parent-to-child
-delivery, and Watcher use `gpt-5.6-luna`/`max`; the configured inspector uses
-`gpt-5.6-sol`/`medium`. Every applicable app delivery MUST name its model and
+Configuration metadata MUST remain separate from role identity: Orchestrator and
+Worker-to-Orchestrator delivery use `gpt-6-astra`/`medium`; Worker creation,
+Orchestrator-to-Worker delivery and Watcher use `gpt-5.6-luna`/`max`; inspector
+uses `gpt-5.6-sol`/`medium`. Host/runtime direction identifiers remain
+serialized compatibility values; every app delivery MUST name its model and
 thinking effort.
 
 ## Message visibility and style
@@ -53,8 +54,8 @@ alter protected technical text.
   with the packaged `codexy-watcher` role; it is not a second app task or an
   automation. Codex MUST record the Worker project id, specialist identity, and
   actual Watcher creating tool. A projectless task, a standalone app watcher, a
-  generic subagent, or an app API that merely accepts a UUID is not a substitute
-  for this subagent route.
+  unpackaged subagent, or an app API that merely accepts a UUID is not a
+  substitute for this subagent route.
 - The Watcher MUST remain read-only observation. It MAY report a material
   failure, drift, contradiction, scope expansion, missing callback, or
   unavailable channel. It MUST NOT edit worker files, direct or message a Worker
@@ -75,16 +76,13 @@ alter protected technical text.
   issue/PR lane (or an explicit no-PR marker); the Watcher MUST validate current
   assignment, keep distinct tasks/lanes separate, deduplicate identities, and
   report only action-required deltas through `watcher_report`. Goal and terminal
-  receipts remain direct-parent; reports are signals, not acceptance.
+  receipts remain direct-Orchestrator; reports are signals, not acceptance.
 - A verified-unavailable route or concrete emergency permits one marked
-  direct-parent fallback; Worker MUST report one limitation and MUST NOT resume
-  routine direct reporting or duplicate it. Routine reads and liveness-only goal
-  status MUST remain internal; the Watcher MUST NOT wake parent. Only actionable
-  lifecycle/drift, failure, missing delivery, or a ready gate may wake parent.
-- The Watcher MUST NOT wake the Orchestrator for internal reads, receipts, or
-  liveness-only goal status; only an actual lifecycle transition, unresolved
-  drift or failure requiring action, missing terminal delivery, or a ready
-  external gate may produce a callback or receipt.
+  direct-Orchestrator fallback; Worker MUST report one limitation and MUST NOT
+  resume routine direct reporting or duplicate it. Routine reads and
+  liveness-only goal status MUST remain internal; the Watcher MUST NOT wake the
+  Orchestrator. Only actionable lifecycle/drift, failure, missing delivery, or a
+  ready gate may wake the Orchestrator.
 - New or changed evidence alone is not notification-eligible. Normal progressing
   work, intermediate successful tests, resolved command mistakes, commits, and
   queued CI MUST remain internal while the Workers are actively progressing. A
@@ -129,8 +127,8 @@ alter protected technical text.
   poll those targets. While pending, it MUST remain quiet in one tool await;
   empty timeouts and unchanged progress MUST NOT trigger reasoning or messages.
   Fallback or unavailable branches MUST recover the supported Watcher route.
-- An implementation Worker or child MUST NOT open, wait on, report to, cancel,
-  or reuse a parent-owned Watcher session/token. A bounded authoritative
+- An implementation Worker MUST NOT open, wait on, report to, cancel, or reuse
+  an Orchestrator-owned Watcher session/token. A bounded authoritative
   Worker/app readback after an actionable report is allowed for judgement and
   correction, not observation waiting.
 - Inside a native Watcher turn, the observation loop MUST use `wait_threads` and
@@ -154,16 +152,17 @@ alter protected technical text.
 ## Watcher MCP flow
 
 - The Orchestrator creates one native Watcher subagent for a bounded assignment,
-  then opens one scoped `watcher_open` session for the parent, Watcher, and
-  exact Worker targets. The MCP session transports observations; it does not
+  then opens one scoped `watcher_open` session for the Orchestrator, Watcher,
+  and exact Worker targets. The MCP session transports observations; it does not
   create or judge the subagent.
 - The Watcher uses real Worker/app tools, calls `watcher_report` only for
   material events or requested health, and continues its cursor loop while a
   target remains nonterminal. `watcher_health` is freshness evidence, not
   acceptance; reports are untrusted and contain no repair directive.
-- The Orchestrator calls `watcher_wait` with its parent capability and cursor,
-  validates each returned target/event, reads the relevant Worker/app surface,
-  and sends or verifies any correction through the supported Worker route.
+- The Orchestrator calls `watcher_wait` with documented `parent` capability and
+  cursor; `parent` is a preserved protocol field, not a product role. It
+  validates each event, reads the Worker/app surface, and sends or verifies
+  corrections through the supported Worker route.
 - A same-connection `notifications/cancelled` or the packaged Watcher
   `PreToolUse`/`Interrupt` binding route releases only that wait when the host
   propagates it and preserves the durable session. `watcher_cancel` is a

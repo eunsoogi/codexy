@@ -8,7 +8,7 @@ use serde_json::{json, Value};
 use crate::support::TestResult;
 
 #[test]
-fn resolver_preserves_named_specialist_first_luna_default_and_fail_closed_routes() -> TestResult {
+fn resolver_preserves_named_specialist_first_worker_default_and_fail_closed_routes() -> TestResult {
     let root = root();
     assert_in_process_route(
         &root,
@@ -35,7 +35,7 @@ fn resolver_preserves_named_specialist_first_luna_default_and_fail_closed_routes
     assert_in_process_rejects(
         &root,
         json!({"schema":"codexy.child-routing-request.v1","classification":"general","named_specialist":"codexy-unknown","codex_thread_operation":"create_thread"}),
-        "child routing request names an unknown packaged specialist",
+        "Worker routing request names an unknown packaged specialist",
     )?;
     Ok(())
 }
@@ -129,7 +129,7 @@ fn resolver_preserves_capability_fallback_and_codex_thread_delivery() -> TestRes
             "classification":"general",
             "codex_thread_operation":"unsupported_operation"
         }),
-        "child routing request names an unsupported Codex thread operation",
+        "Worker routing request names an unsupported Codex thread operation",
     )?;
     Ok(())
 }

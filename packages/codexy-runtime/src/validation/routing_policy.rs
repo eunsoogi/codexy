@@ -10,7 +10,14 @@ mod thread_capabilities;
 use routes::{child_to_root_route, parent_to_generic_route, selected_general_route, simple_route};
 use thread_capabilities::ThreadCapabilities;
 
+// The schema string, policy field names, and route labels are serialized
+// compatibility identifiers; product-role terminology is standardized in
+// diagnostics and model constants below.
 const REQUEST_SCHEMA: &str = "codexy.child-routing-request.v1";
+const WORKER_MODEL: &str = "gpt-5.6-luna";
+const WORKER_THINKING: &str = "max";
+const ORCHESTRATOR_MODEL: &str = "gpt-6-astra";
+const ORCHESTRATOR_THINKING: &str = "medium";
 
 pub(super) struct Policy {
     pub(super) schema: String,
@@ -61,8 +68,10 @@ struct Request {
 #[derive(Clone, Copy, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 enum ThreadDirection {
-    ParentToGeneric,
-    ChildToRoot,
+    #[serde(rename = "parent_to_generic")]
+    OrchestratorToWorker,
+    #[serde(rename = "child_to_root")]
+    WorkerToOrchestrator,
 }
 
 #[derive(Deserialize)]
@@ -91,18 +100,18 @@ pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
         .filter(|value| !value.trim().is_empty())
     {
         if !known_specialist(plugin_root, &policy, &agent_type)? {
-            bail!("child routing request names an unknown packaged specialist");
+            bail!("Worker routing request names an unknown packaged specialist");
         }
         return Ok(json!({"route":"named_specialist","agent_type":agent_type}));
     }
-    if request.codex_thread_direction == Some(ThreadDirection::ChildToRoot) {
+    if request.codex_thread_direction == Some(ThreadDirection::WorkerToOrchestrator) {
         return Ok(child_to_root_route(
             &policy,
             request.codex_thread_capabilities.as_ref(),
             &request.codex_thread_operation,
         ));
     }
-    if request.codex_thread_direction == Some(ThreadDirection::ParentToGeneric) {
+    if request.codex_thread_direction == Some(ThreadDirection::OrchestratorToWorker) {
         return Ok(parent_to_generic_route(
             &policy,
             request.codex_thread_capabilities.as_ref(),
@@ -121,7 +130,7 @@ pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
             &request.codex_thread_operation,
         )),
         "simple" | "ambiguous" | "high_risk" | "incomplete" => Ok(json!({"route":policy.fallback})),
-        _ => bail!("child routing request classification is not recognized"),
+        _ => bail!("Worker routing request classification is not recognized"),
     }
 }
 
@@ -139,16 +148,16 @@ fn contract() -> Policy {
     Policy {
         schema: "codexy.child-routing-policy.v1".to_owned(),
         generic: Route {
-            model: "gpt-5.6-luna".to_owned(),
-            thinking: "max".to_owned(),
+            model: WORKER_MODEL.to_owned(),
+            thinking: WORKER_THINKING.to_owned(),
         },
         named_specialist: Specialist {
             catalog: "agents/catalog.toml".to_owned(),
             caller_overrides: "forbidden".to_owned(),
         },
         simple: Simple {
-            model: "gpt-5.6-luna".to_owned(),
-            thinking: "max".to_owned(),
+            model: WORKER_MODEL.to_owned(),
+            thinking: WORKER_THINKING.to_owned(),
             all_required: [
                 "fixed_scope",
                 "deterministic_oracle",
@@ -162,12 +171,12 @@ fn contract() -> Policy {
         fallback: "root_or_named_specialist".to_owned(),
         delivery: Delivery {
             parent_to_generic: Route {
-                model: "gpt-5.6-luna".to_owned(),
-                thinking: "max".to_owned(),
+                model: WORKER_MODEL.to_owned(),
+                thinking: WORKER_THINKING.to_owned(),
             },
             child_to_root: Route {
-                model: "gpt-6-astra".to_owned(),
-                thinking: "medium".to_owned(),
+                model: ORCHESTRATOR_MODEL.to_owned(),
+                thinking: ORCHESTRATOR_THINKING.to_owned(),
             },
         },
     }
@@ -177,7 +186,7 @@ fn parse_request(text: &str) -> Result<Request> {
     let value = routing_json::parse(text).map_err(anyhow::Error::msg)?;
     let request = serde_json::from_value::<Request>(value)?;
     if request.schema != REQUEST_SCHEMA {
-        bail!("child routing request has an unsupported schema");
+        bail!("Worker routing request has an unsupported schema");
     }
     thread_capabilities::validate_operation(&request.codex_thread_operation)?;
     match (
@@ -185,9 +194,9 @@ fn parse_request(text: &str) -> Result<Request> {
         request.codex_thread_direction,
     ) {
         ("create_thread", None)
-        | ("send_message_to_thread", Some(ThreadDirection::ParentToGeneric))
-        | ("send_message_to_thread", Some(ThreadDirection::ChildToRoot)) => {}
-        _ => bail!("child routing request has an invalid thread delivery direction"),
+        | ("send_message_to_thread", Some(ThreadDirection::OrchestratorToWorker))
+        | ("send_message_to_thread", Some(ThreadDirection::WorkerToOrchestrator)) => {}
+        _ => bail!("Worker routing request has an invalid thread delivery direction"),
     }
     Ok(request)
 }
@@ -200,12 +209,12 @@ fn validate(policy: &Policy) -> Result<()> {
         "no_unresolved_decision",
     ];
     if policy.schema != "codexy.child-routing-policy.v1"
-        || policy.generic.model != "gpt-5.6-luna"
-        || policy.generic.thinking != "max"
+        || policy.generic.model != WORKER_MODEL
+        || policy.generic.thinking != WORKER_THINKING
         || policy.named_specialist.catalog != "agents/catalog.toml"
         || policy.named_specialist.caller_overrides != "forbidden"
-        || policy.simple.model != "gpt-5.6-luna"
-        || policy.simple.thinking != "max"
+        || policy.simple.model != WORKER_MODEL
+        || policy.simple.thinking != WORKER_THINKING
         || !policy
             .simple
             .all_required
@@ -213,13 +222,13 @@ fn validate(policy: &Policy) -> Result<()> {
             .map(String::as_str)
             .eq(required)
         || policy.fallback != "root_or_named_specialist"
-        || policy.delivery.parent_to_generic.model != "gpt-5.6-luna"
-        || policy.delivery.parent_to_generic.thinking != "max"
-        || policy.delivery.child_to_root.model != "gpt-6-astra"
-        || policy.delivery.child_to_root.thinking != "medium"
+        || policy.delivery.parent_to_generic.model != WORKER_MODEL
+        || policy.delivery.parent_to_generic.thinking != WORKER_THINKING
+        || policy.delivery.child_to_root.model != ORCHESTRATOR_MODEL
+        || policy.delivery.child_to_root.thinking != ORCHESTRATOR_THINKING
     {
         bail!(
-            "child routing policy must retain the closed named-specialist-first fail-closed contract"
+            "Worker routing policy must retain the closed named-specialist-first fail-closed contract"
         );
     }
     Ok(())
