@@ -36,36 +36,27 @@ branch, worktree, PR, durable child context, or review-response ownership:
    against the evidence.
 8. A failed first search for thread or worktree tooling is not proof that the
    tooling is unavailable. MUST continue discovery before reporting a blocker.
-9. For supervision, MUST read back the saved project identity and actual
-   creating tool for the Worker and the callable native-subagent tool for the
-   Watcher before edits. The Watcher MUST remain observation-only and never
-   become a second implementation owner.
-10. The Orchestrator owns the overall active goal. A Watcher subagent may carry
-    only a finite observation assignment; it MUST NOT transfer file ownership,
-    correction authority, final judgement, or issue completion. Record the
-    Orchestrator goal and bounded Watcher assignment separately; an observed
-    `blocked` state remains governed by the existing `goal-lifecycle` recovery
-    authority.
-11. In the canonical role mapping in
-    [parent-supervision.md](parent-supervision.md), the Orchestrator's exact
-    overall goal MUST remain active while the Watcher is summoned. The Watcher
-    MUST NOT create or recreate that goal, and the Orchestrator MUST NOT clear,
-    transfer, or falsely complete it to fit a handoff. The Watcher MUST keep the
-    same native turn active after a material report, one Worker completion, or
-    an empty timeout while assigned targets remain nonterminal. It returns only
-    after the full assignment, explicit user/parent cancellation, or a verified
-    host limitation. The Orchestrator may return control while that native turn
-    continues; ordinary Worker finite-goal closure and `blocked` recovery remain
-    required.
-12. In a native Watcher route, only the assigned Watcher MAY call `wait_threads`
-    for assigned Worker or task targets. The Orchestrator MUST await
-    `watcher_wait` and MUST NOT directly wait on those targets. Fallback,
-    unavailable, and host-transition branches MUST report the actual limitation
-    and recover the supported Watcher route; they MUST NOT authorize direct
-    parent polling. Ordinary non-Watcher routes retain their explicitly defined
-    wait behavior.
-13. Before implementation starts, the Orchestrator MUST give the Worker the
+9. For delegated supervision, MUST read back the saved project identity and
+   actual Worker creating tool, plus the callable native-subagent tool and exact
+   Watcher identity before edits. MUST read
+   [parent-supervision.md](parent-supervision.md), the canonical source for
+   role/model assignments, report routing, waits, limits, interruption, and
+   fallback. The Watcher MUST remain observation-only and MUST NOT become
+   another implementation owner.
+10. The Orchestrator's exact overall goal MUST remain active; the Watcher MAY
+    receive only a bounded observation assignment; the Worker owns
+    implementation and its finite goal. The Orchestrator MUST keep these
+    surfaces separate and use
+    [goal-transition-reporting.md](goal-transition-reporting.md) for goal and
+    terminal receipts.
+11. Only the assigned Watcher MAY call `wait_threads` for Worker targets. The
+    Orchestrator MUST await `watcher_wait` and MUST NOT directly wait, retry, or
+    poll them. A native reviewer's terminal delivery is a separate surface and
+    MUST NOT authorize Worker observation. MUST read
+    [parent-supervision.md](parent-supervision.md) before this wait route for
+    host-limit, quiet-wait, interruption, cancellation, and fallback details.
+12. Before implementation starts, the Orchestrator MUST give the Worker the
     exact Watcher task and supported task-message route for ordinary reports.
     The Worker MUST NOT receive a Watcher session token or call Watcher MCP
     transport tools. A verified unavailable route or concrete emergency permits
-    one marked direct-parent fallback, not routine duplicate reporting.
+    one marked direct Orchestrator fallback, not routine duplicate reporting.

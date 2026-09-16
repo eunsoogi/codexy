@@ -32,20 +32,13 @@ as deduplicated; it MUST NOT imply a second goal call.
 
 ## Native Watcher report route
 
-During a native Watcher assignment, the parent MUST give the Worker the exact
-Watcher task identity and the host's supported task-message route. The Worker
-MUST send ordinary progress, completion, finding, and attention reports there;
-each report MUST carry its source Worker task and issue/PR lane (or an explicit
-no-PR marker). The Watcher MUST validate that correspondence against the
-assignment, keep different source tasks or lanes separate, and never combine
-their reports. It MUST NOT guess a target from transcript visibility, receive a
-Watcher token, or call Watcher MCP transport tools. The Watcher deduplicates
-unchanged event identities and relays only meaningful changes or required
-decisions through `watcher_report` for the parent to judge. A verified
-unavailable route or concrete emergency permits one marked direct-parent
-fallback and one limitation receipt; it MUST NOT silently resume routine direct
-reporting or duplicate both routes. The exact direct-parent transition receipts
-above remain authoritative.
+Ordinary Worker-to-Watcher reporting, Watcher deduplication, and unavailable
+route handling are defined in [parent-supervision.md](parent-supervision.md).
+MUST read that reference when a native Watcher assignment exists. Goal and
+terminal transition receipts remain direct to the Orchestrator and follow this
+file. The Worker MUST NOT receive or use a Watcher session token or call Watcher
+MCP transport tools. A verified unavailable route or concrete emergency permits
+one marked direct Orchestrator fallback, not routine duplicate reporting.
 
 ## Callback evidence boundary
 

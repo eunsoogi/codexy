@@ -36,74 +36,28 @@ includes parent replies, task/agent prompts, delegated instructions, progress
 and callback messages, handoffs, and tool prompt fields. Concision and protected
 technical text MUST follow that contract.
 
-### Watcher turn lifecycle
+### Delegated supervision route
 
-When the packaged `codexy-watcher` is summoned, it MUST keep the same native
-subagent turn active for the full assigned observation. Inside that turn it MUST
-repeat `wait_threads` with the latest cursor, inspect the actual Worker result,
-report a material event when warranted, and continue observing while any
-assigned target remains nonterminal. A report, one Worker completion, an empty
-timeout, or unchanged progress MUST NOT end the turn. The Watcher may return
-only after the full assignment is terminal, the user or Orchestrator explicitly
-cancels it, or a verified host limitation prevents continuation.
+When a task uses app-thread Workers, a native Watcher, Worker callbacks, drift
+correction, or delegated Worker goal ownership, MUST read
+[parent supervision](references/parent-supervision.md) before dispatch,
+observation, reporting, interruption, correction, or handoff. That reference is
+the canonical source for role ownership, assigned model policy, Worker report
+routing, Watcher observation and waits, deduplication, host limits, interruption
+and cancellation, drift correction, and supervision evaluation.
 
-### Native Watcher caller boundary
-
-For a native Watcher route, only the assigned Watcher MAY call `wait_threads` to
-observe its assigned Worker or task targets. The Orchestrator MUST await reports
-through `watcher_wait` and MUST NOT call `wait_threads` for those targets.
-Callers MUST omit `timeoutMs` for ordinary observation so the MCP server selects
-the five-minute default (currently 300,000 ms); explicit `timeoutMs=300000` is
-equivalent. The MCP still supports the maximum `MAX_WAIT_MS` (currently
-3,600,000 ms). The Watcher host's separate `wait_threads` limit MUST be read
-from and reported as the actual host limit. If it supports 300,000 ms, the
-Watcher MUST use `wait_threads(timeoutMs=300000)` for ordinary semantic event
-observation. If it is shorter, the Watcher MUST use that confirmed actual
-maximum and report the evidence; callers MUST use 120,000 ms only when
-confirmed. Tool-output yield intervals or response-refresh cadence MUST be
-treated separately from the semantic event-wait timeout and MUST NOT shorten or
-replace it. When a 300-second MCP transport deadline is confirmed,
-`timeoutMs=295000` is the documented empty-wait margin. A shorter wait MUST have
-an explicit reason such as a user-requested deadline, a confirmed host limit, or
-a diagnostic purpose. While that request is pending, the Orchestrator MUST stay
-in one quiet tool await and MUST NOT emit reasoning, progress messages, short
-polls, or unrelated work merely because no event has arrived. Fallback,
-unavailable, and host-transition branches MUST report the real limitation and
-recover the supported Watcher route; they MUST NOT re-authorize direct
-Orchestrator polling. After an actionable report, one bounded authoritative
-Worker or app readback is allowed for judgement and correction, and that
-readback is not an observation wait.
-
-A same-connection `notifications/cancelled` or the packaged Watcher
-`PreToolUse`/`Interrupt` binding route releases only the pending request when
-the host propagates it and preserves the durable session. The separate
-`watcher_cancel` operation durably ends the session; it is not request
-cancellation, and a fresh assignment is required afterward. A host/task message
-or outer wait termination may leave the native request active when the host does
-not propagate `Interrupt`, so installed candidate Stop success remains an
-external evidence requirement.
-
-Implementation Workers MUST NOT use an Orchestrator-owned Watcher session or
-token. Visibility of a session, token, or parent transcript does not grant that
-capability. Ordinary Worker and non-Watcher routes retain their explicitly
-defined wait behavior.
-
-### Native Watcher report route
-
-During that assignment, the Worker MUST send ordinary progress, completion,
-finding, and attention reports to the exact Watcher task supplied by the
-Orchestrator through the host's supported task-message route. Each report MUST
-carry its source Worker task and issue/PR lane (or an explicit no-PR marker).
-The Watcher MUST validate that correspondence against the assignment, keep
-different source tasks or lanes separate, and never combine their reports. It
-MUST deduplicate unchanged reports and relay only meaningful changes or required
-decisions through `watcher_report`; the Orchestrator sends implementation
-directions to the Worker and retains judgement, correction, and acceptance. If
-the message route is verified unavailable or a concrete emergency occurs, the
-Worker may use one marked direct-parent fallback and MUST report the limitation
-once; it MUST NOT resume routine parent reporting or duplicate both routes.
-Goal-transition and terminal handoff receipts remain direct-parent control-plane
-messages.
+The route has these mandatory boundaries: the Orchestrator owns the overall
+goal, judgement, correction, and acceptance; the Worker owns its implementation
+and finite goal; the Watcher is read-only and observes only its assigned
+Workers; only the assigned Watcher MAY call `wait_threads` for those Worker
+targets; and the Orchestrator MUST await `watcher_wait` and MUST NOT wait on
+those targets directly. Workers MUST NOT use an Orchestrator-owned Watcher
+session or token. A Watcher report or finite goal MUST NOT transfer ownership or
+prove issue completion. A native reviewer's own terminal delivery follows its
+review route and MUST NOT be treated as Worker observation or permission for
+direct Orchestrator polling. MUST read `parent-supervision.md` for exact wait
+values, host-limit, quiet-wait, fallback, report, interruption, cancellation,
+and non-Watcher conditions before execution.
 
 ### Planning and execution boundary
 
@@ -179,7 +133,8 @@ re-enter planning when it is already selected and in progress.
 - MUST read [token-efficient coordination](references/token-efficient.md) when
   recovering context, polling, or preparing a compact handoff.
 - MUST read [runtime heartbeats](references/runtime-heartbeats.md) when waiting
-  for child events or deciding whether scheduled monitoring applies.
+  for Worker events, handling an ordinary Worker idle-wait handoff, or deciding
+  whether scheduled monitoring applies.
 - MUST read [goal transition reporting](references/goal-transition-reporting.md)
   when delivering child goal state or a terminal transition to the parent.
 - MUST read [parent stop preflight](references/parent-stop-preflight.md) before

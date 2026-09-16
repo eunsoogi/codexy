@@ -1,9 +1,9 @@
 # Runtime Heartbeats
 
-For ordinary non-Watcher child completion or attention waits, the owner MUST use
-event-driven `wait_threads` with each target's latest cursor as the default. The
-owner MUST reserve heartbeat scheduling for genuinely scheduled monitoring or
-when `wait_threads` is unavailable. A Watcher is a bounded native subagent
+For ordinary non-Watcher Worker completion or attention waits, the owner MUST
+use event-driven `wait_threads` with each target's latest cursor as the default.
+The owner MUST reserve heartbeat scheduling for genuinely scheduled monitoring
+or when `wait_threads` is unavailable. A Watcher is a bounded native subagent
 summoned by the Orchestrator, not a separate app task, heartbeat, or automatic
 scheduler.
 
@@ -20,86 +20,33 @@ poll those targets.
 
 For an ordinary non-Watcher owner with a callable `wait_threads` handler, the
 owner MUST use the cursor-based wait for an assigned observation obligation
-while that obligation remains. For a native Watcher route, only the assigned
-Watcher may call that wait for assigned Worker targets, within one long-running
-native turn: after each wait it MUST inspect the actual Worker result, report a
-material event when warranted, and continue waiting while any assigned target
-remains nonterminal. An unchanged cursor, bounded timeout, one report, or one
-Worker completion is nonterminal and MUST NOT end that Watcher turn. A Watcher
-may return only after the full assignment is terminal, the user or Orchestrator
-explicitly cancels it, or a verified host limitation prevents continuation. The
-Orchestrator awaits `watcher_wait` and MUST NOT directly wait on those assigned
-targets. For ordinary owners outside the Watcher route, the caller controls
-whether to return after the bounded wait; the host's automatic continuation
-behavior is not implied by this contract and MUST be reported if observed. If a
-slingshot-host turn still returns `No handler registered` after the one fresh
-discovery and one host-aware retry, the owner MUST emit exactly one unavailable
-evidence receipt and require desktop-origin root re-entry; it MUST NOT repeat
-the wait call, schedule a heartbeat relay, use `read_thread`, or use
-`handoff_thread` for recovery. The slingshot recovery route is not an
+while that obligation remains. A native reviewer's terminal delivery is its own
+non-Watcher surface and MUST NOT be confused with Worker observation. Native
+Watcher roles, report routing, host limits, quiet waits,
+interruption/cancellation, deduplication, and return conditions are defined in
+[parent-supervision.md](parent-supervision.md); MUST read that reference before
+using a native Watcher. Only the assigned Watcher MAY wait on assigned Worker
+targets, and the Orchestrator MUST await `watcher_wait` without directly waiting
+or polling them. For ordinary owners outside the Watcher route, the caller
+controls whether to return after the bounded wait; the host's automatic
+continuation behavior is not implied by this contract and MUST be reported if
+observed. If a slingshot-host turn still returns `No handler registered` after
+the one fresh discovery and one host-aware retry, the owner MUST emit exactly
+one unavailable evidence receipt and require desktop-origin root re-entry; it
+MUST NOT repeat the wait call, schedule a heartbeat relay, use `read_thread`, or
+use `handoff_thread` for recovery. The slingshot recovery route is not an
 unavailable-wait fallback eligible for heartbeat registration; it ends in
 desktop-origin root re-entry.
 
 ## Native Watcher boundary
 
-The Orchestrator MUST summon an explicitly authorized Watcher through the
-callable native-subagent API (`spawn_agent` or its versioned multi-agent
-equivalent), with exact Worker/task targets. The Watcher observes real Worker
-callbacks and task state, and MUST report action-required drift or an
-unavailable channel through `watcher_report`. It MUST remain read-only: it MUST
-NOT edit, direct or message a Worker, supply a repair directive, correct,
-accept, verify a correction, replace, or recruit. A Watcher report is a signal,
-not acceptance, and repeated unchanged observations MUST be suppressed. During
-the assignment, Workers MUST send ordinary progress, completion, findings, and
-attention reports to the exact Watcher task supplied by the Orchestrator through
-the host's supported task-message route. Each report MUST carry its source
-Worker task and issue/PR lane (or an explicit no-PR marker); the Watcher MUST
-validate that correspondence against the assignment, keep distinct tasks/lanes
-separate, and never combine their reports. The Watcher deduplicates unchanged
-reports and relays only meaningful changes or required decisions through
-`watcher_report`; implementation directions still go from the Orchestrator to
-the Worker. A verified unavailable message route or concrete emergency permits
-one marked direct-parent fallback, not routine duplicate reporting. Unchanged
-active-goal reads, routine pre/post/continuation receipts, and liveness-only
-goal-status messages MUST remain internal. Only an actual lifecycle transition,
-unresolved drift or failure requiring Orchestrator action, missing terminal
-delivery, or a ready external gate may be reported.
-
-The Orchestrator MUST keep the overall goal active and owned by itself while the
-Watcher subagent observes. It MUST call `watcher_wait` with the parent token and
-cursor, and MUST omit `timeoutMs` for ordinary observation so the MCP server
-selects the five-minute default (300,000 ms); explicit `timeoutMs=300000` is
-equivalent, and the maximum `MAX_WAIT_MS` remains 3,600,000 ms. The separate
-host `wait_threads` limit MUST be read and reported from the actual host. If it
-supports 300,000 ms, the Watcher MUST use `wait_threads(timeoutMs=300000)` for
-ordinary semantic event observation. If it is shorter, the Watcher MUST use the
-confirmed actual maximum and report the evidence; callers MUST use 120,000 ms
-only when confirmed. Tool-output yield intervals or response-refresh cadence
-MUST be treated separately from the semantic event-wait timeout and MUST NOT
-shorten or replace it. When a 300-second MCP transport deadline is confirmed,
-`timeoutMs=295000` is the documented empty-wait margin. Shorter waits MUST have
-a stated reason, and this margin MUST NOT become repeated short polling. It MUST
-remain quiet in one tool await while no event is available. It MUST NOT emit
-reasoning, progress, short polls, or unrelated work for an empty timeout or
-unchanged progress. A same-connection `notifications/cancelled` or the packaged
-`PreToolUse`/`Interrupt` binding route for that request releases only the wait
-when the host propagates it and preserves the session; `watcher_cancel` is
-separate and durably ends the session. A task message or outer wait termination
-may leave the native wait active when the host does not propagate `Interrupt`;
-report that limitation, use `watcher_cancel` only when authorized, and open a
-new assignment/session for fresh observation. A cancelled assignment MUST NOT be
-resumed. The Watcher has no long-lived release goal. If the host exposes a
-finite goal for the subagent, that goal MUST cover only the bounded observation
-assignment and MUST NOT be treated as issue or release completion. The Watcher
-MUST keep its native turn active after each report and return to its
-`wait_threads` loop while an assigned target remains nonterminal; the
-Orchestrator may return control while that native turn continues. The Watcher
-may return only for full assignment completion, explicit user/Orchestrator
-cancellation, or a verified host limitation. Implementation Workers MUST NOT use
-an Orchestrator-owned Watcher session or token; visible session metadata is not
-authority. The Orchestrator MUST inspect the relevant Worker/app surface after a
-material report, decide and instruct the Worker, and verify the resulting call
-or diff.
+Native Watcher creation, assignment, report routing, cursor waits, host and
+transport limits, quiet waiting, interruption/cancellation, deduplication, and
+Orchestrator/Worker ownership are defined in
+[parent-supervision.md](parent-supervision.md). MUST read that reference before
+using a native Watcher. A heartbeat MUST NOT replace that route, and the Watcher
+MUST remain observation-only. The Orchestrator MUST NOT directly poll Worker
+targets assigned to a native Watcher.
 
 ## Eligibility And Discovery
 
@@ -153,30 +100,38 @@ The following lifecycle applies to ordinary Workers and other owners; the
 Orchestrator remains the owner of the overall goal while a Watcher subagent is
 active. A Watcher report MUST NOT create, replace, or transfer that goal.
 
-A successfully registered heartbeat is runtime-owned waiting. The owner MUST
-retain its active goal and plan only while an immediately executable in-scope
-obligation remains, record `goal state=active` and `goal transition=none`, and
-return control without completing or blocking the goal. When no immediately
-executable obligation remains and only an external event or explicit
-Orchestrator wake can advance work, the owner MUST send the idle-wait handoff
-defined in `goal-transition-reporting.md`, complete the finite execution phase,
-and leave the task idle without claiming issue, implementation, transfer, or
-release completion. This finite phase is distinct from the Orchestrator's
-overall goal and a Watcher's bounded observation assignment; neither a phase
-completion nor a Watcher report proves release completion. A qualifying event
-MUST create a fresh short-lived execution goal and current plan before any edit,
-proof, review response, publication, or merge work. The awakened owner MUST
-first read the actual lifecycle state and MUST continue a matching active
-objective; if the state is null or complete, it MAY create the fresh goal and
-MUST read back `active`. A different unfinished objective requires a supported
-lifecycle disposition and MUST NOT be overwritten. An observed `blocked` state
-remains governed by the existing `goal-lifecycle` recovery authority; this
-reference MUST NOT replace or restate that recovery sequence. The awakened owner
-MUST consume the event in the same turn and MUST delete or disable the heartbeat
-when no further observation is required. It MUST record the resulting lifecycle
-state in the compact lane delta. When cleanup is needed, the owner MUST delete
-the heartbeat by id or disable it with a paused status and the heartbeat's full
-update fields; it MUST record which terminal action occurred.
+A successfully registered heartbeat is runtime-owned waiting. An ordinary Worker
+or other non-Orchestrator owner MUST retain its active goal and plan only while
+an immediately executable in-scope obligation remains, record
+`goal state=active` and `goal transition=none`, and return control without
+completing or blocking the goal. When no immediately executable obligation
+remains and only an external event or explicit Orchestrator wake can advance
+work, the owner MUST first determine whether the current finite execution phase
+is satisfied. If satisfied, it MUST send the idle-wait handoff defined in
+`goal-transition-reporting.md`, complete only that finite phase, and leave the
+task idle without claiming issue, implementation, transfer, or release
+completion. If unmet, it MUST retain the honest goal state required by the
+existing lifecycle authority and return through a supported wait or
+terminal-delivery path; it MUST NOT use administrative completion merely to
+clear the handoff. This finite phase is distinct from the Orchestrator's overall
+goal and a Watcher's bounded observation assignment; neither a phase completion
+nor a Watcher report proves release completion. After a finite phase completes
+with no active execution goal, a qualifying event MUST create a fresh
+short-lived execution goal and current plan before any edit, proof, review
+response, publication, or merge work. If an unmet active finite goal was
+retained, a qualifying event MUST resume its existing authorized goal and plan
+instead of creating a duplicate. The awakened owner MUST first read the actual
+lifecycle state and MUST continue a matching active objective; if the state is
+null or complete, it MAY create the fresh goal and MUST read back `active`. A
+different unfinished objective requires a supported lifecycle disposition and
+MUST NOT be overwritten. An observed `blocked` state remains governed by the
+existing `goal-lifecycle` recovery authority; this reference MUST NOT replace or
+restate that recovery sequence. The awakened owner MUST consume the event in the
+same turn and MUST delete or disable the heartbeat when no further observation
+is required. It MUST record the resulting lifecycle state in the compact lane
+delta. When cleanup is needed, the owner MUST delete the heartbeat by id or
+disable it with a paused status and the heartbeat's full update fields; it MUST
+record which terminal action occurred.
 
 ## Unavailable And Sentinel Boundaries
 
