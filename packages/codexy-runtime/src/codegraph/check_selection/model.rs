@@ -84,6 +84,7 @@ pub enum GapReason {
     EmptyMapping,
     MissingCheck,
     MissingCommand,
+    ContradictoryMapping,
     UnknownImpact,
 }
 
@@ -119,6 +120,7 @@ pub struct BroaderVerification {
 pub enum ManualReason {
     MissingMapping,
     MissingCheck,
+    ContradictoryMapping,
     PartialAnalysis,
     UnknownImpact,
     UnconfirmedDependencies,

@@ -78,6 +78,9 @@ const fn manual_detail(reason: ManualReason) -> &'static str {
     match reason {
         ManualReason::MissingMapping => "an owner must complete the explicit path mapping",
         ManualReason::MissingCheck => "an owner must complete the referenced check inventory",
+        ManualReason::ContradictoryMapping => {
+            "an owner must resolve the conflicting check mapping data"
+        }
         ManualReason::PartialAnalysis => "an owner must judge whether broader checks are needed",
         ManualReason::UnknownImpact => "an owner must review the unresolved impact scope",
         ManualReason::UnconfirmedDependencies => "an owner must confirm dependency impact",

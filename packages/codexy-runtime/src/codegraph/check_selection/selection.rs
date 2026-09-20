@@ -11,6 +11,7 @@ use super::model::{
     BroaderReason, ChangeArea, CheckDefinition, CheckMapping, CheckMappings, CheckRecommendation,
     DependencyState, GapReason, ManualJudgment, ManualReason, SelectionGap, SelectionOptions,
 };
+use super::validation::{MappingKey, mapping_key, validate};
 
 pub(super) struct SelectionOutput {
     pub(super) recommendations: Vec<CheckRecommendation>,
@@ -64,6 +65,8 @@ pub(super) fn select(
 
 struct SelectionState {
     definitions: BTreeMap<String, CheckDefinition>,
+    contradictory_checks: BTreeSet<String>,
+    contradictory_mappings: BTreeSet<MappingKey>,
     recommendations: BTreeMap<String, RecommendationBuilder>,
     gaps: BTreeSet<SelectionGap>,
     broader: BTreeMap<BroaderReason, BTreeSet<String>>,
@@ -72,17 +75,19 @@ struct SelectionState {
 
 impl SelectionState {
     fn new(mappings: &CheckMappings) -> Self {
+        let validation = validate(mappings);
+        let mut manual = BTreeMap::new();
+        if !validation.gaps.is_empty() {
+            add_global_concern(&mut manual, ManualReason::ContradictoryMapping);
+        }
         Self {
-            definitions: mappings
-                .checks
-                .iter()
-                .cloned()
-                .map(|check| (check.id.clone(), check))
-                .collect(),
+            definitions: validation.definitions,
+            contradictory_checks: validation.contradictory_checks,
+            contradictory_mappings: validation.contradictory_mappings,
             recommendations: BTreeMap::new(),
-            gaps: BTreeSet::new(),
+            gaps: validation.gaps,
             broader: BTreeMap::new(),
-            manual: BTreeMap::new(),
+            manual,
         }
     }
 
@@ -107,6 +112,17 @@ impl SelectionState {
         let mut matched = false;
         for mapping in matching {
             matched = true;
+            if self.contradictory_mappings.contains(&mapping_key(mapping)) {
+                self.gaps.insert(SelectionGap {
+                    path: Some(path.to_owned()),
+                    area: Some(evidence.area.clone()),
+                    mapping_pattern: Some(mapping.pattern.clone()),
+                    reason: GapReason::ContradictoryMapping,
+                    detail: "the matching mapping names conflicting checks".into(),
+                });
+                add_path_concern(&mut self.manual, ManualReason::ContradictoryMapping, path);
+                continue;
+            }
             self.add_mapping(path, evidence, mapping);
         }
         if !matched {
@@ -134,6 +150,17 @@ impl SelectionState {
             return;
         }
         for check_id in &mapping.check_ids {
+            if self.contradictory_checks.contains(check_id) {
+                self.gaps.insert(SelectionGap {
+                    path: Some(path.to_owned()),
+                    area: Some(evidence.area.clone()),
+                    mapping_pattern: Some(mapping.pattern.clone()),
+                    reason: GapReason::ContradictoryMapping,
+                    detail: format!("check `{check_id}` has conflicting definitions"),
+                });
+                add_path_concern(&mut self.manual, ManualReason::ContradictoryMapping, path);
+                continue;
+            }
             let Some(check) = self.definitions.get(check_id) else {
                 self.gaps.insert(SelectionGap {
                     path: Some(path.to_owned()),

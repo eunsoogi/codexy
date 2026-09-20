@@ -2,12 +2,16 @@ mod classify;
 mod concerns;
 mod model;
 mod selection;
+mod validation;
 
 #[cfg(test)]
 #[path = "classify_tests.rs"]
 mod classify_tests;
 #[cfg(test)]
 mod fixtures;
+#[cfg(test)]
+#[path = "mapping_tests.rs"]
+mod mapping_tests;
 #[cfg(test)]
 mod tests;
 
