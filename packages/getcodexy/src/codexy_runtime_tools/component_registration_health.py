@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 from .component_core_hooks import (
@@ -17,12 +16,9 @@ from .component_mcp_materialization import (
     valid_component_mcp,
 )
 from .component_manifest import load_component_manifest
+from .component_registration_catalog import CATALOGS, _catalog_agent_files
 from .component_registration_files import _launcher, _regular, _skill, _text
 
-CATALOGS = {
-    "core": '# Codexy packaged-agent discovery/registration contract. Validators and the\n# registration script load agent_files from this catalog; native Codex agent\n# use is through marker-owned standalone files under the Codex home agents directory.\nversion = "0.1.0"\ncatalog_kind = "plugin-packaged-specialist-agent-files"\nnative_custom_agent_registration = "codex-home-standalone-agent-projection"\nnative_custom_agent_projection = "managed-codexy-subdirectory"\nagent_files = [\n  "codexy-architect.toml",\n  "codexy-cartographer.toml",\n  "codexy-auditor.toml",\n  "codexy-shipwright.toml",\n  "codexy-inspector.toml",\n  "codexy-sentinel.toml",\n  "codexy-warden.toml",\n  "codexy-watcher.toml",\n]\n',
-    "github": 'version = "0.1.0"\ncatalog_kind = "plugin-packaged-specialist-agent-files"\nagent_files = ["codexy-weaver.toml"]\n',
-}
 MANAGED_MARKERS = {
     "core": "# CODEXY MANAGED AGENT\n",
     "github": "# Managed by Codexy GitHub.\n",
@@ -172,28 +168,6 @@ def valid_registration(plugin: Path, component: str) -> bool:
         )
     except (KeyError, OSError, UnicodeDecodeError, SyntaxError, ValueError):
         return False
-
-
-def _catalog_agent_files(catalog: str) -> tuple[str, ...]:
-    match = re.search(r"(?ms)^\s*agent_files\s*=\s*\[(.*?)\]", catalog)
-    if match is None:
-        raise ValueError("agent catalog must define agent_files")
-    names = tuple(
-        json.loads(f'"{value}"')
-        for value in re.findall(r'"((?:\\.|[^"\\])*)"', match.group(1))
-    )
-    if (
-        not names
-        or any(
-            not name.endswith(".toml")
-            or Path(name).name != name
-            or name.startswith(".")
-            for name in names
-        )
-        or len(names) != len(set(names))
-    ):
-        raise ValueError("agent catalog has invalid or duplicate agent_files")
-    return names
 
 
 def registration_role(
