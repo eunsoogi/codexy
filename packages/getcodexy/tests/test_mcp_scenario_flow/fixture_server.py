@@ -14,7 +14,9 @@ PROTOCOL_VERSION = "2024-11-05"
 
 
 def _send(identifier: int, result: dict) -> None:
-    print(json.dumps({"jsonrpc": "2.0", "id": identifier, "result": result}), flush=True)
+    print(
+        json.dumps({"jsonrpc": "2.0", "id": identifier, "result": result}), flush=True
+    )
 
 
 def _record(path: Path | None, arguments: dict) -> None:

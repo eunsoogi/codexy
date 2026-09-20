@@ -13,6 +13,7 @@ from pathlib import Path
 REPOSITORY = Path(__file__).resolve().parents[3]
 SCENARIO_SCRIPTS = REPOSITORY / "plugins/codexy-devtools/scripts"
 FIXTURE = Path(__file__).with_name("test_mcp_scenario_flow") / "fixture_server.py"
+FIXTURE_ARGV = (sys.executable, "-u", str(FIXTURE))
 if str(SCENARIO_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCENARIO_SCRIPTS))
 
@@ -32,7 +33,7 @@ class ScenarioFlowTests(unittest.TestCase):
         expected = kwargs.pop("expected", ExpectedResult())
         stored_fields = kwargs.pop("stored_fields", {})
         value = kwargs.pop("value", None)
-        argv = [sys.executable, "-u", str(FIXTURE), "--mode", mode, "--record", str(record)]
+        argv = [*FIXTURE_ARGV, "--mode", mode, "--record", str(record)]
         if value is not None:
             argv.extend(("--value", value))
         return SingleCall(
@@ -47,7 +48,9 @@ class ScenarioFlowTests(unittest.TestCase):
             timeout_seconds=kwargs.pop("timeout_seconds", 2.0),
         )
 
-    def _search_detail(self, root: Path, mode: str, detail_record: Path, **kwargs) -> Scenario:
+    def _search_detail(
+        self, root: Path, mode: str, detail_record: Path, **kwargs
+    ) -> Scenario:
         search = self._call(
             root,
             mode,
@@ -75,7 +78,9 @@ class ScenarioFlowTests(unittest.TestCase):
                     "detail",
                     detail,
                     references={
-                        "/id": DataReference("search", "/id", kwargs.pop("ref_type", str))
+                        "/id": DataReference(
+                            "search", "/id", kwargs.pop("ref_type", str)
+                        )
                     },
                 ),
             ),
@@ -91,13 +96,19 @@ class ScenarioFlowTests(unittest.TestCase):
             result = run_scenario(scenario)
             self.assertTrue(result.ok)
             self.assertEqual(result.status, "success")
-            self.assertEqual(json.loads(detail_record.read_text())["arguments"]["id"], "item-42")
+            self.assertEqual(
+                json.loads(detail_record.read_text())["arguments"]["id"], "item-42"
+            )
             self.assertEqual(result.steps[1].execution.stored["matched_id"], "item-42")
             self.assertEqual(detail_call.argv, scenario.steps[1].call.argv)
             self.assertEqual(detail_call.cwd, scenario.steps[1].call.cwd)
-            self.assertEqual(detail_call.environment, scenario.steps[1].call.environment)
+            self.assertEqual(
+                detail_call.environment, scenario.steps[1].call.environment
+            )
             self.assertEqual(detail_call.tool, scenario.steps[1].call.tool)
-            self.assertEqual(detail_call.allowed_tools, scenario.steps[1].call.allowed_tools)
+            self.assertEqual(
+                detail_call.allowed_tools, scenario.steps[1].call.allowed_tools
+            )
 
     def test_reference_failures_are_reported_at_dependent_step(self) -> None:
         for mode in ("missing-id", "wrong-type"):
@@ -106,7 +117,9 @@ class ScenarioFlowTests(unittest.TestCase):
                 detail_record = root / "detail.json"
                 result = run_scenario(self._search_detail(root, mode, detail_record))
                 self.assertEqual(result.failed_step, "detail")
-                self.assertEqual(result.steps[1].failure.kind, FailureKind.REFERENCE_ERROR)
+                self.assertEqual(
+                    result.steps[1].failure.kind, FailureKind.REFERENCE_ERROR
+                )
                 self.assertFalse(result.steps[1].invoked)
                 self.assertFalse(detail_record.exists())
 
@@ -119,12 +132,16 @@ class ScenarioFlowTests(unittest.TestCase):
                     root,
                     "wrong-value",
                     detail_record,
-                    search_expected=ExpectedResult(fields={"/result/data/id": "item-42"}),
+                    search_expected=ExpectedResult(
+                        fields={"/result/data/id": "item-42"}
+                    ),
                 )
             )
             self.assertEqual(result.failed_step, "search")
             self.assertEqual(result.steps[0].failure.kind, FailureKind.VALUE_MISMATCH)
-            self.assertEqual(result.steps[1].failure.kind, FailureKind.PREDECESSOR_FAILED)
+            self.assertEqual(
+                result.steps[1].failure.kind, FailureKind.PREDECESSOR_FAILED
+            )
             self.assertEqual(result.status, FailureKind.VALUE_MISMATCH.value)
             self.assertFalse(result.steps[1].invoked)
             self.assertFalse(detail_record.exists())
@@ -136,12 +153,15 @@ class ScenarioFlowTests(unittest.TestCase):
                 Scenario(
                     steps=(
                         ScenarioStep(
-                            "malformed", self._call(root, "malformed", root / "malformed.json")
+                            "malformed",
+                            self._call(root, "malformed", root / "malformed.json"),
                         ),
                     )
                 )
             )
-            self.assertEqual(malformed.steps[0].failure.kind, FailureKind.SCHEMA_MISMATCH)
+            self.assertEqual(
+                malformed.steps[0].failure.kind, FailureKind.SCHEMA_MISMATCH
+            )
             expected_error = run_scenario(
                 Scenario(
                     steps=(
@@ -182,7 +202,9 @@ class ScenarioFlowTests(unittest.TestCase):
             )
             self.assertTrue(result.ok)
             self.assertFalse(marker.exists())
-            self.assertEqual(json.loads(detail_record.read_text())["arguments"]["id"], malicious)
+            self.assertEqual(
+                json.loads(detail_record.read_text())["arguments"]["id"], malicious
+            )
 
     def test_whole_scenario_deadline_stops_later_steps(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -200,14 +222,20 @@ class ScenarioFlowTests(unittest.TestCase):
             )
             self.assertLess(time.monotonic() - started, 2.0)
             self.assertEqual(result.failed_step, "search")
-            self.assertEqual(result.steps[0].failure.kind, FailureKind.DEADLINE_EXCEEDED)
-            self.assertEqual(result.steps[1].failure.kind, FailureKind.PREDECESSOR_FAILED)
+            self.assertEqual(
+                result.steps[0].failure.kind, FailureKind.DEADLINE_EXCEEDED
+            )
+            self.assertEqual(
+                result.steps[1].failure.kind, FailureKind.PREDECESSOR_FAILED
+            )
             self.assertFalse(detail_record.exists())
 
     def test_references_must_target_an_earlier_step(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            call = self._call(root, "detail", root / "detail.json", arguments={"id": "x"})
+            call = self._call(
+                root, "detail", root / "detail.json", arguments={"id": "x"}
+            )
             with self.assertRaises(ValueError):
                 Scenario(
                     steps=(
@@ -218,7 +246,3 @@ class ScenarioFlowTests(unittest.TestCase):
                         ),
                     )
                 )
-
-
-if __name__ == "__main__":
-    unittest.main()

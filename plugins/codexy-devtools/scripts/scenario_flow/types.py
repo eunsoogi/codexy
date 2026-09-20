@@ -19,7 +19,9 @@ def _pointer(path: str, label: str) -> str:
 
 def _type_spec(value: object) -> bool:
     return isinstance(value, type) or (
-        isinstance(value, tuple) and bool(value) and all(isinstance(item, type) for item in value)
+        isinstance(value, tuple)
+        and bool(value)
+        and all(isinstance(item, type) for item in value)
     )
 
 
@@ -48,7 +50,9 @@ class DataReference:
             raise ValueError("reference step must be a non-empty string")
         _pointer(self.path, "reference path")
         if self.expected_type is not None and not _type_spec(self.expected_type):
-            raise ValueError("reference expected_type must be a type or non-empty tuple")
+            raise ValueError(
+                "reference expected_type must be a type or non-empty tuple"
+            )
 
 
 @dataclass(frozen=True)
@@ -85,7 +89,9 @@ class Scenario:
     def __post_init__(self) -> None:
         steps = tuple(self.steps)
         if not steps or any(not isinstance(step, ScenarioStep) for step in steps):
-            raise ValueError("scenario steps must be a non-empty sequence of ScenarioStep")
+            raise ValueError(
+                "scenario steps must be a non-empty sequence of ScenarioStep"
+            )
         names = [step.name for step in steps]
         if len(names) != len(set(names)):
             raise ValueError("scenario step names must be unique")
