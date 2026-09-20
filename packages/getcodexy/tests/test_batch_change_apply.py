@@ -189,12 +189,7 @@ class BatchChangeApplyTests(unittest.TestCase):
         outside = self.root.parent / "outside-state"
 
         with self.assertRaisesRegex(ApplyError, "beneath"):
-            apply_from_path(
-                self.root,
-                str(result_path),
-                selected_ids=["state-escape"],
-                state_root=self.root / ".." / outside.name,
-            )
+            self._apply(result_path, "state-escape", state_root=outside)
         self.assertFalse(outside.exists())
         valid_state = self.root / "valid-state"
         valid = self._apply(result_path, "state-escape", state_root=valid_state)
@@ -202,14 +197,21 @@ class BatchChangeApplyTests(unittest.TestCase):
         self.assertTrue(valid_state.is_dir())
         target = self.root / "real-state"
         target.mkdir()
-        for name, state_root in (
-            ("existing-state-link", target),
-            ("dangling-state-link", self.root / "missing-state"),
+        outside_target = self.root.parent / "outside-target"
+        outside_target.mkdir()
+        for name, target, child in (
+            ("existing-state-link", target, None),
+            ("dangling-state-link", self.root / "missing-state", None),
+            ("workspace-state-link", self.root, "via-link"),
+            ("outside-state-link", outside_target, "via-link"),
         ):
             link = self.root / name
-            link.symlink_to(state_root, target_is_directory=True)
+            link.symlink_to(target, target_is_directory=True)
+            candidate = link if child is None else link / child
             with self.assertRaisesRegex(ApplyError, "symlink"):
-                self._apply(result_path, "state-escape", state_root=link)
+                self._apply(result_path, "state-escape", state_root=candidate)
+            if child is not None:
+                self.assertFalse(candidate.exists())
 
     def test_interruption_before_replacement_is_resumable(self) -> None:
         item = self._item("interrupt")

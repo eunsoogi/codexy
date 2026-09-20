@@ -44,6 +44,12 @@ def child_directory(root: Path, value: str | Path, label: str) -> Path:
         if current == candidate:
             raise ApplyError(f"{label} must not be a symlink: {current}")
         try:
+            current.parent.resolve(strict=False).relative_to(canonical_root)
+        except ValueError:
+            pass
+        else:
+            raise ApplyError(f"{label} must not cross a symlink: {current}")
+        try:
             canonical_root.relative_to(resolved)
         except ValueError as error:
             raise ApplyError(f"{label} must not cross a symlink: {current}") from error
