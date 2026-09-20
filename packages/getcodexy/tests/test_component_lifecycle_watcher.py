@@ -5,7 +5,7 @@ import shutil
 import unittest
 from unittest.mock import patch
 
-from codexy_runtime_tools import component_registration_health
+from codexy_runtime_tools import component_lifecycle_recovery
 from codexy_runtime_tools.component_lifecycle import run_operation
 from codexy_runtime_tools.component_mcp_materialization import (
     materialize_component_mcp,
@@ -19,11 +19,15 @@ class LifecycleWatcherTests(unittest.TestCase):
         with fixture() as state:
             calls: list[tuple[str, str, tuple[tuple[str, ...], ...]]] = []
             registrations: list[dict[str, object]] = []
-            original_sync = component_registration_health.sync_agents
+            original_sync = component_lifecycle_recovery.synchronize_core_registration
 
             def observe_registration(plugin, home, mode):
-                result = original_sync(plugin, home, mode)
-                registrations.append(result.as_dict())
+                try:
+                    result = original_sync(plugin, home, mode)
+                except BaseException as error:
+                    registrations.append({"error": repr(error)})
+                    raise
+                registrations.append({"status": "completed"})
                 return result
 
             def validate_source(plugin, component, version):
@@ -32,8 +36,8 @@ class LifecycleWatcherTests(unittest.TestCase):
 
             with (
                 patch.object(
-                    component_registration_health,
-                    "sync_agents",
+                    component_lifecycle_recovery,
+                    "synchronize_core_registration",
                     side_effect=observe_registration,
                 ),
                 patch(
