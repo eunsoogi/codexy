@@ -76,7 +76,11 @@
         "requiredPaths": [
           ".codex-plugin/plugin.json",
           ".mcp.json",
-          "mcp/codexy_mcp_bootstrap.py"
+          "mcp/codexy_mcp_bootstrap.py",
+          "skills/mcp-test/SKILL.md",
+          "skills/mcp-test/references/scenario-format.md",
+          "skills/mcp-test/references/support-contract.md",
+          "skills/mcp-test/scripts/run_scenario.py"
         ]
       }
     }
