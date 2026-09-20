@@ -220,7 +220,6 @@ fn is_explicit_only_skill(plugin_root: &Path, path: &Path) -> bool {
         Some("codexy") => {
             path == plugin_root.join("skills/realtime-voice-orchestration/agents/openai.yaml")
         }
-        Some("codexy-devtools") => path == plugin_root.join("skills/mcp-test/agents/openai.yaml"),
         _ => false,
     }
 }

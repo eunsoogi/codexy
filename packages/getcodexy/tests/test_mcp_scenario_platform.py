@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 
 REPOSITORY = Path(__file__).resolve().parents[3]
-SCENARIO_SCRIPTS = REPOSITORY / "plugins/codexy-devtools/scripts"
+SCENARIO_SCRIPTS = REPOSITORY / ".agents/skills/mcp-test/scripts"
 FIXTURE = Path(__file__).with_name("mcp_scenario_fixtures") / "fixture_server.py"
 if str(SCENARIO_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCENARIO_SCRIPTS))

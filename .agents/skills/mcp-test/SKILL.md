@@ -1,21 +1,22 @@
 ---
 name: mcp-test
-description: Use when Codexy Devtools is installed and you need to run or compare explicit local MCP scenarios with search-to-detail chaining, expectations, or selected-field normalization.
+description: Use when working in the Codexy repository and you need to run or compare explicit local MCP scenarios with search-to-detail chaining, expectations, or selected-field normalization.
 ---
 
 # MCP Test
 
-Use the bundled `scripts/run_scenario.py` CLI to exercise a declarative MCP
-scenario through the installed Devtools package. The CLI calls the bundled
-scenario core, flow, and comparison producers; it is not a single-call wrapper.
+Use `.agents/skills/mcp-test/scripts/run_scenario.py` from a Codexy checkout to
+exercise a declarative MCP scenario with the repository's development tooling.
+The CLI calls the repository-local scenario core, flow, and comparison
+producers; it is not a single-call wrapper or an installed end-user workflow.
 
 ## Commands
 
 ```sh
-python3 <devtools-root>/skills/mcp-test/scripts/run_scenario.py support
-python3 <devtools-root>/skills/mcp-test/scripts/run_scenario.py run \
+python3 <codexy-root>/.agents/skills/mcp-test/scripts/run_scenario.py support
+python3 <codexy-root>/.agents/skills/mcp-test/scripts/run_scenario.py run \
   --scenario <scenario.json> --target installed
-python3 <devtools-root>/skills/mcp-test/scripts/run_scenario.py compare \
+python3 <codexy-root>/.agents/skills/mcp-test/scripts/run_scenario.py compare \
   --scenario <scenario.json> --baseline-target baseline \
   --candidate-target candidate
 ```

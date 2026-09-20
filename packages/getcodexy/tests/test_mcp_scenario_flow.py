@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 REPOSITORY = Path(__file__).resolve().parents[3]
-SCENARIO_SCRIPTS = REPOSITORY / "plugins/codexy-devtools/scripts"
+SCENARIO_SCRIPTS = REPOSITORY / ".agents/skills/mcp-test/scripts"
 FIXTURE = Path(__file__).with_name("test_mcp_scenario_flow") / "fixture_server.py"
 FIXTURE_ARGV = (sys.executable, "-u", str(FIXTURE))
 if str(SCENARIO_SCRIPTS) not in sys.path:

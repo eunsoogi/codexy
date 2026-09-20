@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 REPOSITORY = Path(__file__).resolve().parents[3]
-SCENARIO_SCRIPTS = REPOSITORY / "plugins/codexy-devtools/scripts"
+SCENARIO_SCRIPTS = REPOSITORY / ".agents/skills/mcp-test/scripts"
 if str(SCENARIO_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCENARIO_SCRIPTS))
 

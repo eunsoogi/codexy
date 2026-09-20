@@ -1,4 +1,4 @@
-"""Installed Devtools proof for the public MCP scenario CLI."""
+"""Repository-tool provenance and fresh Devtools package boundary proof."""
 
 from __future__ import annotations
 
@@ -13,8 +13,8 @@ from pathlib import Path
 
 
 REPOSITORY = Path(__file__).resolve().parents[3]
-DEVTOOLS = REPOSITORY / "plugins/codexy-devtools"
-CLI = Path("skills/mcp-test/scripts/run_scenario.py")
+REPOSITORY_TOOLS = REPOSITORY / ".agents/skills/mcp-test"
+CLI = Path("scripts/run_scenario.py")
 NORMALIZER = dict(
     step="search", field="timestamp", normalizer="constant", value="<normalized>"
 )
@@ -39,11 +39,11 @@ for line in sys.stdin:
 """
 
 
-class InstalledScenarioTests(unittest.TestCase):
-    def _install(self, root: Path) -> Path:
-        installed = root / "installed" / "codexy-devtools"
-        shutil.copytree(DEVTOOLS, installed)
-        return installed
+class RepositoryScenarioTests(unittest.TestCase):
+    def _copy_repository_tools(self, root: Path) -> Path:
+        tools = root / "repository-tools" / "mcp-test"
+        shutil.copytree(REPOSITORY_TOOLS, tools)
+        return tools
 
     def _scenario(self, work: Path, variants: dict[str, str]) -> dict:
         def target(step, name, variant):
@@ -105,13 +105,13 @@ class InstalledScenarioTests(unittest.TestCase):
             ],
         }
 
-    def _run(self, root, installed, arguments):
+    def _run(self, root, tools, arguments):
         environment = os.environ.copy()
         for name in ("PYTHONPATH", "PYTHONHOME"):
             environment.pop(name, None)
         self.assertFalse({"PYTHONPATH", "PYTHONHOME"} & environment.keys())
         return subprocess.run(
-            [sys.executable, str(installed / CLI), *arguments],
+            [sys.executable, str(tools / CLI), *arguments],
             cwd=root / "outside",
             env=environment,
             capture_output=True,
@@ -129,14 +129,14 @@ class InstalledScenarioTests(unittest.TestCase):
         )
         return work, scenario
 
-    def test_clean_install_runs_chain_and_reports_import_provenance(self) -> None:
+    def test_repository_tool_runs_chain_and_reports_provenance(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            installed = self._install(root)
+            tools = self._copy_repository_tools(root)
             work, scenario = self._fixture(root, {"baseline": "baseline"})
             result = self._run(
                 root,
-                installed,
+                tools,
                 ["run", "--scenario", str(scenario), "--target", "baseline"],
             )
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -150,23 +150,21 @@ class InstalledScenarioTests(unittest.TestCase):
             )
             self.assertEqual(observed["id"], "item-42")
             implementation = report["implementation"]
-            installed_root = installed.resolve()
+            tools_root = tools.resolve()
+            self.assertEqual(implementation["surface"], "repository-only")
             for path in [
                 implementation["cli"],
                 implementation["producer_root"],
                 *implementation["producer_modules"],
             ]:
-                self.assertTrue(Path(path).is_relative_to(installed_root))
+                self.assertTrue(Path(path).is_relative_to(tools_root))
                 self.assertFalse(Path(path).is_relative_to(REPOSITORY.resolve()))
-            self.assertTrue((installed / "skills/mcp-test/SKILL.md").is_file())
-            self.assertTrue((installed / ".mcp.json").is_file())
-            self.assertTrue((installed / "mcp/codexy-mcp-codegraph").exists())
-            self.assertTrue((installed / "mcp/codexy-mcp-lsp").exists())
+            self.assertTrue((tools / "SKILL.md").is_file())
 
     def test_compare_codes_and_explicit_normalizer(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            installed = self._install(root)
+            tools = self._copy_repository_tools(root)
             _work, scenario = self._fixture(
                 root, {"baseline": "baseline", "candidate": "candidate-different"}
             )
@@ -177,14 +175,14 @@ class InstalledScenarioTests(unittest.TestCase):
                 "--candidate-target",
                 "candidate",
             ]
-            different = self._run(root, installed, arguments)
+            different = self._run(root, tools, arguments)
             self.assertEqual(different.returncode, 1)
             self.assertEqual(json.loads(different.stdout)["status"], "different")
 
             data = json.loads(scenario.read_text(encoding="utf-8"))
             data["normalizers"] = [NORMALIZER]
             scenario.write_text(json.dumps(data), encoding="utf-8")
-            matching = self._run(root, installed, arguments)
+            matching = self._run(root, tools, arguments)
             self.assertEqual(matching.returncode, 0)
             self.assertEqual(json.loads(matching.stdout)["status"], "match")
 
@@ -192,7 +190,7 @@ class InstalledScenarioTests(unittest.TestCase):
             for step in data["steps"]:
                 step["targets"]["candidate"]["argv"][6] = "candidate-bad-id"
             scenario.write_text(json.dumps(data), encoding="utf-8")
-            regression = self._run(root, installed, arguments)
+            regression = self._run(root, tools, arguments)
             report = json.loads(regression.stdout)
             self.assertEqual(regression.returncode, 2)
             self.assertEqual(report["status"], "incomparable")
@@ -201,9 +199,9 @@ class InstalledScenarioTests(unittest.TestCase):
     def test_support_and_simulated_windows_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            installed = self._install(root)
+            tools = self._copy_repository_tools(root)
             work, scenario = self._fixture(root, {"baseline": "baseline"})
-            support = self._run(root, installed, ["support"])
+            support = self._run(root, tools, ["support"])
             contract = json.loads(support.stdout)["support"]
             self.assertEqual(contract["protocol_versions"], ["2024-11-05"])
             self.assertEqual(contract["platforms"], ["posix"])
@@ -213,7 +211,7 @@ class InstalledScenarioTests(unittest.TestCase):
                 "import runpy, sys\n"
                 "from pathlib import Path\n"
                 "cli = Path(sys.argv[1])\n"
-                "sys.path.insert(0, str(cli.parents[3] / 'scripts'))\n"
+                "sys.path.insert(0, str(cli.parent))\n"
                 "import scenario_core.support\n"
                 "sys.argv = [str(cli), *sys.argv[2:]]\n"
                 "from unittest.mock import patch\n"
@@ -226,7 +224,7 @@ class InstalledScenarioTests(unittest.TestCase):
                 [
                     sys.executable,
                     str(wrapper),
-                    str(installed / CLI),
+                    str(tools / CLI),
                     "run",
                     "--scenario",
                     str(scenario),

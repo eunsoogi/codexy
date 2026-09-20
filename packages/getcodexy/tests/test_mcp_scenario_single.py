@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 REPOSITORY = Path(__file__).resolve().parents[3]
-SCENARIO_SCRIPTS = REPOSITORY / "plugins/codexy-devtools/scripts"
+SCENARIO_SCRIPTS = REPOSITORY / ".agents/skills/mcp-test/scripts"
 FIXTURE = Path(__file__).with_name("mcp_scenario_fixtures") / "fixture_server.py"
 DEFAULT_STORED_FIELDS = {
     "text": "/result/content/0/text",
