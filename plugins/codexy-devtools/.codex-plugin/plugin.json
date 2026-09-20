@@ -1,7 +1,7 @@
 {
   "name": "codexy-devtools",
   "version": "1.9.0",
-  "description": "Optional Codegraph impact, check-recommendation, LSP, and MCP scenario-testing integrations for Codexy.",
+  "description": "Optional Codegraph impact, check-recommendation, and LSP integrations for Codexy.",
   "author": {
     "name": "Eunsoo Lee",
     "url": "https://github.com/eunsoogi"
@@ -14,9 +14,7 @@
     "developer-tools",
     "mcp",
     "lsp",
-    "codegraph",
-    "mcp-testing",
-    "scenarios"
+    "codegraph"
   ],
   "supportedPlatforms": [
     "darwin-arm64",
@@ -26,8 +24,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Codexy Devtools",
-    "shortDescription": "Add Codegraph, LSP, and installed MCP scenario testing to Codexy.",
-    "longDescription": "Codexy Devtools provides optional local Codegraph structure, read-only change-impact and advisory check-recommendation tools, language-server integrations, and an installed CLI and skill for trusted local MCP scenario runs and comparisons for a separately installed Codexy core.",
+    "shortDescription": "Add optional Codegraph and LSP tooling to Codexy.",
+    "longDescription": "Codexy Devtools provides optional local Codegraph structure, read-only change-impact and advisory check-recommendation tools, and language-server integrations for a separately installed Codexy core.",
     "developerName": "Eunsoo Lee",
     "category": "Developer Tools",
     "capabilities": [
@@ -40,8 +38,7 @@
     "termsOfServiceURL": "https://github.com/eunsoogi/codexy/blob/main/LICENSE",
     "defaultPrompt": [
       "Use $codegraph for search, dependency navigation, impact, and check advice when Devtools is installed.",
-      "Use $lsp for optional language-aware diagnostics, symbols, definitions, references, and bounded batches.",
-      "Use $mcp-test to run or compare trusted local MCP scenarios with explicit chaining and expectations."
+      "Use $lsp for optional language-aware diagnostics, symbols, definitions, references, and bounded batches."
     ],
     "brandColor": "#2F6F5E",
     "composerIcon": "./assets/codexy-devtools-icon.png",

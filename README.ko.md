@@ -133,10 +133,6 @@ release를 실행합니다. Codex를 시작하는 host 환경의 `PATH`에서 `u
   않습니다. 설치 runtime demo는 문서, 단일 module, shared fixture를 다루며,
   host의 callable tool list와 실제 호출을 따로 확인하기 전에는 host 노출을
   unknown으로 유지합니다.
-- **MCP 시나리오 테스트.** 설치된 `$mcp-test` skill과 CLI로 명시적 chaining,
-  expectation, 선택 field를 사용하는 신뢰된 local stdio 시나리오를 실행하거나
-  비교할 수 있습니다. 지원 범위는 문서화한 local contract로 제한되며, subprocess
-  결과만으로 host/session skill 노출을 증명하지 않습니다.
 - **선택한 batch 결과 적용.** 설치된 engineering workflow와 `batch_change.py`
   CLI는 읽을 수 있는 diff를 보여 주고, 명시적으로 선택한 성공 결과만 적용하며,
   각 파일을 바꾸기 직전에 원본을 다시 확인하고 적용 결과를 readback합니다.
@@ -168,11 +164,11 @@ release를 실행합니다. Codex를 시작하는 host 환경의 `PATH`에서 `u
 | [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md)                          | issue, branch, worktree, PR, review, merge, main 동기화 workflow를 관리합니다.            | `github`   |
 | [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md)                              | 저장소 구조와 dependency edge를 정해진 범위에서 탐색합니다.                               | `devtools` |
 | [lsp](plugins/codexy-devtools/skills/lsp/SKILL.md)                                          | 언어 인식 symbol, reference, definition, diagnostic을 요청합니다.                         | `devtools` |
-| [mcp-test](plugins/codexy-devtools/skills/mcp-test/SKILL.md)                                | 설치된 MCP 시나리오를 chaining과 expectation으로 실행하거나 비교합니다.                   | `devtools` |
 
-`plugin-marketplace-prep`, `release-engineering`, `skill-evaluation` 같은 저장소
-전용 유지보수 skill은 `.agents/skills`에 남아 있으며 설치 기능에 포함되지
-않습니다.
+`mcp-test`, `plugin-marketplace-prep`, `release-engineering`, `skill-evaluation`
+같은 저장소 전용 유지보수 skill은 `.agents/skills`에 남아 있으며 설치 기능에
+포함되지 않습니다. 저장소 전용 `mcp-test` skill은 Codexy 개발 중 명시적인 local
+MCP 시나리오를 실행하고 비교합니다.
 
 ### Planning, orchestration, engineering의 구분
 

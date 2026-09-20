@@ -8,7 +8,7 @@ use super::final_archive_fixture::FinalArchiveFixture;
 
 #[path = "release_train_support.rs"]
 mod release_train_support;
-use release_train_support::{copy_component_mcp, project_release_versions, release_checkout};
+use release_train_support::{copy_devtools_inputs, project_release_versions, release_checkout};
 
 const COMPONENT_MANIFEST: &str =
     "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
@@ -27,7 +27,7 @@ fn release_train_assembler_emits_a_reproducible_complete_bundle()
     let candidate_version = component_version(root)?;
     let release_tag = format!("v{candidate_version}");
     set_manifest_version(&fixture.root.join(PLUGIN_MANIFESTS[2]), &candidate_version)?;
-    copy_component_mcp(root, &fixture.root)?;
+    copy_devtools_inputs(root, &fixture.root)?;
     assert!(fixture.materialize_public_for_tag(&release_tag)?.status.success());
     for relative in [
         "plugins/codexy",

@@ -5,6 +5,7 @@ use crate::support::TestResult;
 use super::{exact_names, rows};
 
 const PROJECT_SKILLS: &[&str] = &[
+    "mcp-test",
     "plugin-marketplace-prep",
     "release-engineering",
     "skill-evaluation",

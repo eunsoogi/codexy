@@ -1,7 +1,7 @@
 # Support and CI contract
 
-The installed `mcp-test` surface is intentionally narrower than a general MCP
-client. `support` reports the same contract used by the producers:
+The repository-only `mcp-test` surface is intentionally narrower than a general
+MCP client. `support` reports the same contract used by the producers:
 
 - protocol: `2024-11-05`;
 - transport: newline-delimited local stdio (`stdio-newline-v1`);
@@ -35,14 +35,15 @@ predecessor.
 
 ## Verification boundary
 
-Installed proof must copy the complete Devtools plugin, including
-`scripts/scenario_core`, `scripts/scenario_flow`, `scripts/scenario_compare`,
-and this skill. Invoke the copied CLI from outside the source checkout with
-`PYTHONPATH` and `PYTHONHOME` absent. Check the JSON `implementation` paths to
-confirm that the CLI and imported producer modules come from the copied
-installation.
+Repository-tool proof must copy the complete `.agents/skills/mcp-test` bundle,
+including `scripts/scenario_core`, `scripts/scenario_flow`,
+`scripts/scenario_compare`, and this skill. Invoke the copied CLI from outside
+the source checkout with `PYTHONPATH` and `PYTHONHOME` absent. Check the JSON
+`implementation` paths and `surface` value to confirm that the CLI and imported
+producer modules come from the copied repository-tool bundle.
 
 Source-only imports, direct producer calls, or synthetic fixture calls do not
-prove the installed surface. They are useful lower-level checks and must remain
-separate from installed CLI evidence. Existing LSP and Codegraph package
-commands remain unchanged and must continue to be checked independently.
+prove the copied repository-tool surface. They are useful lower-level checks and
+must remain separate from repository CLI evidence. The Devtools package must be
+checked separately for absence of this bundle and retention of its Codegraph and
+LSP commands.

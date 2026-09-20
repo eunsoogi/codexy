@@ -50,19 +50,6 @@ fn direct_devtools_check_rejects_invalid_agent_metadata() -> TestResult {
 }
 
 #[test]
-fn devtools_check_accepts_explicit_only_mcp_test_metadata() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let devtools = temp.path().join("plugins/codexy-devtools");
-    copy_devtools(&devtools)?;
-    set_implicit_invocation(
-        &devtools.join("skills/mcp-test/agents/openai.yaml"),
-        false,
-    )?;
-
-    assert_accepted(&devtools)
-}
-
-#[test]
 fn core_check_accepts_explicit_only_designated_skill_metadata() -> TestResult {
     let temp = tempfile::tempdir()?;
     let core = temp.path().join("plugins/codexy");

@@ -83,7 +83,7 @@ downgraded.
 Declare `baseline` and `candidate` target names in every step, then invoke:
 
 ```sh
-python3 <devtools-root>/skills/mcp-test/scripts/run_scenario.py compare \
+python3 <codexy-root>/.agents/skills/mcp-test/scripts/run_scenario.py compare \
   --scenario scenario.json --baseline-target baseline \
   --candidate-target candidate
 ```

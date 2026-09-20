@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run or compare declarative MCP scenarios from an installed Devtools plugin."""
+"""Run or compare declarative MCP scenarios from Codexy repository tooling."""
 
 from __future__ import annotations
 
@@ -13,10 +13,10 @@ from pathlib import Path
 from typing import Any
 
 
-_PLUGIN_ROOT = Path(__file__).resolve().parents[3]
-_SCENARIO_ROOT = _PLUGIN_ROOT / "scripts"
-if not _SCENARIO_ROOT.is_dir():
-    raise SystemExit("mcp-test is missing the bundled scenario producers")
+_SCENARIO_ROOT = Path(__file__).resolve().parent
+_PRODUCER_DIRS = ("scenario_core", "scenario_flow", "scenario_compare")
+if any(not (_SCENARIO_ROOT / name).is_dir() for name in _PRODUCER_DIRS):
+    raise SystemExit("mcp-test is missing the repository scenario producers")
 sys.path.insert(0, str(_SCENARIO_ROOT))
 
 import scenario_core as _scenario_core  # noqa: E402
@@ -165,6 +165,7 @@ def _run_dict(target: str, result) -> dict[str, Any]:
 
 def _provenance() -> dict[str, Any]:
     return {
+        "surface": "repository-only",
         "cli": str(Path(__file__).resolve()),
         "producer_root": str(_SCENARIO_ROOT.resolve()),
         "producer_modules": [
