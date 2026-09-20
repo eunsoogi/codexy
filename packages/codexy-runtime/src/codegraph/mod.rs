@@ -1,3 +1,4 @@
+pub mod change_impact;
 pub mod change_input;
 
 mod cache;
