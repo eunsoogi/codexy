@@ -9,6 +9,7 @@ _CALLER_RETENTION = (
     r"(?:retain|retains|keep|keeps|keeping|remain|remains|stay|stays|continue\s+to)\b"
 )
 _CLAUSE_BOUNDARY = r"(?:and|but|while|where|then|so)"
+_HOLDER_PREPOSITION = r"(?:with|to|for)"
 _RETAINED_RESPONSIBILITY = re.compile(
     r"(?i)(?:"
     + _CALLER_RETENTION
@@ -24,7 +25,11 @@ _RETAINED_RESPONSIBILITY = re.compile(
     + r"(?:(?!\b"
     + _CLAUSE_BOUNDARY
     + r"\b|\b(?:responsible|accountable)\s+for\b)[^,;.!?:])*?"
-    + r"\b(?:ownership|responsibility|accountability)\b[^\n,;.!?:]*?"
+    + r"\b(?:ownership|responsibility|accountability)\b"
+    + r"(?![^\n,;.!?:]*\s+"
+    + _HOLDER_PREPOSITION
+    + r"\b)"
+    + r"[^\n,;.!?:]*?"
     + r"(?=\s+"
     + _CLAUSE_BOUNDARY
     + r"\b|[,\n;.!?:]|$)"
