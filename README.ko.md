@@ -127,12 +127,12 @@ release를 실행합니다. Codex를 시작하는 host 환경의 `PATH`에서 `u
   설치·업데이트·복구 과정에 receipt와 rollback 근거를 남깁니다.
 - **변경 영향과 체크 조언.** Codegraph에는 읽기 전용 Git 변경 분석과 명시적
   mapping 기반 체크 추천을 위한 `codegraph_change_impact`와
-  `codegraph_check_selection`도 포함됩니다. 결과는 limits, unknown 영역,
-  추천 이유, gap, broader verification, manual judgment를 숨기지 않습니다.
-  추천 command text는 데이터일 뿐 체크를 실행하거나 waive하거나 완료로
-  판정하지 않습니다. 설치 runtime demo는 문서, 단일 module, shared fixture를
-  다루며, host의 callable tool list와 실제 호출을 따로 확인하기 전에는 host
-  노출을 unknown으로 유지합니다.
+  `codegraph_check_selection`도 포함됩니다. 결과는 limits, unknown 영역, 추천
+  이유, gap, broader verification, manual judgment를 숨기지 않습니다. 추천
+  command text는 데이터일 뿐 체크를 실행하거나 waive하거나 완료로 판정하지
+  않습니다. 설치 runtime demo는 문서, 단일 module, shared fixture를 다루며,
+  host의 callable tool list와 실제 호출을 따로 확인하기 전에는 host 노출을
+  unknown으로 유지합니다.
 
 ## Skill 목록
 
