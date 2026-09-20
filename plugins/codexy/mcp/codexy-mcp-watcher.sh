@@ -47,4 +47,4 @@ if repo_root=$(CDPATH='' cd -- "$plugin_root/../.." 2>/dev/null && pwd); then
 		exec uvx --from "$runtime_source" codexy-mcp-runtime watcher --plugin-root "$plugin_root" -- "$@"
 	fi
 fi
-exec uvx --from getcodexy==1.9.0 codexy-mcp-runtime watcher --plugin-root "$plugin_root" -- "$@"
+exec uvx --from getcodexy==1.10.0 codexy-mcp-runtime watcher --plugin-root "$plugin_root" -- "$@"

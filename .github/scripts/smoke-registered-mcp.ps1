@@ -58,4 +58,4 @@ function Invoke-McpRegistration {
 
 Invoke-McpRegistration "plugins/codexy" watcher 5
 Invoke-McpRegistration "plugins/codexy-devtools" lsp 8
-Invoke-McpRegistration "plugins/codexy-devtools" codegraph 6
+Invoke-McpRegistration "plugins/codexy-devtools" codegraph 8
