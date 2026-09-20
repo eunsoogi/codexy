@@ -53,12 +53,19 @@ def apply_one(
     results_root: Path,
     cancellation_event: Event | None,
     before_replace: Callable[[Path], None] | None,
+    previously_completed: bool,
+    accepted_destination: Mapping[str, object] | None,
 ) -> tuple[str, str, str, Mapping[str, object] | None]:
     target_path, output_path = target(root, item)
     _, data, expected_output = artifact(item, results_root)
     before = read_target(target_path)
     old_data = before[0] if before is not None else b""
     diff = unified(old_data, data, output_path)
+    if previously_completed:
+        expected_destination = accepted_destination or expected_output
+        if before is None or not content_matches(before[1], expected_destination):
+            raise ApplyError("destination-changed")
+        return "completed", "already-applied", diff, before[1]
     if before is not None and content_matches(before[1], expected_output):
         return "completed", "already-applied", diff, before[1]
     temporary = _copy_atomic(target_path, data, cancellation_event)

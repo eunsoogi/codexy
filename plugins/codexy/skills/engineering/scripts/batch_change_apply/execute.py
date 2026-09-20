@@ -69,6 +69,10 @@ def run(
             )
             continue
         entry = state["items"][item_id]
+        previously_completed = entry.get("status") == "completed"
+        accepted_destination = entry.get("destination")
+        if not isinstance(accepted_destination, Mapping):
+            accepted_destination = None
         entry.update(
             {
                 "status": "in-progress",
@@ -86,6 +90,8 @@ def run(
                 results_root=results_root,
                 cancellation_event=cancellation_event,
                 before_replace=before_replace,
+                previously_completed=previously_completed,
+                accepted_destination=accepted_destination,
             )
         except ApplyInterrupted as error:
             resolution, reason, diff, readback = (
@@ -119,6 +125,8 @@ def run(
                 "reason": reason,
             }
         )
+        if resolution == "completed" and readback is not None:
+            entry["destination"] = dict(readback)
         write(state_path, state)
         public.append(
             result_item(
@@ -146,6 +154,16 @@ def run(
                             resolution="incomplete",
                             status="incomplete",
                             reason=reason,
+                        )
+                    )
+                else:
+                    public.append(
+                        result_item(
+                            pending,
+                            selected=False,
+                            resolution="unselected",
+                            status="not-selected",
+                            reason="not-selected",
                         )
                     )
             write(state_path, state)

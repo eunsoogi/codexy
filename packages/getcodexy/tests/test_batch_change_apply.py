@@ -139,6 +139,54 @@ class BatchChangeApplyTests(unittest.TestCase):
         self.assertEqual(second["status"], "completed")
         self.assertEqual(second["items"][0]["resolution"], "completed")
         self.assertEqual(second["items"][0]["reason"], "already-applied")
+        (self.root / "out/duplicate.txt").write_text("user edit\n", encoding="utf-8")
+        edited = apply_from_path(
+            self.root, str(duplicate_result), selected_ids=["duplicate"]
+        )
+        self.assertEqual(edited["status"], "conflict")
+        self.assertEqual(edited["items"][0]["reason"], "destination-changed")
+        self.assertEqual(
+            (self.root / "out/duplicate.txt").read_text(encoding="utf-8"),
+            "user edit\n",
+        )
+
+    def test_interruption_reports_selected_and_unselected_remaining_items(self) -> None:
+        items = [self._item(item_id) for item_id in ("first", "second", "third")]
+        result_path = self._result(items, batch_id="interrupted-report")
+        cancellation = Event()
+
+        def interrupt_before_replace(path: Path) -> None:
+            del path
+            cancellation.set()
+
+        result = apply_from_path(
+            self.root,
+            str(result_path),
+            selected_ids=["first", "third"],
+            cancellation_event=cancellation,
+            before_replace=interrupt_before_replace,
+        )
+
+        by_id = {item["id"]: item for item in result["items"]}
+        self.assertEqual(result["status"], "interrupted")
+        self.assertEqual(result["item_count"], 3)
+        self.assertEqual(by_id["first"]["resolution"], "incomplete")
+        self.assertEqual(by_id["second"]["resolution"], "unselected")
+        self.assertEqual(by_id["third"]["resolution"], "incomplete")
+
+    def test_rejects_state_root_escape_before_creating_it(self) -> None:
+        item = self._item("state-escape")
+        result_path = self._result([item], batch_id="state-escape")
+        outside = self.root.parent / "outside-state"
+
+        with self.assertRaisesRegex(ApplyError, "beneath"):
+            apply_from_path(
+                self.root,
+                str(result_path),
+                selected_ids=["state-escape"],
+                state_root=self.root / ".." / outside.name,
+            )
+        self.assertFalse(outside.exists())
 
     def test_interruption_before_replacement_is_resumable(self) -> None:
         item = self._item("interrupt")

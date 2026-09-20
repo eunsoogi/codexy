@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import signal
 import subprocess
 import sys
@@ -13,8 +12,12 @@ import time
 import unittest
 from pathlib import Path
 
+from packages.getcodexy.tests.batch_change_installed_support import (
+    install_core_component,
+    run_boundary_interruption,
+)
+
 ROOT = Path(__file__).parents[3]
-SOURCE_SCRIPTS = ROOT / "plugins/codexy/skills/engineering/scripts"
 
 
 @unittest.skipUnless(os.name == "posix", "installed batch flow requires POSIX signals")
@@ -25,8 +28,8 @@ class BatchChangeInstalledTests(unittest.TestCase):
         self.root = Path(self.temporary.name) / "synthetic-workspace"
         self.root.mkdir()
         self.installed = Path(self.temporary.name) / "installed"
-        installed_scripts = self.installed / "plugins/codexy/skills/engineering/scripts"
-        shutil.copytree(SOURCE_SCRIPTS, installed_scripts)
+        self.installed_plugin = install_core_component(ROOT, self.installed)
+        installed_scripts = self.installed_plugin / "skills/engineering/scripts"
         self.resume_cli = (
             installed_scripts / "batch_change_resume/batch_change_resume.py"
         )
@@ -109,6 +112,29 @@ target.write_text(Path(source).read_text().upper())
             str(self.root / ".codexy-batch-results"),
         ]
 
+    def _start_resume(self, manifest: Path) -> subprocess.Popen[str]:
+        return subprocess.Popen(
+            self._args(self.resume_cli, manifest),
+            cwd=self.root,
+            env=self.environment,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+    def _run_resume(self, manifest: Path) -> dict[str, object]:
+        completed = subprocess.run(
+            self._args(self.resume_cli, manifest),
+            cwd=self.root,
+            env=self.environment,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stderr, "")
+        return json.loads(completed.stdout)
+
     def _wait_for_resume_state(self) -> Path:
         deadline = time.monotonic() + 8
         while time.monotonic() < deadline:
@@ -149,34 +175,17 @@ target.write_text(Path(source).read_text().upper())
 
     def test_installed_flow_is_conflict_safe_and_resumable(self) -> None:
         manifest = self._manifest()
-        first = subprocess.Popen(
-            self._args(self.resume_cli, manifest),
-            cwd=self.root,
-            env=self.environment,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+        first = self._start_resume(manifest)
         self._wait_for_resume_state()
         first.send_signal(signal.SIGINT)
         stdout, stderr = first.communicate(timeout=15)
         self.assertEqual((first.returncode, stderr), (0, ""))
         self.assertEqual(json.loads(stdout)["status"], "interrupted")
-        resumed = subprocess.run(
-            self._args(self.resume_cli, manifest),
-            cwd=self.root,
-            env=self.environment,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        self.assertEqual(resumed.returncode, 0, resumed.stderr)
-        resume_result = json.loads(resumed.stdout)
+        resume_result = self._run_resume(manifest)
         self.assertEqual(resume_result["status"], "completed")
         self.assertEqual(resume_result["items"][3]["status"], "failed")
         result_path = self.root / "resume-result.json"
-        result_path.write_text(resumed.stdout, encoding="utf-8")
-        batch_id = resume_result["batch_id"]
+        result_path.write_text(json.dumps(resume_result), encoding="utf-8")
         (self.root / "source-04.txt").write_text("user changed\n", encoding="utf-8")
 
         applied = self._run_apply(result_path, "item-00", "item-04", "item-10")
@@ -196,54 +205,30 @@ target.write_text(Path(source).read_text().upper())
         self.assertEqual(duplicate_by_id["item-10"]["resolution"], "completed")
         self.assertEqual(duplicate_by_id["item-04"]["reason"], "original-changed")
 
-        apply_state = self.root / ".codexy-batch-apply" / f"{batch_id}.json"
-        interrupted = subprocess.Popen(
-            [
-                sys.executable,
-                str(self.apply_cli),
-                "--workspace-root",
-                str(self.root),
-                "--results",
-                str(result_path),
-                "--select",
-                "item-15",
-            ],
-            cwd=self.root,
-            env=self.environment,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        interrupted_result = run_boundary_interruption(
+            sys.executable,
+            self.installed_plugin / "skills/engineering/scripts",
+            self.root,
+            Path(self.temporary.name),
+            result_path,
+            "item-01",
+            self.environment,
         )
-        deadline = time.monotonic() + 8
-        while time.monotonic() < deadline:
-            if apply_state.exists():
-                try:
-                    state = json.loads(apply_state.read_text(encoding="utf-8"))
-                except (OSError, json.JSONDecodeError):
-                    state = {}
-                if (
-                    state.get("items", {}).get("item-15", {}).get("status")
-                    == "in-progress"
-                ):
-                    interrupted.send_signal(signal.SIGINT)
-                    break
-            time.sleep(0.005)
-        stdout, stderr = interrupted.communicate(timeout=15)
-        self.assertEqual(interrupted.returncode, 0, stderr + stdout)
-        interrupted_result = json.loads(stdout)
         self.assertEqual(interrupted_result["status"], "interrupted")
-        resumed_apply = self._run_apply(result_path, "item-15")
+        self.assertEqual(
+            interrupted_result["items"][1]["reason"], "interrupted before replacement"
+        )
+        self.assertFalse((self.root / "out/item-01.txt").exists())
+        resumed_apply = self._run_apply(result_path, "item-01")
         self.assertEqual(resumed_apply["status"], "completed")
-        self.assertIn(
-            resumed_apply["items"][15]["resolution"], {"applied", "completed"}
-        )
-        self.assertTrue((self.root / "out/item-15.txt").is_file())
-        self.assertTrue(
-            Path(applied["provenance"]["entrypoint"])
-            .resolve()
-            .is_relative_to(self.installed.resolve())
-        )
-        self.assertNotIn(str(ROOT), applied["provenance"]["entrypoint"])
+        self.assertIn(resumed_apply["items"][1]["resolution"], {"applied", "completed"})
+        self.assertTrue((self.root / "out/item-01.txt").is_file())
+        for provenance in (applied["provenance"], interrupted_result["provenance"]):
+            entrypoint = Path(provenance["entrypoint"]).resolve()
+            module = Path(provenance["module"]).resolve()
+            self.assertTrue(entrypoint.is_relative_to(self.installed.resolve()))
+            self.assertTrue(module.is_relative_to(self.installed.resolve()))
+            self.assertNotIn(str(ROOT), str(entrypoint))
 
 
 if __name__ == "__main__":

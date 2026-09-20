@@ -33,16 +33,23 @@ def directory(value: str | Path, label: str, *, create: bool = True) -> Path:
 
 def child_directory(root: Path, value: str | Path, label: str) -> Path:
     candidate = Path(value).expanduser().absolute()
+    canonical_root = root.resolve(strict=True)
+    canonical_candidate = candidate.resolve(strict=False)
     try:
-        relative_path = candidate.relative_to(root)
+        raw_relative_path = candidate.relative_to(root)
+    except ValueError:
+        raw_relative_path = None
+    if raw_relative_path is not None:
+        current = root
+        for component in raw_relative_path.parts:
+            current /= component
+            if current.exists() and current.is_symlink():
+                raise ApplyError(f"{label} must not cross a symlink: {current}")
+    try:
+        canonical_candidate.relative_to(canonical_root)
     except ValueError as error:
         raise ApplyError(f"{label} must be beneath the workspace root") from error
-    current = root
-    for component in relative_path.parts:
-        current /= component
-        if current.exists() and current.is_symlink():
-            raise ApplyError(f"{label} must not cross a symlink: {current}")
-    return directory(candidate, label)
+    return directory(canonical_candidate, label)
 
 
 def relative(root: Path, value: Any, label: str) -> Path:
