@@ -75,12 +75,31 @@ class BatchChangeResumeReuseTests(BatchChangeResumeCase):
         self.assertEqual(second["items"][0]["invocations"], 2)
         self.assertEqual(self._log_count(self.transform_log, "transform"), 2)
 
-    def test_changed_extensionless_command_script_forces_a_rerun(self) -> None:
+    def test_changed_extensionless_transformer_with_option_forces_a_rerun(
+        self,
+    ) -> None:
         extensionless = self.root / "commands"
         extensionless.write_text(COMMAND_SOURCE, encoding="utf-8")
         item = self._item()
-        item["transform"]["argv"][1] = str(extensionless)
-        item["validations"][0]["argv"][1] = str(extensionless)
+        item["transform"]["argv"][1:2] = ["-u", str(extensionless)]
+        self._run(item)
+        extensionless.write_text(
+            COMMAND_SOURCE + "\nraise SystemExit(42)\n", encoding="utf-8"
+        )
+
+        second = self._run(item)
+
+        self.assertEqual(second["items"][0]["resolution"], "rerun")
+        self.assertEqual(second["items"][0]["invocations"], 2)
+        self.assertEqual(self._log_count(self.transform_log, "transform"), 2)
+
+    def test_changed_extensionless_validator_with_option_forces_a_rerun(
+        self,
+    ) -> None:
+        extensionless = self.root / "commands"
+        extensionless.write_text(COMMAND_SOURCE, encoding="utf-8")
+        item = self._item()
+        item["validations"][0]["argv"][1:2] = ["-u", str(extensionless)]
         self._run(item)
         extensionless.write_text(
             COMMAND_SOURCE + "\nraise SystemExit(42)\n", encoding="utf-8"

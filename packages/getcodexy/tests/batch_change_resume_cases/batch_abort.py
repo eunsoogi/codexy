@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from .common import BatchChangeResumeCase, preview, resume_batch
@@ -151,3 +152,32 @@ class BatchChangeResumeBatchAbortTests(BatchChangeResumeCase):
             ["conflict", "pending"],
         )
         self.assertEqual(self._log_count(self.transform_log, "copy"), 0)
+
+    def test_preflight_abort_preserves_unaffected_completed_checkpoint(self) -> None:
+        first = self._batch_item(
+            item_id="first",
+            original="input.txt",
+            output="first-output.txt",
+            mode="copy",
+        )
+        second = self._batch_item(
+            item_id="second",
+            original="second.txt",
+            output="second-output.txt",
+            mode="copy",
+        )
+        self._run_items([first, second])
+        document = preview(self.root, {"items": [first, second]})
+        (self.root / "second.txt").write_text(
+            "changed before resume\n", encoding="utf-8"
+        )
+
+        aborted = resume_batch(document, workspace_root=self.root)
+        state = json.loads(self._state_file().read_text(encoding="utf-8"))
+        resumed = self._run_items([first, second])
+
+        self.assertEqual(aborted["status"], "conflict")
+        self.assertEqual(state["items"]["first"]["status"], "succeeded")
+        self.assertEqual(state["items"]["first"]["invocations"], 1)
+        self.assertEqual(resumed["items"][0]["resolution"], "reuse")
+        self.assertEqual(resumed["items"][0]["invocations"], 1)

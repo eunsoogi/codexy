@@ -8,11 +8,13 @@ from pathlib import Path
 from threading import Event
 from typing import Any, Callable, Mapping
 
+from errors import RunnerError
 from execution import all_originals_unchanged, run_item
+from staging import _relative_path
 
 from resume_errors import ResumeError
 from result_validation import public_item, safe_output_path, saved_result_is_reusable
-from state import StateError, file_state
+from state import StateError, file_state, state_matches
 from persistence import persist_state, sync_file
 
 
@@ -22,8 +24,9 @@ def _append_pending(
     state: dict[str, Any],
     start: int,
     reason: str,
+    stop: int | None = None,
 ) -> None:
-    for pending_item in items[start:]:
+    for pending_item in items[start:stop]:
         saved = state["items"][str(pending_item["id"])]
         if saved.get("status") != "succeeded":
             saved.update({"status": "pending", "result": None})
@@ -37,6 +40,19 @@ def _append_pending(
                 reason=reason,
             )
         )
+
+
+def _original_unchanged(root: Path, item: Mapping[str, Any]) -> bool:
+    try:
+        original = item["original"]
+        expected = original["state"]
+        if not isinstance(original, Mapping) or not isinstance(expected, Mapping):
+            return False
+        relative = _relative_path(root, original["path"], "original")
+        expected = {key: value for key, value in expected.items() if key != "path"}
+        return state_matches(file_state(root / relative, "original"), expected)
+    except (AttributeError, KeyError, OSError, RunnerError, StateError, TypeError):
+        return False
 
 
 def execute_items(
@@ -57,28 +73,38 @@ def execute_items(
     public_items: list[dict[str, Any]] = []
     top_status = "completed"
     if not all_originals_unchanged(root, items):
-        first_item = items[0]
-        first_saved = state["items"][str(first_item["id"])]
-        first_saved.update(
-            {
-                "spec_identity": operation["item_identities"][str(first_item["id"])],
-                "input_identity": current_input_identity,
-                "status": "conflict",
-                "result": None,
-                "reason": "original-changed",
-            }
-        )
-        first_saved.pop("owner_pid", None)
-        first_saved.pop("started_at_ns", None)
-        public_items.append(
-            public_item(
-                first_item,
-                resolution="conflict",
-                invocations=first_saved["invocations"],
-                reason="original-changed",
+        changed = {
+            index
+            for index, item in enumerate(items)
+            if not _original_unchanged(root, item)
+        } or {0}
+        for index, item in enumerate(items):
+            if index not in changed:
+                _append_pending(
+                    public_items, items, state, index, "batch-aborted", index + 1
+                )
+                continue
+            item_id = str(item["id"])
+            saved = state["items"][item_id]
+            saved.update(
+                {
+                    "spec_identity": operation["item_identities"][item_id],
+                    "input_identity": current_input_identity,
+                    "status": "conflict",
+                    "result": None,
+                    "reason": "original-changed",
+                }
             )
-        )
-        _append_pending(public_items, items, state, 1, "batch-aborted")
+            saved.pop("owner_pid", None)
+            saved.pop("started_at_ns", None)
+            public_items.append(
+                public_item(
+                    item,
+                    resolution="conflict",
+                    invocations=saved["invocations"],
+                    reason="original-changed",
+                )
+            )
         persist_state(state_path, state, persistence_hook)
         return public_items, "conflict"
     for index, item in enumerate(items):

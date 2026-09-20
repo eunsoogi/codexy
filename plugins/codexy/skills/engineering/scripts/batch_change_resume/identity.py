@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from constants import RESUME_SCHEMA
+from command_identity import direct_script_position
 from resume_errors import ResumeError
 from runner import RUNNER_SCHEMA
 from state import STATE_SCHEMA, StateError, canonical_digest, file_state
@@ -108,13 +109,14 @@ def command_dependencies(
             argv = command.get("argv")
             if not isinstance(argv, list):
                 continue
+            script_position = direct_script_position(argv)
             for position, token in enumerate(argv):
                 if not isinstance(token, str):
                     continue
                 is_static_path = position == 0 or (
                     os.path.isabs(token)
                     and (
-                        position == 1
+                        position == script_position
                         or Path(token).suffix.lower()
                         in {".py", ".pyc", ".sh", ".json", ".toml", ".yaml", ".yml"}
                     )
