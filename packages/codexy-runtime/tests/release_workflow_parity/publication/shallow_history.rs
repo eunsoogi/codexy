@@ -36,6 +36,18 @@ fn public_smoke_receives_prior_version_in_a_one_commit_checkout() -> TestResult 
     assert!(
         fs::read_to_string(explicit_input.join("public-upgrade.json"))?.contains("\"command\":\"update\"")
     );
+    for home in [
+        "runner-temp/empty-codex-home",
+        "runner-temp/upgrade-codex-home",
+    ] {
+        assert!(
+            explicit_input
+                .join(home)
+                .join("agents/codexy-github/codexy-weaver.toml")
+                .is_file(),
+            "public smoke did not activate the GitHub specialist in {home}"
+        );
+    }
     Ok(())
 }
 
@@ -156,7 +168,7 @@ fn create_fixture(root: PathBuf) -> Result<PathBuf, Box<dyn std::error::Error>> 
     let python = runner_temp.join("python");
     fs::write(
         &python,
-        "#!/bin/sh\nset -eu\nif test \"${1:-}\" = \"-m\" && test \"${2:-}\" = \"venv\"; then\n  mkdir -p \"$3/bin\"\n  cp \"$CODEXY_TEST_STUB_ROOT/python-in-venv\" \"$3/bin/python\"\n  cp \"$CODEXY_TEST_STUB_ROOT/codexy-mcp-runtime\" \"$3/bin/codexy-mcp-runtime\"\n  cp \"$CODEXY_TEST_STUB_ROOT/getcodexy\" \"$3/bin/getcodexy\"\n  chmod 755 \"$3/bin/python\" \"$3/bin/codexy-mcp-runtime\" \"$3/bin/getcodexy\"\nfi\n",
+        "#!/bin/sh\nset -eu\nif test \"${1:-}\" = \"-m\" && test \"${2:-}\" = \"venv\"; then\n  mkdir -p \"$3/bin\"\n  cp \"$CODEXY_TEST_STUB_ROOT/python-in-venv\" \"$3/bin/python\"\n  cp \"$CODEXY_TEST_STUB_ROOT/codexy-mcp-runtime\" \"$3/bin/codexy-mcp-runtime\"\n  cp \"$CODEXY_TEST_STUB_ROOT/getcodexy\" \"$3/bin/getcodexy\"\n  cp \"$CODEXY_TEST_STUB_ROOT/codexy-github-install\" \"$3/bin/codexy-github-install\"\n  chmod 755 \"$3/bin/python\" \"$3/bin/codexy-mcp-runtime\" \"$3/bin/getcodexy\" \"$3/bin/codexy-github-install\"\nfi\n",
     )?;
     fs::write(stubs.join("python-in-venv"), "#!/bin/sh\nexit 0\n")?;
     fs::write(
@@ -164,8 +176,14 @@ fn create_fixture(root: PathBuf) -> Result<PathBuf, Box<dyn std::error::Error>> 
         "#!/bin/sh\nexit 0\n",
     )?;
     fs::write(stubs.join("getcodexy"), fake_getcodexy())?;
+    fs::write(stubs.join("codexy-github-install"), fake_github_install())?;
     make_executable(&python)?;
-    for name in ["python-in-venv", "codexy-mcp-runtime", "getcodexy"] {
+    for name in [
+        "python-in-venv",
+        "codexy-mcp-runtime",
+        "getcodexy",
+        "codexy-github-install",
+    ] {
         make_executable(&stubs.join(name))?;
     }
     Ok(root)
@@ -196,13 +214,48 @@ status)
   printf '%s\n' '{"schema":"getcodexy.status.v1","outcome":"completed","inventory_consistency":"consistent","errors":[],"installed_components":["core","devtools","github"]}'
   ;;
 doctor)
-  jq -n --arg version "$TARGET_VERSION" '{schema:"getcodexy.doctor.v1",outcome:"completed",inventory_consistency:"consistent",host_readiness:{state:"ready"},errors:[],component_health:( ["core","devtools","github"] | map({healthy:true,state:"healthy",observed:{plugin:{version:$version},runtime:{version:$version}}}) )}'
+  github_healthy=false
+  if test -f "$CODEX_HOME/.codexy-github-activated"; then
+    github_healthy=true
+  fi
+  jq -n --arg version "$TARGET_VERSION" --argjson github_healthy "$github_healthy" '{schema:"getcodexy.doctor.v1",outcome:"completed",inventory_consistency:"consistent",host_readiness:{state:"ready"},errors:[],component_health:[{healthy:true,state:"healthy",observed:{plugin:{version:$version},runtime:{version:$version}}},{healthy:true,state:"healthy",observed:{plugin:{version:$version},runtime:{version:$version}}},{healthy:$github_healthy,state:(if $github_healthy then "healthy" else "unhealthy" end),observed:{plugin:{version:$version},runtime:{version:$version}}}]}'
   ;;
 *)
   echo "unexpected getcodexy command" >&2
   exit 1
   ;;
 esac
+"##
+}
+
+fn fake_github_install() -> &'static str {
+    r##"#!/bin/sh
+set -eu
+
+codex=
+codex_home=
+while test "$#" -gt 0; do
+  case "$1" in
+    --codex)
+      codex=${2:-}
+      shift 2
+      ;;
+    --codex-home)
+      codex_home=${2:-}
+      shift 2
+      ;;
+    *)
+      echo "unexpected GitHub installer argument: $1" >&2
+      exit 1
+      ;;
+  esac
+done
+test -x "$codex"
+test "$codex_home" = "$CODEX_HOME"
+mkdir -p "$CODEX_HOME/agents/codexy-github"
+printf '%s\n' 'activated' >"$CODEX_HOME/agents/codexy-github/codexy-weaver.toml"
+touch "$CODEX_HOME/.codexy-github-activated"
+printf '%s\n' 'codexy-github activated'
 "##
 }
 
