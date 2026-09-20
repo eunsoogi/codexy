@@ -101,6 +101,18 @@ class LifecycleWatcherTests(unittest.TestCase):
             record(state.home, ["core"])
             calls: list[tuple[str, str, tuple[tuple[str, ...], ...]]] = []
 
+            def observe_registration(plugin, home, mode):
+                return SyncResult(
+                    mode,
+                    "completed",
+                    "codexy",
+                    str(plugin),
+                    str(home),
+                    False,
+                    False,
+                    (),
+                )
+
             def validate_source(plugin, component, version):
                 calls.append((component, version, tuple(state.mutations)))
                 return materialize_component_mcp(plugin, component, version)
@@ -110,6 +122,11 @@ class LifecycleWatcherTests(unittest.TestCase):
                     component_lifecycle_recovery,
                     "reconcile_official_marketplace_root",
                     return_value=state.marketplace,
+                ),
+                patch.object(
+                    component_registration_health,
+                    "sync_agents",
+                    side_effect=observe_registration,
                 ),
                 patch(
                     "codexy_runtime_tools.component_lifecycle_mcp.materialize_component_mcp",
@@ -123,6 +140,9 @@ class LifecycleWatcherTests(unittest.TestCase):
                     state.codex,
                     state.run,
                     operation_id="op-update-mcp",
+                    hook_lister=lambda _executable, _home: _fixture_hook_rows(
+                        state.marketplace
+                    ),
                 )
 
             self.assertEqual(receipt["outcome"], "completed")
