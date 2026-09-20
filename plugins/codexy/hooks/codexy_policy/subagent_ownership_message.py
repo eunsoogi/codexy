@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+from .subagent_ownership_classifier_mask import mask_non_delegating_data
+
 _CLAUSE = "\n,;.!?:"
 _HINTS = (
     "own|owner|ownership|responsible|manage|lead|branch|worktree|pull request|pr|"
@@ -12,16 +14,17 @@ _HINTS = (
     "소유|담당|책임|전담|맡|관리|브랜치|워크트리|리퀘스트|리뷰|구현|수정|편집|"
     "커밋|푸시|생성|열|작성|처리|해결|반영|적용"
 ).split("|")
+_OWNER = r"(?:own(?:s|ed|ing|ership)?|owner|ownership|owned|responsible\s+for(?!\s+review(?:ing)?\b)|take\s+ownership(?:\s+of)?|manage|lead)"
 _DURABLE_OWNERSHIP = re.compile(
     r"(?:"
-    + r"\b(?:own(?:s|ed|ing|ership)?|owner|ownership|owned|"
-    + r"responsible\s+for(?!\s+review(?:ing)?\b)|"
-    + r"take\s+ownership(?:\s+of)?|manage|lead)\b[^\n,;.!?:]{0,80}\b"
+    + r"\b"
+    + _OWNER
+    + r"\b[^\n,;.!?:]{0,80}\b"
     + r"(?:branch|worktree|pull\s+request|pr\b|review[- ]?response|review feedback)\b"
     + r"|\b(?:branch|worktree|pull\s+request|pr\b|review[- ]?response|review feedback)\b"
-    + r"[^\n,;.!?:]{0,80}\b(?:own(?:s|ed|ing|ership)?|owner|ownership|owned|"
-    + r"responsible\s+for(?!\s+review(?:ing)?\b)|"
-    + r"take\s+ownership(?:\s+of)?|manage|lead)\b"
+    + r"[^\n,;.!?:]{0,80}\b"
+    + _OWNER
+    + r"\b"
     + r"|\b(?:implement|modify|edit|commit|push|update|handle|address|resolve|fix|apply|complete)\b"
     + r"[^\n;.!?:]{0,70}\b(?:in|on|to|onto|into)\s+(?:the\s+)?"
     + r"(?:reserved|assigned|dedicated|current|child-owned)?\s*(?:branch|worktree)\b"
@@ -67,11 +70,7 @@ _DURABLE_OWNERSHIP_KO = re.compile(
     + r")",
     re.IGNORECASE,
 )
-_DURABLE_RULES = (
-    _DURABLE_OWNERSHIP,
-    _DURABLE_OWNERSHIP_KO,
-    _DURABLE_BUILD_WRITE,
-)
+_DURABLE_RULES = (_DURABLE_OWNERSHIP, _DURABLE_OWNERSHIP_KO, _DURABLE_BUILD_WRITE)
 _NEGATION_RULES = (
     re.compile(
         r"(?:\b(?:do\s+not|don't|dont|never|not(?!\s+only\b)|no)\b|"
@@ -207,7 +206,7 @@ def _mask_quoted_data(message: str) -> tuple[str, bool]:
     for (opening, end), relay_active in zip(spans, active):
         if not relay_active:
             masked[opening:end] = [" "] * (end - opening)
-    return "".join(masked), unmatched
+    return mask_non_delegating_data("".join(masked)), unmatched
 
 
 def _clause_prefix(message: str, position: int, limit: int = 80) -> str:

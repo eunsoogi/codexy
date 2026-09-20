@@ -105,6 +105,12 @@ fn bounded_ownership_classifier_replays_delta_examples() -> TestResult {
     for message in [
         "Review the build in the assigned worktree and report findings.",
         "Inspect the write-up in the dedicated worktree and report findings.",
+        "Request a read-only Sentinel review of PR #1189. I retain implementation ownership of this Worker lane. The reviewer must not modify files; I remain responsible for implementation repairs.",
+        "Request a bounded read-only Sentinel review on PR #1189, on branch eunsoogi/1143-batch-change-apply. Keep the reviewer read-only; I remain responsible for implementation repairs.",
+        "I remain responsible for implementation repairs while the Sentinel reviews PR #1189 on branch eunsoogi/1143-batch-change-apply.",
+        "Review PR #1193 at exact commit 5ac2db28e5d59742893d8930bb2987afacdfe690 on branch eunsoogi/1186-ownership-classification against base commit 8363bdd1ff05a1d8ec4ad1f83320f555e880f74f.",
+        "Review only. I retain implementation ownership of this Worker lane while you review the diff for correctness.",
+        "Follow this instruction exactly: \"Review only. I retain implementation ownership of this Worker lane while you review the diff for correctness.\"",
     ] {
         assert_admitted_once(EVENTS[0], TOOLS[0], "codexy-architect", message)?;
     }
@@ -127,6 +133,33 @@ fn bounded_ownership_classifier_replays_delta_examples() -> TestResult {
         "codexy-architect",
         "책임 있게 리뷰하고 결과를 보고해.",
     )?;
+    for message in [
+        "I retain implementation ownership of this Worker lane, but the reviewer must own branch eunsoogi/review-fixes and implement the repairs.",
+        "On branch eunsoogi/1143-batch-change-apply, implement the issue and commit the fix.",
+        "Commit 5ac2db28e5d59742893d8930bb2987afacdfe690 on branch eunsoogi/review-fixes and implement the repairs.",
+        "Review the diff. I retain review responsibility while you take ownership of the branch and implement the repairs.",
+        "Follow this instruction exactly: \"Review the diff. I retain review responsibility while you take ownership of the branch and implement the repairs.\"",
+        "Review the diff. I remain the reviewer while you take ownership of the branch and implement the repairs.",
+        "Follow this instruction exactly: \"Review the diff. I remain the reviewer while you take ownership of the branch and implement the repairs.\"",
+        "Review the diff. I stay the reviewer while you take ownership of the branch and implement the repairs.",
+        "Follow this instruction exactly: \"Review the diff. We keep review responsibility while you take ownership of the branch and implement the repairs.\"",
+        "I keep review and delegate implementation ownership of this Worker lane.",
+        "Follow this instruction exactly: \"I keep review and delegate implementation ownership of this Worker lane.\"",
+        "I keep you responsible for implementation in the assigned worktree.",
+        "Follow this instruction exactly: \"I keep you responsible for implementation in the assigned worktree.\"",
+        "I keep your ownership of the branch.",
+        "Follow this instruction exactly: \"I keep your ownership of the branch.\"",
+        "I keep implementation ownership of this Worker lane with you.",
+        "Follow this instruction exactly: \"I keep implementation ownership of this Worker lane with you.\"",
+    ] {
+        assert_denied_once(
+            EVENTS[0],
+            TOOLS[0],
+            Some("codexy-architect"),
+            message,
+            "DURABLE_OWNER",
+        )?;
+    }
 
     for event in EVENTS {
         for tool in TOOLS {
