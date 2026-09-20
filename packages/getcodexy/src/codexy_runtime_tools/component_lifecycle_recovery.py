@@ -68,7 +68,14 @@ def recover_if_needed(
                 executable, invoke, manifest, root, journal, journal.resolved, (), home
             )
         except BaseException as error:
-            root = refresh_root(executable, invoke, manifest, root)
+            root = refresh_root(
+                executable,
+                invoke,
+                manifest,
+                root,
+                home,
+                allow_official_repin=journal.command in {"update", "bootstrap"},
+            )
             rollback_or_raise(home, executable, invoke, manifest, root, journal, error)
             terminal(home, manifest, journal.receipt("rolled-back", journal.before))
             clear_journal(home)

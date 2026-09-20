@@ -9,8 +9,11 @@ from typing import Callable
 from .component_manifest import ComponentManifest
 from .component_resolver import ComponentResolutionError, resolve_components
 from .component_transaction_state import read_inventory
+from .marketplace_identity import require_pinned_registration
 from .plugin_resolution import (
+    OFFICIAL,
     MarketplaceBinding,
+    MarketplaceIdentity,
     marketplace_identity,
     marketplace_path,
     named_marketplace,
@@ -62,11 +65,43 @@ def refresh_root(
     invoke: Runner,
     manifest: ComponentManifest,
     previous: MarketplaceBinding,
+    home: Path,
+    *,
+    allow_official_repin: bool = False,
 ) -> MarketplaceBinding:
-    try:
-        return existing_marketplace(executable, invoke, manifest) or previous
-    except Exception:
+    current = existing_marketplace(executable, invoke, manifest)
+    if current is None:
+        raise RuntimeError("marketplace binding disappeared during recovery")
+    if _same_binding(previous, current):
         return previous
+    if not allow_official_repin or not _is_official(previous) or not _is_official(
+        current
+    ):
+        raise RuntimeError("marketplace binding changed during recovery")
+    if not isinstance(current, MarketplaceIdentity):
+        raise RuntimeError("official marketplace repin has no host identity")
+    require_pinned_registration(home, current.root, f"v{manifest.version}")
+    return current
+
+
+def _is_official(binding: MarketplaceBinding) -> bool:
+    return isinstance(binding, Path) or (
+        isinstance(binding, MarketplaceIdentity)
+        and binding.source_type == "git"
+        and binding.source_value == OFFICIAL
+    )
+
+
+def _same_binding(left: MarketplaceBinding, right: MarketplaceBinding) -> bool:
+    if isinstance(left, MarketplaceIdentity) and left.source_type == "local":
+        return (
+            isinstance(right, MarketplaceIdentity)
+            and right.source_type == "local"
+            and right == left
+        )
+    if _is_official(left) and _is_official(right):
+        return marketplace_path(left) == marketplace_path(right)
+    return left == right
 
 
 def recorded_selection(

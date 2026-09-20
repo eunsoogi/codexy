@@ -237,7 +237,14 @@ def run_operation(
                 raise RuntimeError(
                     "component operation failed; durable recovery is required"
                 ) from error
-            root = refresh_root(executable, invoke, manifest, root)
+            root = refresh_root(
+                executable,
+                invoke,
+                manifest,
+                root,
+                home,
+                allow_official_repin=journal.command in {"update", "bootstrap"},
+            )
             _rollback_or_raise(home, executable, invoke, manifest, root, journal, error)
             receipt = _terminal(
                 home, manifest, journal.receipt("rolled-back", journal.before)
