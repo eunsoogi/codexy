@@ -137,7 +137,13 @@ fn final_package_is_smoked_before_public_release_and_published_afterward() -> Te
     for required in [
         "CODEX_HOME",
         "getcodexy install --json",
+        "codexy-github-install",
+        "public-github-install.log",
         "getcodexy update --json",
+        "public-upgrade-github-install.log",
+        "--codex \"$RUNNER_TEMP/codex\"",
+        "--codex-home \"$public_code_home\"",
+        "--codex-home \"$upgrade_code_home\"",
         "plugin list --json",
         "getcodexy status --json",
         "getcodexy doctor --json",
