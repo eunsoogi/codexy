@@ -18,6 +18,7 @@ from .component_manifest import ComponentManifest, load_component_manifest
 from .component_lifecycle_preflight import (
     existing_marketplace,
     recorded_selection,
+    refresh_operation_root as _refresh,
     validate_request,
 )
 from .component_lifecycle_recovery import (
@@ -228,7 +229,7 @@ def run_operation(
         try:
             root = root or official_marketplace_root(executable, invoke)
             forward = partial(_apply_forward, home=home)
-            installed = forward(
+            installed, root = forward(
                 executable, invoke, manifest, root, journal, plan.adds, plan.removes
             )
         except BaseException as error:
@@ -236,6 +237,7 @@ def run_operation(
                 raise RuntimeError(
                     "component operation failed; durable recovery is required"
                 ) from error
+            root = _refresh(executable, invoke, manifest, root, home, journal.command)
             _rollback_or_raise(home, executable, invoke, manifest, root, journal, error)
             receipt = _terminal(
                 home, manifest, journal.receipt("rolled-back", journal.before)

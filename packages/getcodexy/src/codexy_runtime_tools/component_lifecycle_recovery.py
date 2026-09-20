@@ -10,14 +10,17 @@ from .component_hook_activation import HookLister
 from .component_lifecycle_finish import finish_committed
 from .component_lifecycle_mcp import materialize_mcp_caches, materialize_mcp_sources
 from .component_lifecycle_preflight import existing_marketplace
+from .component_lifecycle_preflight import refresh_operation_root as _refresh
+from .component_registration_health import synchronize_core_registration
 from .component_manifest import ComponentManifest
 from .component_resolver import (
     ComponentResolutionError,
     reconcile_installed_inventory,
-    verify_post_operation_inventory,
+    verify_post_operation_inventory as _verify,
 )
 from .component_transaction_state import (
     InventorySnapshot,
+    clear_stale_registration_lock,
     Journal,
     clear_journal,
     decode_inventory,
@@ -46,6 +49,7 @@ def recover_if_needed(
     if journal is None:
         return
     journal.validate(manifest, decode_inventory)
+    clear_stale_registration_lock(home)
     if journal.phase == "committed":
         finish_committed(
             home,
@@ -61,10 +65,11 @@ def recover_if_needed(
         return
     if journal.command in {"update", "bootstrap"} and journal.phase == "started":
         try:
-            installed = apply_forward(
+            installed, root = apply_forward(
                 executable, invoke, manifest, root, journal, journal.resolved, (), home
             )
         except BaseException as error:
+            root = _refresh(executable, invoke, manifest, root, home, journal.command)
             rollback_or_raise(home, executable, invoke, manifest, root, journal, error)
             terminal(home, manifest, journal.receipt("rolled-back", journal.before))
             clear_journal(home)
@@ -75,7 +80,7 @@ def recover_if_needed(
         return
     if journal.phase == "started":
         try:
-            installed = verify_post_operation_inventory(
+            installed = _verify(
                 manifest, list_installed(executable, invoke), journal.target, root
             )
         except ComponentResolutionError:
@@ -117,10 +122,8 @@ def rollback_or_raise(
     try:
         write_journal(home, journal.with_phase("rolling-back"))
         restore_selection(home, executable, invoke, manifest, root, journal.before)
-        if (
-            selection(manifest, list_installed(executable, invoke), root)
-            != journal.before
-        ):
+        installed = list_installed(executable, invoke)
+        if reconcile_installed_inventory(manifest, installed, root) != journal.before:
             raise RuntimeError(
                 "restored selection did not match the operation snapshot"
             )
@@ -145,6 +148,15 @@ def write_completed(
     installed: tuple[str, ...],
     hook_lister: HookLister | None = None,
 ) -> dict[str, object]:
+    try:
+        synchronize_core_registration(home, root, journal)
+    except BaseException as error:
+        rollback_or_raise(home, executable, invoke, manifest, root, journal, error)
+        receipt = terminal(
+            home, manifest, journal.receipt("rolled-back", journal.before)
+        )
+        clear_journal(home)
+        return receipt
     write_inventory(home, installed)
     write_journal(home, journal.with_phase("committed"))
     return finish_committed(
@@ -168,7 +180,9 @@ def restore_selection(
     root: MarketplaceBinding,
     before: tuple[str, ...],
 ) -> None:
-    current = selection(manifest, list_installed(executable, invoke), root)
+    current = reconcile_installed_inventory(
+        manifest, list_installed(executable, invoke), root
+    )
     materialize_mcp_sources(root, manifest, before)
     for component in before:
         if component not in current:
@@ -188,7 +202,7 @@ def apply_forward(
     adds: tuple[str, ...],
     removes: tuple[str, ...],
     home: Path,
-) -> tuple[str, ...]:
+) -> tuple[tuple[str, ...], MarketplaceBinding]:
     if journal.command in {"update", "bootstrap"}:
         if isinstance(root, MarketplaceIdentity) and root.source_type == "local":
             if existing_marketplace(executable, invoke, manifest) != root:
@@ -207,7 +221,7 @@ def apply_forward(
         mutate(executable, invoke, "remove", manifest, component)
     installed = list_installed(executable, invoke)
     materialize_mcp_caches(home, root, manifest, journal.target)
-    return verify_post_operation_inventory(manifest, installed, journal.target, root)
+    return _verify(manifest, installed, journal.target, root), root
 
 
 def mutate(
@@ -233,9 +247,3 @@ def mutate(
 
 def list_installed(executable: Path, invoke: Runner) -> object:
     return _json(invoke([str(executable), "plugin", "list", "--json"]), "plugin list")
-
-
-def selection(
-    manifest: ComponentManifest, payload: object, root: MarketplaceBinding
-) -> tuple[str, ...]:
-    return reconcile_installed_inventory(manifest, payload, root)

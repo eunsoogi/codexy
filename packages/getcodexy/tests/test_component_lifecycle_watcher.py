@@ -5,26 +5,45 @@ import shutil
 import unittest
 from unittest.mock import patch
 
+from codexy_runtime_tools import component_registration_health
+from codexy_runtime_tools import component_lifecycle_recovery
 from codexy_runtime_tools.component_lifecycle import run_operation
 from codexy_runtime_tools.component_mcp_materialization import (
     materialize_component_mcp,
 )
 from packages.getcodexy.tests.component_lifecycle_records import record
 from packages.getcodexy.tests.component_lifecycle_support import VERSION, fixture
+from packages.getcodexy.tests.component_hook_registration_fixture import (
+    completed_registration,
+    fixture_hook_rows,
+)
 
 
 class LifecycleWatcherTests(unittest.TestCase):
     def test_install_validates_each_selected_mcp_source_before_host_add(self) -> None:
         with fixture() as state:
             calls: list[tuple[str, str, tuple[tuple[str, ...], ...]]] = []
+            registrations: list[dict[str, object]] = []
+
+            def observe_registration(plugin, home, mode):
+                result = completed_registration(plugin, home, mode)
+                registrations.append(result.as_dict())
+                return result
 
             def validate_source(plugin, component, version):
                 calls.append((component, version, tuple(state.mutations)))
                 return materialize_component_mcp(plugin, component, version)
 
-            with patch(
-                "codexy_runtime_tools.component_lifecycle_mcp.materialize_component_mcp",
-                side_effect=validate_source,
+            with (
+                patch.object(
+                    component_registration_health,
+                    "sync_agents",
+                    side_effect=completed_registration,
+                ),
+                patch(
+                    "codexy_runtime_tools.component_lifecycle_mcp.materialize_component_mcp",
+                    side_effect=validate_source,
+                ),
             ):
                 receipt = run_operation(
                     "install",
@@ -33,9 +52,16 @@ class LifecycleWatcherTests(unittest.TestCase):
                     state.codex,
                     state.run,
                     operation_id="op-install-mcp",
+                    hook_lister=lambda _executable, _home: fixture_hook_rows(
+                        state.marketplace
+                    ),
                 )
 
-            self.assertEqual(receipt["outcome"], "completed")
+            self.assertEqual(
+                receipt["outcome"],
+                "completed",
+                {"receipt": receipt, "registrations": registrations, "calls": calls},
+            )
             self.assertEqual(
                 [(component, version) for component, version, _ in calls],
                 [("core", VERSION), ("devtools", VERSION)],
@@ -59,9 +85,21 @@ class LifecycleWatcherTests(unittest.TestCase):
                 calls.append((component, version, tuple(state.mutations)))
                 return materialize_component_mcp(plugin, component, version)
 
-            with patch(
-                "codexy_runtime_tools.component_lifecycle_mcp.materialize_component_mcp",
-                side_effect=validate_source,
+            with (
+                patch.object(
+                    component_lifecycle_recovery,
+                    "reconcile_official_marketplace_root",
+                    return_value=state.marketplace,
+                ),
+                patch.object(
+                    component_registration_health,
+                    "sync_agents",
+                    side_effect=completed_registration,
+                ),
+                patch(
+                    "codexy_runtime_tools.component_lifecycle_mcp.materialize_component_mcp",
+                    side_effect=validate_source,
+                ),
             ):
                 receipt = run_operation(
                     "update",
@@ -70,6 +108,9 @@ class LifecycleWatcherTests(unittest.TestCase):
                     state.codex,
                     state.run,
                     operation_id="op-update-mcp",
+                    hook_lister=lambda _executable, _home: fixture_hook_rows(
+                        state.marketplace
+                    ),
                 )
 
             self.assertEqual(receipt["outcome"], "completed")
@@ -94,16 +135,38 @@ class LifecycleWatcherTests(unittest.TestCase):
             cache_bootstrap = cache / "mcp/codexy_mcp_bootstrap.py"
             cache_bootstrap.write_text("stale cache surface\n", encoding="utf-8")
 
-            receipt = run_operation(
-                "update",
-                ("core",),
-                state.home,
-                state.codex,
-                state.run,
-                operation_id="op-update-cache-mcp",
-            )
+            with (
+                patch.object(
+                    component_lifecycle_recovery,
+                    "reconcile_official_marketplace_root",
+                    return_value=state.marketplace,
+                ),
+                patch.object(
+                    component_registration_health,
+                    "sync_agents",
+                    side_effect=completed_registration,
+                ),
+            ):
+                receipt = run_operation(
+                    "update",
+                    ("core",),
+                    state.home,
+                    state.codex,
+                    state.run,
+                    operation_id="op-update-cache-mcp",
+                    hook_lister=lambda _executable, _home: fixture_hook_rows(
+                        state.marketplace
+                    ),
+                )
 
-            self.assertEqual(receipt["outcome"], "completed")
+            self.assertEqual(
+                receipt["outcome"],
+                "completed",
+                {
+                    "receipt": receipt,
+                    "mutations": state.mutations,
+                },
+            )
             self.assertEqual(
                 cache_bootstrap.read_bytes(),
                 (source_plugin / "mcp/codexy_mcp_bootstrap.py").read_bytes(),

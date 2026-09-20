@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import unittest
+from pathlib import Path
 
 from codexy_runtime_tools.component_lifecycle import run_operation
 from codexy_runtime_tools.component_manifest import load_component_manifest
@@ -13,6 +14,7 @@ from codexy_runtime_tools.component_transaction_state import (
     inventory_path,
     write_journal,
 )
+from codexy_runtime_tools.component_transaction_snapshot import ManagedFileSnapshot
 from codexy_runtime_tools.component_transition_model import (
     OperationReceipt,
     plan_transition,
@@ -26,6 +28,56 @@ from packages.getcodexy.tests.component_lifecycle_support import fixture
 
 
 class JournalValidationTests(unittest.TestCase):
+    def test_managed_snapshot_journals_round_trip_and_legacy_journals_decode(
+        self,
+    ) -> None:
+        snapshot = InventorySnapshot(
+            b"inventory",
+            (
+                ManagedFileSnapshot(
+                    Path("agents/codexy/codexy-sentinel.toml"),
+                    b"# CODEXY MANAGED AGENT\nmodel = 'old'\n",
+                    0o600,
+                ),
+            ),
+        )
+        journal = Journal(
+            "op-managed-journal",
+            "install",
+            (),
+            ("core",),
+            (),
+            ("core",),
+            snapshot,
+            "started",
+        )
+
+        decoded = Journal.decode(journal.encode())
+        self.assertEqual(decoded.snapshot, snapshot)
+        self.assertEqual(
+            decoded.snapshot.managed_files[0].relative,
+            Path("agents/codexy/codexy-sentinel.toml"),
+        )
+        self.assertEqual(decoded.snapshot.managed_files[0].mode, 0o600)
+        self.assertEqual(
+            decoded.snapshot.managed_files[0].data, snapshot.managed_files[0].data
+        )
+        legacy = journal.encode()
+        legacy.pop("managed")
+        self.assertIsNone(Journal.decode(legacy).snapshot.managed_files)
+
+        encoded = journal.encode()
+        entry = dict(encoded["managed"][0])
+        malformed = [
+            [{"path": "../escape.toml", "mode": entry["mode"], "data": entry["data"]}],
+            [{"path": entry["path"], "mode": 0o1000, "data": entry["data"]}],
+            [{"path": entry["path"], "mode": entry["mode"], "data": "%%%"}],
+            [entry, entry],
+        ]
+        for managed in malformed:
+            with self.assertRaises(ValueError):
+                Journal.decode({**encoded, "managed": managed})
+
     def test_transition_model_owns_plan_journal_and_receipt_contracts(self) -> None:
         manifest = load_component_manifest()
         plan = plan_transition(manifest, "install", ("github",), ("core",), ("core",))
