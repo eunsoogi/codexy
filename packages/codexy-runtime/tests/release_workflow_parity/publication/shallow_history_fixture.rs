@@ -11,7 +11,9 @@ write_state() {
 }
 
 if test "${0##*/}" = "codexy-github-install"; then
-  test "$#" -eq 4 && test "$1" = "--codex" && test -x "$2" && test "$3" = "--codex-home" && test "$4" = "$CODEX_HOME"
+  if test "$#" -ne 4 || test "$1" != "--codex" || ! test -x "$2" || test "$3" != "--codex-home" || test "$4" != "$CODEX_HOME"; then
+    exit 1
+  fi
   mkdir -p "$CODEX_HOME/agents/codexy-github"
   printf '%s\n' 'name = "codexy-weaver"' >"$CODEX_HOME/agents/codexy-github/codexy-weaver.toml"
   exit 0
