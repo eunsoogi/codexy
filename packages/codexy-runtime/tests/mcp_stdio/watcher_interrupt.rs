@@ -175,7 +175,3 @@ fn hook_call(
     assert!(output.status.success(), "hook failed: {:?}", output.stderr);
     Ok(serde_json::from_slice(&output.stdout)?)
 }
-
-#[cfg(unix)]
-#[path = "watcher_interrupt/cache_hook.rs"]
-mod cache_hook;
