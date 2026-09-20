@@ -135,6 +135,22 @@ module, and a shared fixture. Those subprocess checks prove the packaged runtime
 only; active host exposure remains unobserved until the host's callable tool
 list and a real invocation are separately verified.
 
+### Installed MCP scenario tests
+
+The `mcp-test` skill and
+[`run_scenario.py`](../plugins/codexy-devtools/skills/mcp-test/scripts/run_scenario.py)
+are installed with Devtools. The CLI runs and compares explicit local stdio
+targets using the scenario format in
+[`scenario-format.md`](../plugins/codexy-devtools/skills/mcp-test/references/scenario-format.md):
+ordered steps, selected stored fields, declared references, expectations, and
+explicit target commands. Its support contract documents the trusted protocol
+and platform boundary, including fail-closed behavior for unsupported versions
+or platforms. The installed test exercises a search-to-detail chain, a
+deliberate comparison difference, and a linkage regression through the copied
+package. These subprocess results prove installed files and producer provenance;
+they do not prove an active host's callable skill surface or an app-level skill
+invocation.
+
 For LSP, [`lsp-client.json`](../plugins/codexy-devtools/.codex/lsp-client.json)
 is the machine-readable client registration and
 [`server-catalog.toml`](../plugins/codexy-devtools/lsp/server-catalog.toml)

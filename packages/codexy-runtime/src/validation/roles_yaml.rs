@@ -198,7 +198,7 @@ fn check_yaml_file(plugin_root: &Path, path: &Path) -> Result<Vec<String>> {
         prompt_yaml::get_path(&parsed, &["policy", "allow_implicit_invocation"]);
     let valid_implicit_invocation = match implicit_invocation {
         Some(prompt_yaml::Scalar::Bool(true)) => true,
-        Some(prompt_yaml::Scalar::Bool(false)) => is_explicit_only_core_skill(plugin_root, path),
+        Some(prompt_yaml::Scalar::Bool(false)) => is_explicit_only_skill(plugin_root, path),
         _ => false,
     };
     if !valid_implicit_invocation {
@@ -215,14 +215,14 @@ fn requires_orchestration_route(plugin_root: &Path, path: &Path) -> bool {
         && plugin_name(plugin_root).as_deref() != Some("codexy-devtools")
 }
 
-fn is_explicit_only_core_skill(plugin_root: &Path, path: &Path) -> bool {
-    plugin_name(plugin_root).as_deref() == Some("codexy")
-        && ["realtime-voice-orchestration"].iter().any(|skill| {
-            path == plugin_root
-                .join("skills")
-                .join(skill)
-                .join("agents/openai.yaml")
-        })
+fn is_explicit_only_skill(plugin_root: &Path, path: &Path) -> bool {
+    match plugin_name(plugin_root).as_deref() {
+        Some("codexy") => {
+            path == plugin_root.join("skills/realtime-voice-orchestration/agents/openai.yaml")
+        }
+        Some("codexy-devtools") => path == plugin_root.join("skills/mcp-test/agents/openai.yaml"),
+        _ => false,
+    }
 }
 
 fn plugin_name(plugin_root: &Path) -> Option<String> {

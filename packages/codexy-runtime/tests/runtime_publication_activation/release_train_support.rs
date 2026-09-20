@@ -12,11 +12,17 @@ pub(super) fn copy_component_mcp(
         fixture_root.join("plugins/codexy-devtools"),
         fixture_root.join("staged/plugins/codexy-devtools"),
     ] {
-        for relative in [".mcp.json", "mcp/codexy_mcp_bootstrap.py"] {
-            fs::copy(
-                root.join("plugins/codexy-devtools").join(relative),
-                plugin_root.join(relative),
-            )?;
+        for relative in [
+            ".mcp.json",
+            "mcp/codexy_mcp_bootstrap.py",
+            "skills/mcp-test/SKILL.md",
+            "skills/mcp-test/references/scenario-format.md",
+            "skills/mcp-test/references/support-contract.md",
+            "skills/mcp-test/scripts/run_scenario.py",
+        ] {
+            let target = plugin_root.join(relative);
+            fs::create_dir_all(target.parent().ok_or("component fixture parent")?)?;
+            fs::copy(root.join("plugins/codexy-devtools").join(relative), target)?;
         }
     }
     Ok(())
