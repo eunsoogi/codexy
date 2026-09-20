@@ -5,6 +5,7 @@ import shutil
 import unittest
 from unittest.mock import patch
 
+from codexy_runtime_tools import component_lifecycle_operation
 from codexy_runtime_tools import component_registration_health
 from codexy_runtime_tools.component_lifecycle import run_operation
 from codexy_runtime_tools.component_mcp_materialization import (
@@ -138,6 +139,16 @@ class LifecycleWatcherTests(unittest.TestCase):
             shutil.copytree(source_plugin, cache)
             cache_bootstrap = cache / "mcp/codexy_mcp_bootstrap.py"
             cache_bootstrap.write_text("stale cache surface\n", encoding="utf-8")
+            forward_errors: list[str] = []
+
+            original_apply_forward = component_lifecycle_operation._apply_forward
+
+            def observe_forward(*args, **kwargs):
+                try:
+                    return original_apply_forward(*args, **kwargs)
+                except BaseException as error:
+                    forward_errors.append(f"{type(error).__name__}: {error}")
+                    raise
 
             def observe_registration(plugin, home, mode):
                 return SyncResult(
@@ -151,10 +162,17 @@ class LifecycleWatcherTests(unittest.TestCase):
                     (),
                 )
 
-            with patch.object(
-                component_registration_health,
-                "sync_agents",
-                side_effect=observe_registration,
+            with (
+                patch.object(
+                    component_lifecycle_operation,
+                    "_apply_forward",
+                    side_effect=observe_forward,
+                ),
+                patch.object(
+                    component_registration_health,
+                    "sync_agents",
+                    side_effect=observe_registration,
+                ),
             ):
                 receipt = run_operation(
                     "update",
@@ -168,7 +186,15 @@ class LifecycleWatcherTests(unittest.TestCase):
                     ),
                 )
 
-            self.assertEqual(receipt["outcome"], "completed")
+            self.assertEqual(
+                receipt["outcome"],
+                "completed",
+                {
+                    "receipt": receipt,
+                    "forward_errors": forward_errors,
+                    "mutations": state.mutations,
+                },
+            )
             self.assertEqual(
                 cache_bootstrap.read_bytes(),
                 (source_plugin / "mcp/codexy_mcp_bootstrap.py").read_bytes(),
