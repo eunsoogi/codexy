@@ -148,6 +148,14 @@ The current source tree provides:
 - **Developer tools.** Explore bounded dependency neighborhoods with Codegraph
   and use LSP discovery, symbols, definitions, references, and diagnostics when
   a matching language server is installed.
+- **Change impact and check advice.** Codegraph also exposes
+  `codegraph_change_impact` and `codegraph_check_selection` for read-only Git
+  change analysis and explicit-mapping check recommendations. Results retain
+  limits, unknown areas, reasons, gaps, broader verification, and manual
+  judgment. Recommendation command text is data only: checks are not executed,
+  waived, or marked complete. Installed-runtime demos cover documentation, a
+  single module, and a shared fixture; active host exposure remains unknown
+  until the host's callable tool list and invocation are separately verified.
 - **Packaging and recovery.** Keep the three plugins version-aligned, validate
   their public boundaries, and retain receipts and rollback evidence for
   installation and release operations.

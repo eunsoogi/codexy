@@ -1,5 +1,3 @@
-use std::path::{Path, PathBuf};
-
 use anyhow::{Context as _, Result, bail};
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -9,11 +7,18 @@ use crate::mcp::{ToolDef, text_result};
 
 use super::cache::invalidate;
 use super::errors::{CodegraphError, CodegraphErrorKind, begin_operation, take_errors};
-use super::files::{read_source, repo_root, result_limit, walk_code_files};
+use super::files::repo_root;
 use super::search::search;
 
-const OVERVIEW_EDGE_LIMIT: usize = 300;
-const OVERVIEW_IMPORT_LIMIT: usize = 80;
+mod impact;
+mod legacy;
+mod schema;
+mod selection;
+
+use impact::change_impact_result;
+use legacy::{imports_for, overview};
+use schema::{change_impact_schema, check_selection_schema};
+use selection::check_selection_result;
 
 #[must_use]
 pub fn tools() -> Vec<ToolDef> {
@@ -48,6 +53,16 @@ pub fn tools() -> Vec<ToolDef> {
             "Return a bounded dependency neighborhood around one source file.",
             json!({"type":"object","properties":{"root":{"type":"string"},"path":{"type":"string"},"depth":{"type":"number"},"limit":{"type":"number"}},"required":["path"]}),
         ),
+        ToolDef::new(
+            "codegraph_change_impact",
+            "Collect a read-only change set and explain direct, transitive, and unknown impact.",
+            change_impact_schema(),
+        ),
+        ToolDef::new(
+            "codegraph_check_selection",
+            "Recommend mapped checks from read-only change and impact evidence without executing them.",
+            check_selection_schema(),
+        ),
     ]
 }
 
@@ -69,14 +84,11 @@ fn call_tool_inner(name: &str, args: &Value) -> Result<Value> {
     let root = repo_root(root_argument(args)?)?;
     match name {
         "codegraph_overview" => text_json(&overview(&root, limit(args))),
-        "codegraph_search" => {
-            let query = string_arg(args, "query")?;
-            Ok(text_result(&serde_json::to_string(&search(
-                &root,
-                query,
-                limit(args),
-            )?)?))
-        }
+        "codegraph_search" => Ok(text_result(&serde_json::to_string(&search(
+            &root,
+            string_arg(args, "query")?,
+            limit(args),
+        )?)?)),
         "codegraph_neighbors" => {
             begin_operation();
             let (imports, _) = imports_for(&root, string_arg(args, "path")?);
@@ -84,11 +96,11 @@ fn call_tool_inner(name: &str, args: &Value) -> Result<Value> {
             if errors.is_empty() {
                 text_json(&imports)
             } else {
-                text_json(&PartialImports {
-                    imports,
-                    partial: true,
-                    errors,
-                })
+                text_json(&json!({
+                    "imports": imports,
+                    "partial": true,
+                    "errors": errors
+                }))
             }
         }
         "codegraph_index" => text_json(&build_graph(&root, limit(args))),
@@ -101,112 +113,10 @@ fn call_tool_inner(name: &str, args: &Value) -> Result<Value> {
             args.get("depth").and_then(value_usize),
             limit(args),
         )),
+        "codegraph_change_impact" => change_impact_result(&root, args),
+        "codegraph_check_selection" => check_selection_result(&root, args),
         _ => bail!("Unknown tool: {name}"),
     }
-}
-
-#[derive(Debug, Serialize)]
-struct ImportLine {
-    line: usize,
-    text: String,
-}
-
-#[derive(Debug, Serialize)]
-struct PartialImports {
-    imports: Vec<ImportLine>,
-    partial: bool,
-    errors: Vec<CodegraphError>,
-}
-
-#[derive(Debug, Serialize)]
-struct ImportEdgeLine {
-    file: String,
-    line: usize,
-    text: String,
-}
-
-#[derive(Debug, Serialize)]
-struct Overview {
-    root: PathBuf,
-    #[serde(rename = "fileCount")]
-    file_count: usize,
-    files: Vec<String>,
-    #[serde(rename = "importEdges")]
-    import_edges: Vec<ImportEdgeLine>,
-    limits: Value,
-    totals: Value,
-    truncation: Value,
-    #[serde(skip_serializing_if = "is_false")]
-    partial: bool,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    errors: Vec<CodegraphError>,
-}
-
-fn overview(root: &Path, limit: Option<usize>) -> Overview {
-    begin_operation();
-    let file_limit = result_limit(limit);
-    let all_files = walk_code_files(root);
-    let files = all_files[..file_limit.min(all_files.len())].to_vec();
-    let file_truncated = all_files.len() > files.len();
-    let mut errors = take_errors();
-    let total_files_known = errors.is_empty();
-    let mut imports_truncated = false;
-    let mut import_edges = files
-        .iter()
-        .flat_map(|file| {
-            let (imports, truncated) = imports_for(root, file);
-            imports_truncated |= truncated;
-            imports.into_iter().map(|edge| ImportEdgeLine {
-                file: file.clone(),
-                line: edge.line,
-                text: edge.text,
-            })
-        })
-        .take(OVERVIEW_EDGE_LIMIT + 1)
-        .collect::<Vec<_>>();
-    let edges_truncated = import_edges.len() > OVERVIEW_EDGE_LIMIT;
-    import_edges.truncate(OVERVIEW_EDGE_LIMIT);
-    errors.extend(take_errors());
-    Overview {
-        root: root.to_path_buf(),
-        file_count: files.len(),
-        files,
-        limits: json!({"files": file_limit, "edges": OVERVIEW_EDGE_LIMIT, "importsPerFile": OVERVIEW_IMPORT_LIMIT}),
-        totals: json!({
-            "files": total_files_known.then_some(all_files.len()),
-            "edges": (!file_truncated && !edges_truncated && !imports_truncated && errors.is_empty()).then_some(import_edges.len())
-        }),
-        truncation: json!({"files": file_truncated, "edges": edges_truncated, "importsPerFile": imports_truncated}),
-        import_edges,
-        partial: !errors.is_empty(),
-        errors,
-    }
-}
-
-fn imports_for(root: &Path, file_path: &str) -> (Vec<ImportLine>, bool) {
-    let text = read_source(root, file_path);
-    let mut imports = text
-        .lines()
-        .enumerate()
-        .map(|(index, line)| ImportLine {
-            line: index + 1,
-            text: line.trim().to_owned(),
-        })
-        .filter(|line| {
-            ["import ", "from ", "use "]
-                .iter()
-                .any(|prefix| line.text.starts_with(prefix))
-                || line.text.contains("require(")
-        })
-        .take(OVERVIEW_IMPORT_LIMIT + 1)
-        .collect::<Vec<_>>();
-    let truncated = imports.len() > OVERVIEW_IMPORT_LIMIT;
-    imports.truncate(OVERVIEW_IMPORT_LIMIT);
-    (imports, truncated)
-}
-
-fn is_false(value: &bool) -> bool {
-    !*value
 }
 
 fn text_json<T: Serialize>(value: &T) -> Result<Value> {
