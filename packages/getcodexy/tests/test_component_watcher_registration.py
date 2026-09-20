@@ -5,10 +5,22 @@ import unittest
 from unittest.mock import patch
 
 from codexy_runtime_tools.component_inspection import doctor
+from codexy_runtime_tools.component_registration_catalog import _catalog_agent_files
+from codexy_runtime_tools.component_registration_files import _text
+from codexy_runtime_tools.component_registration_health import MANAGED_MARKERS
 from codexy_runtime_tools.component_mcp_materialization import materialize_component_mcp
 from packages.getcodexy.tests.component_lifecycle_support import fixture
 from packages.getcodexy.tests.component_lifecycle_support import VERSION
 from packages.getcodexy.tests.component_inspection_host_cases import _register_core
+
+
+def _write_core_roles(home, plugin) -> None:
+    root = home / "agents/codexy"
+    root.mkdir(parents=True)
+    catalog = _catalog_agent_files(_text(plugin / "agents/catalog.toml", plugin))
+    for name in catalog:
+        contents = MANAGED_MARKERS["core"] + _text(plugin / f"agents/{name}", plugin)
+        (root / name).write_text(contents, encoding="utf-8")
 
 
 class WatcherRegistrationTests(unittest.TestCase):
@@ -46,7 +58,7 @@ class WatcherRegistrationTests(unittest.TestCase):
 
     def test_doctor_probes_the_host_cache_copy_when_it_exists(self) -> None:
         with fixture({"core"}) as state:
-            _register_core(state, state.marketplace / "plugins/codexy")
+            _write_core_roles(state.home, state.marketplace / "plugins/codexy")
             materialize_component_mcp(
                 state.marketplace / "plugins/codexy", "core", VERSION
             )
