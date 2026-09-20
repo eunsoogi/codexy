@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import os
 import queue
-import signal
 import subprocess
 import threading
 from dataclasses import dataclass
 from time import monotonic, sleep
 from typing import Callable, Mapping
+
+from .lifecycle import terminate as _terminate
 
 
 _CLEANUP_SECONDS = 1.0
@@ -24,43 +25,6 @@ class ProcessCapture:
     stdout_bytes: int
     stderr_bytes: int
     launch_error: bool = False
-
-
-def _terminate(process: subprocess.Popen[bytes], deadline: float) -> None:
-    if process.poll() is not None:
-        return
-    if os.name == "nt":
-        try:
-            subprocess.run(
-                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False,
-                timeout=max(0.05, deadline - monotonic()),
-            )
-        except (OSError, subprocess.TimeoutExpired):
-            pass
-    else:
-        try:
-            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-        except (OSError, ProcessLookupError):
-            try:
-                process.terminate()
-            except OSError:
-                pass
-    while process.poll() is None and monotonic() < deadline:
-        sleep(_POLL_SECONDS)
-    if process.poll() is None:
-        if os.name != "nt":
-            try:
-                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-            except (OSError, ProcessLookupError):
-                pass
-        try:
-            process.kill()
-        except OSError:
-            pass
 
 
 def _reader(
@@ -130,6 +94,12 @@ def run_bounded(
         return ProcessCapture(
             "launch-error", None, monotonic() - started, 0, 0, launch_error=True
         )
+    process_group = None
+    if os.name != "nt":
+        try:
+            process_group = os.getpgid(process.pid)
+        except (OSError, ProcessLookupError):
+            pass
 
     stdout_count = [0]
     stderr_count = [0]
@@ -201,22 +171,24 @@ def run_bounded(
     while process.poll() is None:
         if stop_event.is_set():
             reason = "completed"
-            _terminate(process, monotonic() + _CLEANUP_SECONDS)
+            _terminate(process, monotonic() + _CLEANUP_SECONDS, process_group)
             break
         if cancellation is not None and cancellation():
             reason = "cancelled"
-            _terminate(process, monotonic() + _CLEANUP_SECONDS)
+            _terminate(process, monotonic() + _CLEANUP_SECONDS, process_group)
             break
         if exceeded.is_set():
             reason = "output-limit"
-            _terminate(process, monotonic() + _CLEANUP_SECONDS)
+            _terminate(process, monotonic() + _CLEANUP_SECONDS, process_group)
             break
         if monotonic() >= deadline:
             reason = "timeout"
-            _terminate(process, monotonic() + _CLEANUP_SECONDS)
+            _terminate(process, monotonic() + _CLEANUP_SECONDS, process_group)
             break
         sleep(_POLL_SECONDS)
 
+    if reason == "process-exit":
+        _terminate(process, monotonic() + _CLEANUP_SECONDS, process_group)
     writer_stop.set()
     input_queue.put(None)
     for thread in threads:
@@ -230,12 +202,13 @@ def run_bounded(
     try:
         process.wait(timeout=max(0.05, _CLEANUP_SECONDS))
     except subprocess.TimeoutExpired:
-        _terminate(process, monotonic() + _CLEANUP_SECONDS)
-    for stream in (process.stdin, process.stdout, process.stderr):
-        try:
-            stream.close()
-        except (BrokenPipeError, OSError, ValueError, AttributeError):
-            pass
+        _terminate(process, monotonic() + _CLEANUP_SECONDS, process_group)
+    if all(not thread.is_alive() for thread in threads):
+        for stream in (process.stdin, process.stdout, process.stderr):
+            try:
+                stream.close()
+            except (BrokenPipeError, OSError, ValueError, AttributeError):
+                pass
     return ProcessCapture(
         reason,
         process.returncode,

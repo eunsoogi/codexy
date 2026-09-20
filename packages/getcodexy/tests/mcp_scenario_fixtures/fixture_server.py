@@ -19,12 +19,28 @@ def _send(identifier: int, value: dict) -> None:
     print(json.dumps({"jsonrpc": "2.0", "id": identifier, "result": value}), flush=True)
 
 
-def _spawn_child(path: Path) -> None:
+def _spawn_child(path: Path, inherit_output: bool = False) -> None:
+    child_options = (
+        {}
+        if inherit_output
+        else {
+            "stdin": subprocess.DEVNULL,
+            "stdout": subprocess.DEVNULL,
+            "stderr": subprocess.DEVNULL,
+        }
+    )
     child = subprocess.Popen(
-        [sys.executable, "-c", "import time; time.sleep(30)"],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        [
+            sys.executable,
+            "-c",
+            (
+                "import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+                "time.sleep(30)"
+                if inherit_output
+                else "import time; time.sleep(30)"
+            ),
+        ],
+        **child_options,
     )
     path.write_text(str(child.pid), encoding="utf-8")
 
@@ -139,6 +155,20 @@ def main() -> int:
                     ),
                     flush=True,
                 )
+            elif mode == "json-rpc-string-code":
+                print(
+                    json.dumps(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": identifier,
+                            "error": {
+                                "code": "synthetic-secret",
+                                "message": "synthetic-secret",
+                            },
+                        }
+                    ),
+                    flush=True,
+                )
             elif mode == "tool-error":
                 _send(
                     identifier,
@@ -151,6 +181,10 @@ def main() -> int:
                 _send(identifier, {"isError": False})
             elif mode == "output-limit":
                 print("synthetic-secret-" + ("x" * 20000), flush=True)
+            elif mode == "parent-exits":
+                if options.pid_file:
+                    _spawn_child(options.pid_file, inherit_output=True)
+                return 0
             else:
                 arguments = request.get("params", {}).get("arguments", {})
                 _send(

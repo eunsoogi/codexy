@@ -205,9 +205,13 @@ def run_single_call(call: SingleCall, cancellation: Any = None) -> ExecutionResu
     if call_error:
         return _result(
             call,
-            ResultKind.JSON_RPC_ERROR,
+            call_error.kind,
             capture,
-            stored=selected(call_response, call.stored_fields),
+            stored=(
+                selected(call_response, call.stored_fields)
+                if call_error.kind is ResultKind.JSON_RPC_ERROR
+                else {}
+            ),
             error=call_error,
             response=call_response,
         )

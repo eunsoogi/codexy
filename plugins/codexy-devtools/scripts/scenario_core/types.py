@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -172,8 +173,15 @@ class SingleCall:
             if self.protocol_version not in SUPPORTED_PROTOCOL_VERSIONS:
                 raise UnsupportedProtocolError(str(error)) from error
             raise UnsupportedTransportError(str(error)) from error
-        if self.timeout_seconds <= 0:
-            raise ScenarioValidationError("timeout_seconds must be positive")
+        if (
+            isinstance(self.timeout_seconds, bool)
+            or not isinstance(self.timeout_seconds, (int, float))
+            or not math.isfinite(self.timeout_seconds)
+            or self.timeout_seconds <= 0
+        ):
+            raise ScenarioValidationError(
+                "timeout_seconds must be a finite positive number"
+            )
         if not 0 < self.output_limit_bytes <= MAX_OUTPUT_BYTES:
             raise ScenarioValidationError(
                 f"output_limit_bytes must be between 1 and {MAX_OUTPUT_BYTES}"

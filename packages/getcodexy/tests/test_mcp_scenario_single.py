@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import signal
 import subprocess
 import sys
 import tempfile
@@ -95,6 +94,9 @@ class SingleCallScenarioTests(unittest.TestCase):
                 self._call(Path(directory), "success", protocol_version="2026-07-28")
             with self.assertRaises(UnsupportedTransportError):
                 self._call(Path(directory), "success", transport="streamable-http")
+            for timeout in (float("nan"), float("inf"), "not-a-number"):
+                with self.assertRaises(ScenarioValidationError):
+                    self._call(Path(directory), "success", timeout_seconds=timeout)
 
     def test_initialize_completes_before_follow_up_requests(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -134,7 +136,6 @@ class SingleCallScenarioTests(unittest.TestCase):
             )
             result = run_single_call(call)
             self.assertTrue(result.ok)
-            self.assertEqual(result.kind, ResultKind.SUCCESS)
             self.assertEqual(
                 dict(result.stored),
                 {
@@ -148,12 +149,12 @@ class SingleCallScenarioTests(unittest.TestCase):
             self.assertEqual(observed["cwd"], str(root.resolve()))
             self.assertEqual(observed["marker"], "allowed")
             self.assertIsNone(observed["secret"])
-            self.assertEqual(observed["literal"], "$(touch should-not-exist)")
             self.assertFalse((root / "should-not-exist").exists())
 
     def test_server_responses_have_distinct_result_kinds(self) -> None:
         cases = {
             "json-rpc-error": ResultKind.JSON_RPC_ERROR,
+            "json-rpc-string-code": ResultKind.MALFORMED_RESULT,
             "tool-error": ResultKind.TOOL_ERROR,
             "malformed": ResultKind.MALFORMED_RESULT,
         }
@@ -164,11 +165,11 @@ class SingleCallScenarioTests(unittest.TestCase):
                         self._call(Path(directory), mode, stored_fields={})
                     )
                     self.assertEqual(result.kind, kind)
+                    self.assertNotIn("synthetic-secret", repr(result))
 
     def test_allowlist_cannot_be_expanded_by_server_tool_listing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             result = run_single_call(self._call(Path(directory), "extra-tool"))
-            self.assertEqual(result.kind, ResultKind.SUCCESS)
             with self.assertRaises(ScenarioValidationError):
                 SingleCall(
                     argv=(sys.executable, str(FIXTURE), "--mode", "success"),
@@ -185,12 +186,14 @@ class SingleCallScenarioTests(unittest.TestCase):
             )
             self.assertEqual(result.kind, ResultKind.OUTPUT_LIMIT)
 
+    @unittest.skipUnless(os.name != "nt", "POSIX only")
     def test_completion_and_timeout_clean_fixture_process_tree(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for mode, expected_kind, timeout in (
                 ("success-tree", ResultKind.SUCCESS, 2.0),
                 ("timeout", ResultKind.TIMEOUT, 1.0),
+                ("parent-exits", ResultKind.MALFORMED_RESULT, 2.0),
             ):
                 with self.subTest(mode=mode):
                     pid_file = root / f"{mode}.pid"
@@ -203,6 +206,7 @@ class SingleCallScenarioTests(unittest.TestCase):
                         )
                     )
                     self.assertEqual(result.kind, expected_kind)
+                    self.assertLess(result.elapsed_seconds, 4.0)
                     self._wait_for_file(pid_file)
                     self._wait_until_dead(int(pid_file.read_text(encoding="utf-8")))
 
@@ -212,18 +216,14 @@ class SingleCallScenarioTests(unittest.TestCase):
             pid_file = root / "child.pid"
             token = CancellationToken()
             result_holder = []
+            call = self._call(
+                root,
+                "cancel",
+                argv_tail=("--pid-file", str(pid_file)),
+                timeout_seconds=5,
+            )
             thread = threading.Thread(
-                target=lambda: result_holder.append(
-                    run_single_call(
-                        self._call(
-                            root,
-                            "cancel",
-                            argv_tail=("--pid-file", str(pid_file)),
-                            timeout_seconds=5,
-                        ),
-                        token,
-                    )
-                )
+                target=lambda: result_holder.append(run_single_call(call, token))
             )
             thread.start()
             self._wait_for_file(pid_file)

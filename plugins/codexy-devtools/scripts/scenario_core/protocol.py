@@ -88,12 +88,16 @@ def parse_line(line: bytes, responses: dict[int, dict[str, Any]], malformed) -> 
 
 
 def rpc_error(response: dict[str, Any]) -> ExecutionError | None:
-    raw_error = response.get("error")
-    if not isinstance(raw_error, dict):
+    if "error" not in response:
         return None
+    raw_error = response["error"]
+    if not isinstance(raw_error, dict):
+        return error(ResultKind.MALFORMED_RESULT, "malformed JSON-RPC error")
     code = raw_error.get("code")
-    if not isinstance(code, (int, str)) or isinstance(code, bool):
-        code = None
+    if isinstance(code, bool) or not isinstance(code, int):
+        return error(ResultKind.MALFORMED_RESULT, "malformed JSON-RPC error")
+    if not isinstance(raw_error.get("message"), str):
+        return error(ResultKind.MALFORMED_RESULT, "malformed JSON-RPC error")
     return error(ResultKind.JSON_RPC_ERROR, "server returned a JSON-RPC error", code)
 
 
