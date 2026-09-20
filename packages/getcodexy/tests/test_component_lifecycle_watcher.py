@@ -136,14 +136,31 @@ class LifecycleWatcherTests(unittest.TestCase):
             cache_bootstrap = cache / "mcp/codexy_mcp_bootstrap.py"
             cache_bootstrap.write_text("stale cache surface\n", encoding="utf-8")
 
-            receipt = run_operation(
-                "update",
-                ("core",),
-                state.home,
-                state.codex,
-                state.run,
-                operation_id="op-update-cache-mcp",
-            )
+            def observe_registration(plugin, home, mode):
+                return SyncResult(
+                    mode,
+                    "completed",
+                    "codexy",
+                    str(plugin),
+                    str(home),
+                    False,
+                    False,
+                    (),
+                )
+
+            with patch.object(
+                component_registration_health,
+                "sync_agents",
+                side_effect=observe_registration,
+            ):
+                receipt = run_operation(
+                    "update",
+                    ("core",),
+                    state.home,
+                    state.codex,
+                    state.run,
+                    operation_id="op-update-cache-mcp",
+                )
 
             self.assertEqual(receipt["outcome"], "completed")
             self.assertEqual(
