@@ -160,6 +160,11 @@ The current source tree provides:
   trusted local stdio scenarios with explicit chaining, expectations, selected
   fields, and bounded comparison output. Support is limited to the documented
   local contract; subprocess results do not prove host/session skill exposure.
+- **Selected batch-result application.** The installed engineering workflow and
+  `batch_change.py` CLI show readable diffs, apply only explicitly selected
+  successful results, recheck originals before each independent replacement,
+  and read back applied files. Conflicts and incomplete items remain visible;
+  user changes are preserved and the command never commits or pushes them.
 - **Packaging and recovery.** Keep the three plugins version-aligned, validate
   their public boundaries, and retain receipts and rollback evidence for
   installation and release operations.
@@ -176,7 +181,7 @@ summarizes its purpose, identifies its component, and links to the actual
 | [blind-read](plugins/codexy/skills/blind-read/SKILL.md)                                     | Let a fresh reader interpret one named artifact and action.                             | `core`     |
 | [decision-rationale](plugins/codexy/skills/decision-rationale/SKILL.md)                     | Inspect the stated reason and evidence for an existing choice.                          | `core`     |
 | [dreaming](plugins/codexy/skills/dreaming/SKILL.md)                                         | Recover durable facts and active work after context compaction.                         | `core`     |
-| [engineering](plugins/codexy/skills/engineering/SKILL.md)                                   | Diagnose, specify, implement, refactor, and verify one outcome.                         | `core`     |
+| [engineering](plugins/codexy/skills/engineering/SKILL.md)                                   | Diagnose, specify, implement, refactor, verify one outcome, and apply selected batch results safely. | `core`     |
 | [frame-alternatives](plugins/codexy/skills/frame-alternatives/SKILL.md)                     | Surface credible alternatives against supplied constraints.                             | `core`     |
 | [goal-lifecycle](plugins/codexy/skills/goal-lifecycle/SKILL.md)                             | Use real goal states and recover stale blocked execution records.                       | `core`     |
 | [orchestration](plugins/codexy/skills/orchestration/SKILL.md)                               | Classify ownership, execution, evidence, handoffs, and review routing.                  | `core`     |
@@ -300,7 +305,8 @@ not establish universal host parity or make mutations safe.
 
 The detailed [architecture guide](docs/architecture.md) is the source-aligned
 inventory of bundled specialists, packaged skills, the installed MCP scenario
-CLI, and the split Codegraph/LSP runtime. It also documents LSP batches (1–8
+CLI, the selected batch-result application route, and the split Codegraph/LSP
+runtime. It also documents LSP batches (1–8
 requests, 60 seconds), core hook timing (default off, four fields, 1 MiB cap),
 and doctor's configured/loaded/callable/verified states, where `unknown` remains
 non-proof for the observation.

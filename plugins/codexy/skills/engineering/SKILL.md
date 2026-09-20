@@ -59,6 +59,25 @@ obligations and sequencing, and
 [quality assurance](references/quality-assurance.md) for depth and surface
 selection.
 
+## Applying selected batch results
+
+When [batch-change-resume.py](scripts/batch_change_resume/batch_change_resume.py)
+produces a validated result, use the installed
+[batch-change application guide](references/batch-changes.md) and
+`batch_change.py` route to apply only an explicit selection of successful items.
+
+- MUST show a readable diff, recheck the original immediately before each
+  replacement, replace one independent file at a time, and read back every
+  applied result.
+- MUST report completed, conflict, and incomplete items separately, preserving
+  failed, unselected, and user-changed originals. Repeating an application MUST
+  distinguish an already-completed item from a new replacement.
+- MUST keep application state in the workspace-local batch state directory, out
+  of component inventory and journal state.
+- MUST NOT claim multi-file atomicity, protection from arbitrary concurrent
+  writers, process resurrection, scheduled wakeups, or automatic commit/push of
+  user changes.
+
 ## Shared workflow contract
 
 1. MUST read authorities and diff; MUST keep one outcome and exclusions.

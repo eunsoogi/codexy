@@ -137,6 +137,11 @@ release를 실행합니다. Codex를 시작하는 host 환경의 `PATH`에서 `u
   expectation, 선택 field를 사용하는 신뢰된 local stdio 시나리오를 실행하거나
   비교할 수 있습니다. 지원 범위는 문서화한 local contract로 제한되며, subprocess
   결과만으로 host/session skill 노출을 증명하지 않습니다.
+- **선택한 batch 결과 적용.** 설치된 engineering workflow와 `batch_change.py`
+  CLI는 읽을 수 있는 diff를 보여 주고, 명시적으로 선택한 성공 결과만 적용하며,
+  각 파일을 바꾸기 직전에 원본을 다시 확인하고 적용 결과를 readback합니다.
+  conflict와 incomplete 항목은 구분해 남기고 사용자 변경을 보존하며, 사용자
+  변경을 자동으로 commit하거나 push하지 않습니다.
 
 ## Skill 목록
 
@@ -149,7 +154,7 @@ release를 실행합니다. Codex를 시작하는 host 환경의 `PATH`에서 `u
 | [blind-read](plugins/codexy/skills/blind-read/SKILL.md)                                     | 한 가지 artifact와 행동을 새 독자의 관점에서 해석합니다.                       | `core`     |
 | [decision-rationale](plugins/codexy/skills/decision-rationale/SKILL.md)                     | 이미 선택한 결정의 이유와 근거를 살핍니다.                                     | `core`     |
 | [dreaming](plugins/codexy/skills/dreaming/SKILL.md)                                         | context compaction 뒤에 유지할 사실과 진행 중인 일을 복원합니다.               | `core`     |
-| [engineering](plugins/codexy/skills/engineering/SKILL.md)                                   | 하나의 결과를 진단하고, 구체화하고, 구현하고, 리팩터링하고, 검증합니다.        | `core`     |
+| [engineering](plugins/codexy/skills/engineering/SKILL.md)                                   | 하나의 결과를 진단·구체화·구현·리팩터링·검증하고 선택한 batch 결과를 안전하게 적용합니다. | `core`     |
 | [frame-alternatives](plugins/codexy/skills/frame-alternatives/SKILL.md)                     | 주어진 제약 안에서 신뢰할 수 있는 대안을 제시합니다.                           | `core`     |
 | [goal-lifecycle](plugins/codexy/skills/goal-lifecycle/SKILL.md)                             | 실제 goal 상태를 사용하고 오래된 blocked 실행 기록을 복구합니다.               | `core`     |
 | [orchestration](plugins/codexy/skills/orchestration/SKILL.md)                               | 담당, 실행, 근거, 인수인계, review 경로를 분류하고 조정합니다.                 | `core`     |
