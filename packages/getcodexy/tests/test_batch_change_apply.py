@@ -47,7 +47,10 @@ class BatchChangeApplyTests(unittest.TestCase):
             "resolution": "rerun" if successful else "rerun",
             "invocations": 1,
             "status": "succeeded" if successful else "failed",
-            "original": {"path": original.name, "state": {"path": original.name, **self._state(original)}},
+            "original": {
+                "path": original.name,
+                "state": {"path": original.name, **self._state(original)},
+            },
             "output_path": output_path,
             "result": None,
         }
@@ -67,7 +70,9 @@ class BatchChangeApplyTests(unittest.TestCase):
             }
         return item
 
-    def _result(self, items: list[dict[str, object]], batch_id: str = "apply-test") -> Path:
+    def _result(
+        self, items: list[dict[str, object]], batch_id: str = "apply-test"
+    ) -> Path:
         payload = {
             "schema": "codexy.batch-change-resume.v1",
             "status": "completed",
@@ -109,9 +114,13 @@ class BatchChangeApplyTests(unittest.TestCase):
     def test_changed_original_is_conflict_and_duplicate_is_completed(self) -> None:
         conflict_item = self._item("changed")
         conflict_result = self._result([conflict_item])
-        (self.root / "original-changed.txt").write_text("user change\n", encoding="utf-8")
+        (self.root / "original-changed.txt").write_text(
+            "user change\n", encoding="utf-8"
+        )
 
-        conflict = apply_from_path(self.root, str(conflict_result), selected_ids=["changed"])
+        conflict = apply_from_path(
+            self.root, str(conflict_result), selected_ids=["changed"]
+        )
 
         self.assertEqual(conflict["status"], "conflict")
         self.assertEqual(conflict["items"][0]["reason"], "original-changed")
@@ -119,8 +128,12 @@ class BatchChangeApplyTests(unittest.TestCase):
 
         duplicate_item = self._item("duplicate")
         duplicate_result = self._result([duplicate_item], batch_id="duplicate-test")
-        first = apply_from_path(self.root, str(duplicate_result), selected_ids=["duplicate"])
-        second = apply_from_path(self.root, str(duplicate_result), selected_ids=["duplicate"])
+        first = apply_from_path(
+            self.root, str(duplicate_result), selected_ids=["duplicate"]
+        )
+        second = apply_from_path(
+            self.root, str(duplicate_result), selected_ids=["duplicate"]
+        )
 
         self.assertEqual(first["items"][0]["resolution"], "applied")
         self.assertEqual(second["status"], "completed")
@@ -147,7 +160,9 @@ class BatchChangeApplyTests(unittest.TestCase):
         self.assertEqual(interrupted["status"], "interrupted")
         self.assertEqual(interrupted["items"][0]["resolution"], "incomplete")
         self.assertFalse((self.root / "out/interrupt.txt").exists())
-        resumed = apply_from_path(self.root, str(result_path), selected_ids=["interrupt"])
+        resumed = apply_from_path(
+            self.root, str(result_path), selected_ids=["interrupt"]
+        )
         self.assertEqual(resumed["status"], "completed")
         self.assertEqual(resumed["items"][0]["resolution"], "applied")
 

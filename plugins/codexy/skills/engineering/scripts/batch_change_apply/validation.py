@@ -35,7 +35,11 @@ def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 def document(path_value: str) -> tuple[dict[str, Any], str]:
     try:
-        raw = sys.stdin.buffer.read() if path_value == "-" else Path(path_value).read_bytes()
+        raw = (
+            sys.stdin.buffer.read()
+            if path_value == "-"
+            else Path(path_value).read_bytes()
+        )
         value = json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_object)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
         raise ApplyError(f"invalid resume result: {path_value}") from error
@@ -48,9 +52,8 @@ def items(document_value: Mapping[str, Any], root: Path) -> list[Mapping[str, An
     if document_value.get("schema") != RESUME_SCHEMA:
         raise ApplyError("apply requires a codexy.batch-change-resume.v1 result")
     workspace_value = document_value.get("workspace")
-    if (
-        not isinstance(workspace_value, Mapping)
-        or workspace_value.get("path") != str(root)
+    if not isinstance(workspace_value, Mapping) or workspace_value.get("path") != str(
+        root
     ):
         raise ApplyError("resume result workspace does not match the apply workspace")
     values = document_value.get("items")
@@ -159,4 +162,10 @@ def diff_for(
     _, data, expected = artifact(item, results_root)
     before = read_target(target_path)
     old_data = before[0] if before is not None else b""
-    return unified(old_data, data, output_path), data, expected, target_path, output_path
+    return (
+        unified(old_data, data, output_path),
+        data,
+        expected,
+        target_path,
+        output_path,
+    )

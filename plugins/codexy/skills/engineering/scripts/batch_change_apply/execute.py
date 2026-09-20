@@ -88,13 +88,19 @@ def run(
                 before_replace=before_replace,
             )
         except ApplyInterrupted as error:
-            resolution, reason, diff, readback = "incomplete", str(error), prepared_diff, None
+            resolution, reason, diff, readback = (
+                "incomplete",
+                str(error),
+                prepared_diff,
+                None,
+            )
             interrupted = True
         except ApplyError as error:
             reason = str(error)
             resolution = (
                 "conflict"
-                if reason in {"original-changed", "destination-changed", "readback-mismatch"}
+                if reason
+                in {"original-changed", "destination-changed", "readback-mismatch"}
                 else "incomplete"
             )
             diff, readback = prepared_diff, None
@@ -103,7 +109,9 @@ def run(
             reason = f"apply-error: {error}"
             diff, readback = prepared_diff, None
         public_resolution = (
-            "applied" if resolution == "completed" and reason == "applied" else resolution
+            "applied"
+            if resolution == "completed" and reason == "applied"
+            else resolution
         )
         entry.update(
             {

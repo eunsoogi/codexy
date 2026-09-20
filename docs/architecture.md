@@ -155,14 +155,16 @@ invocation.
 
 The installed engineering workflow consumes a validated result from
 [`batch_change_resume.py`](../plugins/codexy/skills/engineering/scripts/batch_change_resume/batch_change_resume.py)
-through [`batch_change.py`](../plugins/codexy/skills/engineering/scripts/batch_change.py)
-and [`batch-changes.md`](../plugins/codexy/skills/engineering/references/batch-changes.md).
+through
+[`batch_change.py`](../plugins/codexy/skills/engineering/scripts/batch_change.py)
+and
+[`batch-changes.md`](../plugins/codexy/skills/engineering/references/batch-changes.md).
 The user must select successful item IDs explicitly. The route presents a
 readable diff, rechecks the original immediately before each independent
-replacement, and reads back every applied file. It preserves failed,
-unselected, and user-changed originals while distinguishing completed,
-conflict, and incomplete items; repeating an application reports an already
-completed item instead of replacing it again.
+replacement, and reads back every applied file. It preserves failed, unselected,
+and user-changed originals while distinguishing completed, conflict, and
+incomplete items; repeating an application reports an already completed item
+instead of replacing it again.
 
 Application state is workspace-local and is not component inventory or journal
 state. The workflow does not provide multi-file atomicity, protection from

@@ -27,7 +27,9 @@ class BatchChangeInstalledTests(unittest.TestCase):
         self.installed = Path(self.temporary.name) / "installed"
         installed_scripts = self.installed / "plugins/codexy/skills/engineering/scripts"
         shutil.copytree(SOURCE_SCRIPTS, installed_scripts)
-        self.resume_cli = installed_scripts / "batch_change_resume/batch_change_resume.py"
+        self.resume_cli = (
+            installed_scripts / "batch_change_resume/batch_change_resume.py"
+        )
         self.apply_cli = installed_scripts / "batch_change.py"
         self.command = self.root / "trusted-transform.py"
         self.command.write_text(
@@ -54,11 +56,19 @@ target.write_text(Path(source).read_text().upper())
             item_id = f"item-{index:02d}"
             source = self.root / f"source-{index:02d}.txt"
             source.write_text(
-                ("large " if index == 15 else "") + f"source {item_id}\n" + ("x" * 8_000_000 if index == 15 else ""),
+                ("large " if index == 15 else "")
+                + f"source {item_id}\n"
+                + ("x" * 8_000_000 if index == 15 else ""),
                 encoding="utf-8",
             )
             mode = "fail" if index == 3 else "slow" if index == 10 else "copy"
-            transform = [sys.executable, str(self.command), mode, source.name, f"out/{item_id}.txt"]
+            transform = [
+                sys.executable,
+                str(self.command),
+                mode,
+                source.name,
+                f"out/{item_id}.txt",
+            ]
             if mode == "slow":
                 transform.append("2")
             items.append(
@@ -67,7 +77,18 @@ target.write_text(Path(source).read_text().upper())
                     "original": source.name,
                     "output": f"out/{item_id}.txt",
                     "transform": {"argv": transform, "timeout_seconds": 10},
-                    "validations": [{"argv": [sys.executable, str(self.command), "validate", f"out/{item_id}.txt", "ignored"], "timeout_seconds": 10}],
+                    "validations": [
+                        {
+                            "argv": [
+                                sys.executable,
+                                str(self.command),
+                                "validate",
+                                f"out/{item_id}.txt",
+                                "ignored",
+                            ],
+                            "timeout_seconds": 10,
+                        }
+                    ],
                 }
             )
         manifest = self.root / "batch.json"
@@ -96,14 +117,26 @@ target.write_text(Path(source).read_text().upper())
                     value = json.loads(path.read_text(encoding="utf-8"))
                 except (OSError, json.JSONDecodeError):
                     continue
-                if any(entry.get("status") == "in-progress" for entry in value.get("items", {}).values()):
+                if any(
+                    entry.get("status") == "in-progress"
+                    for entry in value.get("items", {}).values()
+                ):
                     return path
             time.sleep(0.01)
         self.fail("resume state did not reach in-progress")
 
     def _run_apply(self, result_path: Path, *selected: str) -> dict[str, object]:
         completed = subprocess.run(
-            [sys.executable, str(self.apply_cli), "--workspace-root", str(self.root), "--results", str(result_path), "--select", *selected],
+            [
+                sys.executable,
+                str(self.apply_cli),
+                "--workspace-root",
+                str(self.root),
+                "--results",
+                str(result_path),
+                "--select",
+                *selected,
+            ],
             cwd=self.root,
             env=self.environment,
             text=True,
@@ -114,7 +147,7 @@ target.write_text(Path(source).read_text().upper())
         self.assertEqual(completed.stderr, "")
         return json.loads(completed.stdout)
 
-    def test_installed_flow_handles_failure_interrupt_resume_selection_conflict_duplicate_and_readback(self) -> None:
+    def test_installed_flow_is_conflict_safe_and_resumable(self) -> None:
         manifest = self._manifest()
         first = subprocess.Popen(
             self._args(self.resume_cli, manifest),
@@ -127,8 +160,7 @@ target.write_text(Path(source).read_text().upper())
         self._wait_for_resume_state()
         first.send_signal(signal.SIGINT)
         stdout, stderr = first.communicate(timeout=15)
-        self.assertEqual(first.returncode, 0, stderr)
-        self.assertEqual(stderr, "")
+        self.assertEqual((first.returncode, stderr), (0, ""))
         self.assertEqual(json.loads(stdout)["status"], "interrupted")
         resumed = subprocess.run(
             self._args(self.resume_cli, manifest),
@@ -166,7 +198,16 @@ target.write_text(Path(source).read_text().upper())
 
         apply_state = self.root / ".codexy-batch-apply" / f"{batch_id}.json"
         interrupted = subprocess.Popen(
-            [sys.executable, str(self.apply_cli), "--workspace-root", str(self.root), "--results", str(result_path), "--select", "item-15"],
+            [
+                sys.executable,
+                str(self.apply_cli),
+                "--workspace-root",
+                str(self.root),
+                "--results",
+                str(result_path),
+                "--select",
+                "item-15",
+            ],
             cwd=self.root,
             env=self.environment,
             text=True,
@@ -180,7 +221,10 @@ target.write_text(Path(source).read_text().upper())
                     state = json.loads(apply_state.read_text(encoding="utf-8"))
                 except (OSError, json.JSONDecodeError):
                     state = {}
-                if state.get("items", {}).get("item-15", {}).get("status") == "in-progress":
+                if (
+                    state.get("items", {}).get("item-15", {}).get("status")
+                    == "in-progress"
+                ):
                     interrupted.send_signal(signal.SIGINT)
                     break
             time.sleep(0.005)
@@ -190,7 +234,9 @@ target.write_text(Path(source).read_text().upper())
         self.assertEqual(interrupted_result["status"], "interrupted")
         resumed_apply = self._run_apply(result_path, "item-15")
         self.assertEqual(resumed_apply["status"], "completed")
-        self.assertIn(resumed_apply["items"][15]["resolution"], {"applied", "completed"})
+        self.assertIn(
+            resumed_apply["items"][15]["resolution"], {"applied", "completed"}
+        )
         self.assertTrue((self.root / "out/item-15.txt").is_file())
         self.assertTrue(
             Path(applied["provenance"]["entrypoint"])

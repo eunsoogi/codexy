@@ -31,7 +31,9 @@ def read(path: Path) -> dict[str, Any] | None:
     if path.is_symlink() or not path.is_file():
         raise ApplyError(f"apply state must be a regular file: {path}")
     try:
-        value = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_unique_object)
+        value = json.loads(
+            path.read_text(encoding="utf-8"), object_pairs_hook=_unique_object
+        )
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
         raise ApplyError(f"apply state is corrupt: {path}") from error
     if not isinstance(value, dict):
@@ -41,7 +43,9 @@ def read(path: Path) -> dict[str, Any] | None:
 
 def write(path: Path, value: dict[str, Any]) -> None:
     temporary = path.parent / f".{path.name}.{os.getpid()}.{uuid4().hex}.tmp"
-    payload = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    payload = json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
     try:
         with temporary.open("x", encoding="utf-8") as output:
             output.write(payload)
@@ -58,7 +62,9 @@ def write(path: Path, value: dict[str, Any]) -> None:
             temporary.unlink()
         except FileNotFoundError:
             pass
-        raise ApplyError(f"cannot persist apply state: {error.strerror or error}") from error
+        raise ApplyError(
+            f"cannot persist apply state: {error.strerror or error}"
+        ) from error
 
 
 @contextmanager
@@ -68,7 +74,10 @@ def lock(state_root: Path, batch_id: str) -> Iterator[None]:
         descriptor = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
         fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except (BlockingIOError, OSError) as error:
-        if isinstance(error, BlockingIOError) or getattr(error, "errno", None) in {11, 35}:
+        if isinstance(error, BlockingIOError) or getattr(error, "errno", None) in {
+            11,
+            35,
+        }:
             raise ApplyError(f"batch {batch_id} is already being applied") from error
         raise ApplyError(f"cannot lock apply state: {error}") from error
     try:
@@ -96,7 +105,9 @@ def new_state(
     }
 
 
-def validate(value: dict[str, Any], batch_id: str, workspace: str, identity: str) -> dict[str, Any]:
+def validate(
+    value: dict[str, Any], batch_id: str, workspace: str, identity: str
+) -> dict[str, Any]:
     required = {"schema", "batch_id", "workspace", "result_identity", "items"}
     if set(value) != required or value.get("schema") != STATE_SCHEMA:
         raise ApplyError("apply state has an invalid shape")
@@ -113,7 +124,9 @@ def validate(value: dict[str, Any], batch_id: str, workspace: str, identity: str
     for item_id, entry in items.items():
         if not isinstance(item_id, str) or not isinstance(entry, dict):
             raise ApplyError("apply state contains an invalid item")
-        if entry.get("status") not in allowed or not isinstance(entry.get("attempts"), int):
+        if entry.get("status") not in allowed or not isinstance(
+            entry.get("attempts"), int
+        ):
             raise ApplyError(f"apply state item {item_id} is invalid")
         if entry["attempts"] < 0:
             raise ApplyError(f"apply state item {item_id} has invalid attempts")

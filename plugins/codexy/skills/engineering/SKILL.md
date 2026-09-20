@@ -61,7 +61,8 @@ selection.
 
 ## Applying selected batch results
 
-When [batch-change-resume.py](scripts/batch_change_resume/batch_change_resume.py)
+When
+[batch-change-resume.py](scripts/batch_change_resume/batch_change_resume.py)
 produces a validated result, use the installed
 [batch-change application guide](references/batch-changes.md) and
 `batch_change.py` route to apply only an explicit selection of successful items.

@@ -132,10 +132,9 @@ def state_matches(actual: Mapping[str, Any], expected: Mapping[str, Any]) -> boo
 
 
 def content_matches(actual: Mapping[str, Any], expected: Mapping[str, Any]) -> bool:
-    return (
-        actual.get("size") == expected.get("size")
-        and actual.get("sha256") == expected.get("sha256")
-    )
+    return actual.get("size") == expected.get("size") and actual.get(
+        "sha256"
+    ) == expected.get("sha256")
 
 
 def regular_parent(path: Path, label: str) -> Path:

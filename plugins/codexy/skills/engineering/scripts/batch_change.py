@@ -18,13 +18,35 @@ from batch_change_apply.workflow import APPLY_SCHEMA, apply_from_path  # noqa: E
 
 def _arguments(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", nargs="?", choices=("apply", "preview"), default="apply")
+    parser.add_argument(
+        "command", nargs="?", choices=("apply", "preview"), default="apply"
+    )
     parser.add_argument("--workspace-root", required=True)
-    parser.add_argument("--results", "--input", dest="results", required=True, help="resume result JSON path, or - for stdin")
-    parser.add_argument("--select", nargs="+", action="append", required=True, help="one or more successful item ids to apply")
-    parser.add_argument("--state-root", help="batch-local apply state directory beneath the workspace")
-    parser.add_argument("--results-root", help="override the validated artifact directory")
-    parser.add_argument("--dry-run", action="store_true", help="show selected diffs without replacing files")
+    parser.add_argument(
+        "--results",
+        "--input",
+        dest="results",
+        required=True,
+        help="resume result JSON path, or - for stdin",
+    )
+    parser.add_argument(
+        "--select",
+        nargs="+",
+        action="append",
+        required=True,
+        help="one or more successful item ids to apply",
+    )
+    parser.add_argument(
+        "--state-root", help="batch-local apply state directory beneath the workspace"
+    )
+    parser.add_argument(
+        "--results-root", help="override the validated artifact directory"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="show selected diffs without replacing files",
+    )
     return parser.parse_args(argv)
 
 
@@ -53,7 +75,12 @@ def main(argv: list[str] | None = None) -> int:
             entrypoint=str(Path(__file__).resolve()),
         )
     except (ApplyError, ValueError) as error:
-        print(json.dumps({"schema": APPLY_SCHEMA, "status": "error", "error": str(error)}, sort_keys=True))
+        print(
+            json.dumps(
+                {"schema": APPLY_SCHEMA, "status": "error", "error": str(error)},
+                sort_keys=True,
+            )
+        )
         return 2
     finally:
         for signal_number, handler in previous.items():

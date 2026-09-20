@@ -69,7 +69,11 @@ def apply_one(
         current = read_target(target_path)
         if (before is None) != (current is None):
             raise ApplyError("destination-changed")
-        if before is not None and current is not None and not content_matches(current[1], before[1]):
+        if (
+            before is not None
+            and current is not None
+            and not content_matches(current[1], before[1])
+        ):
             if content_matches(current[1], expected_output):
                 return "completed", "already-applied", diff, current[1]
             raise ApplyError("destination-changed")
