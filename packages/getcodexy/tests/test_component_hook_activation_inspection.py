@@ -13,6 +13,7 @@ from packages.getcodexy.tests.component_lifecycle_support import VERSION, fixtur
 from packages.getcodexy.tests.component_hook_registration_fixture import (
     hook_rows as _hook_rows,
 )
+from packages.getcodexy.tests.component_inspection_host_cases import _register_core
 
 
 class ComponentHookActivationInspectionTests(unittest.TestCase):
@@ -21,6 +22,7 @@ class ComponentHookActivationInspectionTests(unittest.TestCase):
     ) -> None:
         with fixture({"core"}) as state:
             materialize(state, "core")
+            _register_core(state, state.marketplace / "plugins/codexy")
             plugin = state.marketplace / "plugins/codexy"
             rows = [
                 row
@@ -48,6 +50,7 @@ class ComponentHookActivationInspectionTests(unittest.TestCase):
     ) -> None:
         with fixture({"core"}) as state:
             materialize(state, "core")
+            _register_core(state, state.marketplace / "plugins/codexy")
             plugin = state.marketplace / "plugins/codexy"
             rows = _hook_rows(plugin)
             cases = (
@@ -167,6 +170,7 @@ class ComponentHookActivationInspectionTests(unittest.TestCase):
     def test_doctor_does_not_execute_an_untrusted_hook_launcher(self) -> None:
         with fixture({"core"}) as state:
             materialize(state, "core")
+            _register_core(state, state.marketplace / "plugins/codexy")
             with patch(
                 "codexy_runtime_tools.component_health._probe_component",
                 side_effect=AssertionError("untrusted hook launcher was executed"),

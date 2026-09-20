@@ -71,7 +71,7 @@ def compare_managed_files(
             )
             return registration_report(
                 component,
-                metadata is not None,
+                True,
                 [
                     registration_role(name, state, cause, metadata is not None)
                     for name in names

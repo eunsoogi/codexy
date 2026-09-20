@@ -84,9 +84,13 @@ class CapabilityObservationCases:
         from codexy_runtime_tools.component_inspection import doctor
         from component_lifecycle_support import fixture
         from packages.getcodexy.tests.capability_probe_cases import materialize
+        from packages.getcodexy.tests.component_inspection_host_cases import (
+            _register_core,
+        )
 
         with fixture({"core"}) as state:
             materialize(state, "core")
+            _register_core(state, state.marketplace / "plugins/codexy")
             result = doctor(state.home, codex=state.codex, runner=state.run)
         health = result["component_health"][0]
         capability = health["observed"]["capabilities"]["hook:codexy-thread-delivery"]
@@ -103,6 +107,7 @@ class CapabilityObservationCases:
 
         with fixture({"core"}) as state:
             materialize(state, "core")
+            _register_core(state, state.marketplace / "plugins/codexy")
             with patch.object(
                 probe,
                 "_run",

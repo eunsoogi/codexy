@@ -90,9 +90,10 @@ def _component_health(context, component):
     state = _legacy_state(
         manifest, component, actual, records, admission_error, host_error, codex_home
     )
-    if registration and registration["observed"] and registration["state"] != "exact":
+    registration_state = registration["state"] if registration else "exact"
+    if state in {"healthy", "stale"} and registration_state != "exact":
         state = {"unmanaged-conflict": "incompatible", "missing": "missing"}.get(
-            registration["state"], "stale"
+            registration_state, "stale"
         )
     result = dict(
         component=component,

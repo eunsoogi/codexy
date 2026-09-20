@@ -4,6 +4,7 @@ import csv
 import json
 import shutil
 import subprocess
+import sys
 from time import perf_counter
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -164,6 +165,43 @@ def copy_marketplace_plugins(repository: Path, root: Path) -> str:
         encoding="utf-8",
     )
     return version
+
+
+def register_standalone_agents(
+    home: Path, marketplace: Path, components: list[str]
+) -> None:
+    if "core" in components:
+        _run_registration(
+            [
+                sys.executable,
+                str(
+                    marketplace
+                    / "plugins/codexy/skills/orchestration/scripts/register_codexy_agents.py"
+                ),
+                "--plugin-root",
+                str(marketplace / "plugins/codexy"),
+                "--codex-home",
+                str(home),
+            ]
+        )
+    if "github" in components:
+        _run_registration(
+            [
+                sys.executable,
+                str(
+                    marketplace
+                    / "plugins/codexy-github/skills/git-workflow/scripts/bootstrap_codexy_github_agent.py"
+                ),
+                "--codex-home",
+                str(home),
+            ]
+        )
+
+
+def _run_registration(command: list[str]) -> None:
+    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    if result.returncode:
+        raise AssertionError(result.stderr or result.stdout)
 
 
 def measure_hook_probes(marketplace: Path, version: str) -> list[dict[str, object]]:

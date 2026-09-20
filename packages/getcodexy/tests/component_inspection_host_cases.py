@@ -19,11 +19,13 @@ class ComponentInspectionHostCases:
             "stale": "stale",
             "missing": "missing",
             "unmanaged-conflict": "conflict",
+            "missing-directory": "missing-directory",
         }
         for expected, mutation in mutations.items():
             with self.subTest(state=expected), fixture({"core"}) as state:
                 materialize = state.marketplace / "plugins/codexy"
-                _register_core(state, materialize)
+                if mutation != "missing-directory":
+                    _register_core(state, materialize)
                 role = state.home / "agents/codexy/codexy-sentinel.toml"
                 if mutation == "stale":
                     role.write_text(
@@ -40,7 +42,8 @@ class ComponentInspectionHostCases:
             registration = entry["observed"]["registration"]
             self.assertTrue(registration["observed"])
             self.assertEqual(registration["expected_count"], 8)
-            self.assertEqual(registration["state"], expected)
+            expected_state = "missing" if expected == "missing-directory" else expected
+            self.assertEqual(registration["state"], expected_state)
             self.assertEqual(
                 entry["state"],
                 {
@@ -48,13 +51,14 @@ class ComponentInspectionHostCases:
                     "stale": "stale",
                     "missing": "missing",
                     "unmanaged-conflict": "incompatible",
+                    "missing-directory": "missing",
                 }[expected],
             )
             self.assertEqual(
                 next(
                     item for item in registration["roles"] if item["file"] == role.name
                 )["state"],
-                "exact" if expected == "exact" else expected,
+                "exact" if expected == "exact" else expected_state,
             )
 
     def test_doctor_reports_host_requirement(self) -> None:

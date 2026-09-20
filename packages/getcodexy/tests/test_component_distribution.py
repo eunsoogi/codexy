@@ -231,7 +231,12 @@ class ComponentDistributionTests(unittest.TestCase):
             env=environment,
         )
         self.assertEqual(result.returncode, expected, result.stderr + result.stdout)
-        return json.loads(result.stdout)
+        payload = json.loads(result.stdout)
+        if command in {"install", "update", "bootstrap"}:
+            support.register_standalone_agents(
+                self.home, self.marketplace, payload["selection_after"]
+            )
+        return payload
 
 
 def _health(receipt: dict[str, object]) -> dict[str, str]:

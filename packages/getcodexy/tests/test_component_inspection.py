@@ -19,6 +19,7 @@ _host_cases = importlib.import_module(
     "packages.getcodexy.tests.component_inspection_host_cases"
 )
 ComponentInspectionHostCases = _host_cases.ComponentInspectionHostCases
+register_core = _host_cases._register_core
 _probe_cases = importlib.import_module(
     "packages.getcodexy.tests.capability_probe_cases"
 )
@@ -84,6 +85,7 @@ class ComponentInspectionTests(
     def test_doctor_reports_healthy_missing_stale_and_incompatible_states(self) -> None:
         with self.subTest("healthy"), fixture({"core"}) as state:
             materialize(state, "core")
+            register_core(state, state.marketplace / "plugins/codexy")
             result = doctor(state.home, codex=state.codex, runner=state.run)
             self.assertEqual(result["component_health"][0]["state"], "healthy")
             self.assertTrue(result["component_health"][0]["healthy"])
@@ -92,6 +94,7 @@ class ComponentInspectionTests(
             fixture({"core"}, versions={"core": "1.2.0"}) as state,
         ):
             materialize(state, "core", version="1.2.0")
+            register_core(state, state.marketplace / "plugins/codexy")
             self.assertEqual(
                 doctor(state.home, codex=state.codex, runner=state.run)[
                     "component_health"
@@ -110,6 +113,7 @@ class ComponentInspectionTests(
                 encoding="utf-8",
             )
             materialize(state, "core")
+            register_core(state, state.marketplace / "plugins/codexy")
             health = {
                 entry["component"]: entry
                 for entry in doctor(state.home, codex=state.codex, runner=state.run)[
@@ -123,6 +127,7 @@ class ComponentInspectionTests(
             fixture({"core"}, versions={"core": "9.0.0"}) as state,
         ):
             materialize(state, "core", version="9.0.0")
+            register_core(state, state.marketplace / "plugins/codexy")
             self.assertEqual(
                 doctor(state.home, codex=state.codex, runner=state.run)[
                     "component_health"
@@ -133,6 +138,7 @@ class ComponentInspectionTests(
     def test_doctor_flags_ordinary_corrupt_registration_and_is_read_only(self) -> None:
         with fixture({"core"}) as state:
             materialize(state, "core")
+            register_core(state, state.marketplace / "plugins/codexy")
             (state.marketplace / "plugins/codexy/hooks/hooks.json").write_text(
                 "not json", encoding="utf-8"
             )
@@ -176,6 +182,7 @@ class ComponentInspectionTests(
                 fixture({"core", component}) as state,
             ):
                 materialize(state, "core", component)
+                register_core(state, state.marketplace / "plugins/codexy")
                 (
                     state.marketplace / "plugins" / plugins[component] / relative
                 ).write_text(contents, encoding="utf-8")
@@ -190,6 +197,7 @@ class ComponentInspectionTests(
     def test_doctor_rejects_non_executable_posix_launcher(self) -> None:
         with fixture({"core"}) as state:
             materialize(state, "core")
+            register_core(state, state.marketplace / "plugins/codexy")
             launcher = (
                 state.marketplace / "plugins/codexy/hooks/codexy-thread-delivery.sh"
             )
@@ -209,6 +217,7 @@ class ComponentInspectionTests(
                     fixture({"core"}) as state,
                 ):
                     materialize(state, "core")
+                    register_core(state, state.marketplace / "plugins/codexy")
                     path = state.marketplace / "plugins/codexy" / relative
                     if mutation == "missing":
                         path.unlink()
@@ -222,6 +231,7 @@ class ComponentInspectionTests(
         for case in cases:
             with self.subTest(case=case), fixture({"core"}) as state:
                 materialize(state, "core")
+                register_core(state, state.marketplace / "plugins/codexy")
                 plugin = state.marketplace / "plugins/codexy"
                 if case == "malformed":
                     (plugin / "agents/codexy-architect.toml").write_text(
