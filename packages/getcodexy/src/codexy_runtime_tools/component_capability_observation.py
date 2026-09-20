@@ -21,6 +21,8 @@ CAPABILITIES = {
         "specialist:codexy-sentinel",
         "specialist:codexy-shipwright",
         "specialist:codexy-warden",
+        "specialist:codexy-watcher",
+        "mcp:watcher",
     ),
     "github": ("hook:codexy-github-workflow-context", "specialist:codexy-weaver"),
     "devtools": ("mcp:codegraph", "mcp:lsp"),
