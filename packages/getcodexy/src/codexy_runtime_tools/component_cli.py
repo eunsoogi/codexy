@@ -34,7 +34,6 @@ def main(argv: list[str] | None = None) -> int:
     commands = parser.add_subparsers(
         dest="command",
         required=True,
-        metavar="{install,remove,status,doctor}",
     )
     for command in ("install", "update", "remove", "migrate"):
         child = commands.add_parser(command, allow_abbrev=False)
