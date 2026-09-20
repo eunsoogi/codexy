@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context as _, Result, bail, ensure};
@@ -176,7 +176,7 @@ fn append_worktree_path_fingerprint(
 ) -> Result<()> {
     fingerprint.extend_from_slice(path.as_bytes());
     fingerprint.push(0);
-    let path = root.join(path);
+    let path = safe_worktree_path(root, path)?;
     let metadata = match fs::symlink_metadata(&path) {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
@@ -199,7 +199,39 @@ fn append_worktree_path_fingerprint(
     }
     Ok(())
 }
-
+fn safe_worktree_path(root: &Path, relative: &str) -> Result<PathBuf> {
+    let mut candidate = root.to_path_buf();
+    let mut components = Path::new(relative).components().peekable();
+    while let Some(component) = components.next() {
+        let Component::Normal(component) = component else {
+            ensure!(
+                matches!(component, Component::CurDir),
+                "unsafe Git path: {relative}"
+            );
+            continue;
+        };
+        candidate.push(component);
+        let metadata = match fs::symlink_metadata(&candidate) {
+            Ok(metadata) => metadata,
+            Err(error)
+                if error.kind() == std::io::ErrorKind::NotFound && components.peek().is_none() =>
+            {
+                return Ok(candidate);
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                bail!("Git path has a missing ancestor: {relative}");
+            }
+            Err(error) => {
+                return Err(error).with_context(|| format!("reading {}", candidate.display()));
+            }
+        };
+        ensure!(
+            !metadata.file_type().is_symlink() || components.peek().is_none(),
+            "Git path traverses a symlinked ancestor: {relative}"
+        );
+    }
+    Ok(candidate)
+}
 fn git_output(root: &Path, args: &[&str]) -> Result<Vec<u8>> {
     let output = Command::new("git")
         .args(args)

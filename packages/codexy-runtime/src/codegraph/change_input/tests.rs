@@ -157,6 +157,21 @@ fn invalid_revisions_and_non_root_paths_fail_without_collecting() -> TestResult 
     let non_root = collect(&nested, ChangeScope::working_tree(false))
         .expect_err("a subdirectory is not an explicit repository root");
     assert!(non_root.to_string().contains("worktree root"));
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::symlink;
+        let outside = tempfile::tempdir()?;
+        fs::create_dir(root.join("linked"))?;
+        fs::write(root.join("linked/tracked.rs"), "tracked\n")?;
+        run_git(root, ["add", "linked/tracked.rs"])?;
+        run_git(root, ["commit", "--quiet", "-m", "add linked file"])?;
+        fs::remove_dir_all(root.join("linked"))?;
+        symlink(outside.path(), root.join("linked"))?;
+        let error = collect(root, ChangeScope::working_tree(true))
+            .expect_err("a symlinked ancestor must not be read");
+        assert!(error.to_string().contains("symlinked ancestor"));
+    }
     Ok(())
 }
 
