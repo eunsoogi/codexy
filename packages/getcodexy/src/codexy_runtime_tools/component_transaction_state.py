@@ -102,9 +102,7 @@ def clear_stale_registration_lock(home: Path) -> None:
     try:
         if os.name != "nt":
             try:
-                descriptor = os.open(
-                    target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
-                )
+                descriptor = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
             except FileNotFoundError:
                 return
             opened = os.fstat(descriptor)
