@@ -3,10 +3,10 @@ use super::super::change_input::{
     ChangeKind, ChangeSet, FileChange, FileObservedState, ObservedState,
 };
 use super::model::{
-    CheckDefinition, CheckMapping, CheckMappings, GapReason, ManualReason, MappingKind,
-    MappingOwner,
+    CheckDefinition, CheckMapping, CheckMappings, DependencyState, GapReason, ManualReason,
+    MappingKind, MappingOwner, SelectionOptions,
 };
-use super::recommend;
+use super::{recommend, recommend_with_options};
 
 fn changes(paths: &[&str]) -> ChangeSet {
     ChangeSet {
@@ -100,5 +100,58 @@ fn contradictory_mapping_data_remains_visible() {
             .manual_judgment
             .iter()
             .any(|item| item.reason == ManualReason::ContradictoryMapping)
+    );
+}
+
+#[test]
+fn reordered_equivalent_mapping_sets_remain_recommendations() {
+    let mappings = CheckMappings::new(
+        vec![
+            CheckDefinition {
+                id: "fmt".into(),
+                command: "cargo fmt --check".into(),
+                description: "format check".into(),
+            },
+            CheckDefinition {
+                id: "clippy".into(),
+                command: "cargo clippy".into(),
+                description: "lint check".into(),
+            },
+        ],
+        vec![
+            CheckMapping {
+                owner: MappingOwner::Repository,
+                kind: MappingKind::Path,
+                pattern: "src/".into(),
+                check_ids: vec!["fmt".into(), "clippy".into()],
+                reason: "repository mapping".into(),
+            },
+            CheckMapping {
+                owner: MappingOwner::Repository,
+                kind: MappingKind::Path,
+                pattern: "src/".into(),
+                check_ids: vec!["clippy".into(), "fmt".into(), "fmt".into()],
+                reason: "equivalent repository mapping".into(),
+            },
+        ],
+    );
+    let result = recommend_with_options(
+        &changes(&["src/lib.rs"]),
+        &empty_impact(),
+        &mappings,
+        &SelectionOptions {
+            dependency_state: DependencyState::Confirmed,
+        },
+    );
+
+    assert!(!result.partial);
+    assert!(result.gaps.is_empty());
+    assert_eq!(
+        result
+            .recommendations
+            .iter()
+            .map(|recommendation| recommendation.id.as_str())
+            .collect::<Vec<_>>(),
+        ["clippy", "fmt"]
     );
 }

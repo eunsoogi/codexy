@@ -44,8 +44,9 @@ pub(super) fn validate(mappings: &CheckMappings) -> MappingValidation {
     let mut contradictory_mappings = BTreeSet::new();
     for mapping in &mappings.mappings {
         let key = mapping_key(mapping);
+        let check_ids = canonical_check_ids(&mapping.check_ids);
         match seen_mappings.get(&key) {
-            Some(check_ids) if check_ids != &mapping.check_ids => {
+            Some(existing_check_ids) if existing_check_ids != &check_ids => {
                 contradictory_mappings.insert(key.clone());
                 gaps.insert(SelectionGap {
                     path: None,
@@ -62,7 +63,7 @@ pub(super) fn validate(mappings: &CheckMappings) -> MappingValidation {
             }
             Some(_) => {}
             None => {
-                seen_mappings.insert(key, mapping.check_ids.clone());
+                seen_mappings.insert(key, check_ids);
             }
         }
     }
@@ -76,6 +77,15 @@ pub(super) fn validate(mappings: &CheckMappings) -> MappingValidation {
 
 pub(super) fn mapping_key(mapping: &CheckMapping) -> MappingKey {
     (mapping.owner, mapping.kind, mapping.pattern.clone())
+}
+
+fn canonical_check_ids(check_ids: &[String]) -> Vec<String> {
+    check_ids
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
 }
 
 const fn owner_label(owner: MappingOwner) -> &'static str {
