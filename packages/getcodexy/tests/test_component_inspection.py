@@ -4,7 +4,6 @@ import json
 import importlib
 import sys
 import unittest
-from pathlib import Path
 from unittest.mock import patch
 
 from codexy_runtime_tools.component_inspection import doctor, status

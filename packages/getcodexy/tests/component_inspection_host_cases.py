@@ -115,16 +115,51 @@ class ComponentInspectionHostCases:
 
 
 def _register_core(state, plugin: Path) -> None:
-    script = plugin / "skills/orchestration/scripts/register_codexy_agents.py"
-    result = subprocess.run(
+    _run_registration(
         [
             sys.executable,
-            str(script),
+            str(plugin / "skills/orchestration/scripts/register_codexy_agents.py"),
             "--plugin-root",
             str(plugin),
             "--codex-home",
             str(state.home),
-        ],
+        ]
+    )
+
+
+def register_standalone_agents(
+    home: Path, marketplace: Path, components: list[str]
+) -> None:
+    for component, script in (
+        (
+            "core",
+            marketplace
+            / "plugins/codexy/skills/orchestration/scripts/register_codexy_agents.py",
+        ),
+        (
+            "github",
+            marketplace
+            / "plugins/codexy-github/skills/git-workflow/scripts/bootstrap_codexy_github_agent.py",
+        ),
+    ):
+        if component not in components:
+            continue
+        command = [sys.executable, str(script), "--codex-home", str(home)]
+        if component == "core":
+            command += ["--plugin-root", str(marketplace / "plugins/codexy")]
+        _run_registration(command)
+
+
+def register_after_lifecycle(
+    command: str, home: Path, marketplace: Path, components: list[str]
+) -> None:
+    if command in {"install", "update", "bootstrap"}:
+        register_standalone_agents(home, marketplace, components)
+
+
+def _run_registration(command: list[str]) -> None:
+    result = subprocess.run(
+        command,
         capture_output=True,
         text=True,
         check=False,

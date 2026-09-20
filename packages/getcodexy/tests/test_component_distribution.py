@@ -15,6 +15,9 @@ from unittest.mock import patch
 
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from packages.getcodexy.tests import component_distribution_support as support
+from packages.getcodexy.tests.component_inspection_host_cases import (
+    register_after_lifecycle,
+)
 
 
 EXECUTABLE_ENV = "GETCODEXY_DISTRIBUTION_EXECUTABLE"
@@ -82,7 +85,7 @@ class ComponentDistributionTests(unittest.TestCase):
         doctor = self._run("doctor", expected=2)
         self.assertEqual(doctor["inventory_consistency"], "consistent")
         self.assertEqual(
-            _health(doctor),
+            support.health_states(doctor),
             {"core": "healthy", "github": "healthy", "devtools": "incompatible"},
         )
         self.assertEqual(doctor["errors"], [{"code": "component-start-failed"}])
@@ -122,27 +125,35 @@ class ComponentDistributionTests(unittest.TestCase):
         self._run("install")
         (self.marketplace / "plugins/codexy-devtools/.mcp.json").unlink()
         doctor = self._run("doctor")
-        self.assertEqual(_health(doctor)["devtools"], "stale")
+        self.assertEqual(support.health_states(doctor)["devtools"], "stale")
 
     def test_installed_cli_rejects_incomplete_core_and_github_surfaces(self) -> None:
         self._run("install", "core")
-        self.assertEqual(_health(self._run("doctor")), {"core": "healthy"})
+        self.assertEqual(
+            support.health_states(self._run("doctor")), {"core": "healthy"}
+        )
         (self.marketplace / "plugins/codexy/skills/wiki/SKILL.md").unlink()
-        self.assertEqual(_health(self._run("doctor"))["core"], "stale")
+        self.assertEqual(support.health_states(self._run("doctor"))["core"], "stale")
         (self.marketplace / "plugins/codexy/skills/wiki/SKILL.md").write_text("x")
-        self.assertEqual(_health(self._run("doctor"))["core"], "incompatible")
+        self.assertEqual(
+            support.health_states(self._run("doctor"))["core"], "incompatible"
+        )
 
     def test_installed_cli_rejects_empty_specialist_and_hook(self) -> None:
         self._run("install", "github")
         (self.marketplace / "plugins/codexy/agents/codexy-sentinel.toml").write_text(
             "x"
         )
-        self.assertEqual(_health(self._run("doctor"))["core"], "incompatible")
+        self.assertEqual(
+            support.health_states(self._run("doctor"))["core"], "incompatible"
+        )
         (
             self.marketplace
             / "plugins/codexy-github/hooks/codexy-destructive-command.sh"
         ).write_text("x")
-        self.assertEqual(_health(self._run("doctor"))["github"], "incompatible")
+        self.assertEqual(
+            support.health_states(self._run("doctor"))["github"], "incompatible"
+        )
 
     def test_installed_cli_bootstrap_and_invalid_migration_are_fail_closed(
         self,
@@ -187,7 +198,7 @@ class ComponentDistributionTests(unittest.TestCase):
                 self.assertEqual(measurement["category"], "success", measurement)
                 self.assertLess(measurement["elapsed_seconds"], 4.5, measurement)
         self.assertEqual(
-            _health(doctor),
+            support.health_states(doctor),
             {"core": "healthy", "github": "healthy", "devtools": "incompatible"},
             json.dumps(doctor, indent=2, sort_keys=True),
         )
@@ -233,23 +244,7 @@ class ComponentDistributionTests(unittest.TestCase):
         self.assertEqual(result.returncode, expected, result.stderr + result.stdout)
         payload = json.loads(result.stdout)
         if command in {"install", "update", "bootstrap"}:
-            support.register_standalone_agents(
-                self.home, self.marketplace, payload["selection_after"]
+            register_after_lifecycle(
+                command, self.home, self.marketplace, payload["selection_after"]
             )
         return payload
-
-
-def _health(receipt: dict[str, object]) -> dict[str, str]:
-    entries = receipt["component_health"]
-    assert isinstance(entries, list)
-    return {
-        entry["component"]: entry["state"]
-        for entry in entries
-        if isinstance(entry, dict)
-        and isinstance(entry.get("component"), str)
-        and isinstance(entry.get("state"), str)
-    }
-
-
-if __name__ == "__main__":
-    unittest.main()

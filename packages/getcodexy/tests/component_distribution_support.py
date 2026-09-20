@@ -4,7 +4,6 @@ import csv
 import json
 import shutil
 import subprocess
-import sys
 from time import perf_counter
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -167,43 +166,6 @@ def copy_marketplace_plugins(repository: Path, root: Path) -> str:
     return version
 
 
-def register_standalone_agents(
-    home: Path, marketplace: Path, components: list[str]
-) -> None:
-    if "core" in components:
-        _run_registration(
-            [
-                sys.executable,
-                str(
-                    marketplace
-                    / "plugins/codexy/skills/orchestration/scripts/register_codexy_agents.py"
-                ),
-                "--plugin-root",
-                str(marketplace / "plugins/codexy"),
-                "--codex-home",
-                str(home),
-            ]
-        )
-    if "github" in components:
-        _run_registration(
-            [
-                sys.executable,
-                str(
-                    marketplace
-                    / "plugins/codexy-github/skills/git-workflow/scripts/bootstrap_codexy_github_agent.py"
-                ),
-                "--codex-home",
-                str(home),
-            ]
-        )
-
-
-def _run_registration(command: list[str]) -> None:
-    result = subprocess.run(command, capture_output=True, text=True, check=False)
-    if result.returncode:
-        raise AssertionError(result.stderr or result.stdout)
-
-
 def measure_hook_probes(marketplace: Path, version: str) -> list[dict[str, object]]:
     from codexy_runtime_tools import component_hook_activation_host as host
     from codexy_runtime_tools.component_capability_probe import probe_component
@@ -265,3 +227,15 @@ def _git(root: Path, *arguments: str) -> str:
     return subprocess.check_output(
         ["git", "-C", str(root), *arguments], text=True, stderr=subprocess.PIPE
     ).strip()
+
+
+def health_states(receipt: dict[str, object]) -> dict[str, str]:
+    entries = receipt["component_health"]
+    assert isinstance(entries, list)
+    return {
+        entry["component"]: entry["state"]
+        for entry in entries
+        if isinstance(entry, dict)
+        and isinstance(entry.get("component"), str)
+        and isinstance(entry.get("state"), str)
+    }
