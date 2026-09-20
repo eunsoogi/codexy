@@ -121,9 +121,19 @@ the host and the current session.
 
 | Server      | Registration                                                                                                                | Runtime boundary                                                                                                                                                      | Capabilities and tools                                                                                                                                                                                                     |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `codegraph` | `{"command":"uv","args":["run","--no-project","--script","./mcp/codexy_mcp_bootstrap.py","codegraph","--stdio"],"cwd":"."}` | The metadata-driven bootstrap reads the selected plugin release and starts the matching Codexy runtime as a local stdio child process.                                | `codegraph_overview`, `codegraph_search`, `codegraph_neighbors`, `codegraph_index`, `codegraph_reverse_deps`, and `codegraph_neighborhood` provide bounded repository maps and dependency-oriented discovery.              |
+| `codegraph` | `{"command":"uv","args":["run","--no-project","--script","./mcp/codexy_mcp_bootstrap.py","codegraph","--stdio"],"cwd":"."}` | The metadata-driven bootstrap reads the selected plugin release and starts the matching Codexy runtime as a local stdio child process.                                | `codegraph_overview`, `codegraph_search`, `codegraph_neighbors`, `codegraph_index`, `codegraph_reverse_deps`, and `codegraph_neighborhood` provide bounded repository maps and dependency-oriented discovery; `codegraph_change_impact` and `codegraph_check_selection` add read-only change impact and advisory check recommendations. |
 | `lsp`       | `{"command":"uv","args":["run","--no-project","--script","./mcp/codexy_mcp_bootstrap.py","lsp","--stdio"],"cwd":"."}`       | The metadata-driven bootstrap reads the selected plugin release, then starts LSP against the packaged client config when its language-server executable is installed. | `lsp_list_servers`, `lsp_for_path`, `lsp_status`, `lsp_document_symbols`, `lsp_definition`, `lsp_references`, `lsp_diagnostics`, and `lsp_batch` cover discovery, readiness, language-aware requests, and bounded batches. |
 | `watcher`   | `{"command":"uv","args":["run","--no-project","--script","./mcp/codexy_mcp_bootstrap.py","watcher","--stdio"],"cwd":"."}`   | The metadata-driven bootstrap reads the selected plugin release and starts the required Watcher runtime as a local stdio child process.                               | `watcher_open`, `watcher_report`, `watcher_wait`, `watcher_health`, and `watcher_cancel` expose the required native Codex observation boundary.                                                                            |
+
+Codegraph's change tools are read-only adapters over Git change collection,
+bounded Python/Rust impact analysis, and explicit check mappings. They return
+limits, unknown areas, recommendation reasons, gaps, broader verification, and
+manual judgment so incomplete evidence stays visible. Recommendations contain
+command text as data; they do not execute checks, waive checks, or decide
+completion. The installed-wrapper demonstrations cover documentation, a single
+module, and a shared fixture. Those subprocess checks prove the packaged runtime
+only; active host exposure remains unobserved until the host's callable tool list
+and a real invocation are separately verified.
 
 For LSP, [`lsp-client.json`](../plugins/codexy-devtools/.codex/lsp-client.json)
 is the machine-readable client registration and

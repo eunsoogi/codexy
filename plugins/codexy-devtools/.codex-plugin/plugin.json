@@ -1,7 +1,7 @@
 {
   "name": "codexy-devtools",
   "version": "1.9.0",
-  "description": "Optional Codegraph and LSP developer-tool integrations for Codexy.",
+  "description": "Optional Codegraph impact, check-recommendation, and LSP developer-tool integrations for Codexy.",
   "author": {
     "name": "Eunsoo Lee",
     "url": "https://github.com/eunsoogi"
@@ -24,8 +24,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Codexy Devtools",
-    "shortDescription": "Add optional Codegraph and LSP developer tools to Codexy.",
-    "longDescription": "Codexy Devtools provides optional local Codegraph and language-server integrations for a separately installed Codexy core.",
+    "shortDescription": "Add optional Codegraph impact, check advice, and LSP tools to Codexy.",
+    "longDescription": "Codexy Devtools provides optional local Codegraph structure, read-only change-impact and advisory check-recommendation tools, plus language-server integrations for a separately installed Codexy core.",
     "developerName": "Eunsoo Lee",
     "category": "Developer Tools",
     "capabilities": [
@@ -37,7 +37,7 @@
     "privacyPolicyURL": "https://github.com/eunsoogi/codexy",
     "termsOfServiceURL": "https://github.com/eunsoogi/codexy/blob/main/LICENSE",
     "defaultPrompt": [
-      "Use $codegraph for optional local repository search and dependency navigation when Codexy Devtools is installed.",
+      "Use $codegraph for search, dependency navigation, impact, and check advice when Devtools is installed.",
       "Use $lsp for optional language-aware diagnostics, symbols, definitions, references, and bounded batches."
     ],
     "brandColor": "#2F6F5E",
