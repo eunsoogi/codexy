@@ -5,18 +5,23 @@ from __future__ import annotations
 import errno
 import json
 import os
-import stat
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
-from .component_transaction_durability import sync_parent_directory
-from .component_transaction_snapshot import InventorySnapshot
+from .component_transaction_snapshot import (
+    InventorySnapshot,
+    _atomic_write,
+    _ensure_directory,
+    _read_regular,
+    _unlink_regular,
+)
 from .component_transition_model import JOURNAL_SCHEMA, Journal
-from .updater import _absolute, _validate_real_path
+from .updater import _absolute
 
 
 INVENTORY_SCHEMA = "getcodexy.installed-component-inventory.v1"
+REGISTRATION_LOCK = ".codexy-agent-registration.lock"
 
 
 class PreAdmissionError(RuntimeError):
@@ -58,15 +63,77 @@ def write_inventory(home: Path, components: tuple[str, ...]) -> None:
 
 
 def capture_inventory_snapshot(home: object) -> InventorySnapshot:
-    return InventorySnapshot(_read_regular(inventory_path(Path(home))))
+    absolute_home = _absolute(str(home))
+    from .component_lifecycle_finish import capture_managed_files
+
+    return InventorySnapshot(
+        _read_regular(inventory_path(absolute_home)),
+        capture_managed_files(absolute_home),
+    )
 
 
 def restore_inventory_snapshot(home: object, snapshot: InventorySnapshot) -> None:
-    target = inventory_path(Path(home))
+    absolute_home = _absolute(str(home))
+    if snapshot.managed_files is not None:
+        from .component_lifecycle_finish import restore_managed_files
+
+        restore_managed_files(absolute_home, snapshot.managed_files)
+    target = inventory_path(absolute_home)
     if snapshot.contents is None:
         _unlink_regular(target)
     else:
         _atomic_write(target, snapshot.contents)
+
+
+def clear_stale_registration_lock(home: Path) -> None:
+    """Remove only a registration lock whose recorded owner is gone.
+
+    This is intentionally recovery-only. A fresh lifecycle operation must not
+    delete a lock it cannot prove is stale, because pre-session registration
+    can legitimately be active outside the lifecycle lock.
+    """
+
+    target = _absolute(home) / REGISTRATION_LOCK
+    if not os.path.lexists(target):
+        return
+    try:
+        metadata = target.lstat()
+    except FileNotFoundError:
+        return
+    identity = (metadata.st_dev, metadata.st_ino)
+    contents = _read_regular(target)
+    if contents is None:
+        return
+    try:
+        current = target.lstat()
+    except FileNotFoundError:
+        return
+    if (current.st_dev, current.st_ino) != identity:
+        raise PreAdmissionError(
+            "Codexy agent registration lock changed during recovery"
+        )
+    try:
+        value = contents.decode("ascii").strip()
+        pid = int(value)
+    except (UnicodeDecodeError, ValueError) as error:
+        raise PreAdmissionError(
+            "Codexy agent registration lock has an invalid owner"
+        ) from error
+    if pid <= 0:
+        raise PreAdmissionError("Codexy agent registration lock has an invalid owner")
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        _unlink_regular(target, identity)
+    except OSError as error:
+        if error.errno == errno.ESRCH:
+            _unlink_regular(target, identity)
+        else:
+            raise PreAdmissionError(
+                "another Codexy agent registration is active or unobservable"
+            ) from error
+    else:
+        raise PreAdmissionError("another Codexy agent registration is active")
 
 
 def read_journal(home: Path) -> Journal | None:
@@ -110,80 +177,40 @@ def _journal_path(home: Path) -> Path:
     return inventory_path(home).parent / "inflight.json"
 
 
-def _read_regular(target: Path) -> bytes | None:
-    if not os.path.lexists(target.parent):
-        _validate_real_path(target.parent, require_exists=False)
-        return None
-    _validate_real_path(target.parent, require_exists=True)
-    if not os.path.lexists(target):
-        return None
-    metadata = target.lstat()
-    if _is_link(metadata) or not stat.S_ISREG(metadata.st_mode):
-        raise ValueError(f"transaction storage refuses non-regular path: {target}")
-    descriptor = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
-    try:
-        opened = os.fstat(descriptor)
-        if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != (
-            metadata.st_dev,
-            metadata.st_ino,
-        ):
-            raise ValueError(
-                f"transaction storage path changed while reading: {target}"
-            )
-        return os.read(descriptor, opened.st_size)
-    finally:
-        os.close(descriptor)
+def _multiline_state(line: str, state: str | None) -> tuple[str | None, int | None]:
+    from .component_registration_health import _quoted_end
+
+    escaped = lambda p: (len(line[:p]) - len(line[:p].rstrip("\\"))) % 2 == 1
+    index, closed = 0, None
+    while index < len(line):
+        if state:
+            if line.startswith(state, index) and (state == "'''" or not escaped(index)):
+                state, index, closed = None, index + 3, closed or index + 3
+            else:
+                index += 1
+            continue
+        if line[index] == "#":
+            break
+        triple = next(
+            (quote for quote in ('"""', "'''") if line.startswith(quote, index)),
+            None,
+        )
+        if triple:
+            state, index = triple, index + 3
+        elif line[index] in ('"', "'"):
+            index = _quoted_end(line, index) or len(line)
+        else:
+            index += 1
+    return state, closed
 
 
-def _atomic_write(target: Path, contents: bytes) -> None:
-    _ensure_directory(target.parent)
-    if os.path.lexists(target):
-        _read_regular(target)
-    from uuid import uuid4
-
-    temporary = target.parent / f".{target.name}.{uuid4().hex}.tmp"
-    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    try:
-        with os.fdopen(descriptor, "wb") as output:
-            output.write(contents)
-            output.flush()
-            os.fsync(output.fileno())
-        os.replace(temporary, target)
-        sync_parent_directory(target.parent)
-    except BaseException:
-        try:
-            temporary.unlink()
-        except FileNotFoundError:
-            pass
-        raise
-
-
-def _unlink_regular(target: Path) -> None:
-    if not os.path.lexists(target):
-        return
-    _read_regular(target)
-    target.unlink()
-    sync_parent_directory(target.parent)
-
-
-def _ensure_directory(target: Path) -> None:
-    absolute = _absolute(target)
-    _validate_real_path(absolute, require_exists=False)
-    current = Path(absolute.anchor)
-    for part in absolute.parts[1:]:
-        current /= part
-        try:
-            metadata = current.lstat()
-        except FileNotFoundError:
-            try:
-                current.mkdir(mode=0o700)
-            except FileExistsError:
-                pass
-            metadata = current.lstat()
-        if _is_link(metadata) or not stat.S_ISDIR(metadata.st_mode):
-            raise ValueError(
-                f"transaction storage requires a real directory: {current}"
-            )
+def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("transaction storage has duplicate keys")
+        result[key] = value
+    return result
 
 
 def _lock(descriptor: int) -> None:
@@ -219,19 +246,3 @@ def _unlock(descriptor: int) -> None:
     import fcntl
 
     fcntl.flock(descriptor, fcntl.LOCK_UN)
-
-
-def _is_link(metadata: os.stat_result) -> bool:
-    reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
-    return stat.S_ISLNK(metadata.st_mode) or bool(
-        getattr(metadata, "st_file_attributes", 0) & reparse
-    )
-
-
-def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
-    result: dict[str, object] = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError("transaction storage has duplicate keys")
-        result[key] = value
-    return result

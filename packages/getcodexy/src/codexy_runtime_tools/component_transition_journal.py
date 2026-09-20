@@ -5,12 +5,13 @@ from __future__ import annotations
 import base64
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
 from .component_manifest import ComponentManifest
 from .component_resolver import ComponentResolutionError, canonical_components
 from .component_transaction_identity import valid_operation_id
-from .component_transaction_snapshot import InventorySnapshot
+from .component_transaction_snapshot import InventorySnapshot, ManagedFileSnapshot
 
 if TYPE_CHECKING:
     from .component_transition_model import Outcome, TransitionPlan
@@ -69,7 +70,7 @@ class Journal:
         }
         if (
             not isinstance(value, dict)
-            or set(value) != fields
+            or set(value) not in (fields, fields | {"managed"})
             or value.get("schema") != JOURNAL_SCHEMA
         ):
             raise ValueError("component transaction journal has an invalid shape")
@@ -87,13 +88,20 @@ class Journal:
         ):
             raise ValueError("component transaction journal has invalid identifiers")
         try:
-            snapshot = InventorySnapshot(
-                base64.b64decode(encoded.encode(), validate=True) or None
-            )
+            inventory = base64.b64decode(encoded.encode(), validate=True) or None
         except ValueError as error:
             raise ValueError(
                 "component transaction journal has invalid inventory"
             ) from error
+        managed_value = value.get("managed")
+        if "managed" in value and not isinstance(managed_value, list):
+            raise ValueError("component transaction journal has invalid managed files")
+        managed = (
+            None
+            if "managed" not in value
+            else tuple(_managed_entry(entry) for entry in managed_value)
+        )
+        snapshot = InventorySnapshot(inventory, managed)
         journal = cls(identifier, command, *components, snapshot, phase)
         journal._require_snapshot()
         return journal
@@ -101,7 +109,7 @@ class Journal:
     def encode(self) -> dict[str, object]:
         if not valid_operation_id(self.identifier):
             raise ValueError("component transaction journal has invalid identifiers")
-        return {
+        encoded: dict[str, object] = {
             "schema": JOURNAL_SCHEMA,
             "operation_id": self.identifier,
             "command": self.command,
@@ -112,6 +120,16 @@ class Journal:
             "inventory": base64.b64encode(self.snapshot.contents or b"").decode(),
             "phase": self.phase,
         }
+        if self.snapshot.managed_files is not None:
+            encoded["managed"] = [
+                {
+                    "path": entry.relative.as_posix(),
+                    "mode": entry.mode,
+                    "data": base64.b64encode(entry.data).decode(),
+                }
+                for entry in self.snapshot.managed_files
+            ]
+        return encoded
 
     def with_phase(self, phase: str) -> Journal:
         if phase not in {"started", "rolling-back", "committed"}:
@@ -200,10 +218,30 @@ class Journal:
             )
 
 
+def _managed_entry(value: object) -> ManagedFileSnapshot:
+    if not isinstance(value, dict) or set(value) != {"path", "mode", "data"}:
+        raise ValueError("component transaction journal has an invalid managed file")
+    path, mode, encoded = value.get("path"), value.get("mode"), value.get("data")
+    if not (isinstance(path, str) and type(mode) is int and isinstance(encoded, str)):
+        raise ValueError("component transaction journal has an invalid managed file")
+    try:
+        data = base64.b64decode(encoded.encode(), validate=True)
+    except (TypeError, ValueError) as error:
+        raise ValueError(
+            "component transaction journal has invalid managed file data"
+        ) from error
+    try:
+        return ManagedFileSnapshot(Path(path), data, mode)
+    except ValueError as error:
+        raise ValueError(
+            "component transaction journal has an unsafe managed file"
+        ) from error
+
+
 def _components(value: dict[str, object], field: str, subject: str) -> tuple[str, ...]:
     components = value.get(field)
-    if not isinstance(components, list) or any(
-        not isinstance(component, str) for component in components
+    if isinstance(components, list) and all(
+        isinstance(item, str) for item in components
     ):
-        raise ValueError(f"{subject} has invalid components")
-    return tuple(components)
+        return tuple(components)
+    raise ValueError(f"{subject} has invalid components")

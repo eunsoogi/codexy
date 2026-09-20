@@ -222,7 +222,7 @@ class LifecycleFinalizationTests(unittest.TestCase):
             )
             write_journal(state.home, journal)
             with patch(
-                "codexy_runtime_tools.component_transaction_state.sync_parent_directory"
+                "codexy_runtime_tools.component_transaction_snapshot.sync_parent_directory"
             ) as synced:
                 clear_journal(state.home)
             synced.assert_called_once_with(inventory_path(state.home).parent)

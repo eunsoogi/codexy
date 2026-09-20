@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 import json
-import errno
-import os
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 from codexy_runtime_tools.component_lifecycle import inventory_path, run_operation
-from codexy_runtime_tools.component_transaction_state import read_journal
 from codexy_runtime_tools.version_lock import default_package_version
 from packages.getcodexy.tests.component_lifecycle_update_failure_cases import (
+    ComponentLifecycleRegistrationCases,
     ComponentLifecycleUpdateFailureCases,
 )
 from packages.getcodexy.tests.component_lifecycle_mutation_recovery_cases import (
@@ -30,6 +27,7 @@ from packages.getcodexy.tests.component_lifecycle_support import (
 
 
 class ComponentLifecycleTests(
+    ComponentLifecycleRegistrationCases,
     ComponentLifecycleUpdateFailureCases,
     ComponentLifecycleMutationRecoveryCases,
     ComponentLifecyclePreflightCases,

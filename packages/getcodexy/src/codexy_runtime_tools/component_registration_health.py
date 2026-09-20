@@ -18,6 +18,9 @@ from .component_mcp_materialization import (
 from .component_manifest import load_component_manifest
 from .component_registration_catalog import CATALOGS, _catalog_agent_files
 from .component_registration_files import _launcher, _regular, _skill, _text
+from .component_transition_journal import Journal
+from .plugin_resolution import MarketplaceBinding, marketplace_path
+from .updater import sync_agents
 
 MANAGED_MARKERS = {
     "core": "# CODEXY MANAGED AGENT\n",
@@ -30,6 +33,34 @@ MANAGED_ROOTS = {
 REGISTRATION_SOURCE = "codex-home-standalone-agent-projection"
 REGISTRATION_SCOPE = "current-doctor-invocation"
 REGISTRATION_REPAIR = "repair the Codexy registration, then rerun getcodexy doctor"
+
+
+def synchronize_core_registration(
+    home: Path, root: MarketplaceBinding, journal: Journal
+) -> None:
+    if (
+        journal.command not in {"install", "update", "bootstrap"}
+        or "core" not in journal.target
+    ):
+        return
+    result = sync_agents(marketplace_path(root) / "plugins" / "codexy", home, "install")
+    if result.status == "completed":
+        return
+    diagnostics = "; ".join(result.diagnostics)
+    detail = f": {diagnostics}" if diagnostics else ""
+    raise RuntimeError(f"Codexy role registration failed ({result.status}){detail}")
+
+
+def _quoted_end(text: str, index: int) -> int | None:
+    quote, index = text[index], index + 1
+    while index < len(text):
+        if quote == '"' and text[index] == "\\":
+            index += 2
+        elif text[index] == quote:
+            return index + 1
+        else:
+            index += 1
+    return None
 
 
 def _hook(command: str, windows: str, timeout: int) -> dict[str, object]:
