@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from staging import _relative_path
-from state import StateError, file_state, state_matches
+from state import StateError, file_state, state_matches, valid_file_state
 
 
 def safe_output_path(results_root: Path, path_value: Any) -> Path | None:
@@ -90,6 +90,8 @@ def saved_result_is_reusable(
         expected_artifact, Mapping
     ):
         return False, "state-result-corrupt"
+    if not valid_file_state(expected_artifact, with_inode=True):
+        return False, "state-result-corrupt"
     saved_original = runner_result.get("original")
     current_original = item.get("original")
     if (
@@ -117,6 +119,10 @@ def saved_result_is_reusable(
     if saved.get("input_identity") != current_input_identity:
         return False, "input-changed"
     output = runner_result.get("output")
+    if not isinstance(output, Mapping) or not valid_file_state(
+        output.get("state"), with_inode=False
+    ):
+        return False, "state-result-corrupt"
     artifact_path = safe_output_path(
         results_root, output.get("path") if isinstance(output, Mapping) else None
     )
@@ -127,7 +133,7 @@ def saved_result_is_reusable(
         actual_artifact, dict(expected_artifact)
     ):
         return False, "artifact-changed"
-    if not state_matches(actual_artifact, dict(output.get("state", {}))):
+    if not state_matches(actual_artifact, output["state"]):
         return False, "artifact-changed"
     return True, "validated-result"
 

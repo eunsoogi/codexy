@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from unittest.mock import patch
@@ -56,6 +57,40 @@ class BatchChangeResumeReuseTests(BatchChangeResumeCase):
         self.assertEqual(result["items"][0]["invocations"], 2)
         self.assertEqual(self._log_count(self.transform_log, "transform"), 2)
         self.assertEqual(self._log_count(self.validation_log, "validation"), 2)
+
+    def test_incomplete_saved_fingerprints_force_a_rerun(self) -> None:
+        first = self._run()
+        artifact = Path(first["items"][0]["result"]["output"]["path"])
+        artifact.write_text("corrupted\n", encoding="utf-8")
+        state_file = self._state_file()
+        state = json.loads(state_file.read_text(encoding="utf-8"))
+        saved_result = state["items"]["item"]["result"]
+        saved_result["artifact_state"] = {}
+        saved_result["runner"]["output"]["state"] = {}
+        state_file.write_text(json.dumps(state), encoding="utf-8")
+
+        second = self._run()
+
+        self.assertEqual(second["items"][0]["resolution"], "rerun")
+        self.assertEqual(second["items"][0]["invocations"], 2)
+        self.assertEqual(self._log_count(self.transform_log, "transform"), 2)
+
+    def test_changed_extensionless_command_script_forces_a_rerun(self) -> None:
+        extensionless = self.root / "commands"
+        extensionless.write_text(COMMAND_SOURCE, encoding="utf-8")
+        item = self._item()
+        item["transform"]["argv"][1] = str(extensionless)
+        item["validations"][0]["argv"][1] = str(extensionless)
+        self._run(item)
+        extensionless.write_text(
+            COMMAND_SOURCE + "\nraise SystemExit(42)\n", encoding="utf-8"
+        )
+
+        second = self._run(item)
+
+        self.assertEqual(second["items"][0]["resolution"], "rerun")
+        self.assertEqual(second["items"][0]["invocations"], 2)
+        self.assertEqual(self._log_count(self.transform_log, "transform"), 2)
 
     def test_corrupt_state_fails_closed_without_running_a_command(self) -> None:
         self._run()

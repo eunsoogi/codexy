@@ -7,10 +7,12 @@ import json
 import os
 import stat
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 
 STATE_SCHEMA = "codexy.batch-change-resume-state.v1"
+RUNNER_STATE_KEYS = frozenset({"size", "mtime_ns", "sha256"})
+FILE_STATE_KEYS = frozenset({"dev", "ino", "size", "mtime_ns", "sha256"})
 
 
 class StateError(ValueError):
@@ -165,5 +167,36 @@ def file_state(path: Path, label: str = "file") -> dict[str, int | str]:
         os.close(descriptor)
 
 
-def state_matches(actual: dict[str, Any], expected: dict[str, Any]) -> bool:
-    return all(actual.get(key) == value for key, value in expected.items())
+def valid_file_state(value: Any, *, with_inode: bool) -> bool:
+    """Accept only a complete, typed fingerprint from a trusted boundary."""
+    if not isinstance(value, Mapping):
+        return False
+    expected_keys = FILE_STATE_KEYS if with_inode else RUNNER_STATE_KEYS
+    if set(value) != expected_keys:
+        return False
+    integer_keys = {"size", "mtime_ns"}
+    if with_inode:
+        integer_keys.update({"dev", "ino"})
+    if any(
+        isinstance(value[key], bool)
+        or not isinstance(value[key], int)
+        or value[key] < 0
+        for key in integer_keys
+    ):
+        return False
+    digest = value["sha256"]
+    return (
+        isinstance(digest, str)
+        and len(digest) == 64
+        and all(character in "0123456789abcdef" for character in digest)
+    )
+
+
+def state_matches(actual: Mapping[str, Any], expected: Mapping[str, Any]) -> bool:
+    if not valid_file_state(actual, with_inode=True):
+        return False
+    expected_with_inode = valid_file_state(expected, with_inode=True)
+    expected_runner = valid_file_state(expected, with_inode=False)
+    if not (expected_with_inode or expected_runner):
+        return False
+    return all(actual[key] == expected[key] for key in expected)

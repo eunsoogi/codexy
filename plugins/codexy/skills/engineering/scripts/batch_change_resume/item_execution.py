@@ -8,12 +8,35 @@ from pathlib import Path
 from threading import Event
 from typing import Any, Callable, Mapping
 
-from execution import run_item
+from execution import all_originals_unchanged, run_item
 
 from resume_errors import ResumeError
 from result_validation import public_item, safe_output_path, saved_result_is_reusable
 from state import StateError, file_state
 from persistence import persist_state, sync_file
+
+
+def _append_pending(
+    public_items: list[dict[str, Any]],
+    items: list[Mapping[str, Any]],
+    state: dict[str, Any],
+    start: int,
+    reason: str,
+) -> None:
+    for pending_item in items[start:]:
+        saved = state["items"][str(pending_item["id"])]
+        if saved.get("status") != "succeeded":
+            saved.update({"status": "pending", "result": None})
+            saved.pop("owner_pid", None)
+            saved.pop("started_at_ns", None)
+        public_items.append(
+            public_item(
+                pending_item,
+                resolution="pending",
+                invocations=saved["invocations"],
+                reason=reason,
+            )
+        )
 
 
 def execute_items(
@@ -33,6 +56,31 @@ def execute_items(
 ) -> tuple[list[dict[str, Any]], str]:
     public_items: list[dict[str, Any]] = []
     top_status = "completed"
+    if not all_originals_unchanged(root, items):
+        first_item = items[0]
+        first_saved = state["items"][str(first_item["id"])]
+        first_saved.update(
+            {
+                "spec_identity": operation["item_identities"][str(first_item["id"])],
+                "input_identity": current_input_identity,
+                "status": "conflict",
+                "result": None,
+                "reason": "original-changed",
+            }
+        )
+        first_saved.pop("owner_pid", None)
+        first_saved.pop("started_at_ns", None)
+        public_items.append(
+            public_item(
+                first_item,
+                resolution="conflict",
+                invocations=first_saved["invocations"],
+                reason="original-changed",
+            )
+        )
+        _append_pending(public_items, items, state, 1, "batch-aborted")
+        persist_state(state_path, state, persistence_hook)
+        return public_items, "conflict"
     for index, item in enumerate(items):
         item_id = str(item["id"])
         saved = state["items"][item_id]
@@ -98,6 +146,12 @@ def execute_items(
             output_limit_bytes=output_limit_bytes,
             cancellation_event=cancellation_event,
         )
+        if not all_originals_unchanged(root, items):
+            result = dict(result)
+            result["status"] = "failed"
+            result["output"] = None
+            result["failure"] = {"phase": "batch", "reason": "original-changed"}
+            control = "abort"
         failure = result.get("failure")
         if isinstance(failure, Mapping) and failure.get("reason") == "original-changed":
             saved["status"] = "conflict"
@@ -149,18 +203,10 @@ def execute_items(
         )
         if control == "cancel":
             top_status = "interrupted"
-            for pending_item in items[index + 1 :]:
-                public_items.append(
-                    public_item(
-                        pending_item,
-                        resolution="pending",
-                        invocations=state["items"][str(pending_item["id"])][
-                            "invocations"
-                        ],
-                        reason="cancelled",
-                    )
-                )
+            _append_pending(public_items, items, state, index + 1, "cancelled")
             break
         if control == "abort":
             top_status = "conflict"
+            _append_pending(public_items, items, state, index + 1, "batch-aborted")
+            break
     return public_items, top_status

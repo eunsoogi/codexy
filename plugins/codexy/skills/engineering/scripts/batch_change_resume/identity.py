@@ -113,8 +113,11 @@ def command_dependencies(
                     continue
                 is_static_path = position == 0 or (
                     os.path.isabs(token)
-                    and Path(token).suffix.lower()
-                    in {".py", ".pyc", ".sh", ".json", ".toml", ".yaml", ".yml"}
+                    and (
+                        position == 1
+                        or Path(token).suffix.lower()
+                        in {".py", ".pyc", ".sh", ".json", ".toml", ".yaml", ".yml"}
+                    )
                 )
                 if is_static_path:
                     dependency = dependency_fingerprint(token, workspace)
