@@ -16,6 +16,19 @@ from packages.getcodexy.tests.component_lifecycle_support import VERSION, fixtur
 from packages.getcodexy.tests.component_hook_registration_fixture import hook_rows
 
 
+def _fixture_hook_rows(marketplace):
+    rows = []
+    for plugin in ("codexy", "codexy-github"):
+        for row in hook_rows(marketplace / "plugins" / plugin):
+            observed = row.copy()
+            observed["key"] = observed["key"].replace(
+                "codexy@codexy:", f"{plugin}@codexy:", 1
+            )
+            observed["pluginId"] = f"{plugin}@codexy"
+            rows.append(observed)
+    return tuple(rows)
+
+
 class LifecycleWatcherTests(unittest.TestCase):
     def test_install_validates_each_selected_mcp_source_before_host_add(self) -> None:
         with fixture() as state:
@@ -40,18 +53,6 @@ class LifecycleWatcherTests(unittest.TestCase):
                 calls.append((component, version, tuple(state.mutations)))
                 return materialize_component_mcp(plugin, component, version)
 
-            def list_hooks(_executable, _home):
-                rows = []
-                for plugin in ("codexy", "codexy-github"):
-                    for row in hook_rows(state.marketplace / "plugins" / plugin):
-                        observed = row.copy()
-                        observed["key"] = observed["key"].replace(
-                            "codexy@codexy:", f"{plugin}@codexy:", 1
-                        )
-                        observed["pluginId"] = f"{plugin}@codexy"
-                        rows.append(observed)
-                return tuple(rows)
-
             with (
                 patch.object(
                     component_registration_health,
@@ -70,7 +71,9 @@ class LifecycleWatcherTests(unittest.TestCase):
                     state.codex,
                     state.run,
                     operation_id="op-install-mcp",
-                    hook_lister=list_hooks,
+                    hook_lister=lambda _executable, _home: _fixture_hook_rows(
+                        state.marketplace
+                    ),
                 )
 
             self.assertEqual(
@@ -160,6 +163,9 @@ class LifecycleWatcherTests(unittest.TestCase):
                     state.codex,
                     state.run,
                     operation_id="op-update-cache-mcp",
+                    hook_lister=lambda _executable, _home: _fixture_hook_rows(
+                        state.marketplace
+                    ),
                 )
 
             self.assertEqual(receipt["outcome"], "completed")
