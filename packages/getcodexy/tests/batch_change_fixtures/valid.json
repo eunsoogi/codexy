@@ -1,0 +1,34 @@
+{
+  "items": [
+    {
+      "id": "space-preserving-item",
+      "original": "input file.txt",
+      "output": "output file.txt",
+      "transform": {
+        "argv": ["trusted-transform", "--input", "input file.txt", "--output", "output file.txt"],
+        "timeout_seconds": 30
+      },
+      "validations": [
+        {
+          "argv": ["trusted-validator", "output file.txt"],
+          "timeout_seconds": 10
+        }
+      ]
+    },
+    {
+      "id": "nested-output-item",
+      "original": "second.txt",
+      "output": "results/second.txt",
+      "transform": {
+        "argv": ["trusted-transform", "--input", "second.txt", "--output", "results/second.txt"],
+        "timeout_seconds": 45
+      },
+      "validations": [
+        {
+          "argv": ["trusted-validator", "results/second.txt"],
+          "timeout_seconds": 15
+        }
+      ]
+    }
+  ]
+}
