@@ -176,7 +176,10 @@ fn append_worktree_path_fingerprint(
 ) -> Result<()> {
     fingerprint.extend_from_slice(path.as_bytes());
     fingerprint.push(0);
-    let path = safe_worktree_path(root, path)?;
+    let Some(path) = safe_worktree_path(root, path)? else {
+        fingerprint.push(0);
+        return Ok(());
+    };
     let metadata = match fs::symlink_metadata(&path) {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
@@ -199,7 +202,7 @@ fn append_worktree_path_fingerprint(
     }
     Ok(())
 }
-fn safe_worktree_path(root: &Path, relative: &str) -> Result<PathBuf> {
+fn safe_worktree_path(root: &Path, relative: &str) -> Result<Option<PathBuf>> {
     let mut candidate = root.to_path_buf();
     let mut components = Path::new(relative).components().peekable();
     while let Some(component) = components.next() {
@@ -213,14 +216,7 @@ fn safe_worktree_path(root: &Path, relative: &str) -> Result<PathBuf> {
         candidate.push(component);
         let metadata = match fs::symlink_metadata(&candidate) {
             Ok(metadata) => metadata,
-            Err(error)
-                if error.kind() == std::io::ErrorKind::NotFound && components.peek().is_none() =>
-            {
-                return Ok(candidate);
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                bail!("Git path has a missing ancestor: {relative}");
-            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
             Err(error) => {
                 return Err(error).with_context(|| format!("reading {}", candidate.display()));
             }
@@ -230,7 +226,7 @@ fn safe_worktree_path(root: &Path, relative: &str) -> Result<PathBuf> {
             "Git path traverses a symlinked ancestor: {relative}"
         );
     }
-    Ok(candidate)
+    Ok(Some(candidate))
 }
 fn git_output(root: &Path, args: &[&str]) -> Result<Vec<u8>> {
     let output = Command::new("git")

@@ -73,14 +73,15 @@ fn comparison_treats_git_type_changes_as_modified() -> TestResult {
 fn working_tree_reports_staged_unstaged_and_optional_untracked_scopes() -> TestResult {
     let repository = initialized_repository()?;
     let root = repository.path();
-    fs::write(root.join("delete me.rs"), "delete\n")?;
-    run_git(root, ["add", "delete me.rs"])?;
+    fs::create_dir_all(root.join("deleted directory"))?;
+    fs::write(root.join("deleted directory/file.rs"), "delete\n")?;
+    run_git(root, ["add", "deleted directory/file.rs"])?;
     run_git(root, ["commit", "--quiet", "-m", "add deletion target"])?;
     fs::write(root.join("mixed.rs"), "staged\n")?;
     run_git(root, ["add", "mixed.rs"])?;
     fs::write(root.join("mixed.rs"), "unstaged\n")?;
     run_git(root, ["mv", "tracked.rs", "renamed name.rs"])?;
-    fs::remove_file(root.join("delete me.rs"))?;
+    fs::remove_dir_all(root.join("deleted directory"))?;
     fs::write(root.join("untracked name.rs"), "untracked\n")?;
 
     let included = collect(root, ChangeScope::working_tree(true))?;
@@ -115,7 +116,7 @@ fn working_tree_reports_staged_unstaged_and_optional_untracked_scopes() -> TestR
     );
     assert!(included.changes.iter().any(|change| {
         change.kind == ChangeKind::Deleted
-            && change.previous_path.as_deref() == Some("delete me.rs")
+            && change.previous_path.as_deref() == Some("deleted directory/file.rs")
     }));
     let untracked = included
         .changes
