@@ -9,13 +9,13 @@ from typing import Callable
 from .component_hook_activation import HookLister
 from .component_lifecycle_finish import finish_committed
 from .component_lifecycle_mcp import materialize_mcp_caches, materialize_mcp_sources
-from .component_lifecycle_preflight import existing_marketplace
+from .component_lifecycle_preflight import existing_marketplace, refresh_root
 from .component_registration_health import synchronize_core_registration
 from .component_manifest import ComponentManifest
 from .component_resolver import (
     ComponentResolutionError,
     reconcile_installed_inventory,
-    verify_post_operation_inventory,
+    verify_post_operation_inventory as _verify,
 )
 from .component_transaction_state import (
     InventorySnapshot,
@@ -68,7 +68,7 @@ def recover_if_needed(
                 executable, invoke, manifest, root, journal, journal.resolved, (), home
             )
         except BaseException as error:
-            root = _refresh_marketplace_root(executable, invoke, manifest, root)
+            root = refresh_root(executable, invoke, manifest, root)
             rollback_or_raise(home, executable, invoke, manifest, root, journal, error)
             terminal(home, manifest, journal.receipt("rolled-back", journal.before))
             clear_journal(home)
@@ -220,23 +220,7 @@ def apply_forward(
         mutate(executable, invoke, "remove", manifest, component)
     installed = list_installed(executable, invoke)
     materialize_mcp_caches(home, root, manifest, journal.target)
-    return (
-        verify_post_operation_inventory(manifest, installed, journal.target, root),
-        root,
-    )
-
-
-def _refresh_marketplace_root(
-    executable: Path,
-    invoke: Runner,
-    manifest: ComponentManifest,
-    previous: MarketplaceBinding,
-) -> MarketplaceBinding:
-    """Use the host's post-failure marketplace identity for rollback when available."""
-    try:
-        return existing_marketplace(executable, invoke, manifest) or previous
-    except Exception:
-        return previous
+    return _verify(manifest, installed, journal.target, root), root
 
 
 def mutate(

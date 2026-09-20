@@ -57,6 +57,18 @@ def existing_marketplace_root(executable: Path, invoke: Runner) -> Path | None:
     return None if binding is None else marketplace_path(binding)
 
 
+def refresh_root(
+    executable: Path,
+    invoke: Runner,
+    manifest: ComponentManifest,
+    previous: MarketplaceBinding,
+) -> MarketplaceBinding:
+    try:
+        return existing_marketplace(executable, invoke, manifest) or previous
+    except Exception:
+        return previous
+
+
 def recorded_selection(
     home: Path, manifest: ComponentManifest
 ) -> tuple[str, ...] | None:

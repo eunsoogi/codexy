@@ -25,7 +25,7 @@ from .component_lifecycle_recovery import (
     list_installed as _list,
     recover_if_needed as _recover_if_needed,
     rollback_or_raise as _rollback_or_raise,
-    _refresh_marketplace_root,
+    refresh_root,
     write_completed as _write_completed,
 )
 from .component_lifecycle_terminal import reject as _reject, terminal as _terminal
@@ -237,7 +237,7 @@ def run_operation(
                 raise RuntimeError(
                     "component operation failed; durable recovery is required"
                 ) from error
-            root = _refresh_marketplace_root(executable, invoke, manifest, root)
+            root = refresh_root(executable, invoke, manifest, root)
             _rollback_or_raise(home, executable, invoke, manifest, root, journal, error)
             receipt = _terminal(
                 home, manifest, journal.receipt("rolled-back", journal.before)
