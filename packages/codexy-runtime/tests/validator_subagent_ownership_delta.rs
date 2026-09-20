@@ -105,6 +105,9 @@ fn bounded_ownership_classifier_replays_delta_examples() -> TestResult {
     for message in [
         "Review the build in the assigned worktree and report findings.",
         "Inspect the write-up in the dedicated worktree and report findings.",
+        "Request a read-only Sentinel review of PR #1189. I retain implementation ownership of this Worker lane. The reviewer must not modify files; I remain responsible for implementation repairs.",
+        "Request a bounded read-only Sentinel review on PR #1189, on branch eunsoogi/1143-batch-change-apply. Keep the reviewer read-only; I remain responsible for implementation repairs.",
+        "I remain responsible for implementation repairs while the Sentinel reviews PR #1189 on branch eunsoogi/1143-batch-change-apply.",
     ] {
         assert_admitted_once(EVENTS[0], TOOLS[0], "codexy-architect", message)?;
     }
@@ -127,6 +130,18 @@ fn bounded_ownership_classifier_replays_delta_examples() -> TestResult {
         "codexy-architect",
         "책임 있게 리뷰하고 결과를 보고해.",
     )?;
+    for message in [
+        "I retain implementation ownership of this Worker lane, but the reviewer must own branch eunsoogi/review-fixes and implement the repairs.",
+        "On branch eunsoogi/1143-batch-change-apply, implement the issue and commit the fix.",
+    ] {
+        assert_denied_once(
+            EVENTS[0],
+            TOOLS[0],
+            Some("codexy-architect"),
+            message,
+            "DURABLE_OWNER",
+        )?;
+    }
 
     for event in EVENTS {
         for tool in TOOLS {
