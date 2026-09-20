@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import traceback
 import unittest
 from unittest.mock import patch
 
@@ -147,7 +148,18 @@ class LifecycleWatcherTests(unittest.TestCase):
                 try:
                     return original_apply_forward(*args, **kwargs)
                 except BaseException as error:
-                    forward_errors.append(f"{type(error).__name__}: {error}")
+                    forward_errors.append(
+                        f"{type(error).__name__}: {error}\n{traceback.format_exc()}"
+                    )
+                    raise
+
+            def observe_runner(command):
+                try:
+                    return state.run(command)
+                except BaseException as error:
+                    forward_errors.append(
+                        f"runner {type(error).__name__}: {error}\n{traceback.format_exc()}"
+                    )
                     raise
 
             def observe_registration(plugin, home, mode):
@@ -179,7 +191,7 @@ class LifecycleWatcherTests(unittest.TestCase):
                     ("core",),
                     state.home,
                     state.codex,
-                    state.run,
+                    observe_runner,
                     operation_id="op-update-cache-mcp",
                     hook_lister=lambda _executable, _home: _fixture_hook_rows(
                         state.marketplace
