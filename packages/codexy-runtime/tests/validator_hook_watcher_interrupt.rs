@@ -22,6 +22,15 @@ fn run_pretool_hook(
     root: &Path,
     cache: &Path,
 ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+    run_pretool_hook_for_platform(root, cache, "linux-x86_64")
+}
+
+#[cfg(unix)]
+fn run_pretool_hook_for_platform(
+    root: &Path,
+    cache: &Path,
+    platform: &str,
+) -> Result<std::process::Output, Box<dyn std::error::Error>> {
     let mut command = Command::new("/bin/sh");
     command
         .arg(root.join("plugins/codexy/hooks/codexy-watcher-interrupt.sh"))
@@ -29,7 +38,7 @@ fn run_pretool_hook(
         .env_clear()
         .env("PLUGIN_ROOT", root.join("plugins/codexy"))
         .env("CODEXY_RUNTIME_CACHE_DIR", cache)
-        .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
+        .env("CODEXY_RUNTIME_PLATFORM", platform)
         .env_remove("CODEXY_RUNTIME_DIR")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -150,6 +159,33 @@ fn watcher_hook_resolves_the_standard_cached_runtime_without_installing() -> Tes
         response["hookSpecificOutput"]["updatedInput"]["requestBinding"],
         "cached-binding"
     );
+
+    let invalid_install_root = cache.join(format!(
+        "v2-{:x}",
+        Sha256::digest(
+            [
+                "codexy.runtime-cache/v2",
+                "https://github.com/eunsoogi/codexy",
+                "",
+                "invalid-platform",
+                "stdio-newline-v1",
+                "package-default\n",
+                release,
+                "codexy-mcp-watcher",
+            ]
+            .join("\0")
+            .as_bytes()
+        )
+    ));
+    std::fs::create_dir_all(invalid_install_root.join("bin"))?;
+    std::fs::copy(
+        root.join("plugins/codexy/.codex-plugin/plugin.json"),
+        invalid_install_root.join("plugin.json"),
+    )?;
+    std::fs::copy(&runtime, invalid_install_root.join("bin/codexy-mcp-watcher"))?;
+    let unsupported = run_pretool_hook_for_platform(&root, &cache, "invalid-platform")?;
+    assert!(unsupported.status.success());
+    assert!(unsupported.stdout.is_empty());
 
     std::fs::write(
         install_root.join("plugin.json"),

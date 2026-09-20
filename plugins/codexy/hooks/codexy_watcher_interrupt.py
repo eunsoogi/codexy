@@ -17,6 +17,7 @@ EVENTS = ("PreToolUse", "Interrupt")
 UNSUPPORTED_INTERPRETER_EXIT = 125
 REPOSITORY = "https://github.com/eunsoogi/codexy"
 PROTOCOL = "stdio-newline-v1"
+SUPPORTED_PLATFORMS = ("darwin-arm64", "linux-x86_64", "windows-x86_64")
 SEMVER = re.compile(
     r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
     r"(?:-((?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)"
@@ -96,15 +97,15 @@ def _invoke(argument: str, payload: dict[str, object]) -> object:
 def _runtime() -> Path | None:
     root = Path(os.environ.get("PLUGIN_ROOT", Path(__file__).resolve().parents[1]))
     name, extension = _runtime_name()
-    candidates = []
     configured = os.environ.get("CODEXY_RUNTIME_DIR")
     if configured and Path(configured).is_absolute():
-        candidates.append(Path(configured) / f"{name}{extension}")
-    candidates.append(root / "runtime" / f"{name}{extension}")
-    for candidate in candidates:
+        candidate = Path(configured) / f"{name}{extension}"
         if _executable(candidate):
             return candidate
-    return _cached_runtime(root)
+    if _platform_name() not in SUPPORTED_PLATFORMS:
+        return None
+    candidate = root / "runtime" / f"{name}{extension}"
+    return candidate if _executable(candidate) else _cached_runtime(root)
 
 
 def _runtime_name() -> tuple[str, str]:
