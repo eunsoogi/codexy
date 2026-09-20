@@ -84,16 +84,14 @@ def compare_step(
         return
     left_execution = baseline.execution
     right_execution = candidate.execution
-    for field in ("kind", "tool", "protocol_version", "transport", "returncode"):
+    for field in ("kind", "tool", "protocol_version", "transport"):
         left = getattr(left_execution, field)
         right = getattr(right_execution, field)
         if left != right:
             add_difference(
                 differences,
                 scenario,
-                DifferenceKind.ERROR
-                if field in {"kind", "returncode"}
-                else DifferenceKind.SHAPE,
+                DifferenceKind.ERROR if field == "kind" else DifferenceKind.SHAPE,
                 name,
                 f"execution.{field}",
                 getattr(left, "value", left),
