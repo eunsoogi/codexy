@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import os
 import shutil
-import traceback
 import unittest
 from unittest.mock import patch
 
-from codexy_runtime_tools import component_lifecycle_operation
 from codexy_runtime_tools import component_registration_health
+from codexy_runtime_tools import component_lifecycle_recovery
 from codexy_runtime_tools.component_lifecycle import run_operation
 from codexy_runtime_tools.component_mcp_materialization import (
     materialize_component_mcp,
@@ -140,27 +139,6 @@ class LifecycleWatcherTests(unittest.TestCase):
             shutil.copytree(source_plugin, cache)
             cache_bootstrap = cache / "mcp/codexy_mcp_bootstrap.py"
             cache_bootstrap.write_text("stale cache surface\n", encoding="utf-8")
-            forward_errors: list[str] = []
-
-            original_apply_forward = component_lifecycle_operation._apply_forward
-
-            def observe_forward(*args, **kwargs):
-                try:
-                    return original_apply_forward(*args, **kwargs)
-                except BaseException as error:
-                    forward_errors.append(
-                        f"{type(error).__name__}: {error}\n{traceback.format_exc()}"
-                    )
-                    raise
-
-            def observe_runner(command):
-                try:
-                    return state.run(command)
-                except BaseException as error:
-                    forward_errors.append(
-                        f"runner {type(error).__name__}: {error}\n{traceback.format_exc()}"
-                    )
-                    raise
 
             def observe_registration(plugin, home, mode):
                 return SyncResult(
@@ -176,9 +154,9 @@ class LifecycleWatcherTests(unittest.TestCase):
 
             with (
                 patch.object(
-                    component_lifecycle_operation,
-                    "_apply_forward",
-                    side_effect=observe_forward,
+                    component_lifecycle_recovery,
+                    "reconcile_official_marketplace_root",
+                    return_value=state.marketplace,
                 ),
                 patch.object(
                     component_registration_health,
@@ -191,7 +169,7 @@ class LifecycleWatcherTests(unittest.TestCase):
                     ("core",),
                     state.home,
                     state.codex,
-                    observe_runner,
+                    state.run,
                     operation_id="op-update-cache-mcp",
                     hook_lister=lambda _executable, _home: _fixture_hook_rows(
                         state.marketplace
@@ -203,7 +181,6 @@ class LifecycleWatcherTests(unittest.TestCase):
                 "completed",
                 {
                     "receipt": receipt,
-                    "forward_errors": forward_errors,
                     "mutations": state.mutations,
                 },
             )
