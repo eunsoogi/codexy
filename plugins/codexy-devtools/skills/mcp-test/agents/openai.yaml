@@ -3,4 +3,4 @@ interface:
   short_description: "Run and compare explicit installed MCP scenarios."
   default_prompt: "Use $mcp-test to run or compare trusted local MCP scenarios with chaining and explicit expectations."
 policy:
-  allow_implicit_invocation: true
+  allow_implicit_invocation: false
