@@ -12,6 +12,9 @@ use super::errors::{CodegraphError, CodegraphErrorKind, begin_operation, take_er
 use super::files::{read_source, repo_root, result_limit, walk_code_files};
 use super::search::search;
 
+const OVERVIEW_EDGE_LIMIT: usize = 300;
+const OVERVIEW_IMPORT_LIMIT: usize = 80;
+
 #[must_use]
 pub fn tools() -> Vec<ToolDef> {
     vec![
@@ -76,7 +79,7 @@ fn call_tool_inner(name: &str, args: &Value) -> Result<Value> {
         }
         "codegraph_neighbors" => {
             begin_operation();
-            let imports = imports_for(&root, string_arg(args, "path")?);
+            let (imports, _) = imports_for(&root, string_arg(args, "path")?);
             let errors = take_errors();
             if errors.is_empty() {
                 text_json(&imports)
@@ -130,6 +133,9 @@ struct Overview {
     files: Vec<String>,
     #[serde(rename = "importEdges")]
     import_edges: Vec<ImportEdgeLine>,
+    limits: Value,
+    totals: Value,
+    truncation: Value,
     #[serde(skip_serializing_if = "is_false")]
     partial: bool,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -138,51 +144,65 @@ struct Overview {
 
 fn overview(root: &Path, limit: Option<usize>) -> Overview {
     begin_operation();
-    let files = walk_code_files(root)
-        .into_iter()
-        .take(result_limit(limit))
-        .collect::<Vec<_>>();
-    let import_edges = files
+    let file_limit = result_limit(limit);
+    let all_files = walk_code_files(root);
+    let files = all_files[..file_limit.min(all_files.len())].to_vec();
+    let file_truncated = all_files.len() > files.len();
+    let mut errors = take_errors();
+    let total_files_known = errors.is_empty();
+    let mut imports_truncated = false;
+    let mut import_edges = files
         .iter()
         .flat_map(|file| {
-            imports_for(root, file)
-                .into_iter()
-                .map(|edge| ImportEdgeLine {
-                    file: file.clone(),
-                    line: edge.line,
-                    text: edge.text,
-                })
-                .collect::<Vec<_>>()
+            let (imports, truncated) = imports_for(root, file);
+            imports_truncated |= truncated;
+            imports.into_iter().map(|edge| ImportEdgeLine {
+                file: file.clone(),
+                line: edge.line,
+                text: edge.text,
+            })
         })
-        .take(300)
+        .take(OVERVIEW_EDGE_LIMIT + 1)
         .collect::<Vec<_>>();
-    let errors = take_errors();
+    let edges_truncated = import_edges.len() > OVERVIEW_EDGE_LIMIT;
+    import_edges.truncate(OVERVIEW_EDGE_LIMIT);
+    errors.extend(take_errors());
     Overview {
         root: root.to_path_buf(),
         file_count: files.len(),
         files,
+        limits: json!({"files": file_limit, "edges": OVERVIEW_EDGE_LIMIT, "importsPerFile": OVERVIEW_IMPORT_LIMIT}),
+        totals: json!({
+            "files": total_files_known.then_some(all_files.len()),
+            "edges": (!file_truncated && !edges_truncated && !imports_truncated && errors.is_empty()).then_some(import_edges.len())
+        }),
+        truncation: json!({"files": file_truncated, "edges": edges_truncated, "importsPerFile": imports_truncated}),
         import_edges,
         partial: !errors.is_empty(),
         errors,
     }
 }
 
-fn imports_for(root: &Path, file_path: &str) -> Vec<ImportLine> {
+fn imports_for(root: &Path, file_path: &str) -> (Vec<ImportLine>, bool) {
     let text = read_source(root, file_path);
-    text.lines()
+    let mut imports = text
+        .lines()
         .enumerate()
         .map(|(index, line)| ImportLine {
             line: index + 1,
             text: line.trim().to_owned(),
         })
         .filter(|line| {
-            line.text.starts_with("import ")
-                || line.text.starts_with("from ")
-                || line.text.starts_with("use ")
+            ["import ", "from ", "use "]
+                .iter()
+                .any(|prefix| line.text.starts_with(prefix))
                 || line.text.contains("require(")
         })
-        .take(80)
-        .collect()
+        .take(OVERVIEW_IMPORT_LIMIT + 1)
+        .collect::<Vec<_>>();
+    let truncated = imports.len() > OVERVIEW_IMPORT_LIMIT;
+    imports.truncate(OVERVIEW_IMPORT_LIMIT);
+    (imports, truncated)
 }
 
 fn is_false(value: &bool) -> bool {

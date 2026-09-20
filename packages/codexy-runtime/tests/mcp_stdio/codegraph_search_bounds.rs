@@ -7,11 +7,84 @@ const MEGABYTE_LINE_BYTES: usize = 1_048_576;
 pub(super) fn search_bounds_cases(
     client: &mut McpClient,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    codegraph_overview_reports_each_truncation_dimension(client)?;
     codegraph_search_reports_deterministic_metadata_for_ordinary_and_missing_results(client)?;
     codegraph_search_bounds_a_one_megabyte_line_without_emitting_it(client)?;
     codegraph_search_keeps_a_late_match_inside_the_line_byte_limit(client)?;
     codegraph_search_honors_line_byte_boundaries_without_splitting_utf8(client)?;
     codegraph_search_honors_total_content_byte_boundaries(client)
+}
+
+fn codegraph_overview_reports_each_truncation_dimension(
+    client: &mut McpClient,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let files_root = tempfile::tempdir()?;
+    write_overview_files(files_root.path(), 2, 1)?;
+    let exact_files = overview(client, files_root.path(), 2)?;
+    assert_eq!(exact_files["fileCount"], 2);
+    assert_eq!(exact_files["totals"]["edges"], 2);
+    assert_eq!(exact_files["limits"], json!({"files": 2, "edges": 300, "importsPerFile": 80}));
+    let limited_files = overview(client, files_root.path(), 1)?;
+    assert_eq!(limited_files["fileCount"], 1);
+    assert_eq!(limited_files["totals"]["files"], 2);
+    assert_eq!(limited_files["totals"]["edges"], Value::Null);
+    assert_eq!(limited_files["truncation"]["files"], true);
+    assert_eq!(limited_files["truncation"]["edges"], false);
+
+    let edges_root = tempfile::tempdir()?;
+    write_overview_files(edges_root.path(), 300, 1)?;
+    let exact_edges = overview(client, edges_root.path(), 400)?;
+    assert_eq!(exact_edges["importEdges"].as_array().ok_or("edges")?.len(), 300);
+    assert_eq!(exact_edges["truncation"]["edges"], false);
+    std::fs::write(edges_root.path().join("file_300.rs"), "use dep::value;\n")?;
+    let limited_edges = overview(client, edges_root.path(), 400)?;
+    assert_eq!(limited_edges["fileCount"], 301);
+    assert_eq!(limited_edges["importEdges"].as_array().ok_or("edges")?.len(), 300);
+    assert_eq!(limited_edges["totals"]["edges"], Value::Null);
+    assert_eq!(limited_edges["truncation"]["edges"], true);
+    assert_eq!(limited_edges["truncation"]["importsPerFile"], false);
+
+    let imports_root = tempfile::tempdir()?;
+    write_overview_files(imports_root.path(), 1, 80)?;
+    let exact_imports = overview(client, imports_root.path(), 1)?;
+    assert_eq!(exact_imports["importEdges"].as_array().ok_or("imports")?.len(), 80);
+    assert_eq!(exact_imports["truncation"]["importsPerFile"], false);
+    let source = (0..81).map(|index| format!("use dep::value_{index};\n")).collect::<String>();
+    std::fs::write(imports_root.path().join("file_000.rs"), source)?;
+    let limited_imports = overview(client, imports_root.path(), 1)?;
+    assert_eq!(limited_imports["importEdges"].as_array().ok_or("imports")?.len(), 80);
+    assert_eq!(limited_imports["truncation"]["importsPerFile"], true);
+    Ok(())
+}
+
+fn overview(
+    client: &mut McpClient,
+    root: &Path,
+    limit: usize,
+) -> Result<Value, Box<dyn std::error::Error>> {
+    let response = client.send(&json!({
+        "jsonrpc":"2.0","id":40,"method":"tools/call",
+        "params":{"name":"codegraph_overview","arguments":{"root":root,"limit":limit}}
+    }))?;
+    Ok(serde_json::from_str(
+        response["result"]["content"][0]["text"]
+            .as_str()
+            .ok_or("overview text")?,
+    )?)
+}
+
+fn write_overview_files(
+    root: &Path,
+    file_count: usize,
+    imports_per_file: usize,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for file in 0..file_count {
+        let source = (0..imports_per_file)
+            .map(|import| format!("use dep::value_{file}_{import};\n"))
+            .collect::<String>();
+        std::fs::write(root.join(format!("file_{file:03}.rs")), source)?;
+    }
+    Ok(())
 }
 
 fn codegraph_search_reports_deterministic_metadata_for_ordinary_and_missing_results(
