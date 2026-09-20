@@ -98,29 +98,27 @@ def clear_stale_registration_lock(home: Path) -> None:
     contents = _read_regular(target)
     if contents is None:
         return
+    descriptor: int | None = None
     try:
-        descriptor = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
-    except FileNotFoundError:
-        return
-    try:
-        opened = os.fstat(descriptor)
-        if (opened.st_dev, opened.st_ino) != identity or os.read(
-            descriptor, opened.st_size
-        ) != contents:
-            raise PreAdmissionError(
-                "Codexy agent registration lock changed during recovery"
-            )
+        if os.name != "nt":
+            try:
+                descriptor = os.open(
+                    target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+                )
+            except FileNotFoundError:
+                return
+            opened = os.fstat(descriptor)
+            if (opened.st_dev, opened.st_ino) != identity or (
+                os.read(descriptor, opened.st_size) != contents
+            ):
+                raise PreAdmissionError("Codexy registration lock changed")
         try:
             value = contents.decode("ascii").strip()
             pid = int(value)
+            if pid <= 0:
+                raise ValueError
         except (UnicodeDecodeError, ValueError) as error:
-            raise PreAdmissionError(
-                "Codexy agent registration lock has an invalid owner"
-            ) from error
-        if pid <= 0:
-            raise PreAdmissionError(
-                "Codexy agent registration lock has an invalid owner"
-            )
+            raise PreAdmissionError("invalid Codexy registration lock owner") from error
         try:
             os.kill(pid, 0)
         except ProcessLookupError:
@@ -135,7 +133,8 @@ def clear_stale_registration_lock(home: Path) -> None:
         else:
             raise PreAdmissionError("another Codexy agent registration is active")
     finally:
-        os.close(descriptor)
+        if descriptor is not None:
+            os.close(descriptor)
 
 
 def read_journal(home: Path) -> Journal | None:
