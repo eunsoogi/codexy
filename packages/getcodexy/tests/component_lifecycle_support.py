@@ -6,6 +6,7 @@ import tempfile
 from pathlib import Path
 
 from component_hook_host_fixture import HOOK_LIST_HOST, write_host
+from component_hook_registration_fixture import registration_context
 from component_marketplace_fixture import populate_plugins
 from codexy_runtime_tools.component_manifest import load_component_manifest
 
@@ -28,6 +29,7 @@ class fixture:
         inventory_override: object | None = None,
         inventory_responses: list[object] | None = None,
         versions: dict[str, str] | None = None,
+        real_registration: bool = False,
     ) -> None:
         (
             self.selection,
@@ -52,6 +54,7 @@ class fixture:
             list(inventory_responses or ()),
             versions or {},
         )
+        self.registration_context = registration_context(real_registration)
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name).resolve()
         self.home, self.marketplace, self.calls, self.mutations = (
@@ -71,9 +74,11 @@ class fixture:
         self.codex = write_host(self.root)
 
     def __enter__(self) -> "fixture":
+        self.registration_context.__enter__()
         return self
 
     def __exit__(self, *_: object) -> None:
+        self.registration_context.__exit__(*_)
         self.temporary.cleanup()
 
     def run(self, command: list[str]) -> subprocess.CompletedProcess[str]:

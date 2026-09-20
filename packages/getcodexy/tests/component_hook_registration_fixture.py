@@ -2,7 +2,11 @@
 
 import json
 import os
+from contextlib import contextmanager
 from pathlib import Path
+from unittest.mock import patch
+
+from codexy_runtime_tools.updater import SyncResult
 
 
 def hook_rows(plugin: Path) -> list[dict[str, object]]:
@@ -44,3 +48,34 @@ def hook_rows(plugin: Path) -> list[dict[str, object]]:
                     }
                 )
     return rows
+
+
+def fixture_hook_rows(marketplace: Path) -> tuple[dict[str, object], ...]:
+    rows = []
+    for plugin in ("codexy", "codexy-github"):
+        for row in hook_rows(marketplace / "plugins" / plugin):
+            observed = row.copy()
+            observed["key"] = observed["key"].replace(
+                "codexy@codexy:", f"{plugin}@codexy:", 1
+            )
+            observed["pluginId"] = f"{plugin}@codexy"
+            rows.append(observed)
+    return tuple(rows)
+
+
+def completed_registration(plugin, home, mode) -> SyncResult:
+    return SyncResult(
+        mode, "completed", "codexy", str(plugin), str(home), False, False, ()
+    )
+
+
+@contextmanager
+def registration_context(real_registration: bool):
+    if real_registration:
+        yield
+        return
+    with patch(
+        "codexy_runtime_tools.component_registration_health.sync_agents",
+        side_effect=completed_registration,
+    ):
+        yield

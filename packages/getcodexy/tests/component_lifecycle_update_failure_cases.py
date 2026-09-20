@@ -51,7 +51,7 @@ class ComponentLifecycleRegistrationCases:
     def test_install_synchronizes_catalog_roles_and_preserves_unmanaged_files(
         self,
     ) -> None:
-        with fixture() as state:
+        with fixture(real_registration=True) as state:
             unmanaged = state.home / "agents" / "personal.toml"
             unmanaged.parent.mkdir(parents=True)
             unmanaged.write_bytes(b"personal = true\n")
@@ -91,7 +91,7 @@ class ComponentLifecycleRegistrationCases:
     def test_registration_failure_rolls_back_roles_inventory_and_allows_retry(
         self,
     ) -> None:
-        with fixture() as state:
+        with fixture(real_registration=True) as state:
             unmanaged = state.home / "agents" / "personal.toml"
             unmanaged.parent.mkdir(parents=True)
             unmanaged.write_bytes(b"personal = true\n")
@@ -123,7 +123,7 @@ class ComponentLifecycleRegistrationCases:
             self.assertEqual(report["state"], "exact")
 
     def test_update_and_bootstrap_synchronize_roles_before_completion(self) -> None:
-        with fixture({"core"}) as state:
+        with fixture({"core"}, real_registration=True) as state:
             record(state.home, ["core"])
             receipt = run_operation(
                 "update",
@@ -138,7 +138,7 @@ class ComponentLifecycleRegistrationCases:
             )
             self.assertEqual(receipt["outcome"], "completed")
             self.assertEqual(report["state"], "exact")
-        with fixture() as state:
+        with fixture(real_registration=True) as state:
             receipt = run_operation(
                 "bootstrap",
                 (),
