@@ -61,6 +61,7 @@ pub fn analyze_with_options(
         unknown: Vec::new(),
     };
     let mut output = AffectedAccumulator::default();
+    let mut remaining_paths = options.max_paths;
     record_snapshot_limit(&mut output, &baseline, "baseline");
     record_snapshot_limit(&mut output, &current, "current");
 
@@ -75,6 +76,8 @@ pub fn analyze_with_options(
                     affected_path: change_path.clone(),
                     path: vec![change_path.clone()],
                 },
+                &mut remaining_paths,
+                &mut limits,
             );
             if !is_supported_path(&change_path) {
                 output.add_file(&change_path, ImpactLevel::Unknown, change_index);
@@ -87,14 +90,9 @@ pub fn analyze_with_options(
             }
             for snapshot in [&baseline, &current] {
                 record_path_unknowns(&mut output, snapshot, &change_path, change_index);
-                let paths = snapshot.reverse_paths(&change_path, options.max_paths);
-                limits.paths_truncated |= paths.truncated;
+                let paths = snapshot.reverse_paths(&change_path, remaining_paths);
                 if paths.truncated {
-                    output.add_unknown(UnknownArea {
-                        reason: UnknownReason::PathLimit,
-                        path: Some(change_path.clone()),
-                        detail: format!("causal paths exceeded the limit of {}", options.max_paths),
-                    });
+                    record_path_limit(&mut output, &mut limits, &change_path, options.max_paths);
                 }
                 for path in paths.paths {
                     let Some(affected_path) = path.last().cloned() else {
@@ -112,6 +110,8 @@ pub fn analyze_with_options(
                             affected_path,
                             path,
                         },
+                        &mut remaining_paths,
+                        &mut limits,
                     );
                 }
             }
@@ -155,8 +155,33 @@ fn record_path_unknowns(
     }
 }
 
-fn add_path(output: &mut AffectedAccumulator, path: ImpactPath) {
-    if !output.paths.iter().any(|existing| existing == &path) {
-        output.paths.push(path);
+fn record_path_limit(
+    output: &mut AffectedAccumulator,
+    limits: &mut AnalysisLimits,
+    path: &str,
+    max_paths: usize,
+) {
+    limits.paths_truncated = true;
+    output.add_unknown(UnknownArea {
+        reason: UnknownReason::PathLimit,
+        path: Some(path.to_owned()),
+        detail: format!("causal paths exceeded the limit of {max_paths}"),
+    });
+}
+
+fn add_path(
+    output: &mut AffectedAccumulator,
+    path: ImpactPath,
+    remaining_paths: &mut usize,
+    limits: &mut AnalysisLimits,
+) {
+    if output.paths.iter().any(|existing| existing == &path) {
+        return;
     }
+    if *remaining_paths == 0 {
+        record_path_limit(output, limits, &path.change_path, limits.max_paths);
+        return;
+    }
+    output.paths.push(path);
+    *remaining_paths -= 1;
 }

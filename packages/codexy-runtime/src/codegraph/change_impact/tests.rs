@@ -208,6 +208,39 @@ fn file_and_path_limits_are_explicit() -> Result<()> {
     Ok(())
 }
 
+#[test]
+fn path_limit_is_global_across_changes() -> Result<()> {
+    let fixture = repository(&[
+        ("one.py", "VALUE = 1\n"),
+        ("two.py", "VALUE = 1\n"),
+        ("one_consumer.py", "import one\n"),
+        ("two_consumer.py", "import two\n"),
+    ])?;
+    let base = fixture.head()?;
+    fixture.write("one.py", "VALUE = 2\n")?;
+    fixture.write("two.py", "VALUE = 2\n")?;
+    let head = fixture.commit("change two dependencies")?;
+    let result = analyze_with_options(
+        fixture.path(),
+        &fixture.comparison(&base, &head)?,
+        ImpactOptions {
+            max_files: 10,
+            max_paths: 1,
+        },
+    )?;
+
+    assert_eq!(result.connecting_paths.len(), 1);
+    assert!(result.limits.paths_truncated);
+    assert!(
+        result
+            .limits
+            .unknown
+            .iter()
+            .any(|area| area.reason == UnknownReason::PathLimit)
+    );
+    Ok(())
+}
+
 fn impact(result: &super::ImpactAnalysis, path: &str) -> Option<ImpactLevel> {
     result
         .affected_files
