@@ -164,10 +164,11 @@ release를 실행합니다. Codex를 시작하는 host 환경의 `PATH`에서 `u
 | [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md)                          | issue, branch, worktree, PR, review, merge, main 동기화 workflow를 관리합니다.            | `github`   |
 | [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md)                              | 저장소 구조와 dependency edge를 정해진 범위에서 탐색합니다.                               | `devtools` |
 | [lsp](plugins/codexy-devtools/skills/lsp/SKILL.md)                                          | 언어 인식 symbol, reference, definition, diagnostic을 요청합니다.                         | `devtools` |
-`mcp-test`, `plugin-marketplace-prep`, `release-engineering`, `skill-evaluation` 같은 저장소
-전용 유지보수 skill은 `.agents/skills`에 남아 있으며 설치 기능에 포함되지
-않습니다. 저장소 전용 `mcp-test` skill은 Codexy 개발 중 명시적인 local MCP
-시나리오를 실행하고 비교합니다.
+
+`mcp-test`, `plugin-marketplace-prep`, `release-engineering`, `skill-evaluation`
+같은 저장소 전용 유지보수 skill은 `.agents/skills`에 남아 있으며 설치 기능에
+포함되지 않습니다. 저장소 전용 `mcp-test` skill은 Codexy 개발 중 명시적인 local
+MCP 시나리오를 실행하고 비교합니다.
 
 ### Planning, orchestration, engineering의 구분
 

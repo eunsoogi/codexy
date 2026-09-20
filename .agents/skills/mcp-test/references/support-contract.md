@@ -43,7 +43,7 @@ the source checkout with `PYTHONPATH` and `PYTHONHOME` absent. Check the JSON
 producer modules come from the copied repository-tool bundle.
 
 Source-only imports, direct producer calls, or synthetic fixture calls do not
-prove the copied repository-tool surface. They are useful lower-level checks
-and must remain separate from repository CLI evidence. The Devtools package
-must be checked separately for absence of this bundle and retention of its
-Codegraph and LSP commands.
+prove the copied repository-tool surface. They are useful lower-level checks and
+must remain separate from repository CLI evidence. The Devtools package must be
+checked separately for absence of this bundle and retention of its Codegraph and
+LSP commands.
