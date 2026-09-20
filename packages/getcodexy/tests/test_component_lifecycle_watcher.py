@@ -105,9 +105,16 @@ class LifecycleWatcherTests(unittest.TestCase):
                 calls.append((component, version, tuple(state.mutations)))
                 return materialize_component_mcp(plugin, component, version)
 
-            with patch(
-                "codexy_runtime_tools.component_lifecycle_mcp.materialize_component_mcp",
-                side_effect=validate_source,
+            with (
+                patch.object(
+                    component_lifecycle_recovery,
+                    "reconcile_official_marketplace_root",
+                    return_value=state.marketplace,
+                ),
+                patch(
+                    "codexy_runtime_tools.component_lifecycle_mcp.materialize_component_mcp",
+                    side_effect=validate_source,
+                ),
             ):
                 receipt = run_operation(
                     "update",
