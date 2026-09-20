@@ -79,6 +79,7 @@ remain deliberately outside the Codexy plugin payload.
 
 | Skill                     | Decision        | Trigger / use                                                                                                                          | Responsibility                                                                                                              |
 | ------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `mcp-test`                | Repository-only | Running or comparing explicit local MCP scenarios during Codexy development.                                                          | Exercises the repository's bounded scenario producers without adding the skill or its CLI to an installed plugin payload.   |
 | `plugin-marketplace-prep` | Repository-only | Preparing manifests, marketplace listings, skill bundles, install candidates, assets, metadata, validation, or distribution readiness. | Proves the Codexy install and marketplace surface without making this workflow part of that installed surface.              |
 | `release-engineering`     | Repository-only | Preparing versions, changelogs, release notes, tags, packaging, release flows, distribution checks, rollback plans, or publishing.     | Owns version, artifact, publication, and rollback gates for this repository.                                                |
 | `skill-evaluation`        | Repository-only | Evaluating a shipped skill with private cases for semantic behavior, authority boundaries, schema fidelity, or execution cost.         | Separates evaluator-owned cases and evidence from shipped prompts while recording exact schema and measured execution cost. |
@@ -135,21 +136,21 @@ module, and a shared fixture. Those subprocess checks prove the packaged runtime
 only; active host exposure remains unobserved until the host's callable tool
 list and a real invocation are separately verified.
 
-### Installed MCP scenario tests
+### Repository-only MCP scenario testing
 
-The `mcp-test` skill and
-[`run_scenario.py`](../plugins/codexy-devtools/skills/mcp-test/scripts/run_scenario.py)
-are installed with Devtools. The CLI runs and compares explicit local stdio
-targets using the scenario format in
-[`scenario-format.md`](../plugins/codexy-devtools/skills/mcp-test/references/scenario-format.md):
+The repository-only [`mcp-test`](../.agents/skills/mcp-test/SKILL.md) skill and
+[`run_scenario.py`](../.agents/skills/mcp-test/scripts/run_scenario.py) provide
+development tooling outside the installed Devtools package. The CLI runs and
+compares explicit local stdio targets using the scenario format in
+[`scenario-format.md`](../.agents/skills/mcp-test/references/scenario-format.md):
 ordered steps, selected stored fields, declared references, expectations, and
 explicit target commands. Its support contract documents the trusted protocol
 and platform boundary, including fail-closed behavior for unsupported versions
-or platforms. The installed test exercises a search-to-detail chain, a
-deliberate comparison difference, and a linkage regression through the copied
-package. These subprocess results prove installed files and producer provenance;
-they do not prove an active host's callable skill surface or an app-level skill
-invocation.
+or platforms. Repository tests exercise a search-to-detail chain, a deliberate
+comparison difference, and a linkage regression through a copied repository
+tool bundle. These subprocess results prove repository-tool files and producer
+provenance; they do not prove an active host's callable skill surface or an
+app-level skill invocation.
 
 ### Selected batch-result application
 
