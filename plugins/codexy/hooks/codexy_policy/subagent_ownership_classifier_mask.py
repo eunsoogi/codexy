@@ -18,7 +18,13 @@ _NON_CALLER_HOLDER = (
     r"(?:reviewer|agent|worker|owner|implementer)|\w+['’]s)"
 )
 _CALLER_POSSESSOR = r"(?:my|our|the\s+caller['’]s|the\s+requester['’]s)"
-_NOMINAL_WORD = r"(?:(?!(?:" + _NON_CALLER_HOLDER + r"|\w+['’]s)\b)[a-z][\w-]*\s+)"
+_NOMINAL_WORD = (
+    r"(?:(?!(?:"
+    + _CLAUSE_BOUNDARY
+    + r"|"
+    + _NON_CALLER_HOLDER
+    + r"|\w+['’]s)\b)[a-z][\w-]*\s+)"
+)
 _CALLER_NOMINAL = (
     r"(?:"
     + _CALLER_POSSESSOR
