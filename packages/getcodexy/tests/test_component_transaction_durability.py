@@ -76,7 +76,8 @@ class TransactionDurabilityTests(unittest.TestCase):
             restore_inventory_snapshot(home, snapshot)
 
             self.assertEqual(role.read_bytes(), original_role)
-            self.assertEqual(role.stat().st_mode & 0o777, 0o640)
+            expected_mode = 0o666 if os.name == "nt" else 0o640
+            self.assertEqual(role.stat().st_mode & 0o777, expected_mode)
             self.assertFalse((roles / "codexy-new.toml").exists())
             self.assertEqual(config.read_bytes(), original_config)
             self.assertEqual(backup.read_bytes(), b"old backup\n")

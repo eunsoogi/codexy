@@ -86,13 +86,7 @@ def restore_inventory_snapshot(home: object, snapshot: InventorySnapshot) -> Non
 
 
 def clear_stale_registration_lock(home: Path) -> None:
-    """Remove only a registration lock whose recorded owner is gone.
-
-    This is intentionally recovery-only. A fresh lifecycle operation must not
-    delete a lock it cannot prove is stale, because pre-session registration
-    can legitimately be active outside the lifecycle lock.
-    """
-
+    """Remove a registration lock whose recorded owner is gone."""
     target = _absolute(home) / REGISTRATION_LOCK
     if not os.path.lexists(target):
         return
@@ -105,35 +99,43 @@ def clear_stale_registration_lock(home: Path) -> None:
     if contents is None:
         return
     try:
-        current = target.lstat()
+        descriptor = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
     except FileNotFoundError:
         return
-    if (current.st_dev, current.st_ino) != identity:
-        raise PreAdmissionError(
-            "Codexy agent registration lock changed during recovery"
-        )
     try:
-        value = contents.decode("ascii").strip()
-        pid = int(value)
-    except (UnicodeDecodeError, ValueError) as error:
-        raise PreAdmissionError(
-            "Codexy agent registration lock has an invalid owner"
-        ) from error
-    if pid <= 0:
-        raise PreAdmissionError("Codexy agent registration lock has an invalid owner")
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        _unlink_regular(target, identity)
-    except OSError as error:
-        if error.errno == errno.ESRCH:
-            _unlink_regular(target, identity)
-        else:
+        opened = os.fstat(descriptor)
+        if (opened.st_dev, opened.st_ino) != identity or os.read(
+            descriptor, opened.st_size
+        ) != contents:
             raise PreAdmissionError(
-                "another Codexy agent registration is active or unobservable"
+                "Codexy agent registration lock changed during recovery"
+            )
+        try:
+            value = contents.decode("ascii").strip()
+            pid = int(value)
+        except (UnicodeDecodeError, ValueError) as error:
+            raise PreAdmissionError(
+                "Codexy agent registration lock has an invalid owner"
             ) from error
-    else:
-        raise PreAdmissionError("another Codexy agent registration is active")
+        if pid <= 0:
+            raise PreAdmissionError(
+                "Codexy agent registration lock has an invalid owner"
+            )
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            _unlink_regular(target, identity)
+        except OSError as error:
+            if error.errno == errno.ESRCH:
+                _unlink_regular(target, identity)
+            else:
+                raise PreAdmissionError(
+                    "another Codexy agent registration is active or unobservable"
+                ) from error
+        else:
+            raise PreAdmissionError("another Codexy agent registration is active")
+    finally:
+        os.close(descriptor)
 
 
 def read_journal(home: Path) -> Journal | None:
