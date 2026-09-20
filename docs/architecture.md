@@ -151,6 +151,26 @@ package. These subprocess results prove installed files and producer provenance;
 they do not prove an active host's callable skill surface or an app-level skill
 invocation.
 
+### Selected batch-result application
+
+The installed engineering workflow consumes a validated result from
+[`batch_change_resume.py`](../plugins/codexy/skills/engineering/scripts/batch_change_resume/batch_change_resume.py)
+through
+[`batch_change.py`](../plugins/codexy/skills/engineering/scripts/batch_change.py)
+and
+[`batch-changes.md`](../plugins/codexy/skills/engineering/references/batch-changes.md).
+The user must select successful item IDs explicitly. The route presents a
+readable diff, rechecks the original immediately before each independent
+replacement, and reads back every applied file. It preserves failed, unselected,
+and user-changed originals while distinguishing completed, conflict, and
+incomplete items; repeating an application reports an already completed item
+instead of replacing it again.
+
+Application state is workspace-local and is not component inventory or journal
+state. The workflow does not provide multi-file atomicity, protection from
+arbitrary concurrent writers, process resurrection, scheduled wakeups, or
+automatic commit/push of user changes.
+
 For LSP, [`lsp-client.json`](../plugins/codexy-devtools/.codex/lsp-client.json)
 is the machine-readable client registration and
 [`server-catalog.toml`](../plugins/codexy-devtools/lsp/server-catalog.toml)

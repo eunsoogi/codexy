@@ -43,7 +43,18 @@
           "mcp/codexy-mcp-watcher.cmd",
           "skills/dreaming/scripts/resumable-context-capsule.sh",
           "skills/dreaming/scripts/resumable-context-capsule.cmd",
-          "skills/dreaming/scripts/resumable_context_capsule.py"
+          "skills/dreaming/scripts/resumable_context_capsule.py",
+          "skills/engineering/references/batch-changes.md",
+          "skills/engineering/scripts/batch_change.py",
+          "skills/engineering/scripts/batch_change_apply/__init__.py",
+          "skills/engineering/scripts/batch_change_apply/diff.py",
+          "skills/engineering/scripts/batch_change_apply/errors.py",
+          "skills/engineering/scripts/batch_change_apply/execute.py",
+          "skills/engineering/scripts/batch_change_apply/paths.py",
+          "skills/engineering/scripts/batch_change_apply/replace.py",
+          "skills/engineering/scripts/batch_change_apply/state.py",
+          "skills/engineering/scripts/batch_change_apply/validation.py",
+          "skills/engineering/scripts/batch_change_apply/workflow.py"
         ]
       }
     },
