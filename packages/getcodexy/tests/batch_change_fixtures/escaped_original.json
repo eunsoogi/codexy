@@ -1,0 +1,11 @@
+{
+  "items": [
+    {
+      "id": "escaped-original",
+      "original": "../outside.txt",
+      "output": "output.txt",
+      "transform": { "argv": ["transform", "outside.txt", "output.txt"], "timeout_seconds": 1 },
+      "validations": [{ "argv": ["validate", "output.txt"], "timeout_seconds": 1 }]
+    }
+  ]
+}

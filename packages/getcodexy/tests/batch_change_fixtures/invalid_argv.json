@@ -1,0 +1,11 @@
+{
+  "items": [
+    {
+      "id": "invalid-command",
+      "original": "first.txt",
+      "output": "output.txt",
+      "transform": { "argv": [""], "timeout_seconds": 1 },
+      "validations": [{ "argv": ["validate", "output.txt"], "timeout_seconds": 1 }]
+    }
+  ]
+}
