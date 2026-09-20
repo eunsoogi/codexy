@@ -55,9 +55,15 @@ impl SnapshotGraph {
         }
     }
 
-    pub(super) fn reverse_paths(&self, start: &str, limit: usize) -> ReversePaths {
+    pub(super) fn reverse_paths(
+        &self,
+        start: &str,
+        limit: usize,
+        existing_paths: &BTreeSet<Vec<String>>,
+    ) -> ReversePaths {
         let mut queue = VecDeque::from([(start.to_owned(), vec![start.to_owned()])]);
         let mut visited = BTreeSet::from([start.to_owned()]);
+        let mut known_paths = existing_paths.clone();
         let mut paths = Vec::new();
         let mut truncated = false;
         while let Some((current, path)) = queue.pop_front() {
@@ -65,12 +71,18 @@ impl SnapshotGraph {
                 if !visited.insert(dependent.clone()) {
                     continue;
                 }
+                let mut next_path = path.clone();
+                next_path.push(dependent.clone());
+                if !known_paths.insert(next_path.clone()) {
+                    if is_supported_path(dependent) {
+                        queue.push_back((dependent.clone(), next_path));
+                    }
+                    continue;
+                }
                 if paths.len() >= limit {
                     truncated = true;
                     continue;
                 }
-                let mut next_path = path.clone();
-                next_path.push(dependent.clone());
                 paths.push(next_path.clone());
                 if is_supported_path(dependent) {
                     queue.push_back((dependent.clone(), next_path));

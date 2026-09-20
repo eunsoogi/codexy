@@ -3,8 +3,11 @@ mod graph;
 mod model;
 
 #[cfg(test)]
+mod path_tests;
+#[cfg(test)]
 mod tests;
 
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use anyhow::Result;
@@ -62,6 +65,7 @@ pub fn analyze_with_options(
     };
     let mut output = AffectedAccumulator::default();
     let mut remaining_paths = options.max_paths;
+    let mut seen_paths = BTreeSet::new();
     record_snapshot_limit(&mut output, &baseline, "baseline");
     record_snapshot_limit(&mut output, &current, "current");
 
@@ -78,6 +82,7 @@ pub fn analyze_with_options(
                 },
                 &mut remaining_paths,
                 &mut limits,
+                &mut seen_paths,
             );
             if !is_supported_path(&change_path) {
                 output.add_file(&change_path, ImpactLevel::Unknown, change_index);
@@ -90,7 +95,7 @@ pub fn analyze_with_options(
             }
             for snapshot in [&baseline, &current] {
                 record_path_unknowns(&mut output, snapshot, &change_path, change_index);
-                let paths = snapshot.reverse_paths(&change_path, remaining_paths);
+                let paths = snapshot.reverse_paths(&change_path, remaining_paths, &seen_paths);
                 if paths.truncated {
                     record_path_limit(&mut output, &mut limits, &change_path, options.max_paths);
                 }
@@ -112,6 +117,7 @@ pub fn analyze_with_options(
                         },
                         &mut remaining_paths,
                         &mut limits,
+                        &mut seen_paths,
                     );
                 }
             }
@@ -174,8 +180,9 @@ fn add_path(
     path: ImpactPath,
     remaining_paths: &mut usize,
     limits: &mut AnalysisLimits,
+    seen_paths: &mut BTreeSet<Vec<String>>,
 ) {
-    if output.paths.iter().any(|existing| existing == &path) {
+    if !seen_paths.insert(path.path.clone()) {
         return;
     }
     if *remaining_paths == 0 {
