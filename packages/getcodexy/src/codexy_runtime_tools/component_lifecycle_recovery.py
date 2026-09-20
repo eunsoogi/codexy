@@ -64,10 +64,11 @@ def recover_if_needed(
         return
     if journal.command in {"update", "bootstrap"} and journal.phase == "started":
         try:
-            installed = apply_forward(
+            installed, root = apply_forward(
                 executable, invoke, manifest, root, journal, journal.resolved, (), home
             )
         except BaseException as error:
+            root = _refresh_marketplace_root(executable, invoke, manifest, root)
             rollback_or_raise(home, executable, invoke, manifest, root, journal, error)
             terminal(home, manifest, journal.receipt("rolled-back", journal.before))
             clear_journal(home)
@@ -200,7 +201,7 @@ def apply_forward(
     adds: tuple[str, ...],
     removes: tuple[str, ...],
     home: Path,
-) -> tuple[str, ...]:
+) -> tuple[tuple[str, ...], MarketplaceBinding]:
     if journal.command in {"update", "bootstrap"}:
         if isinstance(root, MarketplaceIdentity) and root.source_type == "local":
             if existing_marketplace(executable, invoke, manifest) != root:
@@ -219,7 +220,23 @@ def apply_forward(
         mutate(executable, invoke, "remove", manifest, component)
     installed = list_installed(executable, invoke)
     materialize_mcp_caches(home, root, manifest, journal.target)
-    return verify_post_operation_inventory(manifest, installed, journal.target, root)
+    return (
+        verify_post_operation_inventory(manifest, installed, journal.target, root),
+        root,
+    )
+
+
+def _refresh_marketplace_root(
+    executable: Path,
+    invoke: Runner,
+    manifest: ComponentManifest,
+    previous: MarketplaceBinding,
+) -> MarketplaceBinding:
+    """Use the host's post-failure marketplace identity for rollback when available."""
+    try:
+        return existing_marketplace(executable, invoke, manifest) or previous
+    except Exception:
+        return previous
 
 
 def mutate(
