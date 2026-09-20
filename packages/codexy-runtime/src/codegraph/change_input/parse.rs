@@ -55,7 +55,7 @@ pub(super) fn parse_diff(output: &[u8]) -> Result<Vec<RawChange>> {
                 kind: match code {
                     b'A' => ChangeKind::Added,
                     b'D' => ChangeKind::Deleted,
-                    b'M' => ChangeKind::Modified,
+                    b'M' | b'T' => ChangeKind::Modified,
                     _ => bail!("unsupported Git diff status: {status}"),
                 },
                 previous_path: (code == b'D').then_some(path.clone()),

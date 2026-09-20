@@ -61,6 +61,15 @@ fn commit_comparison_is_repeatable_and_preserves_file_changes() -> TestResult {
 }
 
 #[test]
+fn comparison_treats_git_type_changes_as_modified() -> TestResult {
+    let changes = super::parse::parse_diff(b"T\0changed.rs\0")?;
+    assert_eq!(changes.len(), 1);
+    assert_eq!(changes[0].kind, ChangeKind::Modified);
+    assert_eq!(changes[0].current_path.as_deref(), Some("changed.rs"));
+    Ok(())
+}
+
+#[test]
 fn working_tree_reports_staged_unstaged_and_optional_untracked_scopes() -> TestResult {
     let repository = initialized_repository()?;
     let root = repository.path();
@@ -160,6 +169,36 @@ fn changing_worktree_state_during_collection_is_reported() -> TestResult {
     });
     let error = result.expect_err("a changed snapshot must not be returned as stable");
     assert!(error.to_string().contains("changed during collection"));
+    Ok(())
+}
+
+#[test]
+fn changing_already_dirty_content_during_collection_is_reported() -> TestResult {
+    let repository = initialized_repository()?;
+    let root = repository.path();
+    let tracked = root.join("tracked.rs");
+    fs::write(&tracked, "dirty before\n")?;
+    let tracked_result = collect_working_tree_with_hook(root, true, || {
+        fs::write(&tracked, "dirty after\n").expect("test write");
+    });
+    assert!(
+        tracked_result
+            .expect_err("a dirty tracked file content change must be detected")
+            .to_string()
+            .contains("changed during collection")
+    );
+
+    let untracked = root.join("untracked.rs");
+    fs::write(&untracked, "untracked before\n")?;
+    let untracked_result = collect_working_tree_with_hook(root, true, || {
+        fs::write(&untracked, "untracked after\n").expect("test write");
+    });
+    assert!(
+        untracked_result
+            .expect_err("an untracked file content change must be detected")
+            .to_string()
+            .contains("changed during collection")
+    );
     Ok(())
 }
 

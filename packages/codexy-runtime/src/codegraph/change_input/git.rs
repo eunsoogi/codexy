@@ -1,8 +1,10 @@
 use std::collections::BTreeSet;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context as _, Result, bail, ensure};
+use sha2::{Digest as _, Sha256};
 
 use super::parse::{parse_diff, parse_status, sorted, status_fingerprint};
 use super::{ChangeScope, ChangeSet, FileObservedState, ObservedState};
@@ -146,11 +148,56 @@ fn status_snapshot(root: &Path, include_untracked: bool) -> Result<StatusSnapsho
             "-z",
         ],
     )?;
+    let changes = parse_status(&output, include_untracked)?;
     let fingerprint = status_fingerprint(&output, include_untracked);
+    let paths = changes
+        .iter()
+        .flat_map(|change| {
+            change
+                .previous_path
+                .iter()
+                .chain(change.current_path.iter())
+        })
+        .collect::<BTreeSet<_>>();
+    let mut fingerprint = fingerprint;
+    for path in paths {
+        append_worktree_path_fingerprint(root, path, &mut fingerprint)?;
+    }
     Ok(StatusSnapshot {
         output,
         fingerprint,
     })
+}
+
+fn append_worktree_path_fingerprint(
+    root: &Path,
+    path: &str,
+    fingerprint: &mut Vec<u8>,
+) -> Result<()> {
+    fingerprint.extend_from_slice(path.as_bytes());
+    fingerprint.push(0);
+    let path = root.join(path);
+    let metadata = match fs::symlink_metadata(&path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            fingerprint.push(0);
+            return Ok(());
+        }
+        Err(error) => return Err(error).with_context(|| format!("reading {}", path.display())),
+    };
+    let file_type = metadata.file_type();
+    if file_type.is_symlink() {
+        fingerprint.push(1);
+        let target = fs::read_link(&path)?;
+        fingerprint.extend_from_slice(target.to_string_lossy().as_bytes());
+    } else if file_type.is_file() {
+        fingerprint.push(2);
+        fingerprint.extend_from_slice(&Sha256::digest(fs::read(&path)?));
+    } else {
+        fingerprint.push(3);
+        fingerprint.extend_from_slice(&metadata.len().to_le_bytes());
+    }
+    Ok(())
 }
 
 fn git_output(root: &Path, args: &[&str]) -> Result<Vec<u8>> {

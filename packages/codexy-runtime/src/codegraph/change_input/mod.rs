@@ -66,6 +66,7 @@ pub struct FileChange {
 #[serde(rename_all = "snake_case")]
 pub enum ChangeKind {
     Added,
+    /// Includes Git type-change records.
     Modified,
     Deleted,
     Renamed,
