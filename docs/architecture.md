@@ -156,12 +156,12 @@ as permission to claim the server worked.
   `verified` remains `unknown` without host/session evidence; `unknown` is
   non-proof for that observation and does not by itself classify overall health.
 - Native Watcher observation uses one quiet `watcher_wait`: omitting `timeoutMs`
-  selects the bounded server maximum `MAX_WAIT_MS` (currently 3,600,000 ms),
-  while an explicit shorter wait remains supported for a user deadline or a
-  confirmed host limit. Same-connection `notifications/cancelled` releases only
-  the pending request when the host propagates it and preserves the durable
-  session; `watcher_cancel` separately ends that session and requires a fresh
-  assignment.
+  selects the five-minute server-side default of 300,000 ms; the bounded
+  `MAX_WAIT_MS` maximum remains 3,600,000 ms. An explicit shorter wait remains
+  supported for a user deadline or a confirmed host limit. Same-connection
+  `notifications/cancelled` releases only the pending request when the host
+  propagates it and preserves the durable session; `watcher_cancel` separately
+  ends that session and requires a fresh assignment.
 - The core hook contract binds an authenticated Orchestrator `watcher_wait` in
   `PreToolUse` with an opaque `requestBinding`; the synchronous `Interrupt` hook
   writes a request-only cancellation marker consumed by the existing native 25
