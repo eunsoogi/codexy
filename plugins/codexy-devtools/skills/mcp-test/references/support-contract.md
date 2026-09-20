@@ -19,8 +19,8 @@ success.
 
 `run` uses `0` only for a successful scenario whose every step meets its
 declared expectation. A failed step, predecessor suppression, deadline,
-malformed response, launch error, unsupported response, or invalid manifest
-uses `2`.
+malformed response, launch error, unsupported response, or invalid manifest uses
+`2`.
 
 `compare` uses the comparison producer's CI contract:
 

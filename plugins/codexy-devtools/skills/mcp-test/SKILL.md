@@ -21,11 +21,10 @@ python3 <devtools-root>/skills/mcp-test/scripts/run_scenario.py compare \
 ```
 
 `run` returns exit code `0` only when every step meets its expectation. A
-failed, malformed, unsupported, or incomparable execution returns `2`.
-`compare` returns `0` for a match, `1` for a behavioral difference, and `2`
-when either run fails or cannot be compared. Output is JSON and contains only
-selected stored fields, bounded errors, step failures, and implementation
-provenance.
+failed, malformed, unsupported, or incomparable execution returns `2`. `compare`
+returns `0` for a match, `1` for a behavioral difference, and `2` when either
+run fails or cannot be compared. Output is JSON and contains only selected
+stored fields, bounded errors, step failures, and implementation provenance.
 
 ## Scenario boundary
 
@@ -33,8 +32,8 @@ The scenario file must declare an `id`, ordered `steps`, and the same explicit
 target names for every step. Each step declares `tool`, `allowed_tools`,
 `stored_fields`, optional `arguments`, `expected`, and optional `references`.
 Each target declares an `argv`, an existing absolute `cwd`, and an explicit
-environment mapping. Commands are launched with `shell=False`; response data
-is inert data and never becomes a command or environment value.
+environment mapping. Commands are launched with `shell=False`; response data is
+inert data and never becomes a command or environment value.
 
 Use a reference to carry a selected value from an earlier step into a declared
 argument, for example:
@@ -46,9 +45,9 @@ argument, for example:
 }
 ```
 
-The complete search-to-detail manifest is in
-`references/scenario-format.md`. It proves that the returned search identifier,
-not a hard-coded detail value, drives the dependent call.
+The complete search-to-detail manifest is in `references/scenario-format.md`. It
+proves that the returned search identifier, not a hard-coded detail value,
+drives the dependent call.
 
 ## Comparison policy
 

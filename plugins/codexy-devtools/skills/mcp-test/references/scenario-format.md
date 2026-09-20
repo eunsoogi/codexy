@@ -17,16 +17,16 @@ predecessor.
         "installed": {
           "argv": ["/absolute/path/to/server", "--step", "search"],
           "cwd": "/absolute/path/to/workdir",
-          "environment": {"SCENARIO_MARKER": "mcp-test"}
+          "environment": { "SCENARIO_MARKER": "mcp-test" }
         }
       },
       "tool": "search",
       "allowed_tools": ["search", "detail"],
-      "arguments": {"query": "codex"},
-      "stored_fields": {"id": "/result/data/id"},
+      "arguments": { "query": "codex" },
+      "stored_fields": { "id": "/result/data/id" },
       "expected": {
         "kind": "success",
-        "fields": {"/result/data/id": "item-42"}
+        "fields": { "/result/data/id": "item-42" }
       }
     },
     {
@@ -35,19 +35,19 @@ predecessor.
         "installed": {
           "argv": ["/absolute/path/to/server", "--step", "detail"],
           "cwd": "/absolute/path/to/workdir",
-          "environment": {"SCENARIO_MARKER": "mcp-test"}
+          "environment": { "SCENARIO_MARKER": "mcp-test" }
         }
       },
       "tool": "detail",
       "allowed_tools": ["search", "detail"],
-      "arguments": {"id": null},
-      "stored_fields": {"matched_id": "/result/data/matched_id"},
+      "arguments": { "id": null },
+      "stored_fields": { "matched_id": "/result/data/matched_id" },
       "expected": {
         "kind": "success",
-        "fields": {"/result/data/matched_id": "item-42"}
+        "fields": { "/result/data/matched_id": "item-42" }
       },
       "references": {
-        "/id": {"step": "search", "path": "/id", "type": "string"}
+        "/id": { "step": "search", "path": "/id", "type": "string" }
       }
     }
   ]
@@ -55,10 +55,10 @@ predecessor.
 ```
 
 Replace the target `argv` and `cwd` with an explicitly selected trusted local
-stdio server and an existing absolute working directory. Every step must
-declare the same target names. A target may use an absolute interpreter path
-and a server script as separate `argv` entries; shell quoting and interpolation
-are not supported.
+stdio server and an existing absolute working directory. Every step must declare
+the same target names. A target may use an absolute interpreter path and a
+server script as separate `argv` entries; shell quoting and interpolation are
+not supported.
 
 ## Step fields
 
@@ -73,8 +73,8 @@ are not supported.
 - `references` may point only to an earlier step. `type` may be `string`,
   `integer`, `number`, `boolean`, `object`, or `array`.
 
-Optional step fields are `protocol_version`, `transport`, `timeout_seconds`,
-and `output_limit_bytes`. The supported values remain explicit in the support
+Optional step fields are `protocol_version`, `transport`, `timeout_seconds`, and
+`output_limit_bytes`. The supported values remain explicit in the support
 contract; an unsupported protocol or transport is rejected rather than
 downgraded.
 
