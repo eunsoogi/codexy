@@ -54,7 +54,7 @@ automatically.
 | ---------- | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `core`     | `codexy`          | Orchestration, goals and plans, worktree ownership, specialists, instruction hooks, proof, and Wiki.             |
 | `github`   | `codexy-github`   | GitHub workflow context, narrow title checks, and local credential, filesystem, and Git safety checks.           |
-| `devtools` | `codexy-devtools` | Local Codegraph and LSP MCP servers, wrappers, configuration, developer-tool guidance, and MCP scenario testing. |
+| `devtools` | `codexy-devtools` | Local Codegraph and LSP MCP servers, wrappers, configuration, and developer-tool guidance. |
 
 | Desired result           | Command                             |
 | ------------------------ | ----------------------------------- |
@@ -156,10 +156,6 @@ The current source tree provides:
   waived, or marked complete. Installed-runtime demos cover documentation, a
   single module, and a shared fixture; active host exposure remains unknown
   until the host's callable tool list and invocation are separately verified.
-- **MCP scenario tests.** The installed `$mcp-test` skill and CLI run or compare
-  trusted local stdio scenarios with explicit chaining, expectations, selected
-  fields, and bounded comparison output. Support is limited to the documented
-  local contract; subprocess results do not prove host/session skill exposure.
 - **Packaging and recovery.** Keep the three plugins version-aligned, validate
   their public boundaries, and retain receipts and rollback evidence for
   installation and release operations.
@@ -190,11 +186,10 @@ summarizes its purpose, identifies its component, and links to the actual
 | [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md)                          | Manage issue, branch, worktree, PR, review, merge, and main-sync workflow.              | `github`   |
 | [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md)                              | Explore bounded repository structure and dependency edges.                              | `devtools` |
 | [lsp](plugins/codexy-devtools/skills/lsp/SKILL.md)                                          | Request language-aware symbols, references, definitions, or diagnostics.                | `devtools` |
-| [mcp-test](plugins/codexy-devtools/skills/mcp-test/SKILL.md)                                | Run or compare explicit installed MCP scenarios with chaining and expectations.         | `devtools` |
-
-Repository-only maintenance skills such as `plugin-marketplace-prep`,
+Repository-only maintenance skills such as `mcp-test`, `plugin-marketplace-prep`,
 `release-engineering`, and `skill-evaluation` remain under `.agents/skills` and
-are not installed features.
+are not installed features. The repository-only `mcp-test` skill runs and
+compares explicit local MCP scenarios during Codexy development.
 
 ### Planning, orchestration, and engineering
 
@@ -299,8 +294,8 @@ not establish universal host parity or make mutations safe.
 ### Inventory and public boundaries
 
 The detailed [architecture guide](docs/architecture.md) is the source-aligned
-inventory of bundled specialists, packaged skills, the installed MCP scenario
-CLI, and the split Codegraph/LSP runtime. It also documents LSP batches (1–8
+inventory of bundled specialists, packaged skills, repository-only MCP scenario
+tooling, and the split Codegraph/LSP runtime. It also documents LSP batches (1–8
 requests, 60 seconds), core hook timing (default off, four fields, 1 MiB cap),
 and doctor's configured/loaded/callable/verified states, where `unknown` remains
 non-proof for the observation.
