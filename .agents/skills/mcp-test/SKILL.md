@@ -71,6 +71,9 @@ descendant ownership is proven. Remote authenticated connections, HTTP
 transports, ambient environment inheritance, and host/app skill-call claims are
 outside this CLI.
 
-Run the CLI from the installed plugin root or any other directory. The report's
-`implementation` object must point at the installed CLI and its installed
-producer modules; a source-checkout import is not installation proof.
+Run the CLI from the repository root or any other directory. The report's
+`implementation` object must point at the repository-only CLI and producer
+modules under `.agents/skills/mcp-test`, and its `surface` must be
+`repository-only`. These subprocess results prove repository-tool provenance
+only; they do not prove an installed package or an active host/app skill
+surface.
