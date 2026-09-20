@@ -4,15 +4,15 @@
       "id": "first",
       "original": "first.txt",
       "output": "second.txt",
-      "transform": {"argv": ["transform", "first.txt", "second.txt"], "timeout_seconds": 1},
-      "validations": [{"argv": ["validate", "second.txt"], "timeout_seconds": 1}]
+      "transform": { "argv": ["transform", "first.txt", "second.txt"], "timeout_seconds": 1 },
+      "validations": [{ "argv": ["validate", "second.txt"], "timeout_seconds": 1 }]
     },
     {
       "id": "second",
       "original": "second.txt",
       "output": "third.txt",
-      "transform": {"argv": ["transform", "second.txt", "third.txt"], "timeout_seconds": 1},
-      "validations": [{"argv": ["validate", "third.txt"], "timeout_seconds": 1}]
+      "transform": { "argv": ["transform", "second.txt", "third.txt"], "timeout_seconds": 1 },
+      "validations": [{ "argv": ["validate", "third.txt"], "timeout_seconds": 1 }]
     }
   ]
 }
