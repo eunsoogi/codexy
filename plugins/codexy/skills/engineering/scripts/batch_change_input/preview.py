@@ -60,8 +60,10 @@ def _argv(value: Any, label: str) -> list[str]:
         raise InputError(f"{label} must be a non-empty argv array")
     result = []
     for index, token in enumerate(value):
-        if not isinstance(token, str) or not token or "\x00" in token:
-            raise InputError(f"{label}[{index}] must be a non-empty string without NUL")
+        if not isinstance(token, str) or "\x00" in token:
+            raise InputError(f"{label}[{index}] must be a string without NUL")
+        if index == 0 and not token:
+            raise InputError(f"{label}[0] must be a non-empty executable")
         result.append(token)
     return result
 

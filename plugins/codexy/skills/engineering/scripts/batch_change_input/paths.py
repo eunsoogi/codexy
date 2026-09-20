@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import unicodedata
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
@@ -93,12 +94,19 @@ def _output(root: Path, raw: Any, label: str) -> tuple[Path, str, dict[str, Any]
 def _file_key(relative: str, identity: tuple[int, int] | None) -> tuple[Any, ...]:
     if identity is not None:
         return ("identity", identity[0], identity[1])
-    return ("path", relative.casefold())
+    return ("path", _normalized_parts(relative))
+
+
+def _normalized_parts(value: str) -> tuple[str, ...]:
+    return tuple(
+        unicodedata.normalize("NFC", part).casefold()
+        for part in PurePosixPath(value).parts
+    )
 
 
 def _nested_path(left: str, right: str) -> bool:
-    left_parts = tuple(part.casefold() for part in PurePosixPath(left).parts)
-    right_parts = tuple(part.casefold() for part in PurePosixPath(right).parts)
+    left_parts = _normalized_parts(left)
+    right_parts = _normalized_parts(right)
     return (
         left_parts == right_parts[: len(left_parts)]
         or right_parts == left_parts[: len(right_parts)]

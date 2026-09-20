@@ -67,11 +67,8 @@ class BatchChangeInputTests(unittest.TestCase):
         manifest = self._manifest("valid.json")
         sentinel = self.root / "command-was-run"
         document = json.loads(manifest.read_text(encoding="utf-8"))
-        document["items"][0]["transform"]["argv"] = [
-            "touch",
-            str(sentinel),
-            "input file.txt",
-        ]
+        document["items"][0]["transform"]["argv"][0] = "touch"
+        document["items"][0]["transform"]["argv"][1] = str(sentinel)
         manifest.write_text(json.dumps(document), encoding="utf-8")
         result = self._run(manifest)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -85,8 +82,8 @@ class BatchChangeInputTests(unittest.TestCase):
         self.assertEqual(
             item["original"]["state"]["sha256"], hashlib.sha256(b"first\n").hexdigest()
         )
-        self.assertEqual(item["commands"]["transform"]["argv"][2], "input file.txt")
-        self.assertEqual(item["commands"]["validations"][0]["timeout_seconds"], 10)
+        self.assertEqual(item["commands"]["transform"]["argv"][2], "")
+        self.assertEqual(item["commands"]["validations"][0]["argv"][1], "")
         self.assertFalse(sentinel.exists() or (self.root / "output file.txt").exists())
         self.assertEqual({path: path.read_bytes() for path in before}, before)
         isolated_script = Path(self.temporary.name) / "isolated-script"
@@ -220,12 +217,12 @@ class BatchChangeInputTests(unittest.TestCase):
         with self.assertRaisesRegex(InputError, "duplicate original"):
             preview(self.root, document)
         document["items"] = [
-            item("first-item", "first.txt", "results/One.txt"),
-            item("second-item", "second.txt", "results/one.txt"),
+            item("first-item", "first.txt", "caf\u00e9.txt"),
+            item("second-item", "second.txt", "cafe\u0301.txt"),
         ]
         with self.assertRaisesRegex(InputError, "duplicate output"):
             preview(self.root, document)
-        document["items"][1]["output"] = "results/One.txt/child.txt"
+        document["items"][1]["output"] = "cafe\u0301.txt/child.txt"
         with self.assertRaisesRegex(InputError, "overlap"):
             preview(self.root, document)
         document["items"] = [item("nested-item", "first.txt", "first.txt/child.txt")]

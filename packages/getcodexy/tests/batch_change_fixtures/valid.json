@@ -5,12 +5,12 @@
       "original": "input file.txt",
       "output": "output file.txt",
       "transform": {
-        "argv": ["trusted-transform", "--input", "input file.txt", "--output", "output file.txt"],
+        "argv": ["trusted-transform", "--input", "", "input file.txt", "--output", "output file.txt"],
         "timeout_seconds": 30
       },
       "validations": [
         {
-          "argv": ["trusted-validator", "output file.txt"],
+          "argv": ["trusted-validator", "", "output file.txt"],
           "timeout_seconds": 10
         }
       ]
