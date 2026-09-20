@@ -79,7 +79,7 @@ def recover_if_needed(
         return
     if journal.phase == "started":
         try:
-            installed = verify_post_operation_inventory(
+            installed = _verify(
                 manifest, list_installed(executable, invoke), journal.target, root
             )
         except ComponentResolutionError:
