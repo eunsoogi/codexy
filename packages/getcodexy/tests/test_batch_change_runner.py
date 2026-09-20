@@ -2,244 +2,200 @@ from __future__ import annotations
 
 import json
 import os
+import signal
+import subprocess
 import sys
-import tempfile
-import threading
 import time
 import unittest
 from pathlib import Path
 
-sys.dont_write_bytecode = True
-
-ROOT = Path(__file__).parents[3]
-INPUT_SCRIPTS = ROOT / "plugins/codexy/skills/engineering/scripts/batch_change_input"
-RUNNER_SCRIPTS = ROOT / "plugins/codexy/skills/engineering/scripts/batch_change_runner"
-sys.path.insert(0, str(INPUT_SCRIPTS))
-from preview import preview  # noqa: E402
-
+RUNNER_SCRIPTS = (
+    Path(__file__).parents[3]
+    / "plugins/codexy/skills/engineering/scripts/batch_change_runner"
+)
 sys.path.insert(0, str(RUNNER_SCRIPTS))
-from runner import run_batch  # noqa: E402
+from test_support import BatchChangeRunnerCase  # noqa: E402
 
 
 @unittest.skipUnless(os.name == "posix", "runner requires POSIX process groups")
-class BatchChangeRunnerTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self.temporary = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name) / "workspace"
-        self.root.mkdir()
-        self.results = Path(self.temporary.name) / "results"
-        self.script = self.root / "commands.py"
-        self.script.write_text(
-            """from pathlib import Path
-import subprocess, sys, time
-m, a = sys.argv[1], sys.argv[2:]
-if m == 'copy':
-    s, d = map(Path, a[:2]); d.parent.mkdir(parents=True, exist_ok=True); d.write_text(s.read_text().upper())
-elif m == 'bad':
-    d = Path(a[1]); d.parent.mkdir(parents=True, exist_ok=True); d.write_text('bad')
-elif m == 'fail':
-    raise SystemExit(7)
-elif m == 'validate':
-    raise SystemExit(0 if Path(a[0]).read_text() != 'bad' else 9)
-elif m == 'spam':
-    print('SECRET_TOKEN ' * 10000, flush=True); print('SECRET_TOKEN ' * 10000, file=sys.stderr, flush=True)
-elif m == 'mutate':
-    d = Path(a[1]); d.parent.mkdir(parents=True, exist_ok=True); d.write_text('output'); Path(a[2]).write_text('changed')
-elif m == 'spawn':
-    child = subprocess.Popen([sys.executable, __file__, 'child']); Path(a[2]).write_text(str(child.pid)); time.sleep(30)
-elif m == 'child':
-    time.sleep(30)
-else:
-    raise SystemExit(2)
-""",
-            encoding="utf-8",
-        )
-
-    def _item(self, item_id, original, output, transform, validation, timeout=2):
-        command = lambda argv, limit: {"argv": argv, "timeout_seconds": limit}
-        return {
-            "id": item_id,
-            "original": original,
-            "output": output,
-            "transform": command(transform, timeout),
-            "validations": [command(validation, timeout)],
-        }
-
-    def _preview(self, items: list[dict[str, object]]) -> dict[str, object]:
-        return preview(self.root, {"items": items})
-
-    def _run(self, document: dict[str, object], **kwargs: object) -> dict[str, object]:
-        return run_batch(
-            document, workspace_root=self.root, results_root=self.results, **kwargs
-        )
-
-    def _command(self, mode: str, *arguments: str) -> list[str]:
-        return [sys.executable, str(self.script), mode, *arguments]
-
-    @staticmethod
-    def _alive(pid: int) -> bool:
-        try:
-            os.kill(pid, 0)
-        except ProcessLookupError:
-            return False
-        return True
-
-    def _assert_dead(self, pid_file: Path) -> None:
-        pid = int(pid_file.read_text(encoding="utf-8"))
-        deadline = time.monotonic() + 3
-        while time.monotonic() < deadline and self._alive(pid):
-            time.sleep(0.05)
-        self.assertFalse(self._alive(pid), f"descendant {pid} survived cleanup")
-
+class BatchChangeRunnerTests(BatchChangeRunnerCase):
     def test_isolates_failures_and_preserves_validated_artifacts(self) -> None:
-        for name, content in (
-            ("first.txt", "first\n"),
-            ("second.txt", "second\n"),
-            ("third.txt", "third\n"),
-        ):
-            (self.root / name).write_text(content, encoding="utf-8")
-        document = self._preview(
-            [
-                self._item(
-                    "failed-transform",
-                    "first.txt",
-                    "out/first.txt",
-                    self._command("fail", "first.txt", "out/first.txt"),
-                    self._command("validate", "out/first.txt"),
-                ),
-                self._item(
-                    "success",
-                    "second.txt",
-                    "out/second.txt",
-                    self._command("copy", "second.txt", "out/second.txt"),
-                    self._command("validate", "out/second.txt"),
-                ),
-                self._item(
-                    "failed-validation",
-                    "third.txt",
-                    "out/third.txt",
-                    self._command("bad", "third.txt", "out/third.txt"),
-                    self._command("validate", "out/third.txt"),
-                ),
-            ]
+        self._write("first.txt", "second.txt", "third.txt")
+        result = self._run_specs(
+            ("failed-transform", "first.txt", "out/first.txt", "fail"),
+            (
+                "success",
+                "second.txt",
+                "out/second.txt",
+                "copy",
+                "second.txt",
+                "out/second.txt",
+            ),
+            (
+                "failed-validation",
+                "third.txt",
+                "out/third.txt",
+                "bad",
+                "third.txt",
+                "out/third.txt",
+            ),
         )
-        result = self._run(document)
         by_id = {item["id"]: item for item in result["items"]}
-        self.assertEqual(result["status"], "completed")
-        self.assertEqual(result["succeeded_count"], 1)
-        self.assertEqual(result["failed_count"], 2)
-        self.assertEqual(by_id["failed-transform"]["failure"]["reason"], "nonzero-exit")
+        self.assertEqual(
+            (result["status"], result["succeeded_count"], result["failed_count"]),
+            ("completed", 1, 2),
+        )
+        self._reason(result, "nonzero-exit")
         self.assertEqual(by_id["failed-validation"]["failure"]["phase"], "validation")
-        output = Path(by_id["success"]["output"]["path"])
-        self.assertEqual(output.read_text(encoding="utf-8"), "SECOND\n")
-        self.assertEqual(by_id["success"]["output"]["validated"], True)
+        self.assertEqual(
+            Path(by_id["success"]["output"]["path"]).read_text(), "SECOND.TXT"
+        )
+        self.assertTrue(by_id["success"]["output"]["validated"])
         self.assertEqual(
             [
-                self.root.joinpath(name).read_text()
+                (self.root / name).read_text()
                 for name in ("first.txt", "second.txt", "third.txt")
             ],
-            ["first\n", "second\n", "third\n"],
+            ["first.txt", "second.txt", "third.txt"],
         )
 
-    def test_timeout_and_cancellation_kill_descendants(self) -> None:
-        original = self.root / "input.txt"
-        original.write_text("input", encoding="utf-8")
-        timeout_pid = Path(self.temporary.name) / "timeout.pid"
-        timeout_preview = self._preview(
-            [
-                self._item(
-                    "timeout",
-                    "input.txt",
-                    "out.txt",
-                    self._command("spawn", "input.txt", "out.txt", str(timeout_pid)),
-                    self._command("validate", "out.txt"),
-                    0.15,
-                )
-            ]
+    def test_contract_violations_and_original_races_abort(self) -> None:
+        self._write("input.txt")
+        outside = Path(self.temporary.name) / "stale"
+        outside.mkdir()
+        (outside / "file.txt").write_text("stale", encoding="utf-8")
+        symlink = self._run_specs(
+            ("ancestor", "input.txt", "out/file.txt", "symlink", "out", str(outside))
         )
-        timeout_result = self._run(timeout_preview)
-        self.assertEqual(timeout_result["items"][0]["failure"]["reason"], "timeout")
-        self._assert_dead(timeout_pid)
+        self._aborted(symlink, "contract-violation")
+        self.assertEqual((outside / "file.txt").read_text(), "stale")
 
-        cancel_pid = Path(self.temporary.name) / "cancel.pid"
-        cancel_preview = self._preview(
-            [
-                self._item(
-                    "cancel",
-                    "input.txt",
-                    "cancel.txt",
-                    self._command("spawn", "input.txt", "cancel.txt", str(cancel_pid)),
-                    self._command("validate", "cancel.txt"),
-                    30,
-                )
-            ]
+        self._write("second.txt")
+        staged = self._run_specs(
+            ("mutated-stage", "input.txt", "out.txt", "delete", "input.txt"),
+            (
+                "must-not-run",
+                "second.txt",
+                "other.txt",
+                "copy",
+                "second.txt",
+                "other.txt",
+            ),
         )
-        cancellation = threading.Event()
-        holder: dict[str, object] = {}
-        worker = threading.Thread(
-            target=lambda: holder.update(
-                self._run(cancel_preview, cancellation_event=cancellation)
+        self._aborted(staged, "contract-violation")
+        self.assertEqual(staged["items"][0]["execution"]["transform"]["exit_code"], 7)
+        self.assertEqual(staged["items"][1]["status"], "not-run")
+
+        document = self._preview(
+            self._item(
+                "deleted",
+                "input.txt",
+                "deleted.txt",
+                "copy",
+                "input.txt",
+                "deleted.txt",
             )
         )
-        worker.start()
-        deadline = time.monotonic() + 2
-        while not cancel_pid.exists() and time.monotonic() < deadline:
-            time.sleep(0.02)
-        cancellation.set()
-        worker.join(3)
-        self.assertFalse(worker.is_alive())
-        self.assertEqual(holder["status"], "cancelled")
-        self.assertEqual(holder["items"][0]["failure"]["reason"], "cancelled")
-        self._assert_dead(cancel_pid)
+        (self.root / "input.txt").unlink()
+        self._aborted(self._run_document(document), "original-changed")
 
-    def test_excessive_output_is_bounded_and_not_returned(self) -> None:
-        original = self.root / "input.txt"
-        original.write_text("input", encoding="utf-8")
-        document = self._preview(
-            [
-                self._item(
-                    "output-limit",
-                    "input.txt",
-                    "out.txt",
-                    self._command("spam"),
-                    self._command("validate", "out.txt"),
+        self._write("first.txt", "second.txt")
+        mutated = self._run_specs(
+            (
+                "mutates-other",
+                "first.txt",
+                "out/first.txt",
+                "mutate",
+                "first.txt",
+                "out/first.txt",
+                str(self.root / "second.txt"),
+            ),
+            (
+                "must-not-run",
+                "second.txt",
+                "out/second.txt",
+                "copy",
+                "second.txt",
+                "out/second.txt",
+            ),
+        )
+        self._aborted(mutated, "original-changed")
+        self.assertEqual(mutated["items"][1]["status"], "not-run")
+        self.assertEqual((self.root / "second.txt").read_text(), "changed")
+
+    def test_cli_runs_manifest_cancels_and_redacts_output(self) -> None:
+        self._write("input.txt")
+        success, payload = self._cli_result(
+            self._manifest_specs(
+                "success.json",
+                ("success", "input.txt", "out.txt", "copy", "input.txt", "out.txt"),
+            )
+        )
+        self.assertEqual(success.returncode, 0)
+        self.assertEqual(payload["items"][0]["status"], "succeeded")
+        self.assertEqual(
+            Path(payload["items"][0]["output"]["path"]).read_text(), "INPUT.TXT"
+        )
+        self.assertEqual((self.root / "input.txt").read_text(), "input.txt")
+
+        spam, payload = self._cli_result(
+            self._manifest_specs(
+                "spam.json", ("spam", "input.txt", "spam.txt", "spam")
+            ),
+            "--max-output-bytes",
+            "128",
+        )
+        self._reason(payload, "output-limit")
+        self.assertNotIn("SECRET_TOKEN", spam.stdout + spam.stderr)
+
+        pid_file = Path(self.temporary.name) / "cli.pid"
+        process = subprocess.Popen(
+            self._cli(
+                self._manifest_specs(
+                    "cancel.json",
+                    (
+                        "cancel",
+                        "input.txt",
+                        "cancel.txt",
+                        "spawn",
+                        "input.txt",
+                        "cancel.txt",
+                        str(pid_file),
+                        30,
+                    ),
                 )
-            ]
+            ),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
-        result = self._run(document, output_limit_bytes=128)
-        self.assertEqual(result["items"][0]["failure"]["reason"], "output-limit")
-        self.assertNotIn("SECRET_TOKEN", json.dumps(result))
-        self.assertEqual(original.read_text(encoding="utf-8"), "input")
+        deadline = time.monotonic() + 2
+        while not pid_file.exists() and time.monotonic() < deadline:
+            time.sleep(0.02)
+        self.assertTrue(pid_file.exists())
+        process.send_signal(signal.SIGINT)
+        stdout, stderr = process.communicate(timeout=5)
+        self.assertEqual(process.returncode, 0, stderr)
+        self.assertEqual(json.loads(stdout)["status"], "cancelled")
+        self._assert_dead(pid_file)
 
-    def test_external_original_mutation_aborts_without_restoration(self) -> None:
-        first = self.root / "first.txt"
-        second = self.root / "second.txt"
-        first.write_text("first", encoding="utf-8")
-        second.write_text("second", encoding="utf-8")
-        document = self._preview(
-            [
-                self._item(
-                    "mutates-other",
-                    "first.txt",
-                    "out/first.txt",
-                    self._command("mutate", "first.txt", "out/first.txt", str(second)),
-                    self._command("validate", "out/first.txt"),
-                ),
-                self._item(
-                    "must-not-run",
-                    "second.txt",
-                    "out/second.txt",
-                    self._command("copy", "second.txt", "out/second.txt"),
-                    self._command("validate", "out/second.txt"),
-                ),
-            ]
+    def test_timeout_kills_descendants(self) -> None:
+        self._write("input.txt")
+        pid_file = Path(self.temporary.name) / "timeout.pid"
+        timeout = self._run_specs(
+            (
+                "timeout",
+                "input.txt",
+                "out.txt",
+                "spawn",
+                "input.txt",
+                "out.txt",
+                str(pid_file),
+                0.15,
+            )
         )
-        result = self._run(document)
-        self.assertEqual(result["status"], "aborted")
-        self.assertEqual(result["items"][0]["failure"]["reason"], "original-changed")
-        self.assertEqual(result["items"][1]["status"], "not-run")
-        self.assertEqual(second.read_text(encoding="utf-8"), "changed")
+        self._reason(timeout, "timeout")
+        self._assert_dead(pid_file)
 
 
 if __name__ == "__main__":
