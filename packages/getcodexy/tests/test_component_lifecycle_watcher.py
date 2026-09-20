@@ -20,6 +20,7 @@ class LifecycleWatcherTests(unittest.TestCase):
         with fixture() as state:
             calls: list[tuple[str, str, tuple[tuple[str, ...], ...]]] = []
             registrations: list[dict[str, object]] = []
+
             def observe_registration(plugin, home, mode):
                 result = SyncResult(
                     mode,
