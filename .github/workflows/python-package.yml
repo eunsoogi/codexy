@@ -148,57 +148,6 @@ jobs:
           if ($elapsed -ge 4.5) { throw "first cold GitHub hook invocation took $elapsed seconds" }
           python -m unittest packages/getcodexy/tests/test_github_native_hooks.py packages/getcodexy/tests/test_github_title_hooks.py packages/getcodexy/tests/test_core_hook_timing.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $diagnosticArgs = @(
-            "-X"
-            "faulthandler"
-            "-m"
-            "unittest"
-            "-v"
-            "test_component_watcher_registration.WatcherRegistrationTests.test_doctor_probes_the_host_cache_copy_when_it_exists"
-          )
-          $diagnosticProcess = [System.Diagnostics.Process]::new()
-          $diagnosticProcess.StartInfo.FileName = "python"
-          $diagnosticProcess.StartInfo.UseShellExecute = $false
-          $diagnosticProcess.StartInfo.RedirectStandardOutput = $true
-          $diagnosticProcess.StartInfo.RedirectStandardError = $true
-          foreach ($argument in $diagnosticArgs) {
-            [void]$diagnosticProcess.StartInfo.ArgumentList.Add($argument)
-          }
-          $diagnosticProcess.StartInfo.Environment["PYTHONPATH"] = $env:PYTHONPATH
-          $diagnosticWatch = [System.Diagnostics.Stopwatch]::StartNew()
-          if (-not $diagnosticProcess.Start()) { throw "could not start isolated watcher doctor diagnostic" }
-          $diagnosticDeadline = [DateTime]::UtcNow.AddSeconds(120)
-          while (-not $diagnosticProcess.HasExited -and [DateTime]::UtcNow -lt $diagnosticDeadline) {
-            $processes = @(Get-CimInstance Win32_Process |
-              Where-Object { $_.ProcessId -eq $diagnosticProcess.Id -or $_.ParentProcessId -eq $diagnosticProcess.Id } |
-              Select-Object Name, ProcessId, ParentProcessId, CreationDate)
-            Write-Host (@{
-              diagnostic = "isolated-watcher-doctor"
-              timestamp_utc = [DateTime]::UtcNow.ToString("o")
-              processes = $processes
-            } | ConvertTo-Json -Compress -Depth 4)
-            Start-Sleep -Seconds 5
-          }
-          if (-not $diagnosticProcess.HasExited) {
-            Stop-Process -Id $diagnosticProcess.Id -Force -ErrorAction SilentlyContinue
-            throw "isolated watcher doctor diagnostic exceeded 120 seconds"
-          }
-          $diagnosticStdout = $diagnosticProcess.StandardOutput.ReadToEnd()
-          $diagnosticStderr = $diagnosticProcess.StandardError.ReadToEnd()
-          $diagnosticProcess.WaitForExit()
-          $diagnosticWatch.Stop()
-          $remainingProcesses = @(Get-CimInstance Win32_Process |
-            Where-Object { $_.ParentProcessId -eq $diagnosticProcess.Id } |
-            Select-Object Name, ProcessId, ParentProcessId, CreationDate)
-          Write-Host (@{
-            diagnostic = "isolated-watcher-doctor-complete"
-            exit_code = $diagnosticProcess.ExitCode
-            elapsed_seconds = $diagnosticWatch.Elapsed.TotalSeconds
-            remaining_processes = $remainingProcesses
-          } | ConvertTo-Json -Compress -Depth 4)
-          if ($diagnosticStdout) { Write-Host $diagnosticStdout.TrimEnd() }
-          if ($diagnosticStderr) { Write-Host $diagnosticStderr.TrimEnd() }
-          if ($diagnosticProcess.ExitCode -ne 0) { exit $diagnosticProcess.ExitCode }
           $componentTests = @(
             "packages/getcodexy/tests/test_component_cli.py"
             "packages/getcodexy/tests/test_component_lifecycle.py"
