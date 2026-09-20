@@ -227,3 +227,15 @@ def _git(root: Path, *arguments: str) -> str:
     return subprocess.check_output(
         ["git", "-C", str(root), *arguments], text=True, stderr=subprocess.PIPE
     ).strip()
+
+
+def health_states(receipt: dict[str, object]) -> dict[str, str]:
+    entries = receipt["component_health"]
+    assert isinstance(entries, list)
+    return {
+        entry["component"]: entry["state"]
+        for entry in entries
+        if isinstance(entry, dict)
+        and isinstance(entry.get("component"), str)
+        and isinstance(entry.get("state"), str)
+    }

@@ -25,6 +25,81 @@ class SyncResult:
         return asdict(self)
 
 
+def compare_managed_files(
+    plugin: Path, codex_home: Path, component: str
+) -> dict[str, object]:
+    """Compare catalog-derived projections with standalone registration files."""
+    from .component_integrity import MAX_COMPONENT_BYTES, _read_regular
+    from .component_registration_files import _text
+    from .component_registration_health import (
+        MANAGED_MARKERS,
+        MANAGED_ROOTS,
+        _catalog_agent_files,
+        registration_report,
+        registration_role,
+    )
+    from .component_health import _registration_roles
+
+    if component not in MANAGED_MARKERS:
+        return registration_report(component, False, [], (), (), 0, "exact")
+    marker, relative_root = MANAGED_MARKERS[component], MANAGED_ROOTS[component]
+
+    try:
+        names = _catalog_agent_files(_text(plugin / "agents/catalog.toml", plugin))
+        expected = {
+            name: (
+                marker
+                + _text(plugin / "agents" / name, plugin)
+                .replace("\r\n", "\n")
+                .replace("\r", "\n")
+            ).encode()
+            for name in names
+        }
+        home = _absolute(codex_home)
+        root = home / relative_root
+        metadata = root.lstat() if os.path.lexists(root) else None
+        if (
+            metadata is None
+            or stat.S_ISLNK(metadata.st_mode)
+            or not stat.S_ISDIR(metadata.st_mode)
+        ):
+            state = "missing" if metadata is None else "unmanaged-conflict"
+            cause = (
+                "registration directory is absent"
+                if metadata is None
+                else "registration directory is not a real directory"
+            )
+            return registration_report(
+                component,
+                True,
+                [
+                    registration_role(name, state, cause, metadata is not None)
+                    for name in names
+                ],
+                (),
+                (),
+                len(names),
+                state,
+            )
+        roles, managed, unmanaged, state = _registration_roles(
+            home, root, marker, expected, _read_regular, MAX_COMPONENT_BYTES
+        )
+        return registration_report(
+            component, True, roles, managed, unmanaged, len(names), state
+        )
+    except (KeyError, OSError, UnicodeDecodeError, SyntaxError, ValueError) as error:
+        return registration_report(
+            component,
+            True,
+            [],
+            (),
+            (),
+            0,
+            "unmanaged-conflict",
+            f"registration comparison failed: {error}",
+        )
+
+
 def _absolute(path: str | os.PathLike[str]) -> Path:
     absolute = Path(os.path.abspath(Path(path).expanduser()))
     if len(absolute.parts) < 2:
@@ -85,10 +160,7 @@ def sync_agents(
     identity = _identity(root)
     script = root / "skills/orchestration/scripts/register_codexy_agents.py"
     _validate_real_path(script, require_exists=True)
-    command = [
-        sys.executable,
-        "-B",
-        str(script),
+    command = [sys.executable, "-B", str(script)] + [
         "--plugin-root",
         str(root),
         "--codex-home",
@@ -111,31 +183,30 @@ def sync_agents(
         env=environment,
     )
     diagnostics = tuple(
-        line
-        for text in (done.stdout, done.stderr)
-        for line in text.splitlines()
-        if line.strip()
+        filter(str.strip, done.stdout.splitlines() + done.stderr.splitlines())
     )
-    ready = done.returncode == 0 and any(
-        line.startswith("A role-discovery: PASS") for line in diagnostics
+    registration = compare_managed_files(root, home, "core")
+    ready = (
+        done.returncode == 0
+        and registration["observed"]
+        and registration["state"] == "exact"
+        and (
+            mode not in {"check", "diagnose"}
+            or any(line.startswith("A role-discovery: PASS") for line in diagnostics)
+        )
     )
     status = _status_for(mode, done.returncode, ready)
+    changed = done.returncode == 0 and mode in {"install", "uninstall"}
+    restart = done.returncode == 0 and mode == "install"
     return SyncResult(
-        mode,
-        status,
-        identity,
-        str(root),
-        str(home),
-        done.returncode == 0 and mode in {"install", "uninstall"},
-        done.returncode == 0 and mode == "install",
-        diagnostics,
+        mode, status, identity, str(root), str(home), changed, restart, diagnostics
     )
 
 
 def _status_for(mode: str, returncode: int, ready: bool) -> str:
     if mode == "check":
         return "ready" if ready else "update_required"
-    return "completed" if returncode == 0 else "error"
+    return "completed" if returncode == 0 and (mode != "install" or ready) else "error"
 
 
 def main() -> int:

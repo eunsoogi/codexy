@@ -8,11 +8,13 @@ from codexy_runtime_tools.component_inspection import doctor
 from codexy_runtime_tools.component_mcp_materialization import materialize_component_mcp
 from packages.getcodexy.tests.component_lifecycle_support import fixture
 from packages.getcodexy.tests.component_lifecycle_support import VERSION
+from packages.getcodexy.tests.component_inspection_host_cases import _register_core
 
 
 class WatcherRegistrationTests(unittest.TestCase):
     def test_doctor_rejects_a_missing_registered_watcher_bootstrap(self) -> None:
         with fixture({"core"}) as state:
+            _register_core(state, state.marketplace / "plugins/codexy")
             bootstrap = state.marketplace / "plugins/codexy/mcp/codexy_mcp_bootstrap.py"
             materialize_component_mcp(
                 state.marketplace / "plugins/codexy", "core", VERSION
@@ -27,6 +29,7 @@ class WatcherRegistrationTests(unittest.TestCase):
 
     def test_doctor_rejects_a_missing_cached_watcher_bootstrap(self) -> None:
         with fixture({"core"}) as state:
+            _register_core(state, state.marketplace / "plugins/codexy")
             materialize_component_mcp(
                 state.marketplace / "plugins/codexy", "core", VERSION
             )
@@ -43,6 +46,7 @@ class WatcherRegistrationTests(unittest.TestCase):
 
     def test_doctor_probes_the_host_cache_copy_when_it_exists(self) -> None:
         with fixture({"core"}) as state:
+            _register_core(state, state.marketplace / "plugins/codexy")
             materialize_component_mcp(
                 state.marketplace / "plugins/codexy", "core", VERSION
             )
