@@ -1,5 +1,6 @@
 pub mod change_impact;
 pub mod change_input;
+pub mod check_selection;
 
 mod cache;
 mod candidates;
