@@ -1,7 +1,9 @@
 """Focused lifecycle tests for the core Watcher capability probe."""
 
-import unittest
+import json
 import tempfile
+import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from codexy_runtime_tools import component_watcher_probe as probe
@@ -44,4 +46,29 @@ class WatcherProbeTests(unittest.TestCase):
         self.assertEqual(
             assignments,
             ("getcodexy-health-42-100", "getcodexy-health-42-101"),
+        )
+
+    def test_missing_watcher_runtime_preserves_a_failed_direct_observation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            plugin = Path(directory)
+            (plugin / ".mcp.json").write_text(
+                json.dumps(
+                    {
+                        "watcher": {
+                            "command": str(plugin / "missing-watcher"),
+                            "args": [],
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = probe.probe_watcher(plugin, {"started": False, "callable": False})
+
+        self.assertFalse(result["started"])
+        self.assertFalse(result["callable"])
+        self.assertEqual(result["reason_code"], "component-start-failed")
+        self.assertEqual(
+            result["_capability_probes"]["mcp:watcher"],
+            {"configured": True, "started": False, "callable": False},
         )

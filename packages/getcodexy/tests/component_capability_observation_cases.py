@@ -78,6 +78,80 @@ class CapabilityObservationCases:
                 self.assertEqual(observed["states"]["verified"], "unknown")
                 self.assertEqual(observed["scope"], "plugin-subprocess")
 
+    def test_doctor_exposes_watcher_mcp_and_specialist_observations(self):
+        with patch(
+            "codexy_runtime_tools.component_health._probe_component",
+            return_value={
+                "started": True,
+                "callable": True,
+                "_capability_probes": {
+                    "mcp:watcher": {
+                        "configured": True,
+                        "started": True,
+                        "callable": True,
+                    }
+                },
+            },
+        ):
+            entry = self._health(("core",))[0]
+
+        capabilities = entry["observed"]["capabilities"]
+        watcher = capabilities["mcp:watcher"]
+        specialist = capabilities["specialist:codexy-watcher"]
+        self.assertEqual(
+            watcher["states"],
+            {
+                "configured": "configured",
+                "loaded": "loaded",
+                "callable": "callable",
+                "verified": "unknown",
+            },
+        )
+        self.assertEqual(watcher["source"], "getcodexy-direct-probe")
+        self.assertEqual(watcher["scope"], "plugin-subprocess")
+        self.assertEqual(
+            specialist["states"],
+            {
+                "configured": "configured",
+                "loaded": "unknown",
+                "callable": "unknown",
+                "verified": "unknown",
+            },
+        )
+        self.assertEqual(specialist["source"], "getcodexy-registration-check")
+        self.assertEqual(specialist["scope"], "current-doctor-invocation")
+        for capability in (watcher, specialist):
+            self.assertIsNone(capability["host_id"])
+            self.assertIsNone(capability["session_id"])
+
+    def test_failed_watcher_probe_preserves_unknown_host_and_callable_state(self):
+        with patch(
+            "codexy_runtime_tools.component_health._probe_component",
+            return_value={
+                "started": True,
+                "callable": False,
+                "reason_code": "capability-call-failed",
+                "_capability_probes": {
+                    "mcp:watcher": {
+                        "configured": True,
+                        "started": True,
+                        "callable": False,
+                    }
+                },
+            },
+        ):
+            entry = self._health(("core",))[0]
+
+        self.assertEqual(entry["first_failure_stage"], "callable")
+        self.assertEqual(entry["reason_code"], "capability-call-failed")
+        watcher = entry["observed"]["capabilities"]["mcp:watcher"]
+        self.assertEqual(watcher["states"]["configured"], "configured")
+        self.assertEqual(watcher["states"]["loaded"], "loaded")
+        self.assertEqual(watcher["states"]["callable"], "unknown")
+        self.assertEqual(watcher["states"]["verified"], "unknown")
+        self.assertIsNone(watcher["host_id"])
+        self.assertIsNone(watcher["session_id"])
+
     def test_actual_doctor_maps_probe_success_and_failure(self):
         self._probe_patch.stop()
         from codexy_runtime_tools import component_capability_probe as probe

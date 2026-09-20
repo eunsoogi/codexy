@@ -42,6 +42,28 @@ class ComponentInspectionHostCases:
             registration = entry["observed"]["registration"]
             self.assertTrue(registration["observed"])
             self.assertEqual(registration["expected_count"], 8)
+            capabilities = entry["observed"]["capabilities"]
+            self.assertIn("mcp:watcher", capabilities)
+            self.assertIn("specialist:codexy-watcher", capabilities)
+            for capability in capabilities.values():
+                self.assertEqual(capability["states"]["verified"], "unknown")
+                self.assertIsNone(capability["host_id"])
+                self.assertIsNone(capability["session_id"])
+            if expected == "exact":
+                self.assertEqual(
+                    capabilities["specialist:codexy-watcher"]["states"]["configured"],
+                    "configured",
+                )
+            else:
+                self.assertEqual(
+                    capabilities["specialist:codexy-watcher"]["states"],
+                    {
+                        "configured": "unknown",
+                        "loaded": "unknown",
+                        "callable": "unknown",
+                        "verified": "unknown",
+                    },
+                )
             expected_state = "missing" if expected == "missing-directory" else expected
             self.assertEqual(registration["state"], expected_state)
             self.assertEqual(
