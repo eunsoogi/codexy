@@ -16,6 +16,7 @@ from .component_transaction_snapshot import (
     _read_regular,
     _unlink_regular,
 )
+from .component_transaction_durability import registration_owner_state
 from .component_transition_model import JOURNAL_SCHEMA, Journal
 from .updater import _absolute
 
@@ -117,19 +118,15 @@ def clear_stale_registration_lock(home: Path) -> None:
                 raise ValueError
         except (UnicodeDecodeError, ValueError) as error:
             raise PreAdmissionError("invalid Codexy registration lock owner") from error
-        try:
-            os.kill(pid, 0)
-        except ProcessLookupError:
+        owner = registration_owner_state(pid)
+        if owner == "dead":
             _unlink_regular(target, identity)
-        except OSError as error:
-            if error.errno == errno.ESRCH:
-                _unlink_regular(target, identity)
-            else:
-                raise PreAdmissionError(
-                    "another Codexy agent registration is active or unobservable"
-                ) from error
-        else:
+        elif owner == "live":
             raise PreAdmissionError("another Codexy agent registration is active")
+        else:
+            raise PreAdmissionError(
+                "another Codexy agent registration is active or unobservable"
+            )
     finally:
         if descriptor is not None:
             os.close(descriptor)

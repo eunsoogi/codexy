@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import sys
 import tempfile
 import unittest
+from contextlib import nullcontext
 from pathlib import Path
 from unittest.mock import patch
 
@@ -93,16 +96,43 @@ class TransactionDurabilityTests(unittest.TestCase):
             home = Path(temporary)
             lock = home / ".codexy-agent-registration.lock"
             lock.write_text("1234\n", encoding="ascii")
-            with patch(
-                "codexy_runtime_tools.component_transaction_state.os.kill",
-                side_effect=ProcessLookupError,
+            with patch.object(
+                transaction_state, "registration_owner_state", return_value="dead"
             ):
                 clear_stale_registration_lock(home)
             self.assertFalse(lock.exists())
 
-            lock.write_text(f"{os.getpid()}\n", encoding="ascii")
-            with self.assertRaisesRegex(RuntimeError, "registration is active"):
-                clear_stale_registration_lock(home)
+            child = subprocess.Popen(
+                [sys.executable, "-c", "import time; time.sleep(30)"],
+                creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
+                start_new_session=os.name != "nt",
+            )
+            try:
+                lock.write_text(f"{child.pid}\n", encoding="ascii")
+                no_signal = (
+                    patch.object(
+                        transaction_state.os,
+                        "kill",
+                        side_effect=AssertionError("Windows owner probe signaled"),
+                    )
+                    if os.name == "nt"
+                    else nullcontext()
+                )
+                with no_signal:
+                    with self.assertRaisesRegex(RuntimeError, "registration is active"):
+                        clear_stale_registration_lock(home)
+                self.assertIsNone(child.poll())
+            finally:
+                if child.poll() is None:
+                    child.terminate()
+                try:
+                    child.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    child.kill()
+                    child.wait(timeout=5)
+
+            clear_stale_registration_lock(home)
+            self.assertFalse(lock.exists())
 
     def test_stale_lock_cleanup_preserves_a_replacement_owner(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -110,15 +140,16 @@ class TransactionDurabilityTests(unittest.TestCase):
             lock = home / ".codexy-agent-registration.lock"
             lock.write_text("1234\n", encoding="ascii")
             unlink = transaction_state._unlink_regular
+            replacement_owner = "987654\n"
 
             def replace_owner(path: Path, expected_identity: tuple[int, int]) -> None:
                 path.unlink()
-                path.write_text(f"{os.getpid()}\n", encoding="ascii")
+                path.write_text(replacement_owner, encoding="ascii")
                 unlink(path, expected_identity)
 
             with (
                 patch.object(
-                    transaction_state.os, "kill", side_effect=ProcessLookupError
+                    transaction_state, "registration_owner_state", return_value="dead"
                 ),
                 patch.object(
                     transaction_state, "_unlink_regular", side_effect=replace_owner
@@ -126,7 +157,19 @@ class TransactionDurabilityTests(unittest.TestCase):
             ):
                 clear_stale_registration_lock(home)
 
-            self.assertEqual(lock.read_text(encoding="ascii"), f"{os.getpid()}\n")
+            self.assertEqual(lock.read_text(encoding="ascii"), replacement_owner)
+
+    def test_unobservable_registration_owner_preserves_the_lock(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            lock = home / ".codexy-agent-registration.lock"
+            lock.write_text("987654\n", encoding="ascii")
+            with patch.object(
+                transaction_state, "registration_owner_state", return_value="unknown"
+            ):
+                with self.assertRaisesRegex(RuntimeError, "active or unobservable"):
+                    clear_stale_registration_lock(home)
+            self.assertTrue(lock.exists())
 
     def test_config_snapshot_ignores_literal_markers_in_multiline_strings(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
