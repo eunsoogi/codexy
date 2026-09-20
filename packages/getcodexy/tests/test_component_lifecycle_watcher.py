@@ -5,6 +5,7 @@ import shutil
 import unittest
 from unittest.mock import patch
 
+from codexy_runtime_tools import component_registration_health
 from codexy_runtime_tools.component_lifecycle import run_operation
 from codexy_runtime_tools.component_mcp_materialization import (
     materialize_component_mcp,
@@ -17,14 +18,28 @@ class LifecycleWatcherTests(unittest.TestCase):
     def test_install_validates_each_selected_mcp_source_before_host_add(self) -> None:
         with fixture() as state:
             calls: list[tuple[str, str, tuple[tuple[str, ...], ...]]] = []
+            registrations: list[dict[str, object]] = []
+            original_sync = component_registration_health.sync_agents
+
+            def observe_registration(plugin, home, mode):
+                result = original_sync(plugin, home, mode)
+                registrations.append(result.as_dict())
+                return result
 
             def validate_source(plugin, component, version):
                 calls.append((component, version, tuple(state.mutations)))
                 return materialize_component_mcp(plugin, component, version)
 
-            with patch(
-                "codexy_runtime_tools.component_lifecycle_mcp.materialize_component_mcp",
-                side_effect=validate_source,
+            with (
+                patch.object(
+                    component_registration_health,
+                    "sync_agents",
+                    side_effect=observe_registration,
+                ),
+                patch(
+                    "codexy_runtime_tools.component_lifecycle_mcp.materialize_component_mcp",
+                    side_effect=validate_source,
+                ),
             ):
                 receipt = run_operation(
                     "install",
@@ -35,7 +50,11 @@ class LifecycleWatcherTests(unittest.TestCase):
                     operation_id="op-install-mcp",
                 )
 
-            self.assertEqual(receipt["outcome"], "completed")
+            self.assertEqual(
+                receipt["outcome"],
+                "completed",
+                {"receipt": receipt, "registrations": registrations, "calls": calls},
+            )
             self.assertEqual(
                 [(component, version) for component, version, _ in calls],
                 [("core", VERSION), ("devtools", VERSION)],
