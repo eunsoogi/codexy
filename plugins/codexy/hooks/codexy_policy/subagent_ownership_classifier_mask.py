@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 _RETAINED_RESPONSIBILITY = re.compile(
-    r"(?i)\b(?:i|we|the caller|the requester)\s+(?:retain|retains|keep|keeps|keeping|remain|remains|stay|stays|continue\s+to)\b[^,;.!?:]*?(?:ownership|responsibility|accountability|responsible\s+for)\b[^\n,;.!?:]*?(?=\s+(?:and|but|while|where|then|so)\b|[,\n;.!?:]|$)"
+    r"(?i)\b(?:i|we|the caller|the requester)\s+(?:retain|retains|keep|keeps|keeping|remain|remains|stay|stays|continue\s+to)\b(?:(?!\b(?:and|but|while|where|then|so)\b)[^,;.!?:])*?(?:ownership|responsibility|accountability|responsible\s+for|reviewer)\b[^\n,;.!?:]*?(?=\s+(?:and|but|while|where|then|so)\b|[,\n;.!?:]|$)"
 )
 _COMMIT_METADATA = re.compile(
     r"(?i)\b(?:(?:base|head|parent|current|previous)\s+)?commit\s+[0-9a-f]{7,64}(?=\s+(?:on|from)\s+branch\b|[.,;!?]|$)"

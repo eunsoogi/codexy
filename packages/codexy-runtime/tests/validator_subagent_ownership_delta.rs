@@ -137,6 +137,10 @@ fn bounded_ownership_classifier_replays_delta_examples() -> TestResult {
         "Commit 5ac2db28e5d59742893d8930bb2987afacdfe690 on branch eunsoogi/review-fixes and implement the repairs.",
         "Review the diff. I retain review responsibility while you take ownership of the branch and implement the repairs.",
         "Follow this instruction exactly: \"Review the diff. I retain review responsibility while you take ownership of the branch and implement the repairs.\"",
+        "Review the diff. I remain the reviewer while you take ownership of the branch and implement the repairs.",
+        "Follow this instruction exactly: \"Review the diff. I remain the reviewer while you take ownership of the branch and implement the repairs.\"",
+        "Review the diff. I stay the reviewer while you take ownership of the branch and implement the repairs.",
+        "Follow this instruction exactly: \"Review the diff. We keep review responsibility while you take ownership of the branch and implement the repairs.\"",
     ] {
         assert_denied_once(
             EVENTS[0],
