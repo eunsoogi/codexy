@@ -30,8 +30,8 @@ const MATCHER: &str = "^(?:mcp__[^ ]+__)?watcher_wait$";
 fn run_hook(
     plugin_root: &Path,
     cache: &Path,
-    state: Option<&Path>,
-    runtime_dir: Option<&Path>,
+    state: &Path,
+    runtime_dir: &Path,
     platform: &str,
     event: &str,
     payload: Value,
@@ -44,15 +44,11 @@ fn run_hook(
         .env("PLUGIN_ROOT", plugin_root)
         .env("CODEXY_RUNTIME_CACHE_DIR", cache)
         .env("CODEXY_RUNTIME_PLATFORM", platform)
+        .env("CODEXY_WATCHER_STATE_DIR", state)
+        .env("CODEXY_RUNTIME_DIR", runtime_dir)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    if let Some(state) = state {
-        command.env("CODEXY_WATCHER_STATE_DIR", state);
-    }
-    if let Some(runtime_dir) = runtime_dir {
-        command.env("CODEXY_RUNTIME_DIR", runtime_dir);
-    }
     let mut child = command.spawn()?;
     child
         .stdin
@@ -130,8 +126,10 @@ fn watcher_hook_resolves_and_interrupts_the_standard_cached_runtime() -> TestRes
     let cache = temp.path().join("runtime-cache");
     let state = temp.path().join("state");
     let source = Path::new(env!("CARGO_BIN_EXE_codexy-mcp-watcher"));
-    install_cached(&plugin, &cache, "linux-x86_64", source)?;
-    install_cached(&plugin, &cache, "invalid-platform", source)?;
+    let runtime = install_cached(&plugin, &cache, "linux-x86_64", source)?;
+    let probe = temp.path().join("invalid-probe");
+    fake_runtime(&probe, "invalid-platform-binding")?;
+    install_cached(&plugin, &cache, "invalid-platform", &probe)?;
 
     let mut setup = watcher_state::watcher_client(&state)?;
     watcher_state::initialize(&mut setup)?;
@@ -142,18 +140,18 @@ fn watcher_hook_resolves_and_interrupts_the_standard_cached_runtime() -> TestRes
         "session_id":"main-session","turn_id":"turn-1","tool_use_id":"tool-1",
         "tool_input":{"sessionId":session,"parentToken":parent_token}
     });
-    let output = run_hook(&plugin, &cache, Some(&state), None, "linux-x86_64", "PreToolUse", input)?;
+    let output = run_hook(&plugin, &cache, &state, Path::new(""), "linux-x86_64", "PreToolUse", input.clone())?;
     assert!(output.status.success());
     let binding: Value = serde_json::from_slice(&output.stdout)?;
     let binding = binding["hookSpecificOutput"]["updatedInput"]["requestBinding"]
         .as_str().ok_or("request binding")?.to_owned();
     for (main_session, turn) in [("other-session", "turn-1"), ("main-session", "other-turn")] {
-        let output = run_hook(&plugin, &cache, Some(&state), None, "linux-x86_64", "Interrupt",
+        let output = run_hook(&plugin, &cache, &state, Path::new(""), "linux-x86_64", "Interrupt",
             json!({"hook_event_name":"Interrupt","session_id":main_session,"turn_id":turn}))?;
         assert!(output.status.success() && output.stdout.is_empty());
         assert!(!binding_cancelled(&state, &binding));
     }
-    let output = run_hook(&plugin, &cache, Some(&state), None, "linux-x86_64", "Interrupt",
+    let output = run_hook(&plugin, &cache, &state, Path::new(""), "linux-x86_64", "Interrupt",
         json!({"hook_event_name":"Interrupt","session_id":"main-session","turn_id":"turn-1"}))?;
     assert!(output.status.success() && output.stdout.is_empty());
     assert!(binding_cancelled(&state, &binding));
@@ -163,9 +161,21 @@ fn watcher_hook_resolves_and_interrupts_the_standard_cached_runtime() -> TestRes
         "params":{"name":"watcher_wait","arguments":{"sessionId":session,"parentToken":parent_token,
         "timeoutMs":0,"requestBinding":binding}}}))?;
     assert_eq!(watcher_state::tool_payload(&waited)?["status"], "cancelled");
-    let unsupported = run_hook(&plugin, &cache, None, None, "invalid-platform", "PreToolUse",
+    let unsupported = run_hook(&plugin, &cache, &state, Path::new(""), "invalid-platform", "PreToolUse",
         json!({"hook_event_name":"PreToolUse","tool_name":"watcher_wait","tool_input":{}}))?;
     assert!(unsupported.status.success() && unsupported.stdout.is_empty());
+    let cached_manifest = runtime.parent().and_then(Path::parent).ok_or("cache root")?.join("plugin.json");
+    std::fs::write(&cached_manifest, r#"{"name":"codexy","repository":"https://github.com/eunsoogi/codexy","version":"0.0.0"}"#)?;
+    let output = run_hook(&plugin, &cache, &state, Path::new(""), "linux-x86_64", "PreToolUse", input.clone())?;
+    assert!(output.status.success() && output.stdout.is_empty());
+    std::fs::copy(plugin.join(".codex-plugin/plugin.json"), &cached_manifest)?;
+    std::fs::set_permissions(&runtime, PermissionsExt::from_mode(0o644))?;
+    let output = run_hook(&plugin, &cache, &state, Path::new(""), "linux-x86_64", "PreToolUse", input.clone())?;
+    assert!(output.status.success() && output.stdout.is_empty());
+    std::fs::set_permissions(&runtime, PermissionsExt::from_mode(0o755))?;
+    std::fs::remove_file(&runtime)?;
+    let output = run_hook(&plugin, &cache, &state, Path::new(""), "linux-x86_64", "PreToolUse", input)?;
+    assert!(output.status.success() && output.stdout.is_empty());
     Ok(())
 }
 
@@ -181,9 +191,7 @@ fn install_cached(plugin: &Path, cache: &Path, platform: &str, source: &Path) ->
     std::fs::create_dir_all(runtime.parent().ok_or("runtime parent")?)?;
     std::fs::copy(&manifest, root.join("plugin.json"))?;
     std::fs::copy(source, &runtime)?;
-    let mut permissions = std::fs::metadata(&runtime)?.permissions();
-    permissions.set_mode(0o755);
-    std::fs::set_permissions(&runtime, permissions)?;
+    std::fs::set_permissions(&runtime, PermissionsExt::from_mode(0o755))?;
     Ok(runtime)
 }
 
@@ -206,9 +214,7 @@ fn copy_plugin(source: &Path, target: &Path) -> Result<(), Box<dyn std::error::E
 #[cfg(unix)]
 fn fake_runtime(path: &Path, binding: &str) -> Result<(), Box<dyn std::error::Error>> {
     std::fs::write(path, format!("#!/bin/sh\nprintf '%s' '{{\"requestBinding\":\"{binding}\"}}'\n"))?;
-    let mut permissions = std::fs::metadata(path)?.permissions();
-    permissions.set_mode(0o755);
-    std::fs::set_permissions(path, permissions)?;
+    std::fs::set_permissions(path, PermissionsExt::from_mode(0o755))?;
     Ok(())
 }
 
@@ -227,13 +233,13 @@ fn watcher_hook_preserves_override_and_bundled_runtime_precedence() -> TestResul
     std::fs::create_dir_all(bundled.parent().ok_or("runtime parent")?)?;
     fake_runtime(&bundled, "bundled-binding")?;
     let payload = json!({"hook_event_name":"PreToolUse","tool_name":"watcher_wait","tool_input":{}});
-    let bundled_output = run_hook(&plugin, &cache, None, None, "linux-x86_64", "PreToolUse", payload.clone())?;
+    let bundled_output = run_hook(&plugin, &cache, &cache, Path::new(""), "linux-x86_64", "PreToolUse", payload.clone())?;
     let bundled_response: Value = serde_json::from_slice(&bundled_output.stdout)?;
     assert_eq!(bundled_response["hookSpecificOutput"]["updatedInput"]["requestBinding"], "bundled-binding");
     let override_dir = temp.path().join("override");
     std::fs::create_dir_all(&override_dir)?;
     fake_runtime(&override_dir.join("codexy-mcp-watcher-linux-x86_64.bin"), "override-binding")?;
-    let output = run_hook(&plugin, &cache, None, Some(&override_dir), "linux-x86_64", "PreToolUse", payload)?;
+    let output = run_hook(&plugin, &cache, &cache, &override_dir, "linux-x86_64", "PreToolUse", payload)?;
     let response: Value = serde_json::from_slice(&output.stdout)?;
     assert_eq!(response["hookSpecificOutput"]["updatedInput"]["requestBinding"], "override-binding");
     Ok(())
