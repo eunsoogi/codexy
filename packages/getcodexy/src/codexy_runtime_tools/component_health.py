@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from .component_capability_probe import (
-    FAILURES,
-    identity_matches as _identity_matches,
-    probe_component as _probe_component,
-    probe_reason as _probe_reason,
-)
+import os
+from pathlib import Path
+
+from . import component_capability_probe as _probe
 from .component_capability_observation import component_observations
 from .component_hook_activation import ACTIVATION_STATES
 from .component_mcp_materialization import MCP_COMPONENTS, valid_component_mcp_cache
@@ -21,7 +19,16 @@ from .component_health_support import (
     version_relation,
 )
 from .component_manifest import ComponentManifest
-from .component_registration_health import valid_registration
+from .component_registration_health import (
+    registration_role as _registration_role,
+    valid_registration,
+)
+from .updater import compare_managed_files
+
+FAILURES = _probe.FAILURES
+_identity_matches = _probe.identity_matches
+_probe_component = _probe.probe_component
+_probe_reason = _probe.probe_reason
 
 
 def health(
@@ -35,35 +42,34 @@ def health(
     codex_home=None,
 ) -> list[dict[str, object]]:
     expected = set(recorded or ()) | set(actual)
+    context = (
+        manifest,
+        actual,
+        records,
+        admission_error,
+        host_error,
+        activation,
+        codex_home,
+    )
     return [
-        _component_health(
-            manifest,
-            component,
-            actual,
-            records,
-            admission_error,
-            host_error,
-            activation,
-            codex_home,
-        )
+        _component_health(context, component)
         for component in manifest.component_ids
         if component in expected
     ]
 
 
-def _component_health(
-    manifest,
-    component,
-    actual,
-    records,
-    admission_error,
-    host_error,
-    activation,
-    codex_home,
-):
+def _component_health(context, component):
+    manifest, actual, records, admission_error, host_error, activation, codex_home = (
+        context
+    )
     record = records.get(component)
     installed = component in actual
     plugin = _health_plugin(manifest, component, record, codex_home)
+    registration = (
+        compare_managed_files(plugin, codex_home, component)
+        if plugin and codex_home
+        else None
+    )
     configured = bool(
         installed
         and plugin
@@ -72,21 +78,25 @@ def _component_health(
         )
         and valid_registration(plugin, component)
         and (
+            not registration
+            or not registration["observed"]
+            or registration["state"] == "exact"
+        )
+        and (
             component not in MCP_COMPONENTS
             or valid_component_mcp_cache(codex_home, component, manifest.version)
         )
     )
+    state = _legacy_state(
+        manifest, component, actual, records, admission_error, host_error, codex_home
+    )
+    if registration and registration["observed"] and registration["state"] != "exact":
+        state = {"unmanaged-conflict": "incompatible", "missing": "missing"}.get(
+            registration["state"], "stale"
+        )
     result = dict(
         component=component,
-        state=_legacy_state(
-            manifest,
-            component,
-            actual,
-            records,
-            admission_error,
-            host_error,
-            codex_home,
-        ),
+        state=state,
         installed=installed,
         configured=configured,
         started=False,
@@ -99,6 +109,7 @@ def _component_health(
         observed={
             **_observed(record),
             "capabilities": component_observations(component, configured),
+            "registration": registration,
         },
     )
     checks = (
@@ -158,3 +169,81 @@ def _mark(result: dict[str, object], stage: str, reason: str) -> dict[str, objec
     ):
         result["state"] = "incompatible"
     return result
+
+
+def _registration_roles(home, root, marker, expected, read_regular, max_bytes):
+    roles, managed, unmanaged = [], [], []
+    for name, value in expected.items():
+        roles.append(
+            _registered_role(home, root, name, value, marker, read_regular, max_bytes)
+        )
+    for entry in os.scandir(root):
+        if entry.name in expected or not entry.name.endswith(".toml"):
+            continue
+        try:
+            current = (
+                read_regular(home, Path(entry.path).relative_to(home), max_bytes)
+                .decode()
+                .replace("\r\n", "\n")
+                .replace("\r", "\n")
+            )
+        except (OSError, UnicodeDecodeError, ValueError):
+            unmanaged.append(entry.name)
+            continue
+        (managed if current.startswith(marker) else unmanaged).append(entry.name)
+    roles.extend(
+        _registration_role(
+            name, "stale", "managed role is not declared by the current catalog"
+        )
+        for name in managed
+    )
+    states = {item["state"] for item in roles}
+    state = next(
+        (
+            candidate
+            for candidate in ("unmanaged-conflict", "stale", "missing")
+            if candidate in states or candidate == "unmanaged-conflict" and unmanaged
+        ),
+        "exact",
+    )
+    return roles, tuple(sorted(managed)), tuple(sorted(unmanaged)), state
+
+
+def _registered_role(
+    home: Path,
+    root: Path,
+    name: str,
+    expected: bytes,
+    marker: str,
+    read_regular,
+    max_bytes: int,
+) -> dict[str, object]:
+    try:
+        current = (
+            read_regular(home, root.relative_to(home) / name, max_bytes)
+            .decode()
+            .replace("\r\n", "\n")
+            .replace("\r", "\n")
+        )
+    except FileNotFoundError:
+        return _registration_role(name, "missing", "managed role file is missing")
+    except (OSError, UnicodeDecodeError, ValueError):
+        return _registration_role(
+            name,
+            "unmanaged-conflict",
+            "managed role file is unreadable or not a regular file",
+            True,
+        )
+    if not current.startswith(marker):
+        return _registration_role(
+            name,
+            "unmanaged-conflict",
+            "existing role file is not marker-owned by Codexy",
+            True,
+        )
+    exact = current.encode() == expected
+    return _registration_role(
+        name,
+        "exact" if exact else "stale",
+        None if exact else "registered role differs from the package",
+    )

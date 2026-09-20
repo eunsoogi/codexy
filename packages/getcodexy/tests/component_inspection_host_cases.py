@@ -13,6 +13,50 @@ from component_lifecycle_support import fixture
 
 
 class ComponentInspectionHostCases:
+    def test_doctor_reports_standalone_registration_states_read_only(self) -> None:
+        mutations = {
+            "exact": None,
+            "stale": "stale",
+            "missing": "missing",
+            "unmanaged-conflict": "conflict",
+        }
+        for expected, mutation in mutations.items():
+            with self.subTest(state=expected), fixture({"core"}) as state:
+                materialize = state.marketplace / "plugins/codexy"
+                _register_core(state, materialize)
+                role = state.home / "agents/codexy/codexy-sentinel.toml"
+                if mutation == "stale":
+                    role.write_text(
+                        role.read_text(encoding="utf-8") + "# stale\n", encoding="utf-8"
+                    )
+                elif mutation == "missing":
+                    role.unlink()
+                elif mutation == "conflict":
+                    role.write_text('name = "codexy-sentinel"\n', encoding="utf-8")
+                before = _home_snapshot(state.home)
+                result = doctor(state.home, codex=state.codex, runner=state.run)
+                self.assertEqual(_home_snapshot(state.home), before)
+            entry = result["component_health"][0]
+            registration = entry["observed"]["registration"]
+            self.assertTrue(registration["observed"])
+            self.assertEqual(registration["expected_count"], 8)
+            self.assertEqual(registration["state"], expected)
+            self.assertEqual(
+                entry["state"],
+                {
+                    "exact": "healthy",
+                    "stale": "stale",
+                    "missing": "missing",
+                    "unmanaged-conflict": "incompatible",
+                }[expected],
+            )
+            self.assertEqual(
+                next(
+                    item for item in registration["roles"] if item["file"] == role.name
+                )["state"],
+                "exact" if expected == "exact" else expected,
+            )
+
     def test_doctor_reports_host_requirement(self) -> None:
         with fixture() as state:
 
@@ -64,3 +108,32 @@ class ComponentInspectionHostCases:
             check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
+
+
+def _register_core(state, plugin: Path) -> None:
+    script = plugin / "skills/orchestration/scripts/register_codexy_agents.py"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "--plugin-root",
+            str(plugin),
+            "--codex-home",
+            str(state.home),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode:
+        raise AssertionError(result.stderr)
+
+
+def _home_snapshot(home: Path) -> tuple[tuple[str, bytes], ...]:
+    return tuple(
+        sorted(
+            (path.relative_to(home).as_posix(), path.read_bytes())
+            for path in home.rglob("*")
+            if path.is_file()
+        )
+    )
