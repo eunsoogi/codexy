@@ -13,6 +13,7 @@ from codexy_runtime_tools.component_mcp_materialization import (
 from codexy_runtime_tools.updater import SyncResult
 from packages.getcodexy.tests.component_lifecycle_records import record
 from packages.getcodexy.tests.component_lifecycle_support import VERSION, fixture
+from packages.getcodexy.tests.component_hook_registration_fixture import hook_rows
 
 
 class LifecycleWatcherTests(unittest.TestCase):
@@ -39,6 +40,18 @@ class LifecycleWatcherTests(unittest.TestCase):
                 calls.append((component, version, tuple(state.mutations)))
                 return materialize_component_mcp(plugin, component, version)
 
+            def list_hooks(_executable, _home):
+                rows = []
+                for plugin in ("codexy", "codexy-github"):
+                    for row in hook_rows(state.marketplace / "plugins" / plugin):
+                        observed = row.copy()
+                        observed["key"] = observed["key"].replace(
+                            "codexy@codexy:", f"{plugin}@codexy:", 1
+                        )
+                        observed["pluginId"] = f"{plugin}@codexy"
+                        rows.append(observed)
+                return tuple(rows)
+
             with (
                 patch.object(
                     component_registration_health,
@@ -57,6 +70,7 @@ class LifecycleWatcherTests(unittest.TestCase):
                     state.codex,
                     state.run,
                     operation_id="op-install-mcp",
+                    hook_lister=list_hooks,
                 )
 
             self.assertEqual(
