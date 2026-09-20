@@ -93,6 +93,9 @@ fn codegraph_stdio_attaches_partial_errors_to_each_source_reading_tool()
         let payload: Value = serde_json::from_str(text)?;
         assert_eq!(payload["partial"], true, "{name} should be partial");
         assert_eq!(payload["errors"][0]["kind"], "encoding_failure");
+        if name == "codegraph_overview" {
+            assert_eq!(payload["truncation"], json!({"files": false, "edges": false, "importsPerFile": false}));
+        }
     }
     Ok(())
 }
