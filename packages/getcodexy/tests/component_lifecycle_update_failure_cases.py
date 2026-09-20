@@ -1,11 +1,14 @@
 """Update selection compatibility and rollback cases."""
 
 import os
+import shutil
+import subprocess
 from unittest.mock import patch
 
 from codexy_runtime_tools.component_lifecycle import inventory_path
 from codexy_runtime_tools.component_lifecycle import run_operation
 from codexy_runtime_tools.component_manifest import load_component_manifest
+from codexy_runtime_tools.component_transaction_state import read_journal
 from codexy_runtime_tools.component_transition_model import plan_transition
 from codexy_runtime_tools.updater import compare_managed_files
 from packages.getcodexy.tests.component_hook_registration_fixture import (
@@ -13,6 +16,7 @@ from packages.getcodexy.tests.component_hook_registration_fixture import (
 )
 from packages.getcodexy.tests.component_lifecycle_records import record
 from packages.getcodexy.tests.component_lifecycle_support import fixture
+from packages.getcodexy.tests.test_local_marketplace_identity import LocalHost
 
 
 def _fixture_hook_lister(state):
@@ -150,6 +154,49 @@ class ComponentLifecycleRegistrationCases:
             )
             self.assertEqual(receipt["outcome"], "completed")
             self.assertEqual(report["state"], "exact")
+
+    def test_changed_local_binding_refuses_rollback_and_retains_recovery_state(
+        self,
+    ) -> None:
+        with SwitchingLocalHost() as state:
+            record(state.home, [])
+            with self.assertRaisesRegex(
+                RuntimeError, "marketplace binding changed during recovery"
+            ):
+                run_operation(
+                    "update",
+                    (),
+                    state.home,
+                    state.codex,
+                    state.run,
+                    operation_id="op-local-binding-change",
+                )
+
+            self.assertEqual(state.selection, {"core", "github"})
+            self.assertEqual(state.mutations, [])
+            pending = read_journal(state.home)
+            self.assertIsNotNone(pending)
+            assert pending is not None
+            self.assertEqual(pending.phase, "started")
+
+
+class SwitchingLocalHost(LocalHost):
+    def __init__(self) -> None:
+        super().__init__()
+        self.replacement = self.root / "replacement-marketplace"
+        shutil.copytree(self.marketplace, self.replacement)
+        self.switched = False
+
+    def run(self, command: list[str]) -> subprocess.CompletedProcess[str]:
+        if (
+            tuple(command[1:]) == ("plugin", "marketplace", "list", "--json")
+            and self.marketplace_reads == 1
+            and not self.switched
+        ):
+            self.marketplace = self.replacement
+            self.selection = {"core", "github"}
+            self.switched = True
+        return super().run(command)
         with fixture(real_registration=True) as state:
             receipt = run_operation(
                 "bootstrap",

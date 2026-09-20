@@ -9,7 +9,8 @@ from typing import Callable
 from .component_hook_activation import HookLister
 from .component_lifecycle_finish import finish_committed
 from .component_lifecycle_mcp import materialize_mcp_caches, materialize_mcp_sources
-from .component_lifecycle_preflight import existing_marketplace, refresh_root
+from .component_lifecycle_preflight import existing_marketplace
+from .component_lifecycle_preflight import refresh_operation_root as _refresh
 from .component_registration_health import synchronize_core_registration
 from .component_manifest import ComponentManifest
 from .component_resolver import (
@@ -68,14 +69,7 @@ def recover_if_needed(
                 executable, invoke, manifest, root, journal, journal.resolved, (), home
             )
         except BaseException as error:
-            root = refresh_root(
-                executable,
-                invoke,
-                manifest,
-                root,
-                home,
-                allow_official_repin=journal.command in {"update", "bootstrap"},
-            )
+            root = _refresh(executable, invoke, manifest, root, home, journal.command)
             rollback_or_raise(home, executable, invoke, manifest, root, journal, error)
             terminal(home, manifest, journal.receipt("rolled-back", journal.before))
             clear_journal(home)

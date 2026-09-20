@@ -74,8 +74,10 @@ def refresh_root(
         raise RuntimeError("marketplace binding disappeared during recovery")
     if _same_binding(previous, current):
         return previous
-    if not allow_official_repin or not _is_official(previous) or not _is_official(
-        current
+    if (
+        not allow_official_repin
+        or not _is_official(previous)
+        or not _is_official(current)
     ):
         raise RuntimeError("marketplace binding changed during recovery")
     if not isinstance(current, MarketplaceIdentity):
@@ -102,6 +104,24 @@ def _same_binding(left: MarketplaceBinding, right: MarketplaceBinding) -> bool:
     if _is_official(left) and _is_official(right):
         return marketplace_path(left) == marketplace_path(right)
     return left == right
+
+
+def refresh_operation_root(
+    executable: Path,
+    invoke: Runner,
+    manifest: ComponentManifest,
+    previous: MarketplaceBinding,
+    home: Path,
+    command: str,
+) -> MarketplaceBinding:
+    return refresh_root(
+        executable,
+        invoke,
+        manifest,
+        previous,
+        home,
+        allow_official_repin=command in {"update", "bootstrap"},
+    )
 
 
 def recorded_selection(

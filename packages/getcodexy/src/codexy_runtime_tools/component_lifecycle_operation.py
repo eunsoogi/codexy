@@ -18,6 +18,7 @@ from .component_manifest import ComponentManifest, load_component_manifest
 from .component_lifecycle_preflight import (
     existing_marketplace,
     recorded_selection,
+    refresh_operation_root as _refresh,
     validate_request,
 )
 from .component_lifecycle_recovery import (
@@ -25,7 +26,6 @@ from .component_lifecycle_recovery import (
     list_installed as _list,
     recover_if_needed as _recover_if_needed,
     rollback_or_raise as _rollback_or_raise,
-    refresh_root,
     write_completed as _write_completed,
 )
 from .component_lifecycle_terminal import reject as _reject, terminal as _terminal
@@ -237,14 +237,7 @@ def run_operation(
                 raise RuntimeError(
                     "component operation failed; durable recovery is required"
                 ) from error
-            root = refresh_root(
-                executable,
-                invoke,
-                manifest,
-                root,
-                home,
-                allow_official_repin=journal.command in {"update", "bootstrap"},
-            )
+            root = _refresh(executable, invoke, manifest, root, home, journal.command)
             _rollback_or_raise(home, executable, invoke, manifest, root, journal, error)
             receipt = _terminal(
                 home, manifest, journal.receipt("rolled-back", journal.before)

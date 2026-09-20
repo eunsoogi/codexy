@@ -12,9 +12,7 @@ from component_lifecycle_support import HOOK_LIST_HOST
 from codexy_runtime_tools.component_inspection import doctor, status
 from codexy_runtime_tools.component_lifecycle import run_operation
 from codexy_runtime_tools.component_manifest import load_component_manifest
-from codexy_runtime_tools.component_transaction_state import read_journal
 from codexy_runtime_tools.plugin_resolution import marketplace_identity
-from component_lifecycle_records import record
 
 
 REPOSITORY = Path(__file__).parents[3]
@@ -77,23 +75,6 @@ class LocalMarketplaceIdentityTests(unittest.TestCase):
                     ("plugin", "marketplace", "upgrade", "codexy", "--json"),
                     mutations,
                 )
-
-    def test_changed_local_binding_refuses_rollback_and_retains_recovery_state(
-        self,
-    ) -> None:
-        with SwitchingLocalHost() as host:
-            record(host.home, [])
-            with self.assertRaisesRegex(
-                RuntimeError, "marketplace binding changed during recovery"
-            ):
-                host.operate("update", "op-local-binding-change")
-
-            self.assertEqual(host.selection, {"core", "github"})
-            self.assertEqual(host.mutations, [])
-            pending = read_journal(host.home)
-            self.assertIsNotNone(pending)
-            assert pending is not None
-            self.assertEqual(pending.phase, "started")
 
     def test_foreign_unbound_or_ambiguous_local_sources_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -267,22 +248,3 @@ class LocalHost:
             "codexy-github": "github",
             "codexy-devtools": "devtools",
         }[name]
-
-
-class SwitchingLocalHost(LocalHost):
-    def __init__(self) -> None:
-        super().__init__()
-        self.replacement = self.root / "replacement-marketplace"
-        shutil.copytree(self.marketplace, self.replacement)
-        self.switched = False
-
-    def run(self, command: list[str]) -> subprocess.CompletedProcess[str]:
-        if (
-            tuple(command[1:]) == ("plugin", "marketplace", "list", "--json")
-            and self.marketplace_reads == 1
-            and not self.switched
-        ):
-            self.marketplace = self.replacement
-            self.selection = {"core", "github"}
-            self.switched = True
-        return super().run(command)
