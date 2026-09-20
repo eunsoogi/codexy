@@ -5,11 +5,12 @@ import shutil
 import unittest
 from unittest.mock import patch
 
-from codexy_runtime_tools import component_lifecycle_recovery
+from codexy_runtime_tools import component_registration_health
 from codexy_runtime_tools.component_lifecycle import run_operation
 from codexy_runtime_tools.component_mcp_materialization import (
     materialize_component_mcp,
 )
+from codexy_runtime_tools.updater import SyncResult
 from packages.getcodexy.tests.component_lifecycle_records import record
 from packages.getcodexy.tests.component_lifecycle_support import VERSION, fixture
 
@@ -19,15 +20,18 @@ class LifecycleWatcherTests(unittest.TestCase):
         with fixture() as state:
             calls: list[tuple[str, str, tuple[tuple[str, ...], ...]]] = []
             registrations: list[dict[str, object]] = []
-            original_sync = component_lifecycle_recovery.synchronize_core_registration
-
             def observe_registration(plugin, home, mode):
-                try:
-                    result = original_sync(plugin, home, mode)
-                except BaseException as error:
-                    registrations.append({"error": repr(error)})
-                    raise
-                registrations.append({"status": "completed"})
+                result = SyncResult(
+                    mode,
+                    "completed",
+                    "codexy",
+                    str(plugin),
+                    str(home),
+                    False,
+                    False,
+                    (),
+                )
+                registrations.append(result.as_dict())
                 return result
 
             def validate_source(plugin, component, version):
@@ -36,8 +40,8 @@ class LifecycleWatcherTests(unittest.TestCase):
 
             with (
                 patch.object(
-                    component_lifecycle_recovery,
-                    "synchronize_core_registration",
+                    component_registration_health,
+                    "sync_agents",
                     side_effect=observe_registration,
                 ),
                 patch(
