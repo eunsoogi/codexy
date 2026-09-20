@@ -1,3 +1,5 @@
+pub mod change_input;
+
 mod cache;
 mod candidates;
 mod errors;
