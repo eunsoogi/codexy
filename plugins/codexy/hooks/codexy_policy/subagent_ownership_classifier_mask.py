@@ -4,8 +4,31 @@ from __future__ import annotations
 
 import re
 
+_CALLER_RETENTION = (
+    r"\b(?:i|we|the caller|the requester)\s+"
+    r"(?:retain|retains|keep|keeps|keeping|remain|remains|stay|stays|continue\s+to)\b"
+)
+_CLAUSE_BOUNDARY = r"(?:and|but|while|where|then|so)"
 _RETAINED_RESPONSIBILITY = re.compile(
-    r"(?i)\b(?:i|we|the caller|the requester)\s+(?:retain|retains|keep|keeps|keeping|remain|remains|stay|stays|continue\s+to)\b(?:(?!\b(?:and|but|while|where|then|so)\b)[^,;.!?:])*?(?:ownership|responsibility|accountability|responsible\s+for|reviewer)\b[^\n,;.!?:]*?(?=\s+(?:and|but|while|where|then|so)\b|[,\n;.!?:]|$)"
+    r"(?i)(?:"
+    + _CALLER_RETENTION
+    + r"\s+(?:the\s+)?reviewer\b"
+    + r"|"
+    + _CALLER_RETENTION
+    + r"\s+responsible\s+for\b[^\n,;.!?:]*?"
+    + r"(?=\s+"
+    + _CLAUSE_BOUNDARY
+    + r"\b|[,\n;.!?:]|$)"
+    + r"|"
+    + _CALLER_RETENTION
+    + r"(?:(?!\b"
+    + _CLAUSE_BOUNDARY
+    + r"\b|\b(?:responsible|accountable)\s+for\b)[^,;.!?:])*?"
+    + r"\b(?:ownership|responsibility|accountability)\b[^\n,;.!?:]*?"
+    + r"(?=\s+"
+    + _CLAUSE_BOUNDARY
+    + r"\b|[,\n;.!?:]|$)"
+    + r")"
 )
 _COMMIT_METADATA = re.compile(
     r"(?i)\b(?:(?:base|head|parent|current|previous)\s+)?commit\s+[0-9a-f]{7,64}(?=\s+(?:on|from)\s+branch\b|[.,;!?]|$)"

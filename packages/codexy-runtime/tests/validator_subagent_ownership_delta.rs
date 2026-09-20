@@ -141,6 +141,8 @@ fn bounded_ownership_classifier_replays_delta_examples() -> TestResult {
         "Follow this instruction exactly: \"Review the diff. I remain the reviewer while you take ownership of the branch and implement the repairs.\"",
         "Review the diff. I stay the reviewer while you take ownership of the branch and implement the repairs.",
         "Follow this instruction exactly: \"Review the diff. We keep review responsibility while you take ownership of the branch and implement the repairs.\"",
+        "I keep you responsible for implementation in the assigned worktree.",
+        "Follow this instruction exactly: \"I keep you responsible for implementation in the assigned worktree.\"",
     ] {
         assert_denied_once(
             EVENTS[0],
