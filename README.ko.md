@@ -135,8 +135,8 @@ release를 실행합니다. Codex를 시작하는 host 환경의 `PATH`에서 `u
   unknown으로 유지합니다.
 - **MCP 시나리오 테스트.** 설치된 `$mcp-test` skill과 CLI로 명시적 chaining,
   expectation, 선택 field를 사용하는 신뢰된 local stdio 시나리오를 실행하거나
-  비교할 수 있습니다. 지원 범위는 문서화한 local contract로 제한되며,
-  subprocess 결과만으로 host/session skill 노출을 증명하지 않습니다.
+  비교할 수 있습니다. 지원 범위는 문서화한 local contract로 제한되며, subprocess
+  결과만으로 host/session skill 노출을 증명하지 않습니다.
 
 ## Skill 목록
 
@@ -163,7 +163,7 @@ release를 실행합니다. Codex를 시작하는 host 환경의 `PATH`에서 `u
 | [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md)                          | issue, branch, worktree, PR, review, merge, main 동기화 workflow를 관리합니다. | `github`   |
 | [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md)                              | 저장소 구조와 dependency edge를 정해진 범위에서 탐색합니다.                    | `devtools` |
 | [lsp](plugins/codexy-devtools/skills/lsp/SKILL.md)                                          | 언어 인식 symbol, reference, definition, diagnostic을 요청합니다.              | `devtools` |
-| [mcp-test](plugins/codexy-devtools/skills/mcp-test/SKILL.md)                                | 설치된 MCP 시나리오를 chaining과 expectation으로 실행하거나 비교합니다.          | `devtools` |
+| [mcp-test](plugins/codexy-devtools/skills/mcp-test/SKILL.md)                                | 설치된 MCP 시나리오를 chaining과 expectation으로 실행하거나 비교합니다.        | `devtools` |
 
 `plugin-marketplace-prep`, `release-engineering`, `skill-evaluation` 같은 저장소
 전용 유지보수 skill은 `.agents/skills`에 남아 있으며 설치 기능에 포함되지
@@ -262,9 +262,9 @@ host의 parity를 보장하거나 mutation을 안전하게 만든다는 뜻은 �
 
 ### 상세 문서와 공개 경계
 
-패키지 agent·skill·MCP 시나리오 CLI·MCP/LSP runtime의 실제 목록과 LSP batch, hook timing, doctor
-상태는 [아키텍처 안내서](docs/architecture.md)에서 확인할 수 있습니다. GitHub의
-일반 작업 경계와 선택 가능한 진단은
+패키지 agent·skill·MCP 시나리오 CLI·MCP/LSP runtime의 실제 목록과 LSP batch,
+hook timing, doctor 상태는 [아키텍처 안내서](docs/architecture.md)에서 확인할 수
+있습니다. GitHub의 일반 작업 경계와 선택 가능한 진단은
 [GitHub product boundary](docs/plugin-product-boundary.md), 설치 receipt와
 오류·복구 규칙은 [설치 계약](docs/getcodexy-component-installation.md)에
 있습니다.
