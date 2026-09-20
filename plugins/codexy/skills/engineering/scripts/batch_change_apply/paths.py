@@ -20,7 +20,7 @@ def workspace(value: str | Path) -> Path:
 
 def directory(value: str | Path, label: str, *, create: bool = True) -> Path:
     path = Path(value).expanduser().absolute()
-    if path.exists() and path.is_symlink():
+    if path.is_symlink():
         raise ApplyError(f"{label} must not be a symlink: {path}")
     if path.exists() and not path.is_dir():
         raise ApplyError(f"{label} must be a directory: {path}")
@@ -35,16 +35,18 @@ def child_directory(root: Path, value: str | Path, label: str) -> Path:
     candidate = Path(value).expanduser().absolute()
     canonical_root = root.resolve(strict=True)
     canonical_candidate = candidate.resolve(strict=False)
-    try:
-        raw_relative_path = candidate.relative_to(root)
-    except ValueError:
-        raw_relative_path = None
-    if raw_relative_path is not None:
-        current = root
-        for component in raw_relative_path.parts:
-            current /= component
-            if current.exists() and current.is_symlink():
-                raise ApplyError(f"{label} must not cross a symlink: {current}")
+    current = Path(candidate.anchor)
+    for component in candidate.parts[len(current.parts) :]:
+        current /= component
+        if not current.is_symlink():
+            continue
+        resolved = current.resolve(strict=False)
+        if current == candidate:
+            raise ApplyError(f"{label} must not be a symlink: {current}")
+        try:
+            canonical_root.relative_to(resolved)
+        except ValueError as error:
+            raise ApplyError(f"{label} must not cross a symlink: {current}") from error
     try:
         canonical_candidate.relative_to(canonical_root)
     except ValueError as error:

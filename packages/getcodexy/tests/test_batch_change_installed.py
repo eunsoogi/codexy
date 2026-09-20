@@ -204,6 +204,12 @@ target.write_text(Path(source).read_text().upper())
         self.assertEqual(duplicate_by_id["item-00"]["reason"], "already-applied")
         self.assertEqual(duplicate_by_id["item-10"]["resolution"], "completed")
         self.assertEqual(duplicate_by_id["item-04"]["reason"], "original-changed")
+        edited_output = self.root / "out/item-00.txt"
+        edited_output.write_text("user edit\n", encoding="utf-8")
+        repeated_conflict = self._run_apply(result_path, "item-00")
+        self.assertEqual(repeated_conflict["status"], "conflict")
+        self.assertEqual(repeated_conflict["items"][0]["reason"], "destination-changed")
+        self.assertEqual(edited_output.read_text(encoding="utf-8"), "user edit\n")
 
         interrupted_result = run_boundary_interruption(
             sys.executable,

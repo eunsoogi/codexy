@@ -85,6 +85,18 @@ class BatchChangeApplyTests(unittest.TestCase):
         path.write_text(json.dumps(payload), encoding="utf-8")
         return path
 
+    def _cancel_before_replace(self, cancellation: Event):
+        def interrupt(path: Path) -> None:
+            del path
+            cancellation.set()
+
+        return interrupt
+
+    def _apply(self, result_path: Path, item_id: str, **kwargs: object):
+        return apply_from_path(
+            self.root, str(result_path), selected_ids=[item_id], **kwargs
+        )
+
     def test_applies_only_selected_success_and_preserves_other_items(self) -> None:
         selected = self._item("selected")
         unselected = self._item("unselected")
@@ -118,9 +130,7 @@ class BatchChangeApplyTests(unittest.TestCase):
             "user change\n", encoding="utf-8"
         )
 
-        conflict = apply_from_path(
-            self.root, str(conflict_result), selected_ids=["changed"]
-        )
+        conflict = self._apply(conflict_result, "changed")
 
         self.assertEqual(conflict["status"], "conflict")
         self.assertEqual(conflict["items"][0]["reason"], "original-changed")
@@ -128,23 +138,26 @@ class BatchChangeApplyTests(unittest.TestCase):
 
         duplicate_item = self._item("duplicate")
         duplicate_result = self._result([duplicate_item], batch_id="duplicate-test")
-        first = apply_from_path(
-            self.root, str(duplicate_result), selected_ids=["duplicate"]
-        )
-        second = apply_from_path(
-            self.root, str(duplicate_result), selected_ids=["duplicate"]
-        )
+        first = self._apply(duplicate_result, "duplicate")
+        second = self._apply(duplicate_result, "duplicate")
 
         self.assertEqual(first["items"][0]["resolution"], "applied")
         self.assertEqual(second["status"], "completed")
         self.assertEqual(second["items"][0]["resolution"], "completed")
         self.assertEqual(second["items"][0]["reason"], "already-applied")
-        (self.root / "out/duplicate.txt").write_text("user edit\n", encoding="utf-8")
-        edited = apply_from_path(
-            self.root, str(duplicate_result), selected_ids=["duplicate"]
+        cancellation = Event()
+        cancellation.set()
+        interrupted = self._apply(
+            duplicate_result, "duplicate", cancellation_event=cancellation
         )
+        self.assertEqual(interrupted["status"], "interrupted")
+        (self.root / "out/duplicate.txt").write_text("user edit\n", encoding="utf-8")
+        edited = self._apply(duplicate_result, "duplicate")
         self.assertEqual(edited["status"], "conflict")
         self.assertEqual(edited["items"][0]["reason"], "destination-changed")
+        repeated = self._apply(duplicate_result, "duplicate")
+        self.assertEqual(repeated["status"], "conflict")
+        self.assertEqual(repeated["items"][0]["reason"], "destination-changed")
         self.assertEqual(
             (self.root / "out/duplicate.txt").read_text(encoding="utf-8"),
             "user edit\n",
@@ -155,16 +168,12 @@ class BatchChangeApplyTests(unittest.TestCase):
         result_path = self._result(items, batch_id="interrupted-report")
         cancellation = Event()
 
-        def interrupt_before_replace(path: Path) -> None:
-            del path
-            cancellation.set()
-
         result = apply_from_path(
             self.root,
             str(result_path),
             selected_ids=["first", "third"],
             cancellation_event=cancellation,
-            before_replace=interrupt_before_replace,
+            before_replace=self._cancel_before_replace(cancellation),
         )
 
         by_id = {item["id"]: item for item in result["items"]}
@@ -187,30 +196,37 @@ class BatchChangeApplyTests(unittest.TestCase):
                 state_root=self.root / ".." / outside.name,
             )
         self.assertFalse(outside.exists())
+        valid_state = self.root / "valid-state"
+        valid = self._apply(result_path, "state-escape", state_root=valid_state)
+        self.assertEqual(valid["status"], "completed")
+        self.assertTrue(valid_state.is_dir())
+        target = self.root / "real-state"
+        target.mkdir()
+        for name, state_root in (
+            ("existing-state-link", target),
+            ("dangling-state-link", self.root / "missing-state"),
+        ):
+            link = self.root / name
+            link.symlink_to(state_root, target_is_directory=True)
+            with self.assertRaisesRegex(ApplyError, "symlink"):
+                self._apply(result_path, "state-escape", state_root=link)
 
     def test_interruption_before_replacement_is_resumable(self) -> None:
         item = self._item("interrupt")
         result_path = self._result([item])
         cancellation = Event()
 
-        def interrupt_before_replace(path: Path) -> None:
-            del path
-            cancellation.set()
-
-        interrupted = apply_from_path(
-            self.root,
-            str(result_path),
-            selected_ids=["interrupt"],
+        interrupted = self._apply(
+            result_path,
+            "interrupt",
             cancellation_event=cancellation,
-            before_replace=interrupt_before_replace,
+            before_replace=self._cancel_before_replace(cancellation),
         )
 
         self.assertEqual(interrupted["status"], "interrupted")
         self.assertEqual(interrupted["items"][0]["resolution"], "incomplete")
         self.assertFalse((self.root / "out/interrupt.txt").exists())
-        resumed = apply_from_path(
-            self.root, str(result_path), selected_ids=["interrupt"]
-        )
+        resumed = self._apply(result_path, "interrupt")
         self.assertEqual(resumed["status"], "completed")
         self.assertEqual(resumed["items"][0]["resolution"], "applied")
 

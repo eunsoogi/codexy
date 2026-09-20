@@ -69,10 +69,10 @@ def run(
             )
             continue
         entry = state["items"][item_id]
-        previously_completed = entry.get("status") == "completed"
         accepted_destination = entry.get("destination")
         if not isinstance(accepted_destination, Mapping):
             accepted_destination = None
+        previously_completed = accepted_destination is not None
         entry.update(
             {
                 "status": "in-progress",
