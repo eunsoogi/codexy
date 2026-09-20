@@ -16,6 +16,10 @@ from pathlib import Path
 REPOSITORY = Path(__file__).resolve().parents[3]
 SCENARIO_SCRIPTS = REPOSITORY / "plugins/codexy-devtools/scripts"
 FIXTURE = Path(__file__).with_name("mcp_scenario_fixtures") / "fixture_server.py"
+DEFAULT_STORED_FIELDS = {
+    "text": "/result/content/0/text",
+    "public": "/result/data/public",
+}
 if str(SCENARIO_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCENARIO_SCRIPTS))
 
@@ -55,29 +59,19 @@ def _pid_active(pid: int) -> bool:
     return True
 
 
+@unittest.skipUnless(os.name == "posix", "POSIX-only scenario execution")
 class SingleCallScenarioTests(unittest.TestCase):
     def _call(self, root: Path, mode: str, **kwargs) -> SingleCall:
+        argv = (sys.executable, "-u", str(FIXTURE), "--mode", mode)
+        argv += tuple(kwargs.pop("argv_tail", ()))
         return SingleCall(
-            argv=(
-                sys.executable,
-                "-u",
-                str(FIXTURE),
-                "--mode",
-                mode,
-                *kwargs.pop("argv_tail", ()),
-            ),
+            argv=argv,
             cwd=root,
             environment=kwargs.pop("environment", {}),
             tool="read_value",
             allowed_tools=frozenset({"read_value"}),
             arguments=kwargs.pop("arguments", {}),
-            stored_fields=kwargs.pop(
-                "stored_fields",
-                {
-                    "text": "/result/content/0/text",
-                    "public": "/result/data/public",
-                },
-            ),
+            stored_fields=kwargs.pop("stored_fields", DEFAULT_STORED_FIELDS),
             expected=kwargs.pop("expected", ExpectedResult()),
             protocol_version=kwargs.pop("protocol_version", "2024-11-05"),
             transport=kwargs.pop("transport", "stdio-newline-v1"),
@@ -100,15 +94,19 @@ class SingleCallScenarioTests(unittest.TestCase):
 
     def test_initialize_completes_before_follow_up_requests(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            result = run_single_call(self._call(Path(directory), "delayed-init"))
-            self.assertEqual(result.kind, ResultKind.SUCCESS)
+            self.assertEqual(
+                run_single_call(self._call(Path(directory), "delayed-init")).kind,
+                ResultKind.SUCCESS,
+            )
 
     def test_server_selected_protocol_must_be_supported(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            result = run_single_call(
-                self._call(Path(directory), "unsupported-version", stored_fields={})
+            self.assertEqual(
+                run_single_call(
+                    self._call(Path(directory), "unsupported-version", stored_fields={})
+                ).kind,
+                ResultKind.UNSUPPORTED_PROTOCOL,
             )
-            self.assertEqual(result.kind, ResultKind.UNSUPPORTED_PROTOCOL)
 
     def test_success_uses_explicit_invocation_and_selected_persistence(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -169,7 +167,7 @@ class SingleCallScenarioTests(unittest.TestCase):
 
     def test_allowlist_cannot_be_expanded_by_server_tool_listing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            result = run_single_call(self._call(Path(directory), "extra-tool"))
+            run_single_call(self._call(Path(directory), "extra-tool"))
             with self.assertRaises(ScenarioValidationError):
                 SingleCall(
                     argv=(sys.executable, str(FIXTURE), "--mode", "success"),
@@ -181,12 +179,13 @@ class SingleCallScenarioTests(unittest.TestCase):
 
     def test_output_limit_stops_process_without_persisting_output(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            result = run_single_call(
-                self._call(Path(directory), "output-limit", output_limit_bytes=1024)
+            self.assertEqual(
+                run_single_call(
+                    self._call(Path(directory), "output-limit", output_limit_bytes=1024)
+                ).kind,
+                ResultKind.OUTPUT_LIMIT,
             )
-            self.assertEqual(result.kind, ResultKind.OUTPUT_LIMIT)
 
-    @unittest.skipUnless(os.name != "nt", "POSIX only")
     def test_completion_and_timeout_clean_fixture_process_tree(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

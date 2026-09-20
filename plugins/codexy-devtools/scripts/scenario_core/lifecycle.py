@@ -9,6 +9,8 @@ import subprocess
 from contextlib import suppress
 from time import monotonic, sleep
 
+from .support import validate_platform
+
 
 _POLL_SECONDS = 0.01
 
@@ -28,33 +30,23 @@ def terminate(
 ) -> None:
     """Terminate the process group even when its parent has already exited."""
 
-    if os.name == "nt":
-        with suppress(OSError, subprocess.TimeoutExpired):
-            subprocess.run(
-                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False,
-                timeout=max(0.05, deadline - monotonic()),
-            )
-    else:
-        if process_group is None:
-            with suppress(OSError, ProcessLookupError):
-                process_group = os.getpgid(process.pid)
-        try:
-            if process_group is not None:
-                os.killpg(process_group, signal.SIGTERM)
-            elif process.poll() is None:
-                process.terminate()
-        except (OSError, ProcessLookupError):
-            with suppress(OSError):
-                process.terminate()
+    validate_platform()
+    if process_group is None:
+        with suppress(OSError, ProcessLookupError):
+            process_group = os.getpgid(process.pid)
+    try:
+        if process_group is not None:
+            os.killpg(process_group, signal.SIGTERM)
+        elif process.poll() is None:
+            process.terminate()
+    except (OSError, ProcessLookupError):
+        with suppress(OSError):
+            process.terminate()
     while monotonic() < deadline and (
-        process.poll() is None or (os.name != "nt" and _group_exists(process_group))
+        process.poll() is None or _group_exists(process_group)
     ):
         sleep(_POLL_SECONDS)
-    if os.name != "nt" and process_group is not None:
+    if process_group is not None:
         with suppress(OSError, ProcessLookupError):
             os.killpg(process_group, signal.SIGKILL)
     if process.poll() is None:

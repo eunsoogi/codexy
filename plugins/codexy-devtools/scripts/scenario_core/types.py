@@ -50,6 +50,10 @@ class UnsupportedTransportError(ScenarioValidationError):
     """Raised for a transport that this increment does not support."""
 
 
+class UnsupportedPlatformError(ScenarioValidationError):
+    """Raised before launch when process ownership is not proven."""
+
+
 def _json_copy(value: Any) -> Any:
     try:
         return json.loads(json.dumps(value, allow_nan=False))

@@ -17,13 +17,14 @@ from .protocol import (
     selected,
     tools_list_error,
 )
-from .support import MAX_REQUEST_BYTES
+from .support import MAX_REQUEST_BYTES, validate_platform
 from .types import (
     ExecutionError,
     ExecutionResult,
     ResultKind,
     ScenarioValidationError,
     SingleCall,
+    UnsupportedPlatformError,
 )
 
 
@@ -82,6 +83,11 @@ def _request_payloads(call: SingleCall) -> tuple[bytes, bytes, bytes, bytes]:
 
 def run_single_call(call: SingleCall, cancellation: Any = None) -> ExecutionResult:
     """Run one explicit initialize/list/call exchange against local stdio."""
+
+    try:
+        validate_platform()
+    except ValueError as platform_error:
+        raise UnsupportedPlatformError(str(platform_error)) from platform_error
 
     if cancellation is not None:
         if hasattr(cancellation, "is_cancelled"):

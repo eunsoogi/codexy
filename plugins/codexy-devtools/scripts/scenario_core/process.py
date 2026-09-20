@@ -11,6 +11,7 @@ from time import monotonic, sleep
 from typing import Callable, Mapping
 
 from .lifecycle import terminate as _terminate
+from .support import validate_platform
 
 
 _CLEANUP_SECONDS = 1.0
@@ -70,6 +71,7 @@ def run_bounded(
     stop_event: threading.Event,
     on_stdout_line: Callable[[bytes, Callable[[bytes], None]], None],
 ) -> ProcessCapture:
+    validate_platform()
     started = monotonic()
     options = {
         "args": list(argv),
@@ -81,13 +83,8 @@ def run_bounded(
         "shell": False,
         "text": False,
     }
-    if os.name == "nt":
-        options["creationflags"] = getattr(
-            subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200
-        ) | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
-    else:
-        options["start_new_session"] = True
-        options["close_fds"] = True
+    options["start_new_session"] = True
+    options["close_fds"] = True
     try:
         process = subprocess.Popen(**options)
     except OSError:
@@ -95,11 +92,10 @@ def run_bounded(
             "launch-error", None, monotonic() - started, 0, 0, launch_error=True
         )
     process_group = None
-    if os.name != "nt":
-        try:
-            process_group = os.getpgid(process.pid)
-        except (OSError, ProcessLookupError):
-            pass
+    try:
+        process_group = os.getpgid(process.pid)
+    except (OSError, ProcessLookupError):
+        pass
 
     stdout_count = [0]
     stderr_count = [0]
