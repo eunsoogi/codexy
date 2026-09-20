@@ -154,6 +154,21 @@ class ComponentLifecycleRegistrationCases:
             )
             self.assertEqual(receipt["outcome"], "completed")
             self.assertEqual(report["state"], "exact")
+        with fixture(real_registration=True) as state:
+            receipt = run_operation(
+                "bootstrap",
+                (),
+                state.home,
+                state.codex,
+                state.run,
+                operation_id="op-bootstrap-register",
+                hook_lister=_fixture_hook_lister(state),
+            )
+            report = compare_managed_files(
+                state.marketplace / "plugins" / "codexy", state.home, "core"
+            )
+            self.assertEqual(receipt["outcome"], "completed")
+            self.assertEqual(report["state"], "exact")
 
     def test_changed_local_binding_refuses_rollback_and_retains_recovery_state(
         self,
@@ -197,18 +212,3 @@ class SwitchingLocalHost(LocalHost):
             self.selection = {"core", "github"}
             self.switched = True
         return super().run(command)
-        with fixture(real_registration=True) as state:
-            receipt = run_operation(
-                "bootstrap",
-                (),
-                state.home,
-                state.codex,
-                state.run,
-                operation_id="op-bootstrap-register",
-                hook_lister=_fixture_hook_lister(state),
-            )
-            report = compare_managed_files(
-                state.marketplace / "plugins" / "codexy", state.home, "core"
-            )
-            self.assertEqual(receipt["outcome"], "completed")
-            self.assertEqual(report["state"], "exact")
