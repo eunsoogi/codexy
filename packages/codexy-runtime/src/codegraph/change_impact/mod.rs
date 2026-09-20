@@ -3,8 +3,6 @@ mod graph;
 mod model;
 
 #[cfg(test)]
-mod path_tests;
-#[cfg(test)]
 mod tests;
 
 use std::collections::BTreeSet;

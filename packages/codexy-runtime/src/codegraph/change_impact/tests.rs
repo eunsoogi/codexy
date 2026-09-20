@@ -165,10 +165,13 @@ fn file_and_path_limits_are_explicit() -> Result<()> {
         ("dep.py", "VALUE = 1\n"),
         ("one.py", "import dep\n"),
         ("two.py", "import dep\n"),
+        ("other.py", "VALUE = 1\n"),
+        ("other_consumer.py", "import other\n"),
     ])?;
     let base = fixture.head()?;
     fixture.write("dep.py", "VALUE = 2\n")?;
-    let head = fixture.commit("change dependency")?;
+    fixture.write("other.py", "VALUE = 2\n")?;
+    let head = fixture.commit("change dependencies")?;
     let changes = fixture.comparison(&base, &head)?;
 
     let file_limited = analyze_with_options(
@@ -197,6 +200,7 @@ fn file_and_path_limits_are_explicit() -> Result<()> {
             max_paths: 1,
         },
     )?;
+    assert_eq!(path_limited.connecting_paths.len(), 1);
     assert!(path_limited.limits.paths_truncated);
     assert!(
         path_limited
@@ -205,39 +209,18 @@ fn file_and_path_limits_are_explicit() -> Result<()> {
             .iter()
             .any(|area| area.reason == UnknownReason::PathLimit)
     );
-    Ok(())
-}
 
-#[test]
-fn path_limit_is_global_across_changes() -> Result<()> {
-    let fixture = repository(&[
-        ("one.py", "VALUE = 1\n"),
-        ("two.py", "VALUE = 1\n"),
-        ("one_consumer.py", "import one\n"),
-        ("two_consumer.py", "import two\n"),
-    ])?;
-    let base = fixture.head()?;
-    fixture.write("one.py", "VALUE = 2\n")?;
-    fixture.write("two.py", "VALUE = 2\n")?;
-    let head = fixture.commit("change two dependencies")?;
-    let result = analyze_with_options(
+    let duplicate_paths = analyze_with_options(
         fixture.path(),
-        &fixture.comparison(&base, &head)?,
+        &changes,
         ImpactOptions {
             max_files: 10,
-            max_paths: 1,
+            max_paths: 5,
         },
     )?;
-
-    assert_eq!(result.connecting_paths.len(), 1);
-    assert!(result.limits.paths_truncated);
-    assert!(
-        result
-            .limits
-            .unknown
-            .iter()
-            .any(|area| area.reason == UnknownReason::PathLimit)
-    );
+    assert_eq!(duplicate_paths.connecting_paths.len(), 5);
+    assert!(!duplicate_paths.limits.paths_truncated);
+    assert!(!duplicate_paths.partial);
     Ok(())
 }
 
