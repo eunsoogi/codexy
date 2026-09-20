@@ -8,8 +8,15 @@ from codexy_runtime_tools.component_lifecycle import run_operation
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.component_transition_model import plan_transition
 from codexy_runtime_tools.updater import compare_managed_files
+from packages.getcodexy.tests.component_hook_registration_fixture import (
+    fixture_hook_rows,
+)
 from packages.getcodexy.tests.component_lifecycle_records import record
 from packages.getcodexy.tests.component_lifecycle_support import fixture
+
+
+def _fixture_hook_lister(state):
+    return lambda _executable, _home: fixture_hook_rows(state.marketplace)
 
 
 class ComponentLifecycleUpdateFailureCases:
@@ -62,6 +69,7 @@ class ComponentLifecycleRegistrationCases:
                 state.codex,
                 state.run,
                 operation_id="op-register",
+                hook_lister=_fixture_hook_lister(state),
             )
             roles_root = state.home / "agents" / "codexy"
             before = {
@@ -77,6 +85,7 @@ class ComponentLifecycleRegistrationCases:
                 state.codex,
                 state.run,
                 operation_id="op-register-repeat",
+                hook_lister=_fixture_hook_lister(state),
             )
             self.assertEqual(first["outcome"], second["outcome"])
             self.assertEqual(first["outcome"], "completed")
@@ -103,6 +112,7 @@ class ComponentLifecycleRegistrationCases:
                     state.codex,
                     state.run,
                     operation_id="op-register-failure",
+                    hook_lister=_fixture_hook_lister(state),
                 )
             self.assertEqual(failed["outcome"], "rolled-back")
             self.assertFalse(inventory_path(state.home).exists())
@@ -115,6 +125,7 @@ class ComponentLifecycleRegistrationCases:
                 state.codex,
                 state.run,
                 operation_id="op-register-retry",
+                hook_lister=_fixture_hook_lister(state),
             )
             report = compare_managed_files(
                 state.marketplace / "plugins" / "codexy", state.home, "core"
@@ -132,6 +143,7 @@ class ComponentLifecycleRegistrationCases:
                 state.codex,
                 state.run,
                 operation_id="op-update-register",
+                hook_lister=_fixture_hook_lister(state),
             )
             report = compare_managed_files(
                 state.marketplace / "plugins" / "codexy", state.home, "core"
@@ -146,6 +158,7 @@ class ComponentLifecycleRegistrationCases:
                 state.codex,
                 state.run,
                 operation_id="op-bootstrap-register",
+                hook_lister=_fixture_hook_lister(state),
             )
             report = compare_managed_files(
                 state.marketplace / "plugins" / "codexy", state.home, "core"
