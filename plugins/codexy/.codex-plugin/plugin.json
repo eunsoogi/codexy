@@ -25,7 +25,7 @@
   "interface": {
     "displayName": "Codexy",
     "shortDescription": "Run Codex work through atomic orchestration, evidence, review, and merge gates.",
-    "longDescription": "Codex orchestrator for task-selected workflows, specialist roles, evidence capture, and safe review gates across repository, external, artifact, data, research, and local work.",
+    "longDescription": "Codex orchestrator for task-selected workflows, bounded self-improvement, specialist roles, evidence capture, and safe review gates across repository, external, artifact, data, research, and local work.",
     "developerName": "Eunsoo Lee",
     "category": "Developer Tools",
     "capabilities": [

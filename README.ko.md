@@ -160,6 +160,7 @@ release를 실행합니다. Codex를 시작하는 host 환경의 `PATH`에서 `u
 | [proof-driven-completion](plugins/codexy/skills/proof-driven-completion/SKILL.md)           | 모든 완료 주장을 현재의 권위 있는 근거와 연결합니다.                                      | `core`     |
 | [prune-artifact-claims](plugins/codexy/skills/prune-artifact-claims/SKILL.md)               | 하나의 artifact를 하나의 기준 source에 맞춰 오래된 주장을 정리합니다.                     | `core`     |
 | [realtime-voice-orchestration](plugins/codexy/skills/realtime-voice-orchestration/SKILL.md) | 명시적으로 요청한 realtime voice 작업을 담당자에게 연결합니다.                            | `core`     |
+| [self-improvement](plugins/codexy/skills/self-improvement/SKILL.md)                         | 반복 실패, 불확실한 전제, 검증 충돌에 맞춰 필요한 개선 절차를 선택합니다.                 | `core`     |
 | [wiki](plugins/codexy/skills/wiki/SKILL.md)                                                 | 하나의 범위 있는 source 기반 topic knowledge base를 만들고 운영합니다.                    | `core`     |
 | [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md)                          | issue, branch, worktree, PR, review, merge, main 동기화 workflow를 관리합니다.            | `github`   |
 | [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md)                              | 저장소 구조와 dependency edge를 정해진 범위에서 탐색합니다.                               | `devtools` |

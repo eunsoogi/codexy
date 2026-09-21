@@ -41,6 +41,13 @@ claim when proof is absent, stale, too weak, or contradictory.
 
 ## Invariants
 
+- For a selected [self-improvement](../self-improvement/SKILL.md) route, MUST
+  audit the selected producer evidence and its limits against the original goal.
+  A reusable strategy or harness change MUST preserve the applicable
+  [evaluation integrity](../engineering/references/evaluation-integrity.md)
+  boundary; ordinary one-off tasks MUST NOT acquire mandatory holdout
+  evaluation.
+
 - A unit test MUST NOT prove GitHub, CLI, browser, desktop, plugin, marketplace,
   publication, or release behavior; MUST drive the matching surface.
 - An open PR, green CI, merge, publication, and milestone closure are distinct
