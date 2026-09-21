@@ -53,7 +53,7 @@ const BOUNDARY_PATHS: &[(&str, &str)] = &[
 #[test]
 fn documentation_uses_only_module_owned_rust_paths() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
-    let architecture = std::fs::read_to_string(root.join("docs/architecture.md"))?;
+    let architecture = super::skill_inventory::combined(root)?;
     let boundary = std::fs::read_to_string(root.join("docs/plugin-product-boundary.md"))?;
 
     validate(&architecture, ARCHITECTURE_PATHS)?;
@@ -63,10 +63,7 @@ fn documentation_uses_only_module_owned_rust_paths() -> TestResult {
     Ok(())
 }
 
-fn validate(
-    documentation: &str,
-    paths: &[(&str, &str)],
-) -> Result<(), Box<dyn std::error::Error>> {
+fn validate(documentation: &str, paths: &[(&str, &str)]) -> Result<(), Box<dyn std::error::Error>> {
     for (module_path, root_path) in paths {
         let documented_module_path = format!("`{module_path}`");
         let documented_root_path = format!("`{root_path}`");

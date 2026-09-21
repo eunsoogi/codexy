@@ -8,7 +8,7 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 #[test]
 fn every_packaged_skill_has_one_keep_decision_and_stable_identity() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
-    let guide = std::fs::read_to_string(root.join("docs/architecture.md"))?;
+    let guide = std::fs::read_to_string(root.join("docs/architecture/skill-boundaries.md"))?;
     let rows = table_rows(section(&guide, "Packaged skills")?);
     let skills_root = root.join("plugins/codexy/skills");
     let mut packaged = BTreeSet::new();
@@ -20,7 +20,10 @@ fn every_packaged_skill_has_one_keep_decision_and_stable_identity() -> TestResul
             continue;
         }
         let text = std::fs::read_to_string(&skill_path)?;
-        let frontmatter = text.split("---").nth(1).ok_or("skill frontmatter missing")?;
+        let frontmatter = text
+            .split("---")
+            .nth(1)
+            .ok_or("skill frontmatter missing")?;
         let value: serde_yaml::Value = serde_yaml::from_str(frontmatter)?;
         let name = value["name"].as_str().ok_or("skill name missing")?;
         let description = value["description"]
@@ -36,7 +39,11 @@ fn every_packaged_skill_has_one_keep_decision_and_stable_identity() -> TestResul
     let documented = rows
         .iter()
         .map(|row| {
-            assert_eq!(row.len(), 4, "skill rows need name, decision, trigger, responsibility");
+            assert_eq!(
+                row.len(),
+                4,
+                "skill rows need name, decision, trigger, responsibility"
+            );
             assert_eq!(row[1], "Keep", "unsupported taxonomy churn for {}", row[0]);
             assert!(!row[2].is_empty() && !row[3].is_empty());
             row[0].clone()
@@ -49,7 +56,7 @@ fn every_packaged_skill_has_one_keep_decision_and_stable_identity() -> TestResul
 #[test]
 fn overlap_boundaries_and_consumer_taxonomy_are_explicit() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
-    let guide = std::fs::read_to_string(root.join("docs/architecture.md"))?;
+    let guide = std::fs::read_to_string(root.join("docs/architecture/skill-boundaries.md"))?;
     overlap_boundaries::assert_canonical(&guide)?;
 
     let consumers = data_rows(section(&guide, "Skill path-consumer map")?)
@@ -100,9 +107,8 @@ fn gfm_owner_decision_remains_non_authoritative_without_lane_metadata() -> TestR
     ))?;
     assert!(!authoritative_child.status.success());
 
-    let missing_metadata = run_ownership_validator(&format!(
-        "{complete_table}Plan tool call: update_plan\n"
-    ))?;
+    let missing_metadata =
+        run_ownership_validator(&format!("{complete_table}Plan tool call: update_plan\n"))?;
     assert!(
         !missing_metadata.status.success(),
         "a complete display table must not establish authority without metadata"
@@ -123,7 +129,9 @@ fn gfm_owner_decision_remains_non_authoritative_without_lane_metadata() -> TestR
     Ok(())
 }
 
-fn run_ownership_validator(evidence: &str) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+fn run_ownership_validator(
+    evidence: &str,
+) -> Result<std::process::Output, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let path = temp.path().join("handoff.md");
     std::fs::write(&path, evidence)?;
@@ -132,7 +140,9 @@ fn run_ownership_validator(evidence: &str) -> Result<std::process::Output, Box<d
 
 fn section<'a>(guide: &'a str, heading: &str) -> Result<&'a str, String> {
     let marker = format!("## {heading}");
-    let start = guide.find(&marker).ok_or_else(|| format!("missing heading: {marker}"))?;
+    let start = guide
+        .find(&marker)
+        .ok_or_else(|| format!("missing heading: {marker}"))?;
     let remainder = &guide[start + marker.len()..];
     Ok(remainder.split("\n## ").next().unwrap_or(remainder))
 }
