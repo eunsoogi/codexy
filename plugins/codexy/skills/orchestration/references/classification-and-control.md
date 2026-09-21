@@ -2,9 +2,15 @@
 
 ## Parent And Child Boundary
 
-- The plugin-invoking Codex thread is the orchestrator. It creates or confirms
-  issues, assigns branches, delegates lanes, opens PRs when appropriate,
-  performs parent verification, coordinates squash merge, and syncs `main`.
+- A Codex task MUST retain its assigned ownership role when invoking the plugin
+  or loading a skill. Invocation MUST NOT promote an assigned Worker, evaluator,
+  or helper to orchestrator or expand its task-creation authority.
+- The assigned orchestrator creates or confirms issues, assigns branches,
+  delegates lanes, opens PRs when appropriate, performs parent verification,
+  coordinates squash merge, and syncs `main` within its authorized scope.
+- Every role MUST preserve explicit user and delegated task-creation limits. A
+  fresh-stage prerequisite MUST NOT authorize an assigned candidate to create a
+  nested task; it MUST report an unmet prerequisite to its stage owner.
 - A child Codex worktree thread owns implementation edits, local verification,
   and review-response fixes for its assigned issue or lane.
 - `$planning` owns plan content, plan updates, and plan-file rules.

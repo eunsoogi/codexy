@@ -133,11 +133,15 @@ codexy/
   treat the exposure mismatch as a dogfooding defect, not as a quiet fallback.
   For example, if `codex mcp list` shows Codexy `codegraph` or `lsp` enabled but
   the tools are not callable in the session, record both surfaces as evidence.
-- Every dogfood stage MUST start from a newly created clean Codex thread before
-  delegation. MUST NOT continue a dogfood stage from an inherited, stale, or
-  already-used thread context; MUST create the fresh thread first, then delegate
-  the stage with its issue, branch, owner, evidence requirements, and stop
-  condition.
+- The authorized orchestrator preparing a dogfood stage MUST create its fresh,
+  clean Codex thread before delegation, then assign its issue, branch, owner,
+  evidence requirements, and stop condition. MUST NOT use an inherited, stale,
+  or already-used thread as that fresh stage context.
+- The assigned candidate MUST execute inside that prepared thread; this
+  cleanliness requirement MUST NOT make it create another thread or override an
+  explicit no-new-task limit. If the required clean context is unavailable, it
+  MUST report the unmet prerequisite to the stage owner without creating an
+  unauthorized task or claiming the stage passed.
 - Before creating Codex app threads or worktrees, MUST preflight branch refs and
   MUST NOT pass a non-existent new branch as an existing branch selector. MUST
   wait for pending worktree setup before declaring failure, and MUST keep
