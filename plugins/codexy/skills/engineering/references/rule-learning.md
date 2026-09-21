@@ -82,6 +82,10 @@ when it covers the write; MUST NOT invent a blanket approval step. Without an
 authorized destination or write authority, MUST keep the result a candidate
 (experimental or scope-validated as its evidence supports), not an adopted rule.
 
+Authorization alone is not an observed adoption. Before calling a stored rule
+adopted, MUST confirm the owner-accepted change at the destination through the
+existing proof contract; an intended or proposed write is not a completed one.
+
 MUST NOT automatically write global memory, project instructions, user settings,
 or model policies. If evidence requires withdrawing an already adopted rule,
 MUST record the limit and route the change through that destination's owner and
