@@ -27,6 +27,11 @@ and cost summary. A link to the private artifact MUST NOT be published there.
 
 ## Freeze and case ownership
 
+For meaningful strategy, harness, evaluator, or proxy improvements, MUST also
+apply [self-improvement evaluation](references/self-improvement.md). It shares
+the packaged author/evaluator access boundary without adding a holdout ceremony
+to ordinary one-off tasks.
+
 1. The evaluator MUST freeze the exact skill revision before creating cases. The
    evaluator MUST record a run id, the issue or PR, frozen head SHA, skill path
    and revision, evaluator, and UTC start time in a private run record.
