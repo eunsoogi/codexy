@@ -30,6 +30,7 @@ after installation.
 | `prune-artifact-claims`        | Keep     | One exact non-code artifact must be refreshed against one exact governing source.                                                                                                  | Removes only conflicting, superseded, or internally duplicated claims while preserving the governing source, every other path, and a closed hash-backed receipt.                                                                                          |
 | `blind-read`                   | Keep     | A fresh reader must interpret one artifact for one named audience and action without outside context.                                                                              | Projects the artifact's immediate purpose, unresolved references, and action blockers without judging, editing, fact-checking, or reconstructing hidden context.                                                                                          |
 | `project-brief`                | Keep     | A person returns to an ongoing task and needs a read-only brief of recorded current state.                                                                                         | Projects only recorded task, Git/PR, proof, and release fields for human re-entry without inventing state or changing ownership, status, plans, actions, or completion.                                                                                   |
+| `self-improvement`             | Keep     | Repeated failure, uncertain premises, conflicting verification, or meaningful strategy comparison; excludes simple questions and small well-understood edits.                      | Selects bounded producer contracts for evidence, search, validation, and scoped learning while preserving goal, authority, ownership, and completion gates.                                                                                               |
 
 ## Repository-only skills
 
@@ -55,7 +56,7 @@ remain deliberately outside the Codexy plugin payload.
 
 ## Skill path-consumer map
 
-All 15 stable core packaged `skills/<name>/SKILL.md` paths in the inventory
+All 16 stable core packaged `skills/<name>/SKILL.md` paths in the inventory
 above have a matching `skills/<name>/agents/openai.yaml`. The repository-only
 skills use the equivalent `.agents/skills/<name>/` paths. The planning bundle's
 optional `references/**` resources use the existing Skill resources consumer.

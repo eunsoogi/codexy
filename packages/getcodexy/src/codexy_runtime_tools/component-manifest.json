@@ -37,6 +37,8 @@
         "requiredPaths": [
           ".codex-plugin/plugin.json",
           "assets/codexy-icon.png",
+          "skills/self-improvement/SKILL.md",
+          "skills/self-improvement/agents/openai.yaml",
           ".mcp.json",
           "mcp/codexy_mcp_bootstrap.py",
           "mcp/codexy-mcp-watcher.sh",

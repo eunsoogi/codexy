@@ -187,6 +187,7 @@ summarizes its purpose, identifies its component, and links to the actual
 | [proof-driven-completion](plugins/codexy/skills/proof-driven-completion/SKILL.md)           | Match each completion claim to current authoritative proof.                                          | `core`     |
 | [prune-artifact-claims](plugins/codexy/skills/prune-artifact-claims/SKILL.md)               | Refresh one artifact against one governing source by pruning stale claims.                           | `core`     |
 | [realtime-voice-orchestration](plugins/codexy/skills/realtime-voice-orchestration/SKILL.md) | Route explicitly requested realtime voice work to the owner.                                         | `core`     |
+| [self-improvement](plugins/codexy/skills/self-improvement/SKILL.md)                         | Select bounded improvements for repeated failure, uncertain premises, or conflicting verification.   | `core`     |
 | [wiki](plugins/codexy/skills/wiki/SKILL.md)                                                 | Build or operate one bounded, source-backed topic knowledge base.                                    | `core`     |
 | [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md)                          | Manage issue, branch, worktree, PR, review, merge, and main-sync workflow.                           | `github`   |
 | [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md)                              | Explore bounded repository structure and dependency edges.                                           | `devtools` |

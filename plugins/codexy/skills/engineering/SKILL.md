@@ -28,6 +28,10 @@ authorities.
 - MUST select [Performance review](references/performance-review.md) only for
   explicit cost or test-efficiency review requests.
 - [Quality assurance](references/quality-assurance.md) for real-surface proof.
+- [Self-improvement](../self-improvement/SKILL.md) for repeated failure,
+  uncertain premises, conflicting verification, or meaningful strategy
+  comparison within this outcome. Select only useful contracts; simple questions
+  and small well-understood edits MUST NOT acquire a full improvement loop.
 
 ## Change contract and proof choices
 

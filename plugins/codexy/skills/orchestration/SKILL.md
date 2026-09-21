@@ -106,6 +106,12 @@ re-enter planning when it is already selected and in progress.
 
 - MUST use [adaptive work](references/adaptive-work.md) when choosing execution,
   search, or verification strategy; select only the steps useful for the task.
+- For repeated failure, uncertain premises, conflicting verification, or a
+  meaningful strategy comparison, use
+  [self-improvement](../self-improvement/SKILL.md) to select a bounded
+  improvement route. Simple questions and small well-understood edits MUST keep
+  the ordinary execution/check path; this route does not change ownership or
+  authority.
 - MUST read [task classification](references/task-classification.md) when
   recording ownership and the atomic lane.
 - MUST read [workflow profiles](references/workflow-profiles.md) when choosing
