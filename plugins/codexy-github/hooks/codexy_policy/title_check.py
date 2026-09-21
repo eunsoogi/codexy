@@ -60,7 +60,7 @@ def forbidden(request: Request, kind: str) -> bool:
         return data is not None and shell_forbidden(data.get("command"), request.cwd)
     if kind == "nested":
         data = _mapping(request.tool_input)
-        return data is not None and nested_forbidden(data.get("code"))
+        return data is not None and nested_forbidden(data.get("code"), request.cwd)
     return False
 
 

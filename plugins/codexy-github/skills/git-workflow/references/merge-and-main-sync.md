@@ -19,9 +19,16 @@ fresh authenticated capture, and use the host/connector/GitHub response as the
 mutation receipt. The plugin does not provide a canonical merge wrapper or a
 replacement admission decision.
 
-The squash subject MUST derive from the captured remote PR title. The squash
-body MUST preserve the captured remote PR body exactly. Arbitrary local body or
-authorization files are not authority.
+The squash subject MUST be the captured remote PR title followed by
+`(#<captured PR number>)`, for example `fix(hooks): preserve title (#42)`.
+Before mutation, MUST validate the complete subject against the retained
+Conventional Commit and exact PR-number rules, regardless of the invocation
+route. A hook returning no denial MUST NOT substitute for that check: arbitrary
+Python subprocess construction and other unsupported dynamic execution are not
+inspected.
+
+The squash body MUST preserve the captured remote PR body exactly. Arbitrary
+local body or authorization files are not authority.
 
 ## Post-Merge Proof
 

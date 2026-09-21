@@ -66,7 +66,11 @@ for a general authorized mutation.
 
 Three narrow checks remain effective on their supported hook paths: issue-title,
 PR-title, and squash-subject validation. They check only the captured title or
-merge subject and do not become an operation allowlist.
+merge subject and do not become an operation allowlist. Within the existing
+nested-parser bounds, literal `tools.exec_command({cmd: "..."})` calls reuse the
+shell title checks with their literal working directory or caller directory.
+Dynamic command construction and arbitrary Python subprocess execution remain
+unsupported extraction paths; absence of a denial is not title-validity proof.
 
 Retained hook checks:
 
