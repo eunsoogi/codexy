@@ -76,10 +76,13 @@ suspended or end it with the recorded reason. Budget exhaustion MUST NOT turn
 the candidate into a promoted rule.
 
 A change with improved development scores and degraded valid holdout results
-MUST NOT become a promoted rule. A new score after adjusting the evaluator is
-not comparable by default; apply the evaluation integrity contract and preserve
-the earlier results. MUST NOT remove failed cases or relax criteria to claim a
-recovery.
+MUST follow the supported-signal response above: keep the affected optimization
+branch suspended, withhold promotion, and choose a fresh, uncontaminated
+evaluation before resumption. If that check is unavailable, MUST report the
+limit and retain suspension. MUST preserve the private disclosure boundary. A
+new score after adjusting the evaluator is not comparable by default; apply the
+evaluation integrity contract and preserve the earlier results. MUST NOT remove
+failed cases or relax criteria to claim a recovery.
 
 Reviewing a proxy's fidelity is allowed within its existing scope. Changing the
 meaning of the protected goal or original success criteria is not: MUST report
