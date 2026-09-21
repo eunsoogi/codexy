@@ -104,6 +104,8 @@ re-enter planning when it is already selected and in progress.
 
 ### Classify and route
 
+- MUST use [adaptive work](references/adaptive-work.md) when choosing execution,
+  search, or verification strategy; select only the steps useful for the task.
 - MUST read [task classification](references/task-classification.md) when
   recording ownership and the atomic lane.
 - MUST read [workflow profiles](references/workflow-profiles.md) when choosing

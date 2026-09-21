@@ -3,6 +3,13 @@
 Non-trivial work MUST use finite budgets for implementation, repair, review, and
 fanout. Churn and waiting MUST NOT renew those budgets.
 
+Search, verification, and recovery MUST fit within the same finite budget.
+Before optional additional reasoning, MUST apply the contribution check in
+[adaptive work](adaptive-work.md). Remaining resources alone MUST NOT justify
+more reasoning. Stopping optional reasoning MUST NOT waive required verification
+or turn an incomplete outcome into success; native goal transitions retain their
+existing authority.
+
 Each non-trivial change MUST keep a finite requirement list, affected-check
 list, and termination condition. Once the requirements, relevant checks, and
 selected review when applicable are satisfied with no unresolved in-scope
