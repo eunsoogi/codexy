@@ -4,7 +4,7 @@ This reference keeps the `child-routing-policy.md` filename for compatibility;
 the product role described by the ordinary route is Worker.
 
 Named packaged specialists are selected first and caller model overrides are
-forbidden. Ordinary Worker work defaults to `gpt-5.6-luna` at `max`; when that
+forbidden. Ordinary Worker work defaults to `gpt-6-luna` at `max`; when that
 route is unavailable, it fails closed to the Orchestrator or named-specialist
 route. Simple work uses the same Worker route when all simple predicates are
 complete.
@@ -23,12 +23,12 @@ For bounded native observation of assigned Codex Workers, the Orchestrator MUST
 select the packaged `codexy-watcher` specialist and summon it through the host's
 native subagent facility. It MUST NOT substitute an unassigned subagent or treat
 a self-declared role name as specialist identity. The packaged Watcher declares
-`gpt-5.6-luna` at `max`; caller overrides remain forbidden.
+`gpt-6-luna` at `max`; caller overrides remain forbidden.
 
 Thread delivery MUST bind `model` and `thinking` to the authenticated recipient,
 not copy the sender settings. The existing host-envelope directions
 `root_to_child` and `child_to_parent` are serialized compatibility identifiers:
-they represent Orchestrator-to-Worker delivery using `gpt-5.6-luna` at `max` and
+they represent Orchestrator-to-Worker delivery using `gpt-6-luna` at `max` and
 Worker-to-Orchestrator delivery using `gpt-6-astra` at `medium`, respectively.
 The runtime request's serialized `parent_to_generic` and `child_to_root`
 directions remain unchanged for the same two routes. Both fields MUST be

@@ -22,7 +22,7 @@ fn orchestrator_missing_fields_use_worker_remedy() -> TestResult {
         ),
         (
             "missing thinking",
-            json!({"threadId":WORKER_ID,"model":"gpt-5.6-luna"}),
+            json!({"threadId":WORKER_ID,"model":"gpt-6-luna"}),
             "MISSING_THINKING",
             "thinking",
         ),
@@ -41,7 +41,7 @@ fn orchestrator_missing_fields_use_worker_remedy() -> TestResult {
                             "root_to_child",
                             ORCHESTRATOR_ID,
                             WORKER_ID,
-                            "gpt-5.6-luna",
+                            "gpt-6-luna",
                             "max",
                         )),
                     )?,
@@ -53,7 +53,7 @@ fn orchestrator_missing_fields_use_worker_remedy() -> TestResult {
                     reason.contains("Orchestrator-to-Worker"),
                     "{event} {label}: {reason}"
                 );
-                assert!(reason.contains("gpt-5.6-luna"), "{event} {label}: {reason}");
+                assert!(reason.contains("gpt-6-luna"), "{event} {label}: {reason}");
                 assert!(reason.contains("max"), "{event} {label}: {reason}");
                 assert!(reason.contains("MUST"), "{event} {label}: {reason}");
                 assert!(

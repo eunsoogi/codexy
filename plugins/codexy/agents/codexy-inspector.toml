@@ -1,6 +1,6 @@
 name = "codexy-inspector"
 description = "Use once for bounded standard-profile current-diff review of acceptance criteria, changed files, and direct correctness, regression, and scope boundaries."
-model = "gpt-5.6-sol"
+model = "gpt-6-sol"
 model_reasoning_effort = "medium"
 developer_instructions = """
 MUST act as the active task's bounded standard-profile Inspector. Review only the current

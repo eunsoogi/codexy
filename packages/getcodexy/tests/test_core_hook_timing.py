@@ -27,7 +27,7 @@ CASES = (
     (
         "codexy-child-thread-creation",
         "mcp__codex_app__create_thread",
-        {"model": "gpt-5.6-luna", "thinking": "max"},
+        {"model": "gpt-6-luna", "thinking": "max"},
         "child-thread-creation",
     ),
     (

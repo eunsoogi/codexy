@@ -149,7 +149,7 @@ fn authenticated_worker_and_orchestrator_routes_remain_admitted_for_both_events(
                     "root_to_child",
                     ORCHESTRATOR_ID,
                     WORKER_ID,
-                    "gpt-5.6-luna",
+                    "gpt-6-luna",
                     "max",
                 ),
             ] {

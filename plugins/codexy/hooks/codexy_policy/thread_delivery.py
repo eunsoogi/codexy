@@ -7,7 +7,7 @@ from typing import cast
 from .envelope import Diagnostic, Request
 
 FIELDS = ("model", "thinking")
-WORKER_ROUTE = ("gpt-5.6-luna", "max")
+WORKER_ROUTE = ("gpt-6-luna", "max")
 ORCHESTRATOR_ROUTE = ("gpt-6-astra", "medium")
 ROUTING_SCHEMA = "codexy.thread-delivery.v2"
 ROUTING_FIELDS = frozenset(
@@ -133,7 +133,7 @@ _ORCHESTRATOR_ROUTE = (
     "threadId=<authenticated Orchestrator>, model='gpt-6-astra', and thinking='medium'"
 )
 _WORKER_ROUTE = (
-    "threadId=<authenticated Worker>, model='gpt-5.6-luna', and thinking='max'"
+    "threadId=<authenticated Worker>, model='gpt-6-luna', and thinking='max'"
 )
 _MISSING_IDENTITY = (
     "Missing authenticated session_id; MUST NOT retry blindly. "

@@ -243,11 +243,11 @@ Codexy separates task ownership from bundled specialist roles. These are the
 project's role settings; installation does not change a host's default model or
 opt a user into another repository's GitHub policy.
 
-| Role                       | Model          | Reasoning effort | Responsibility                                                                                                                                                            |
-| -------------------------- | -------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Orchestrator / parent      | `gpt-6-astra`  | `medium`         | Assigns and follows Worker work, owns the overall task goal, corrects deviations, verifies reports, and accepts results.                                                  |
-| Watcher / `codexy-watcher` | `gpt-5.6-luna` | `max`            | Bounded native-subagent observation of assigned Workers through the core Watcher MCP; reports material events and never directs, edits, replaces, or accepts Worker work. |
-| Worker / ordinary child    | `gpt-5.6-luna` | `max`            | Separate app task that owns its implementation branch/worktree, verifies the issue, and reports through the assigned Watcher when that route exists.                      |
+| Role                       | Model         | Reasoning effort | Responsibility                                                                                                                                                            |
+| -------------------------- | ------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Orchestrator / parent      | `gpt-6-astra` | `medium`         | Assigns and follows Worker work, owns the overall task goal, corrects deviations, verifies reports, and accepts results.                                                  |
+| Watcher / `codexy-watcher` | `gpt-6-luna`  | `max`            | Bounded native-subagent observation of assigned Workers through the core Watcher MCP; reports material events and never directs, edits, replaces, or accepts Worker work. |
+| Worker / ordinary child    | `gpt-6-luna`  | `max`            | Separate app task that owns its implementation branch/worktree, verifies the issue, and reports through the assigned Watcher when that route exists.                      |
 
 Reporting flow: the Orchestrator assigns or corrects the Worker through the
 native Watcher. Worker reports use the supported route to its exact task,
@@ -269,17 +269,17 @@ bundled configuration, not proof of the model used by an already-running host;
 The bundled catalog assigns each specialist its own model and reasoning effort;
 the optional `codexy-github` plugin supplies Weaver.
 
-| Component | Specialist            | Model           | Reasoning effort | Responsibility                                                 |
-| --------- | --------------------- | --------------- | ---------------- | -------------------------------------------------------------- |
-| core      | `codexy-architect`    | `gpt-6-astra`   | `high`           | Architecture and integration boundaries                        |
-| core      | `codexy-sentinel`     | `gpt-6-astra`   | `xhigh`          | Strict review                                                  |
-| core      | `codexy-warden`       | `gpt-6-astra`   | `xhigh`          | Safety and permission boundaries                               |
-| core      | `codexy-inspector`    | `gpt-5.6-sol`   | `medium`         | Standard review                                                |
-| core      | `codexy-auditor`      | `gpt-5.6-terra` | `medium`         | Acceptance and observable verification                         |
-| core      | `codexy-cartographer` | `gpt-5.6-luna`  | `low`            | Repository discovery                                           |
-| core      | `codexy-shipwright`   | `gpt-5.6-terra` | `high`           | Release and packaging                                          |
-| core      | `codexy-watcher`      | `gpt-5.6-luna`  | `max`            | Bounded native Worker observation through the core Watcher MCP |
-| github    | `codexy-weaver`       | `gpt-5.6-terra` | `medium`         | GitHub integration; supplied by the GitHub component           |
+| Component | Specialist            | Model         | Reasoning effort | Responsibility                                                 |
+| --------- | --------------------- | ------------- | ---------------- | -------------------------------------------------------------- |
+| core      | `codexy-architect`    | `gpt-6-astra` | `high`           | Architecture and integration boundaries                        |
+| core      | `codexy-sentinel`     | `gpt-6-astra` | `xhigh`          | Strict review                                                  |
+| core      | `codexy-warden`       | `gpt-6-astra` | `xhigh`          | Safety and permission boundaries                               |
+| core      | `codexy-inspector`    | `gpt-6-sol`   | `medium`         | Standard review                                                |
+| core      | `codexy-auditor`      | `gpt-6-sol`   | `medium`         | Acceptance and observable verification                         |
+| core      | `codexy-cartographer` | `gpt-6-luna`  | `low`            | Repository discovery                                           |
+| core      | `codexy-shipwright`   | `gpt-6-sol`   | `high`           | Release and packaging                                          |
+| core      | `codexy-watcher`      | `gpt-6-luna`  | `max`            | Bounded native Worker observation through the core Watcher MCP |
+| github    | `codexy-weaver`       | `gpt-6-sol`   | `medium`         | GitHub integration; supplied by the GitHub component           |
 
 ### Realtime voice mode
 

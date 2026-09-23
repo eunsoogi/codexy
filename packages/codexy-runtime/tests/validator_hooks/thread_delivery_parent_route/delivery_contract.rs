@@ -25,7 +25,7 @@ fn preventive_events_and_tool_aliases_bind_both_recipient_directions() -> TestRe
                     &root_path,
                     PARENT,
                     CHILD,
-                    "gpt-5.6-luna",
+                    "gpt-6-luna",
                     "max",
                     tool,
                     event,
@@ -36,7 +36,7 @@ fn preventive_events_and_tool_aliases_bind_both_recipient_directions() -> TestRe
                         &root_path,
                         PARENT,
                         CHILD,
-                        "gpt-5.6-sol",
+                        "gpt-6-sol",
                         "medium",
                         tool,
                         event,
@@ -48,7 +48,7 @@ fn preventive_events_and_tool_aliases_bind_both_recipient_directions() -> TestRe
                     &child,
                     CHILD,
                     PARENT,
-                    "gpt-5.6-sol",
+                    "gpt-6-astra",
                     "medium",
                     tool,
                     event,
@@ -59,7 +59,7 @@ fn preventive_events_and_tool_aliases_bind_both_recipient_directions() -> TestRe
                         &child,
                         CHILD,
                         PARENT,
-                        "gpt-5.6-luna",
+                        "gpt-6-luna",
                         "max",
                         tool,
                         event,
@@ -79,9 +79,9 @@ fn recipient_delivery_requires_explicit_model_and_thinking() -> TestResult {
     std::fs::write(&transcript, root_transcript(PARENT))?;
     for (tool_input, expected) in [
         (json!({"threadId":CHILD,"thinking":"max"}), "MISSING_MODEL"),
-        (json!({"threadId":CHILD,"model":"gpt-5.6-luna"}), "MISSING_THINKING"),
+        (json!({"threadId":CHILD,"model":"gpt-6-luna"}), "MISSING_THINKING"),
         (json!({"threadId":CHILD,"model":"","thinking":"max"}), "MISSING_MODEL"),
-        (json!({"threadId":CHILD,"model":"gpt-5.6-luna","thinking":""}), "MISSING_THINKING"),
+        (json!({"threadId":CHILD,"model":"gpt-6-luna","thinking":""}), "MISSING_THINKING"),
     ] {
         assert_denied_with(
             run_payload(json!({
@@ -108,7 +108,7 @@ fn post_result_receipts_require_one_stable_transition_key() -> TestResult {
     let mut records = child_transcript(CHILD, &[PARENT]);
     records.extend_from_slice(&completed_delivery(
         PARENT,
-        "gpt-5.6-sol",
+        "gpt-6-astra",
         "medium",
         &prior,
     ));
@@ -119,7 +119,7 @@ fn post_result_receipts_require_one_stable_transition_key() -> TestResult {
             &transcript,
             CHILD,
             PARENT,
-            "gpt-5.6-sol",
+            "gpt-6-astra",
             "medium",
             &format!(
                 "Post-result receipt for transition key={transition}; operation=update_goal(status=complete); exact tool result=complete; unchanged=true"
@@ -132,7 +132,7 @@ fn post_result_receipts_require_one_stable_transition_key() -> TestResult {
             &transcript,
             CHILD,
             PARENT,
-            "gpt-5.6-sol",
+            "gpt-6-astra",
             "medium",
             "#878 post-result receipt: update_goal(status=complete) succeeded; stable fingerprint=issue878|head-28aac223|gate-145-main-integration",
         )?,
@@ -150,7 +150,7 @@ fn ordinary_handoff_wording_is_not_a_control_plane_delivery() -> TestResult {
         &transcript,
         CHILD,
         PARENT,
-        "gpt-5.6-sol",
+        "gpt-6-astra",
         "medium",
         "Search for references to the handoff function",
     )?)?;

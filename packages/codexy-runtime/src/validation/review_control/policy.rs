@@ -95,7 +95,7 @@ fn profiles() -> BTreeMap<String, Profile> {
             Profile {
                 reviewer: Some(Reviewer {
                     name: "codexy-inspector".into(),
-                    model: "gpt-5.6-sol".into(),
+                    model: "gpt-6-sol".into(),
                     reasoning_effort: "medium".into(),
                 }),
                 full_review_limit: 1,

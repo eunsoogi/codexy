@@ -40,7 +40,7 @@ def _missing_field_diagnostic(fields: list[str]) -> Diagnostic:
     )
 
 
-_REQUIRED_ROUTE = "Worker creation requires model='gpt-5.6-luna' and thinking='max'"
+_REQUIRED_ROUTE = "Worker creation requires model='gpt-6-luna' and thinking='max'"
 _MISSING_FIELDS = (
     f"Missing model and thinking; {_REQUIRED_ROUTE}. "
     "MUST correct the fields and MUST retry once."

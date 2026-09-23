@@ -57,7 +57,7 @@ fn architecture_inventory_rejects_omissions_duplicates_and_stale_fields() -> Tes
         )
         .is_err()
     );
-    assert!(validate_guide(root, &guide.replacen("`gpt-5.6-sol`", "`stale-model`", 1)).is_err());
+    assert!(validate_guide(root, &guide.replacen("`gpt-6-sol`", "`stale-model`", 1)).is_err());
     assert!(validate_guide(root, &guide.replacen("`xhigh`", "`stale-effort`", 1)).is_err());
     assert!(
         validate_guide(
