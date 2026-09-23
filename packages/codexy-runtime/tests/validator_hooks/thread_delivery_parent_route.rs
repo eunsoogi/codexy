@@ -16,7 +16,7 @@ fn metadata_routes_admit_without_reading_an_oversized_transcript() -> TestResult
         for root in &roots {
             for (direction, sender, recipient, model, thinking) in [
                 ("child_to_parent", CHILD, PARENT, "gpt-6-astra", "medium"),
-                ("root_to_child", PARENT, CHILD, "gpt-5.6-luna", "max"),
+                ("root_to_child", PARENT, CHILD, "gpt-6-luna", "max"),
             ] {
                 let output = run(
                     root,
@@ -112,7 +112,7 @@ fn metadata_rejects_wrong_recipient_model_thinking_and_shape() -> TestResult {
                     PARENT,
                     "gpt-6-astra",
                     "medium",
-                    route("child_to_parent", CHILD, PARENT, "gpt-5.6-luna", "medium"),
+                    route("child_to_parent", CHILD, PARENT, "gpt-6-luna", "medium"),
                     "MISMATCHED_ROUTING_METADATA",
                 ),
                 (
@@ -146,9 +146,9 @@ fn metadata_rejects_wrong_recipient_model_thinking_and_shape() -> TestResult {
                     "wrong root recipient",
                     PARENT,
                     OTHER,
-                    "gpt-5.6-luna",
+                    "gpt-6-luna",
                     "max",
-                    route("root_to_child", PARENT, CHILD, "gpt-5.6-luna", "max"),
+                    route("root_to_child", PARENT, CHILD, "gpt-6-luna", "max"),
                     "WRONG_RECIPIENT",
                 ),
                 (
@@ -157,16 +157,16 @@ fn metadata_rejects_wrong_recipient_model_thinking_and_shape() -> TestResult {
                     CHILD,
                     "gpt-5.6-terra",
                     "max",
-                    route("root_to_child", PARENT, CHILD, "gpt-5.6-luna", "max"),
+                    route("root_to_child", PARENT, CHILD, "gpt-6-luna", "max"),
                     "UNSUPPORTED_MODEL",
                 ),
                 (
                     "wrong root thinking",
                     PARENT,
                     CHILD,
-                    "gpt-5.6-luna",
+                    "gpt-6-luna",
                     "high",
-                    route("root_to_child", PARENT, CHILD, "gpt-5.6-luna", "max"),
+                    route("root_to_child", PARENT, CHILD, "gpt-6-luna", "max"),
                     "UNSUPPORTED_THINKING",
                 ),
                 (

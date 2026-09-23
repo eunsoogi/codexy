@@ -167,7 +167,7 @@ fn each_concern_rejects_wrong_events_with_its_diagnostic_family() -> TestResult 
 fn admitted_payload(concern: &Concern, event: &str) -> Value {
     let tool_input = match concern.id {
         "thread-delivery" | "child-thread-creation" => {
-            json!({"model":"gpt-5.6-luna","thinking":"max"})
+            json!({"model":"gpt-6-luna","thinking":"max"})
         }
         "subagent-ownership" => json!({"agent_type":"explorer","message":"Bounded read-only inspection."}),
         _ => unreachable!(),

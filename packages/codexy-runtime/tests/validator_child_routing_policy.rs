@@ -17,8 +17,8 @@ fn resolver_preserves_named_specialist_first_worker_default_and_fail_closed_rout
     )?;
     assert_in_process_route(
         &root,
-        json!({"schema":"codexy.child-routing-request.v1","classification":"simple","simple_predicates":{"fixed_scope":true,"deterministic_oracle":true,"low_risk_reversible":true,"no_unresolved_decision":true},"codex_thread_operation":"create_thread","codex_thread_capabilities":{"models":[{"model":"gpt-5.6-luna","thinking":["max"]}]}}),
-        json!({"route":"generic","codex_thread_operation":"create_thread","model":"gpt-5.6-luna","thinking":"max"}),
+        json!({"schema":"codexy.child-routing-request.v1","classification":"simple","simple_predicates":{"fixed_scope":true,"deterministic_oracle":true,"low_risk_reversible":true,"no_unresolved_decision":true},"codex_thread_operation":"create_thread","codex_thread_capabilities":{"models":[{"model":"gpt-6-luna","thinking":["max"]}]}}),
+        json!({"route":"generic","codex_thread_operation":"create_thread","model":"gpt-6-luna","thinking":"max"}),
     )?;
     assert_cli_success(
         &root,
@@ -58,10 +58,10 @@ fn resolver_preserves_capability_fallback_and_codex_thread_delivery() -> TestRes
             "codex_thread_operation":"create_thread",
             "codex_thread_capabilities":{"models":[
                 {"model":"gpt-5.6-terra","thinking":["high"]},
-                {"model":"gpt-5.6-luna","thinking":["max"]}
+                {"model":"gpt-6-luna","thinking":["max"]}
             ]}
         }),
-        json!({"route":"generic","codex_thread_operation":"create_thread","model":"gpt-5.6-luna","thinking":"max"}),
+        json!({"route":"generic","codex_thread_operation":"create_thread","model":"gpt-6-luna","thinking":"max"}),
     )?;
     assert_in_process_route(
         &root,
@@ -84,7 +84,7 @@ fn resolver_preserves_capability_fallback_and_codex_thread_delivery() -> TestRes
         }),
         json!({"route":"child_to_root","codex_thread_operation":"send_message_to_thread","model":"gpt-6-astra","thinking":"medium"}),
     )?;
-    for (model, thinking) in [("gpt-5.6-sol", "medium"), ("gpt-5.6-luna", "max")] {
+    for (model, thinking) in [("gpt-6-sol", "medium"), ("gpt-6-luna", "max"), ("gpt-5.6-luna", "max")] {
         assert_in_process_route(
             &root,
             json!({
@@ -106,10 +106,10 @@ fn resolver_preserves_capability_fallback_and_codex_thread_delivery() -> TestRes
             "codex_thread_direction":"parent_to_generic",
             "codex_thread_capabilities":{"models":[
                 {"model":"gpt-6-astra","thinking":["medium"]},
-                {"model":"gpt-5.6-luna","thinking":["max"]}
+                {"model":"gpt-6-luna","thinking":["max"]}
             ]}
         }),
-        json!({"route":"parent_to_generic","codex_thread_operation":"send_message_to_thread","model":"gpt-5.6-luna","thinking":"max"}),
+        json!({"route":"parent_to_generic","codex_thread_operation":"send_message_to_thread","model":"gpt-6-luna","thinking":"max"}),
     )?;
     assert_in_process_route(
         &root,

@@ -211,11 +211,11 @@ Codexy는 작업 담당자와 Codexy에 포함된 전문 에이전트를 구분�
 프로젝트의 역할 설정이며, 설치만으로 호스트의 기본 모델이 바뀌거나 다른 저장소의
 GitHub 정책에 동의한 것으로 해석되지 않습니다.
 
-| 역할                       | 모델           | 추론 수준 | 담당 범위                                                                                                                            |
-| -------------------------- | -------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Orchestrator / parent      | `gpt-6-astra`  | `medium`  | Worker 작업을 배정·추적하고 전체 작업 목표를 맡아 이탈을 교정하며 보고를 검증하고 결과를 인수합니다.                                 |
-| Watcher / `codexy-watcher` | `gpt-5.6-luna` | `max`     | 할당된 Worker를 native subagent로 읽기 전용 관찰하고 core Watcher MCP로 중요한 사건을 보고하며, 지시·수정·교체·인수는 하지 않습니다. |
-| Worker / ordinary child    | `gpt-5.6-luna` | `max`     | 별도 app task에서 자신의 branch/worktree로 이슈를 구현·검증하고, Watcher 경로가 있으면 지정된 Watcher를 통해 보고합니다.             |
+| 역할                       | 모델          | 추론 수준 | 담당 범위                                                                                                                            |
+| -------------------------- | ------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Orchestrator / parent      | `gpt-6-astra` | `medium`  | Worker 작업을 배정·추적하고 전체 작업 목표를 맡아 이탈을 교정하며 보고를 검증하고 결과를 인수합니다.                                 |
+| Watcher / `codexy-watcher` | `gpt-6-luna`  | `max`     | 할당된 Worker를 native subagent로 읽기 전용 관찰하고 core Watcher MCP로 중요한 사건을 보고하며, 지시·수정·교체·인수는 하지 않습니다. |
+| Worker / ordinary child    | `gpt-6-luna`  | `max`     | 별도 app task에서 자신의 branch/worktree로 이슈를 구현·검증하고, Watcher 경로가 있으면 지정된 Watcher를 통해 보고합니다.             |
 
 보고 흐름은 Orchestrator가 native Watcher를 호출하고 Worker에게 작업을
 배정·교정하면, 해당 경로에서 Worker가 host가 지원하는 task-message 경로로 source
@@ -239,17 +239,17 @@ Worker는 유한한 실행 목표를 맡습니다. Watcher는 전체 목표를 �
 패키지 catalog는 각 전문 에이전트에 고유한 모델과 추론 수준을 지정하며, 선택형
 `codexy-github` 플러그인이 Weaver를 제공합니다.
 
-| 컴포넌트 | 전문 에이전트         | 모델            | 추론 수준 | 담당 범위                                  |
-| -------- | --------------------- | --------------- | --------- | ------------------------------------------ |
-| core     | `codexy-architect`    | `gpt-6-astra`   | `high`    | 아키텍처와 통합 경계                       |
-| core     | `codexy-sentinel`     | `gpt-6-astra`   | `xhigh`   | 엄격한 리뷰                                |
-| core     | `codexy-warden`       | `gpt-6-astra`   | `xhigh`   | 안전·권한 경계                             |
-| core     | `codexy-inspector`    | `gpt-5.6-sol`   | `medium`  | 표준 리뷰                                  |
-| core     | `codexy-auditor`      | `gpt-5.6-terra` | `medium`  | 인수 기준과 실제 동작 검증                 |
-| core     | `codexy-cartographer` | `gpt-5.6-luna`  | `low`     | 저장소 탐색                                |
-| core     | `codexy-shipwright`   | `gpt-5.6-terra` | `high`    | 릴리스와 패키징                            |
-| core     | `codexy-watcher`      | `gpt-5.6-luna`  | `max`     | core Watcher MCP를 통한 native Worker 관찰 |
-| github   | `codexy-weaver`       | `gpt-5.6-terra` | `medium`  | GitHub 통합; GitHub 컴포넌트 제공          |
+| 컴포넌트 | 전문 에이전트         | 모델          | 추론 수준 | 담당 범위                                  |
+| -------- | --------------------- | ------------- | --------- | ------------------------------------------ |
+| core     | `codexy-architect`    | `gpt-6-astra` | `high`    | 아키텍처와 통합 경계                       |
+| core     | `codexy-sentinel`     | `gpt-6-astra` | `xhigh`   | 엄격한 리뷰                                |
+| core     | `codexy-warden`       | `gpt-6-astra` | `xhigh`   | 안전·권한 경계                             |
+| core     | `codexy-inspector`    | `gpt-6-sol`   | `medium`  | 표준 리뷰                                  |
+| core     | `codexy-auditor`      | `gpt-6-sol`   | `medium`  | 인수 기준과 실제 동작 검증                 |
+| core     | `codexy-cartographer` | `gpt-6-luna`  | `low`     | 저장소 탐색                                |
+| core     | `codexy-shipwright`   | `gpt-6-sol`   | `high`    | 릴리스와 패키징                            |
+| core     | `codexy-watcher`      | `gpt-6-luna`  | `max`     | core Watcher MCP를 통한 native Worker 관찰 |
+| github   | `codexy-weaver`       | `gpt-6-sol`   | `medium`  | GitHub 통합; GitHub 컴포넌트 제공          |
 
 ### 실시간 음성 모드
 

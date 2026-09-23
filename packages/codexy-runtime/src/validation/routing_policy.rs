@@ -14,7 +14,7 @@ use thread_capabilities::ThreadCapabilities;
 // compatibility identifiers; product-role terminology is standardized in
 // diagnostics and model constants below.
 const REQUEST_SCHEMA: &str = "codexy.child-routing-request.v1";
-const WORKER_MODEL: &str = "gpt-5.6-luna";
+const WORKER_MODEL: &str = "gpt-6-luna";
 const WORKER_THINKING: &str = "max";
 const ORCHESTRATOR_MODEL: &str = "gpt-6-astra";
 const ORCHESTRATOR_THINKING: &str = "medium";

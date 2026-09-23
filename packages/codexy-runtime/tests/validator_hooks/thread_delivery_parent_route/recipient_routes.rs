@@ -14,7 +14,7 @@ fn authoritative_and_installed_hooks_reject_missing_identity() -> TestResult {
     let payload = json!({
         "hook_event_name":"PreToolUse",
         "tool_name":"codex_app__send_message_to_thread",
-        "tool_input":{"threadId":ORCHESTRATOR_ID,"model":"gpt-5.6-luna","thinking":"max"}
+        "tool_input":{"threadId":ORCHESTRATOR_ID,"model":"gpt-6-luna","thinking":"max"}
     });
     assert_denied(run_payload(payload.clone())?)?;
 
@@ -53,7 +53,7 @@ fn installed_hook_preserves_authenticated_orchestrator_route() -> TestResult {
         String::from_utf8_lossy(&wrong.stdout)
     );
 
-    let correct = run(&transcript, "gpt-5.6-sol", "medium")?;
+    let correct = run(&transcript, "gpt-6-astra", "medium")?;
     assert!(correct.status.success(), "hook runtime failed");
     assert!(correct.stdout.is_empty(), "correct Orchestrator route was denied");
     Ok(())
@@ -67,7 +67,7 @@ fn authentic_agent_created_thread_binds_orchestrator_from_create_thread_provenan
 
     let wrong = run(&transcript, "gpt-5.6-luna", "max")?;
     assert_denied_with(wrong, "UNSUPPORTED_MODEL")?;
-    assert_admitted(run(&transcript, "gpt-5.6-sol", "medium")?)?;
+    assert_admitted(run(&transcript, "gpt-6-astra", "medium")?)?;
     Ok(())
 }
 
@@ -96,25 +96,25 @@ fn installed_hook_fails_closed_for_untrusted_worker_context() -> TestResult {
         (b"not-json\n".to_vec(), "UNTRUSTED_CONTEXT"),
     ] {
         std::fs::write(&transcript, bytes)?;
-        assert_denied_with(run(&transcript, "gpt-5.6-sol", "medium")?, expected)?;
+        assert_denied_with(run(&transcript, "gpt-6-astra", "medium")?, expected)?;
     }
     std::fs::File::create(&transcript)?.set_len(32 * 1024 * 1024 + 1)?;
-    assert_denied_with(run(&transcript, "gpt-5.6-sol", "medium")?, "UNTRUSTED_CONTEXT")?;
-    assert_denied_with(run(temp.path(), "gpt-5.6-sol", "medium")?, "UNTRUSTED_CONTEXT")?;
+    assert_denied_with(run(&transcript, "gpt-6-astra", "medium")?, "UNTRUSTED_CONTEXT")?;
+    assert_denied_with(run(temp.path(), "gpt-6-astra", "medium")?, "UNTRUSTED_CONTEXT")?;
     #[cfg(unix)]
     {
         let link = temp.path().join("link.jsonl");
         std::os::unix::fs::symlink(&transcript, &link)?;
-        assert_denied_with(run(&link, "gpt-5.6-sol", "medium")?, "UNTRUSTED_CONTEXT")?;
+        assert_denied_with(run(&link, "gpt-6-astra", "medium")?, "UNTRUSTED_CONTEXT")?;
         let fifo = temp.path().join("fifo.jsonl");
         assert!(Command::new("mkfifo").arg(&fifo).status()?.success());
-        assert_denied_with(run(&fifo, "gpt-5.6-sol", "medium")?, "UNTRUSTED_CONTEXT")?;
+        assert_denied_with(run(&fifo, "gpt-6-astra", "medium")?, "UNTRUSTED_CONTEXT")?;
     }
     #[cfg(windows)]
     {
         let link = temp.path().join("link.jsonl");
         std::os::windows::fs::symlink_file(&transcript, &link)?;
-        assert_denied_with(run(&link, "gpt-5.6-sol", "medium")?, "UNTRUSTED_CONTEXT")?;
+        assert_denied_with(run(&link, "gpt-6-astra", "medium")?, "UNTRUSTED_CONTEXT")?;
     }
     Ok(())
 }
@@ -138,7 +138,7 @@ fn installed_hook_binds_orchestrator_to_worker_delivery_to_worker_recipient_sett
         &transcript,
         ORCHESTRATOR_ID,
         WORKER_ID,
-        "gpt-5.6-luna",
+        "gpt-6-luna",
         "max",
     )?;
     assert!(
@@ -149,7 +149,7 @@ fn installed_hook_binds_orchestrator_to_worker_delivery_to_worker_recipient_sett
         &transcript,
         ORCHESTRATOR_ID,
         WORKER_ID,
-        "gpt-5.6-sol",
+        "gpt-6-sol",
         "medium",
     )?;
     assert!(copied_sender.status.success(), "hook runtime failed");
@@ -165,7 +165,7 @@ fn installed_hook_binds_orchestrator_to_worker_delivery_to_worker_recipient_sett
         "hook_event_name":"PreToolUse",
         "tool_name":"codex_app__send_message_to_thread",
         "session_id":ORCHESTRATOR_ID,
-        "tool_input":{"threadId":ORCHESTRATOR_ID,"model":"gpt-5.6-sol","thinking":"medium"}
+        "tool_input":{"threadId":ORCHESTRATOR_ID,"model":"gpt-6-astra","thinking":"medium"}
     }))?;
     assert_denied_with(partial, "MISSING_IDENTITY")?;
     Ok(())
@@ -182,7 +182,7 @@ fn orchestrator_delivery_rejects_stale_unrelated_and_mistyped_recipients() -> Te
                 &transcript,
                 ORCHESTRATOR_ID,
                 recipient,
-                "gpt-5.6-luna",
+                "gpt-6-luna",
                 "max",
             )?,
             "WRONG_RECIPIENT",

@@ -14,13 +14,13 @@ pub(super) struct SpecialistModelContract {
 
 pub(super) const SPECIALIST_MODEL_CONTRACTS: &[SpecialistModelContract] = &[
     contract("codexy-architect", "gpt-6-astra", "high"),
-    contract("codexy-auditor", "gpt-5.6-terra", "medium"),
-    contract("codexy-cartographer", "gpt-5.6-luna", "low"),
-    contract("codexy-inspector", "gpt-5.6-sol", "medium"),
+    contract("codexy-auditor", "gpt-6-sol", "medium"),
+    contract("codexy-cartographer", "gpt-6-luna", "low"),
+    contract("codexy-inspector", "gpt-6-sol", "medium"),
     contract("codexy-sentinel", "gpt-6-astra", "xhigh"),
-    contract("codexy-shipwright", "gpt-5.6-terra", "high"),
+    contract("codexy-shipwright", "gpt-6-sol", "high"),
     contract("codexy-warden", "gpt-6-astra", "xhigh"),
-    contract("codexy-watcher", "gpt-5.6-luna", "max"),
+    contract("codexy-watcher", "gpt-6-luna", "max"),
 ];
 
 const fn contract(
