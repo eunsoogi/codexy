@@ -20,7 +20,8 @@ fn activation_dispatches_reusable_ci_for_the_frozen_pr_head()
         "exact-head CI dispatcher",
         &[
             "\"$RUNNER_TEMP/codexy-runtime-contract/scripts/select-runtime-activation-branch.sh\" --open-pr \"$GH_REPO\" \"$branch\"",
-            "gh api --paginate",
+            "python3 scripts/resolve_prior_public_version.py \"$GH_REPO\" \"$BOOTSTRAP_VERSION\"",
+            "prior_public_version=\"$prior_public_version\"",
             "gh run list --repo \"$GH_REPO\" --workflow \"$1\" --branch \"$branch\"",
             "select(.headSha == $sha and .headBranch == $branch",
             ".displayTitle == $title",
@@ -29,6 +30,19 @@ fn activation_dispatches_reusable_ci_for_the_frozen_pr_head()
             "gh run view \"$run_id\" --repo \"$GH_REPO\"",
             "head_sha\\t",
             "base_sha",
+        ],
+    );
+    let resolver = std::fs::read_to_string(
+        codexy_runtime::paths::repository_root().join("scripts/resolve_prior_public_version.py"),
+    )?;
+    support::assert_structured_literals(
+        &resolver,
+        "prior public version resolver",
+        &[
+            "--paginate",
+            "releases?per_page=100",
+            "select(.draft == false and .prerelease == false) | .tag_name",
+            "no published stable release precedes target",
         ],
     );
     assert!(!dispatch.contains("gh pr list --head"));

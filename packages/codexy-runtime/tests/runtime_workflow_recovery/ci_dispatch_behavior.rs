@@ -44,6 +44,36 @@ fn activation_dispatch_creates_missing_ci_once_and_reuses_retry() -> TestResult 
 }
 
 #[test]
+fn activation_dispatch_passes_public_predecessor_for_an_unpublished_target() -> TestResult {
+    let fixture = Fixture::new()?;
+    fixture.change("python-package.yml", |runs| *runs = json!([]))?;
+    assert_result(fixture.run()?, true);
+    assert_eq!(fixture.dispatched()?, ["python-package.yml"]);
+    assert_eq!(fixture.python_baselines()?, ["1.6.3"]);
+    Ok(())
+}
+
+#[test]
+fn activation_dispatch_stops_when_no_valid_prior_public_version_exists() -> TestResult {
+    let fixture = Fixture::new()?;
+    fixture.set_public_release_tags(&["v1.7.0", "v1.7.0-rc.1", "latest"])?;
+    fixture.change("python-package.yml", |runs| *runs = json!([]))?;
+    let output = fixture.run()?;
+    assert!(
+        !output.status.success(),
+        "activation dispatch unexpectedly continued without a prior public release"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("no published stable release precedes target v1.7.0"),
+        "missing baseline must explain how to recover: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(fixture.dispatched()?.is_empty());
+    Ok(())
+}
+
+#[test]
 fn activation_dispatch_cannot_reuse_other_purposes_bases_heads_or_events() -> TestResult {
     for (workflow, field, value) in [
         (

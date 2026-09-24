@@ -40,6 +40,10 @@ impl Fixture {
             }]);
         }
         fs::write(
+            fixture.root.path().join("public-release-tags"),
+            "v1.8.0\nv1.6.3\nv1.5.0\nv1.7.0-rc.1\n",
+        )?;
+        fs::write(
             fixture.root.path().join("state.json"),
             serde_json::to_vec(&state)?,
         )?;
@@ -61,6 +65,24 @@ impl Fixture {
         Ok(())
     }
 
+    pub(super) fn set_public_release_tags(
+        &self,
+        tags: &[&str],
+    ) -> Result<(), std::io::Error> {
+        fs::write(self.root.path().join("public-release-tags"), tags.join("\n"))
+    }
+
+    pub(super) fn python_baselines(&self) -> Result<Vec<String>, std::io::Error> {
+        let path = self.root.path().join("python-baselines");
+        if !path.exists() {
+            return Ok(Vec::new());
+        }
+        Ok(fs::read_to_string(path)?
+            .lines()
+            .map(str::to_owned)
+            .collect())
+    }
+
     pub(super) fn run(&self) -> Result<Output, Box<dyn std::error::Error>> {
         let workflow = super::super::workflow("runtime-activation.yml")?;
         let dispatch = super::super::run(
@@ -73,6 +95,7 @@ impl Fixture {
         Ok(Command::new("bash")
             .arg("-c")
             .arg(format!("{PRELUDE}\n{dispatch}"))
+            .current_dir(codexy_runtime::paths::repository_root())
             .env("FIXTURE_ROOT", self.root.path())
             .env("RUNNER_TEMP", self.root.path())
             .env("BOOTSTRAP_VERSION", HISTORICAL_RELEASE_FIXTURE)
@@ -148,13 +171,26 @@ elif args[:2] == ['pr', 'view']:
 elif args[0] == 'api':
     if '--repo' in args:
         sys.exit('unknown flag: --repo')
-    print('plugins/codexy/skills/wiki/SKILL.md')
+    resource = next((arg for arg in args if arg.startswith('repos/')), '')
+    if '/releases?' in resource:
+        query = ' '.join(args)
+        if '--paginate' not in args or 'draft == false' not in query or 'prerelease == false' not in query:
+            sys.exit('public release query must paginate and exclude drafts and prereleases')
+        print((root / 'public-release-tags').read_text(), end='')
+    else:
+        print('plugins/codexy/skills/wiki/SKILL.md')
 elif args[:2] == ['run', 'list']:
     print(json.dumps(state[value('--workflow')]))
 elif args[:2] == ['workflow', 'run']:
     workflow = args[2]
     assert value('--ref') == branch
     assert f'head_sha={head}' in args
+    if workflow == 'python-package.yml':
+        baselines = [arg.split('=', 1)[1] for arg in args if arg.startswith('prior_public_version=')]
+        if len(baselines) != 1:
+            sys.exit('python package dispatch requires exactly one prior_public_version')
+        with (root / 'python-baselines').open('a') as output:
+            output.write(baselines[0] + '\n')
     if workflow == 'rust-test.yml':
         assert 'run_mode=ci' in args
     title = f'CI {head}'
