@@ -7,7 +7,9 @@ import sys
 
 VERSION_PATTERN = re.compile(r"v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\Z")
 MAX_COMPONENT = 2_147_483_647
-PUBLIC_RELEASE_QUERY = ".[] | select(.draft == false and .prerelease == false) | .tag_name"
+PUBLIC_RELEASE_QUERY = (
+    ".[] | select(.draft == false and .prerelease == false) | .tag_name"
+)
 Version = tuple[tuple[int, int, int], str]
 
 
