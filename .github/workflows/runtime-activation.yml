@@ -196,6 +196,9 @@ jobs:
           workflows=(rust-test.yml language-lint.yml touched-loc-gate.yml)
           $plugin_needed && workflows+=(plugin-runtime-binaries.yml)
           $python_needed && workflows+=(python-package.yml)
+          if $python_needed; then
+            prior_public_version="$(python3 scripts/resolve_prior_public_version.py "$GH_REPO" "$BOOTSTRAP_VERSION")"
+          fi
           report="$RUNNER_TEMP/codexy-runtime-activation-ci.tsv"
           printf 'workflow\trun_id\tevent\thead_sha\thead_branch\tstatus\tconclusion\n' > "$report"
           trap 'cat "$report"' EXIT
@@ -211,6 +214,7 @@ jobs:
               case "$workflow" in
                 rust-test.yml) gh workflow run "$workflow" --repo "$GH_REPO" --ref "$branch" -f head_sha="$head_sha" -f run_mode=ci -f condition=warm -f cache_mode=normal -f repeat_id=runtime-activation -f profiling=false -f cache_identity=runtime-activation ;;
                 touched-loc-gate.yml) gh workflow run "$workflow" --repo "$GH_REPO" --ref "$branch" -f head_sha="$head_sha" -f base_sha="$base_sha" ;;
+                python-package.yml) gh workflow run "$workflow" --repo "$GH_REPO" --ref "$branch" -f head_sha="$head_sha" -f prior_public_version="$prior_public_version" ;;
                 *) gh workflow run "$workflow" --repo "$GH_REPO" --ref "$branch" -f head_sha="$head_sha" ;;
               esac
               for _ in $(seq 1 30); do
