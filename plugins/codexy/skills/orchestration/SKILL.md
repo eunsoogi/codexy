@@ -3,8 +3,26 @@ name: orchestration
 description: Use when classifying workflow, surface, and risk or coordinating ownership, goals, agents, threads, worktrees, reviews, compaction, and handoff; load only applicable authorities.
 ---
 
-Read request/issue/PR/AGENTS.md and classify task/surface/risk. Read the
-[context retention contract](references/context-tiers.md) for the existing
+Read the user request, parent assignment, and applicable AGENTS.md instruction
+files first. Determine whether they explicitly assign bounded work, including
+read-only diagnosis or preflight. For an authorized Orchestrator or Worker task,
+Codex MUST load the [goal lifecycle](../goal-lifecycle/SKILL.md), call the
+current task's host-scoped get_goal, and complete its Required first transition
+before task-specific work. The goal check MUST precede issue/PR reads, task
+diagnosis, repository/GitHub reads, branch or worktree setup, planning,
+delegation, edits, and verification. It applies to Orchestrators and
+implementation Workers in their own current tasks. A native read-only Watcher
+MUST follow the goal lifecycle's Watcher exception and MUST NOT create a
+separate goal. The task MUST apply the goal lifecycle's result rules: create
+only for an authorized assignment on exact null, top-level goal=null, or
+status=complete. Continue only for an exact active objective; use the documented
+sequence for blocked; stop on error, malformed or unexpected state, or a
+different active objective. Ordinary questions, ambiguous conversation, and
+incidental suggestions MUST NOT be treated as execution authority or a reason to
+create a goal.
+
+After the goal gate, read issue/PR material and classify task/surface/risk. Read
+the [context retention contract](references/context-tiers.md) for the existing
 runtime handoff/route contract, then load the references selected by that route;
 these are the canonical handoff references. When a separate condition requires
 additional guidance (for example, app-thread workers, a watcher, or delegated
@@ -58,6 +76,13 @@ review route and MUST NOT be treated as Worker observation or permission for
 direct Orchestrator polling. MUST read `parent-supervision.md` for exact wait
 values, host-limit, quiet-wait, fallback, report, interruption, cancellation,
 and non-Watcher conditions before execution.
+
+Before dispatching a Worker, the Orchestrator MUST have an active `get_goal`
+readback for its exact overall assignment. Each Worker prompt MUST contain one
+exact `Assignment objective:`, bounded scope, success criteria, verification,
+and a stop condition, and MUST direct the Worker to load goal-lifecycle and
+complete its own first transition before task-specific work. The Orchestrator's
+goal MUST NOT stand in for the Worker's task-scoped goal.
 
 ### Planning and execution boundary
 

@@ -104,6 +104,21 @@ parent task id, current plan step, branch, worktree, HEAD, dirty/index state,
 evidence, next action, stable transition key, and confirmed task-surface
 delivery.
 
+For an initial `create_goal` after the first `get_goal` returns exact `null`, a
+response envelope with `goal=null`, or exact `status=complete`, the pre-delivery
+receipt MUST use assignment and task context already available. The initial
+`get_goal` MUST precede task-specific branch/worktree status, issue or GitHub
+reads, and ref preflight; unavailable fields MUST remain unobserved until the
+new goal is active. If no task branch or worktree has been selected or created,
+the receipt MUST say `not selected` or `not created`. If HEAD or dirty/index
+state has not been read, it MUST say `not read before active goal`. These
+required fields MUST NOT prompt status commands, issue/GitHub reads, branch/ref
+preflight, worktree setup, or other investigation between an exact `null` result
+and the new goal's active confirmation. After the active readback and required
+parent-delivery receipt, perform those checks normally. This allowance applies
+only to the initial execution goal; later transitions and recovery receipts MUST
+carry current known state.
+
 After each goal-mutating tool call, and after the required active `get_goal`
 readback following `create_goal`, the child MUST send a post-result receipt
 containing the exact tool result, operation, parent task id, matching transition
