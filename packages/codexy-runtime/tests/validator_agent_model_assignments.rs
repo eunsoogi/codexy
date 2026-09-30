@@ -29,7 +29,7 @@ const EXPECTED_AGENTS: &[ExpectedAgent] = &[
     ExpectedAgent {
         name: "codexy-auditor",
         filename: "codexy-auditor.toml",
-        model: "gpt-6-sol",
+        model: "gpt-6.1-sol",
         effort: "medium",
     },
     ExpectedAgent {
@@ -41,7 +41,7 @@ const EXPECTED_AGENTS: &[ExpectedAgent] = &[
     ExpectedAgent {
         name: "codexy-inspector",
         filename: "codexy-inspector.toml",
-        model: "gpt-6-sol",
+        model: "gpt-6.1-sol",
         effort: "medium",
     },
     ExpectedAgent {
@@ -53,7 +53,7 @@ const EXPECTED_AGENTS: &[ExpectedAgent] = &[
     ExpectedAgent {
         name: "codexy-shipwright",
         filename: "codexy-shipwright.toml",
-        model: "gpt-6-sol",
+        model: "gpt-6.1-sol",
         effort: "high",
     },
     ExpectedAgent {
@@ -104,6 +104,72 @@ fn packaged_agents_match_the_independent_role_contract() -> TestResult {
             Some(expected.effort)
         );
     }
+    Ok(())
+}
+
+#[test]
+fn github_weaver_preserves_its_sol_model_and_reasoning_contract() -> TestResult {
+    let root = codexy_runtime::paths::repository_root();
+    let agent = parse_agent(&root.join("plugins/codexy-github/agents/codexy-weaver.toml"))?;
+    assert_eq!(agent["model"].as_str(), Some("gpt-6.1-sol"));
+    assert_eq!(agent["model_reasoning_effort"].as_str(), Some("medium"));
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_previous_sol_for_upgraded_roles() -> TestResult {
+    let fixture = agent_fixture(EXPECTED_AGENTS.iter().map(|expected| expected.filename))?;
+    for expected in EXPECTED_AGENTS
+        .iter()
+        .filter(|agent| agent.model == "gpt-6.1-sol")
+    {
+        assert_rejected(
+            validate_agent_replacement(
+                &fixture,
+                expected.filename,
+                "model",
+                expected.model,
+                "gpt-6-sol",
+            )?,
+            &format!("{} model must be {}", expected.name, expected.model),
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn standard_review_routes_to_the_upgraded_inspector() -> TestResult {
+    use serde_json::json;
+    let triggers = [
+        "destructive",
+        "security",
+        "permission",
+        "secret",
+        "release",
+        "high_consequence_external_state",
+        "high_risk_guardrail",
+        "merge_sensitive",
+        "durable_delegation",
+        "multi_lane_ownership",
+        "explicit_audit_evidence",
+    ];
+    let request = json!({
+        "schema": "codexy.review-profile-request.v1",
+        "classification": {
+            "schema": "codexy.workflow-profile-classification.v2",
+            "work_class": "middle", "low_risk_eligible": false,
+            "strict_triggers": triggers.map(|kind| json!({"kind": kind, "applies": false})),
+        },
+    });
+    let root = codexy_runtime::paths::repository_root().join("plugins/codexy");
+    let route = codexy_runtime::validation::resolve_review_profile(&root, &request.to_string())?;
+    assert_eq!(route["profile"], "standard");
+    assert_eq!(
+        route["reviewer"],
+        json!({
+            "name": "codexy-inspector", "model": "gpt-6.1-sol", "reasoning_effort": "medium",
+        })
+    );
     Ok(())
 }
 
