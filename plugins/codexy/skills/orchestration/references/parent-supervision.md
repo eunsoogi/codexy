@@ -145,10 +145,10 @@ alter protected technical text.
   an in-flight tool unless the host proves a hard stop.
 - Orchestrator fallback inspection MUST require a concrete signal or checkpoint.
   It MUST NOT become continuous transcript polling or direct polling of assigned
-  targets in a native Watcher route. The Orchestrator may return control rather
-  than hold a model turn open solely for unchanged waiting when the supported
-  Watcher observes through `watcher_wait`; its goal remains active and owned by
-  the Orchestrator.
+  targets in a native Watcher route. While assigned targets remain nonterminal,
+  the Orchestrator MUST keep the same assistant turn via `watcher_wait` under
+  host limits and quiet-wait rules. An empty wait result or tool output yield
+  MUST NOT end the turn, narrow the objective, or trigger a final status.
 
 ## Watcher MCP flow
 

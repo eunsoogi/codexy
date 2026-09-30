@@ -7,6 +7,30 @@ or when `wait_threads` is unavailable. A Watcher is a bounded native subagent
 summoned by the Orchestrator, not a separate app task, heartbeat, or automatic
 scheduler.
 
+## Same-Turn Wait Handling
+
+- While authorized implementation, verification, coordination, or an assigned
+  supported observation remains actionable, MUST default to continuing the full
+  assignment in the same assistant turn. Preserve the assigned objective across
+  intermediate results and bounded waits; MUST NOT redefine success around the
+  current step merely to end the turn.
+- An empty, unchanged, or timed-out `wait_threads` or `watcher_wait` result, or
+  a tool output yield, MUST NOT by itself end the assistant turn or assigned
+  objective. When the observation obligation remains, continue through its
+  existing supported route using the latest cursor and the route's actual host
+  limits. An output-yield cadence MUST NOT shorten the semantic wait. MUST NOT
+  use direct Worker polling or replace a native Watcher route.
+- Outside a route-required quiet wait, MUST provide concise progress commentary
+  at meaningful checkpoints during active work; commentary does not end the turn
+  or prove completion. A short wait result alone MUST NOT trigger a final status
+  or idle handoff. The
+  [goal and terminal lifecycle](#goal-and-terminal-lifecycle) below still
+  permits a finite idle handoff when its actual conditions are met.
+- This default MUST NOT create rapid polling, busy loops, duplicate unchanged
+  work, artificial token use, work beyond the authorized scope, or waits beyond
+  host limits. MUST follow [parent supervision](parent-supervision.md) for the
+  assigned Watcher route and exact wait ownership.
+
 For an ordinary non-Watcher owner, after a host transition or
 `No handler
 registered` failure, the owner MUST treat the mismatch as
