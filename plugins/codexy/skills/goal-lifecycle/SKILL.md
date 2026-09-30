@@ -1,17 +1,19 @@
 ---
 name: goal-lifecycle
-description: Use when real goal tools (`create_goal`, `get_goal`, or `update_goal`) are used, or when resuming a task controlled by a goal state; MUST NOT load it for work that does not use goal tooling.
+description: Use before any explicitly authorized task assignment, including read-only diagnosis and delegated Worker work, and when using goal tools or resuming a task controlled by a goal. MUST NOT infer execution or goal authority from ordinary questions, ambiguous discussion, or unassigned suggestions.
 ---
 
 # Goal Lifecycle
 
 ## Purpose
 
-Codex MUST use this skill only for a real goal-tool operation or a resume of a
-task whose execution is controlled by a goal state. Codex MUST treat the host
-goal tools as authoritative. This skill recovers a stale `blocked` control-plane
-record so the existing owner can resume. It MUST NOT implement goal state or
-replace the owner thread, branch, or worktree.
+Codex MUST use this skill before any explicitly assigned task work, including
+read-only diagnosis, and for every goal-tool operation or resume of a task
+controlled by a goal. Codex MUST load it before task-specific work, not only
+after choosing a goal-tool operation. Codex MUST treat the host goal tools as
+authoritative. The lifecycle governs fresh goal startup, active continuation,
+and stale blocked-goal recovery. It MUST NOT implement goal state or replace the
+owner thread, branch, or worktree.
 
 ## Delegated assignment authorization
 
@@ -28,6 +30,14 @@ The parent handoff MUST state the assigned objective once as
 `create_goal`, the create result, and the active `get_goal` readback. This
 record documents the assignment already given; it MUST NOT act as a second
 authorization, broaden the parent-supplied objective, or become a user opt-in.
+
+For an Orchestrator/Worker arrangement, the Orchestrator MUST establish or
+continue its exact overall goal before its task work and before Worker dispatch.
+Before dispatch, it MUST give each Worker one exact `Assignment objective:`
+line, bounded scope, success criteria, verification, stop condition, and an
+explicit direction to complete the Worker's own first transition before
+task-specific work. A parent goal MUST NOT stand in for a Worker's task-scoped
+goal.
 
 The finite goal MUST match the assignment and MUST NOT broaden scope, invent
 work, replace external proof, or override the authoritative lifecycle state. A
