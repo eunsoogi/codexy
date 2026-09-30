@@ -10,6 +10,35 @@ repeat large unchanged artifacts.
 This skill summarizes current proof and byte comparisons without changing which
 obligations apply; token billing and wall-time savings remain unmeasured.
 
+## Same-Turn Execution Default
+
+- While an authorized assignment still has actionable in-scope work or an
+  assigned supported observation obligation, MUST default to continuing the
+  full assignment in the same assistant turn. Preserve the assigned objective
+  and current next action across intermediate output and wait timeouts; MUST
+  NOT redefine success around a smaller step merely to end the turn.
+- A host re-entry or goal continuation with the same active objective MUST
+  resume from the latest lane state and next uncompleted action. MUST NOT
+  restart completed or unchanged work or treat the continuation as a new goal;
+  lifecycle-valid new goals remain governed by `runtime-heartbeats.md`.
+- A bounded wait result or output-yield boundary is not an assistant-turn or
+  assignment boundary. An empty, unchanged, or short wait result MUST NOT by
+  itself trigger a final status. Continue the next authorized step, or continue
+  the existing supported event-wait route with its latest cursor and actual
+  host limits. MUST distinguish semantic wait duration from output-yield
+  cadence.
+- Outside a route-required quiet wait, MUST provide concise progress commentary
+  at meaningful checkpoints during active work; commentary does not end the
+  turn or prove completion. MUST reserve final
+  handoff for the complete assigned outcome, an actual user decision, an
+  explicit stop or pause, a verified host limit or inability to proceed, or a
+  lifecycle-valid finite idle handoff when no actionable owner work remains and
+  only an external event or wake can advance. Existing nonterminal-wait and
+  idle-lifecycle rules remain authoritative.
+- This default MUST NOT create busy polling, endless loops, repeat unchanged
+  work, artificial token use, exceed host limits, violate Watcher ownership,
+  or extend work beyond authorized scope.
+
 Task-to-task prompts, progress and callback messages, handoffs, and tool prompt
 fields MUST be treated as user-visible and MUST follow the shared
 [plain-language message rule](plain-language-user-replies.md). Use IDs and
