@@ -43,8 +43,8 @@ child-owned implementation lane through another surface.
 `create_thread` is a separate-task creation operation, not a branch/worktree
 allocator. Its callable contract permits it only for an explicit current user
 request for a new app task. A need for an issue branch, worktree, PR, or
-implementation assignment, and task complexity, MUST NOT be treated as that
-request.
+implementation assignment, task complexity, or a generic request to orchestrate
+or coordinate independent issues MUST NOT be treated as that request.
 
 Before calling `create_thread`, the Orchestrator MUST read back separately:
 
@@ -52,13 +52,20 @@ Before calling `create_thread`, the Orchestrator MUST read back separately:
 - the current user authority for a separate new task; and
 - the current task and existing active owner for the same issue or lane.
 
-When no separate task was requested and the current task owns the lane, the
-current-task route MUST continue under its native goal without calling
-`create_thread`. When an active child already owns the lane, the parent MUST
-send correction instructions through the supported task route and MUST NOT
-implement in the parent or create a duplicate owner. A GitHub assignee, issue,
-branch, PR, or delegated prompt MUST NOT substitute for an active-owner
-readback.
+When no separate task was requested and the current task is already explicitly
+assigned as the implementation owner for that lane, the current-task route MUST
+continue under its native goal without calling `create_thread`. A direct
+standalone implementation request remains a valid assignment. For a request
+to orchestrate independent issues, the parent/coordinator role, active overall
+goal, or presence of the current task MUST NOT substitute for a lane-specific
+implementation assignment. This route MUST NOT resolve unclear topology or
+silently replace a selected child-owned lane. If topology is unresolved, or a selected
+child-owned lane lacks explicit task-creation authority, implementation MUST
+remain pending while the parent reports the exact owner decision or authority
+needed. When an active child already owns the lane, the parent MUST send
+correction instructions through the supported task route and MUST NOT implement
+in the parent or create a duplicate owner. A GitHub assignee, issue, branch, PR,
+or delegated prompt MUST NOT substitute for an active-owner readback.
 
 When a separate task was explicitly requested and no existing owner conflict
 remains, the Orchestrator MUST use the actual `create_thread` tool and MUST

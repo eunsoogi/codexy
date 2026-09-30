@@ -24,6 +24,14 @@
   atomic lanes before creating separate child tasks, worktrees, branches, or
   PRs. A need for any of those surfaces MUST NOT by itself choose a child-owned
   route.
+- A request to orchestrate or coordinate multiple independent issue outcomes
+  MUST be separated from implementation ownership. It authorizes coordination
+  and lane decomposition, but by itself neither assigns implementation to the
+  current task nor authorizes separate app-task creation. Before edits, the
+  parent MUST resolve the intended implementation topology for each lane. If
+  that intent is unresolved, implementation MUST remain pending until the user
+  or maintainer resolves it; the parent MUST NOT silently choose itself as the
+  implementer.
 - For a child-owned lane, the root orchestrator MUST create, fork, or assign the
   owning child thread before implementation patches begin. A current-task-owned
   lane MUST remain in the current task when no separate task was explicitly
@@ -53,15 +61,28 @@ check these facts independently:
   assignee, branch, or visible task summary MUST NOT substitute for an
   active-owner readback.
 
-When the current task is the assigned owner and no separate task was requested,
-the current-task route MUST continue under its native goal; it MUST NOT invoke
-`create_thread` merely to obtain an issue branch, worktree, or PR. When an
-active child already owns the issue or lane, the parent MUST keep that child as
-owner and send correction instructions through the supported task route; it MUST
-NOT implement in the parent or create a duplicate owner. An explicitly requested
-new-task route MUST create the task only after the three checks and MUST verify
-the returned task identity, owner, target project/worktree, and native goal
-before execution.
+When the current task is already explicitly assigned as implementation owner
+for the lane and no separate task was requested, the current-task route MUST
+continue under its native goal; it MUST NOT invoke `create_thread` merely to
+obtain an issue branch, worktree, or PR. A direct standalone implementation
+request remains a valid current-task assignment. When an active child already
+owns the issue or lane, the parent MUST keep that child as owner and send
+correction instructions through the supported task route; it MUST NOT implement
+in the parent or create a duplicate owner. An explicitly requested new-task
+route MUST create the task only after the three checks and MUST verify the
+returned task identity, owner, target project/worktree, and native goal before
+execution.
+
+The current-task route applies only after the current task is assigned as the
+implementation owner for that lane; it MUST NOT resolve an orchestration
+request whose implementation topology is still unclear. For a request to
+orchestrate independent issue outcomes, the parent's coordinator role, active
+overall goal, or presence of the current task MUST NOT substitute for a
+lane-specific implementation assignment. If a lane is selected as child-owned
+but authority to create its separate app task is absent or ambiguous, the lane
+MUST remain child-owned and implementation MUST remain pending. The parent MUST
+report the exact missing authority or owner decision and MUST NOT relabel that
+lane as parent-owned or current-task-owned to begin work.
 
 Both routes MUST preserve branch/worktree isolation, code ownership,
 verification, the designated Watcher, and assigned model policies. A text-only
