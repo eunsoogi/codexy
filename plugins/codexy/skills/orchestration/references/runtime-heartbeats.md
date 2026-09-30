@@ -21,9 +21,9 @@ scheduler.
   limits. An output-yield cadence MUST NOT shorten the semantic wait. MUST NOT
   use direct Worker polling or replace a native Watcher route.
 - Outside a route-required quiet wait, MUST provide concise progress commentary
-  at meaningful checkpoints during active work; commentary does not end the
-  turn or prove completion. A short wait result alone MUST NOT trigger a final
-  status or idle handoff. The
+  at meaningful checkpoints during active work; commentary does not end the turn
+  or prove completion. A short wait result alone MUST NOT trigger a final status
+  or idle handoff. The
   [goal and terminal lifecycle](#goal-and-terminal-lifecycle) below still
   permits a finite idle handoff when its actual conditions are met.
 - This default MUST NOT create rapid polling, busy loops, duplicate unchanged
