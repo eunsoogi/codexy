@@ -244,12 +244,12 @@ Worker는 유한한 실행 목표를 맡습니다. Watcher는 전체 목표를 �
 | core     | `codexy-architect`    | `gpt-6-astra` | `high`    | 아키텍처와 통합 경계                       |
 | core     | `codexy-sentinel`     | `gpt-6-astra` | `xhigh`   | 엄격한 리뷰                                |
 | core     | `codexy-warden`       | `gpt-6-astra` | `xhigh`   | 안전·권한 경계                             |
-| core     | `codexy-inspector`    | `gpt-6-sol`   | `medium`  | 표준 리뷰                                  |
-| core     | `codexy-auditor`      | `gpt-6-sol`   | `medium`  | 인수 기준과 실제 동작 검증                 |
+| core     | `codexy-inspector`    | `gpt-6.1-sol`   | `medium`  | 표준 리뷰                                  |
+| core     | `codexy-auditor`      | `gpt-6.1-sol`   | `medium`  | 인수 기준과 실제 동작 검증                 |
 | core     | `codexy-cartographer` | `gpt-6-luna`  | `low`     | 저장소 탐색                                |
-| core     | `codexy-shipwright`   | `gpt-6-sol`   | `high`    | 릴리스와 패키징                            |
+| core     | `codexy-shipwright`   | `gpt-6.1-sol`   | `high`    | 릴리스와 패키징                            |
 | core     | `codexy-watcher`      | `gpt-6-luna`  | `max`     | core Watcher MCP를 통한 native Worker 관찰 |
-| github   | `codexy-weaver`       | `gpt-6-sol`   | `medium`  | GitHub 통합; GitHub 컴포넌트 제공          |
+| github   | `codexy-weaver`       | `gpt-6.1-sol`   | `medium`  | GitHub 통합; GitHub 컴포넌트 제공          |
 
 ### 실시간 음성 모드
 

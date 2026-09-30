@@ -274,12 +274,12 @@ the optional `codexy-github` plugin supplies Weaver.
 | core      | `codexy-architect`    | `gpt-6-astra` | `high`           | Architecture and integration boundaries                        |
 | core      | `codexy-sentinel`     | `gpt-6-astra` | `xhigh`          | Strict review                                                  |
 | core      | `codexy-warden`       | `gpt-6-astra` | `xhigh`          | Safety and permission boundaries                               |
-| core      | `codexy-inspector`    | `gpt-6-sol`   | `medium`         | Standard review                                                |
-| core      | `codexy-auditor`      | `gpt-6-sol`   | `medium`         | Acceptance and observable verification                         |
+| core      | `codexy-inspector`    | `gpt-6.1-sol`   | `medium`         | Standard review                                                |
+| core      | `codexy-auditor`      | `gpt-6.1-sol`   | `medium`         | Acceptance and observable verification                         |
 | core      | `codexy-cartographer` | `gpt-6-luna`  | `low`            | Repository discovery                                           |
-| core      | `codexy-shipwright`   | `gpt-6-sol`   | `high`           | Release and packaging                                          |
+| core      | `codexy-shipwright`   | `gpt-6.1-sol`   | `high`           | Release and packaging                                          |
 | core      | `codexy-watcher`      | `gpt-6-luna`  | `max`            | Bounded native Worker observation through the core Watcher MCP |
-| github    | `codexy-weaver`       | `gpt-6-sol`   | `medium`         | GitHub integration; supplied by the GitHub component           |
+| github    | `codexy-weaver`       | `gpt-6.1-sol`   | `medium`         | GitHub integration; supplied by the GitHub component           |
 
 ### Realtime voice mode
 

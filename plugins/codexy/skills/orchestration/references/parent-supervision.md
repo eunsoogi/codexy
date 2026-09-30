@@ -29,7 +29,7 @@ recovery remain governed by the existing lifecycle.
 Configuration metadata MUST remain separate from role identity: Orchestrator and
 Worker-to-Orchestrator delivery use `gpt-6-astra`/`medium`; Worker creation,
 Orchestrator-to-Worker delivery and Watcher use `gpt-6-luna`/`max`; inspector
-uses `gpt-6-sol`/`medium`. Host/runtime direction identifiers remain serialized
+uses `gpt-6.1-sol`/`medium`. Host/runtime direction identifiers remain serialized
 compatibility values; every app delivery MUST name its model and thinking
 effort.
 
