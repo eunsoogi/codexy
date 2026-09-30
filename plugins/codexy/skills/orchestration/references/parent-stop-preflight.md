@@ -4,17 +4,31 @@ MUST run this checkpoint before any implementation edit when a lane may need a
 branch, worktree, PR, durable child context, or review-response ownership:
 
 1. MUST name the atomic lane and decide ownership as `parent-owned` or
-   `child-owned`.
+   `child-owned`. When the user asks to orchestrate independent issue outcomes,
+   the parent MUST resolve each lane's implementation owner before selecting a
+   route; that coordination request alone neither selects parent implementation
+   nor authorizes separate app-task creation.
 2. Before selecting a current-task route or creating a separate app task, the
    parent MUST record tool availability, current user invocation authority, and
    existing current/child owner as three independent facts. A needed branch,
    worktree, PR, issue assignment, or task complexity MUST NOT by itself
-   authorize `create_thread`.
-3. If the current task owns the lane and no separate task was explicitly
-   requested, the current-task route MUST continue under its native goal and
-   MUST NOT create another app task. If an active child already owns the lane,
-   the parent MUST send correction instructions through the supported task route
-   and MUST NOT implement in the parent or create a duplicate owner.
+   authorize `create_thread`. Generic requests to orchestrate or coordinate
+   independent issues MUST NOT be treated as explicit child-task requests.
+3. If the current task is explicitly assigned as implementation owner for this
+   lane and no separate task was requested, the current-task route MUST continue
+   under its native goal and MUST NOT create another app task. A direct
+   standalone implementation request remains a valid assignment. For an
+   orchestration request covering independent issues, the parent/coordinator
+   role, active overall goal, or presence of the current task MUST NOT count as
+   a lane-specific implementation assignment. The current-task route MUST NOT
+   resolve unclear topology or a previously selected child-owned lane. If
+   ownership intent is unresolved, or no active child already owns a selected
+   child-owned lane and task-creation authority is unavailable or ambiguous,
+   implementation MUST remain pending until the user or maintainer resolves the
+   owner/topology. If an active child already owns the lane, the parent MUST
+   send correction instructions through the supported task route without
+   requiring authority to create another task, and MUST NOT implement in the
+   parent or create a duplicate owner.
 4. If a separate task was explicitly requested, the parent MUST use the actual
    callable `create_thread` contract and verify the returned task identity,
    owner, project/worktree, and native goal before execution. The parent MUST
@@ -25,7 +39,7 @@ branch, worktree, PR, durable child context, or review-response ownership:
    names, worktree requests, handoff text, and acceptance criteria, but it MUST
    NOT patch implementation files, create implementation branches or worktrees
    in the parent context, or read implementation surfaces as setup for a parent
-   patch.
+   patch, including while child-task creation or dispatch is pending.
 6. If parent draft implementation diff or setup artifacts already exist for a
    child-owned lane, MUST preserve the evidence, disclose the workflow defect,
    MUST inspect overlap with user or other-agent work, and MUST route the draft
