@@ -5,13 +5,15 @@ description: Use when classifying workflow, surface, and risk or coordinating ow
 
 Read the user request, parent assignment, and applicable AGENTS.md instruction
 files first. Determine whether they explicitly assign bounded work, including
-read-only diagnosis or preflight. For an authorized assignment, Codex MUST load
-the [goal lifecycle](../goal-lifecycle/SKILL.md), call the current task's
-host-scoped get_goal, and complete its Required first transition before
-task-specific work. The goal check MUST precede issue/PR reads, task diagnosis,
-repository/GitHub reads, branch or worktree setup, planning, delegation, edits,
-and verification. It applies to both Orchestrators and Workers in their own
-current tasks. The task MUST apply the goal lifecycle's result rules: create
+read-only diagnosis or preflight. For an authorized Orchestrator or Worker task,
+Codex MUST load the [goal lifecycle](../goal-lifecycle/SKILL.md), call the
+current task's host-scoped get_goal, and complete its Required first transition
+before task-specific work. The goal check MUST precede issue/PR reads, task
+diagnosis, repository/GitHub reads, branch or worktree setup, planning,
+delegation, edits, and verification. It applies to Orchestrators and
+implementation Workers in their own current tasks. A native read-only Watcher
+MUST follow the goal lifecycle's Watcher exception and MUST NOT create a
+separate goal. The task MUST apply the goal lifecycle's result rules: create
 only for an authorized assignment on exact null, top-level goal=null, or
 status=complete. Continue only for an exact active objective; use the documented
 sequence for blocked; stop on error, malformed or unexpected state, or a

@@ -1,19 +1,21 @@
 ---
 name: goal-lifecycle
-description: Use before any explicitly authorized task assignment, including read-only diagnosis and delegated Worker work, and when using goal tools or resuming a task controlled by a goal. MUST NOT infer execution or goal authority from ordinary questions, ambiguous discussion, or unassigned suggestions.
+description: Use before any explicitly authorized Orchestrator or implementation Worker task, including read-only diagnosis, and when using goal tools or resuming a task controlled by a goal. The native read-only Watcher exception remains separate. MUST NOT infer execution or goal authority from ordinary questions, ambiguous discussion, or unassigned suggestions.
 ---
 
 # Goal Lifecycle
 
 ## Purpose
 
-Codex MUST use this skill before any explicitly assigned task work, including
-read-only diagnosis, and for every goal-tool operation or resume of a task
-controlled by a goal. Codex MUST load it before task-specific work, not only
-after choosing a goal-tool operation. Codex MUST treat the host goal tools as
-authoritative. The lifecycle governs fresh goal startup, active continuation,
-and stale blocked-goal recovery. It MUST NOT implement goal state or replace the
-owner thread, branch, or worktree.
+Codex MUST use this skill before explicitly assigned Orchestrator or
+implementation Worker task work, including read-only diagnosis, and for every
+goal-tool operation or resume of a task controlled by a goal. Codex MUST load it
+before task-specific work, not only after choosing a goal-tool operation. The
+native read-only Watcher exception below remains separate and MUST NOT create a
+separate goal. Codex MUST treat the host goal tools as authoritative. The
+lifecycle governs fresh goal startup, active continuation, and stale
+blocked-goal recovery. It MUST NOT implement goal state or replace the owner
+thread, branch, or worktree.
 
 ## Delegated assignment authorization
 
