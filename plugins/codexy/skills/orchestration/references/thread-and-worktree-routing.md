@@ -55,17 +55,19 @@ Before calling `create_thread`, the Orchestrator MUST read back separately:
 When no separate task was requested and the current task is already explicitly
 assigned as the implementation owner for that lane, the current-task route MUST
 continue under its native goal without calling `create_thread`. A direct
-standalone implementation request remains a valid assignment. For a request
-to orchestrate independent issues, the parent/coordinator role, active overall
+standalone implementation request remains a valid assignment. For a request to
+orchestrate independent issues, the parent/coordinator role, active overall
 goal, or presence of the current task MUST NOT substitute for a lane-specific
 implementation assignment. This route MUST NOT resolve unclear topology or
-silently replace a selected child-owned lane. If topology is unresolved, or a selected
-child-owned lane lacks explicit task-creation authority, implementation MUST
-remain pending while the parent reports the exact owner decision or authority
-needed. When an active child already owns the lane, the parent MUST send
-correction instructions through the supported task route and MUST NOT implement
-in the parent or create a duplicate owner. A GitHub assignee, issue, branch, PR,
-or delegated prompt MUST NOT substitute for an active-owner readback.
+silently replace a selected child-owned lane. If topology is unresolved, or no
+active child already owns a selected child-owned lane and explicit task-creation
+authority is unavailable or ambiguous, implementation MUST remain pending while
+the parent reports the exact owner decision or authority needed. When an active
+child already owns the lane, the parent MUST send correction instructions
+through the supported task route without requiring authority to create another
+task, and MUST NOT implement in the parent or create a duplicate owner. A GitHub
+assignee, issue, branch, PR, or delegated prompt MUST NOT substitute for an
+active-owner readback.
 
 When a separate task was explicitly requested and no existing owner conflict
 remains, the Orchestrator MUST use the actual `create_thread` tool and MUST

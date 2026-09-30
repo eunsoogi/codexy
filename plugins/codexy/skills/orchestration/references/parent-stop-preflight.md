@@ -19,14 +19,15 @@ branch, worktree, PR, durable child context, or review-response ownership:
    under its native goal and MUST NOT create another app task. A direct
    standalone implementation request remains a valid assignment. For an
    orchestration request covering independent issues, the parent/coordinator
-   role, active overall goal, or presence of the current task MUST NOT count as a
-   lane-specific implementation assignment. The current-task route MUST NOT
+   role, active overall goal, or presence of the current task MUST NOT count as
+   a lane-specific implementation assignment. The current-task route MUST NOT
    resolve unclear topology or a previously selected child-owned lane. If
-   ownership intent is unresolved, or child-task creation authority for a
-   selected child-owned lane is unavailable or ambiguous, implementation MUST
-   remain pending until the user or maintainer resolves the owner/topology. If an
-   active child already owns the lane, the parent MUST send correction
-   instructions through the supported task route and MUST NOT implement in the
+   ownership intent is unresolved, or no active child already owns a selected
+   child-owned lane and task-creation authority is unavailable or ambiguous,
+   implementation MUST remain pending until the user or maintainer resolves the
+   owner/topology. If an active child already owns the lane, the parent MUST
+   send correction instructions through the supported task route without
+   requiring authority to create another task, and MUST NOT implement in the
    parent or create a duplicate owner.
 4. If a separate task was explicitly requested, the parent MUST use the actual
    callable `create_thread` contract and verify the returned task identity,

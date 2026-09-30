@@ -69,14 +69,15 @@
      another task merely because it needs a branch, worktree, or PR.
    - A request to orchestrate or coordinate independent issue outcomes MUST
      resolve implementation ownership for each lane before dispatch or source
-     edits. Generic orchestration wording alone MUST NOT authorize `create_thread`
-     or assign implementation to the parent. The parent's coordinator role,
-     active overall goal, or presence of the current task MUST NOT substitute for
-     a lane-specific implementation assignment. If the current task has not
-     been explicitly designated as implementer for that lane and child-task
-     authority is absent or ambiguous, implementation MUST remain pending while
-     the parent resolves the intended topology; a selected child-owned lane MUST
-     NOT be silently relabeled for parent implementation.
+     edits. Generic orchestration wording alone MUST NOT authorize
+     `create_thread` or assign implementation to the parent. The parent's
+     coordinator role, active overall goal, or presence of the current task MUST
+     NOT substitute for a lane-specific implementation assignment. If the
+     current task has not been explicitly designated as implementer for that
+     lane, no active child already owns it, and child-task authority is absent
+     or ambiguous, implementation MUST remain pending while the parent resolves
+     the intended topology; a selected child-owned lane MUST NOT be silently
+     relabeled for parent implementation.
    - Native Watcher creation, exact Worker targets, report delivery, wait
      ownership, quiet waiting, deduplication, host limits, interruption, and
      fallback MUST follow [parent-supervision.md](parent-supervision.md). The
@@ -97,8 +98,9 @@
      for the lane and no new task was explicitly requested, MUST continue in the
      current task under its native goal and MUST NOT create another app task. If
      an active child owns the lane, the parent MUST send correction instructions
-     to that owner and MUST NOT take over implementation or create a duplicate
-     owner.
+     to that owner through the supported task route without requiring authority
+     to create another task. The parent MUST NOT take over implementation or
+     create a duplicate owner.
    - If a new app task was explicitly requested, MUST use the actual callable
      `create_thread` contract, verify the returned task and owner before
      execution, and MUST NOT use an app-server/CLI bypass or fake task.
