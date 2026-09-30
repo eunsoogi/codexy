@@ -22,11 +22,11 @@ native location.
 | Agent                 | Model         | Reasoning effort | Role                                                                                                                                                |
 | --------------------- | ------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `codexy-architect`    | `gpt-6-astra` | `high`           | Defines conservative boundaries for plugin schemas, orchestration contracts, MCP/LSP wiring, validators, and durable extension points.              |
-| `codexy-auditor`      | `gpt-6.1-sol`   | `medium`         | Turns acceptance criteria into observable QA across configuration, documentation, CLI, GitHub, app, and plugin surfaces.                            |
+| `codexy-auditor`      | `gpt-6.1-sol` | `medium`         | Turns acceptance criteria into observable QA across configuration, documentation, CLI, GitHub, app, and plugin surfaces.                            |
 | `codexy-cartographer` | `gpt-6-luna`  | `low`            | Performs fast, read-only repository discovery with codegraph, direct reads, file mapping, and ownership boundaries.                                 |
-| `codexy-inspector`    | `gpt-6.1-sol`   | `medium`         | Performs the single bounded standard-profile review of current acceptance, changed files, and direct correctness, regression, and scope boundaries. |
+| `codexy-inspector`    | `gpt-6.1-sol` | `medium`         | Performs the single bounded standard-profile review of current acceptance, changed files, and direct correctness, regression, and scope boundaries. |
 | `codexy-sentinel`     | `gpt-6-astra` | `xhigh`          | Runs the mandatory adversarial final review of scope, correctness, safety, tests, and current-head evidence.                                        |
-| `codexy-shipwright`   | `gpt-6.1-sol`   | `high`           | Prepares version, manifest, marketplace, artifact, tag, release, and rollback readiness.                                                            |
+| `codexy-shipwright`   | `gpt-6.1-sol` | `high`           | Prepares version, manifest, marketplace, artifact, tag, release, and rollback readiness.                                                            |
 | `codexy-warden`       | `gpt-6-astra` | `xhigh`          | Reviews workflows, shell commands, credentials, remote MCPs, untrusted input, permissions, and state mutation.                                      |
 
 | `codexy-watcher` | `gpt-6-luna` | `max` | Performs bounded native read-only
