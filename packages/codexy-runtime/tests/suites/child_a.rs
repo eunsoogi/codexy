@@ -1,15 +1,6 @@
 #[path = "../validator_child_goal_blocked_audit.rs"]
 mod validator_child_goal_blocked_audit;
 
-#[path = "../validator_child_goal_reporting.rs"]
-mod validator_child_goal_reporting;
-
-#[path = "../validator_child_goal_reporting_regressions.rs"]
-mod validator_child_goal_reporting_regressions;
-
-#[path = "../validator_child_goal_reporting_connector_regressions.rs"]
-mod validator_child_goal_reporting_connector_regressions;
-
 #[path = "../validator_child_handoff_readiness.rs"]
 mod validator_child_handoff_readiness;
 

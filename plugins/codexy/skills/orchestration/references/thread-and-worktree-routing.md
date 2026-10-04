@@ -52,15 +52,30 @@ Before calling `create_thread`, the Orchestrator MUST read back separately:
 - the current user authority for a separate new task; and
 - the current task and existing active owner for the same issue or lane.
 
+The Orchestrator MUST verify its actual task CWD before child creation. If the
+CWD is in a linked Git worktree or cannot be verified inside the saved project's
+primary checkout, it MUST NOT call `create_thread`. A different controlling task
+MUST use the supported handoff surface to move the Orchestrator to the primary
+repository; `handoff_thread` cannot move its own caller. After handoff, the
+controlling task MUST verify the destination CWD and primary checkout from
+current task readback before the Orchestrator resumes child creation. An
+unverified destination MUST keep the lane pending.
+
 For a selected child-owned lane, the Orchestrator MUST select the assigned
 recipient model and effort automatically and MUST NOT ask the user to choose or
-reconfirm them. It MUST obey the actual `create_thread` contract, including any
-rule that requires omitting `model` unless the user explicitly requested one. If
-that prevents the assigned pair from being supplied, or the host does not
-support it, the Orchestrator MUST report the exact limitation and keep the lane
-pending. It MUST NOT assume the host default matches, supply a forbidden
-override, switch models, implement in the parent, or create a duplicate Worker.
-Model routing does not grant authority to create a separate task.
+reconfirm them. Every Worker `create_thread` call MUST include the assigned
+`model` and `thinking` pair and request `target.type="project"` with a non-empty
+`projectId` and `target.environment.type="worktree"` in that same call. Local or
+projectless Worker tasks MUST be denied before mutation; a later
+`create_worktree`, `fork_thread`, shell `git worktree add`, or detached
+directory MUST NOT substitute for the initial app-managed task environment.
+Read-only Git inspection and supported app-managed worktree cleanup remain
+valid. If the host cannot accept the worktree environment or assigned pair, the
+lane MUST remain pending and the exact incompatibility MUST be reported. The
+Orchestrator MUST NOT switch models, implement in the parent, or create a
+duplicate Worker. A separate Orchestrator task is distinct from Worker-only
+admission and MUST use its own assigned pair when explicitly requested. Model
+routing does not grant authority to create a separate task.
 
 When no separate task was requested and the current task is already explicitly
 assigned as the implementation owner for that lane, the current-task route MUST
@@ -80,11 +95,14 @@ assignee, issue, branch, PR, or delegated prompt MUST NOT substitute for an
 active-owner readback.
 
 When a separate task was explicitly requested and no existing owner conflict
-remains, the Orchestrator MUST use the actual `create_thread` tool and MUST
-verify its returned task identity, owner, project, worktree, and native goal
-before execution. The call is non-blocking: a ready `threadId`/`hostId` is an
-actual task identity, while a setup `clientThreadId` is only a pending setup
-identity and MUST NOT be passed to tools that require `threadId`.
+remains, the Orchestrator MUST use the actual `create_thread` tool and read back
+the returned task identity, owner, project, actual CWD, starting HEAD, app
+worktree environment, exposed permissions and model settings, and native goal
+before execution. The requested target, checkout path, or attached artifact
+alone does not prove the task environment. The call is non-blocking: a ready
+`threadId`/`hostId` is an actual task identity, while a setup `clientThreadId`
+is only a pending setup identity and MUST NOT be passed to tools that require
+`threadId`.
 
 Both routes MUST NOT replace the native goal or the designated Watcher with
 text, an app-server/CLI path, a fake task, or a silent fallback. Source tests,

@@ -7,8 +7,13 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from collections.abc import Mapping
 from pathlib import Path
+
+from core_hook_test_support import (
+    hook_payload as _payload,
+    temporary_primary_checkout,
+    worker_creation_input,
+)
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -59,7 +64,7 @@ class CoreHookStartupTests(unittest.TestCase):
             (
                 "codexy-child-thread-creation.sh",
                 "mcp__codex_app__create_thread",
-                {"model": "gpt-6-luna", "thinking": "max"},
+                worker_creation_input(),
             ),
             (
                 "codexy-subagent-ownership.sh",
@@ -67,12 +72,13 @@ class CoreHookStartupTests(unittest.TestCase):
                 {"agent_type": "codexy-cartographer", "message": "Map files only."},
             ),
         )
-        for launcher, tool, tool_input in allowed:
-            with self.subTest(launcher=launcher):
-                payload = _payload("PreToolUse", tool, tool_input)
-                self.assertEqual(
-                    self._run(HOOKS.parent, launcher, "PreToolUse", payload), b""
-                )
+        with temporary_primary_checkout() as primary_cwd:
+            for launcher, tool, tool_input in allowed:
+                with self.subTest(launcher=launcher):
+                    payload = _payload("PreToolUse", tool, tool_input, cwd=primary_cwd)
+                    self.assertEqual(
+                        self._run(HOOKS.parent, launcher, "PreToolUse", payload), b""
+                    )
 
         for launcher, prefix, tool in (
             (
@@ -241,9 +247,3 @@ class CoreHookStartupTests(unittest.TestCase):
 def _sized_payload(size: int) -> bytes:
     prefix = b'{"hook_event_name":"PreToolUse","tool_name":"mcp__codex_app__send_message_to_thread","tool_input":{"padding":"'
     return prefix + b"x" * (size - len(prefix) - 3) + b'"}}'
-
-
-def _payload(event: str, tool: str, tool_input: Mapping[str, object]) -> bytes:
-    return json.dumps(
-        {"hook_event_name": event, "tool_name": tool, "tool_input": tool_input}
-    ).encode()

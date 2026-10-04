@@ -6,10 +6,11 @@ import shutil
 import stat
 import subprocess
 import sys
-import tempfile
 import threading
 import unittest
 from pathlib import Path
+
+from core_hook_test_support import temporary_primary_checkout, worker_creation_input
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -27,7 +28,7 @@ CASES = (
     (
         "codexy-child-thread-creation",
         "mcp__codex_app__create_thread",
-        {"model": "gpt-6-luna", "thinking": "max"},
+        worker_creation_input(),
         "child-thread-creation",
     ),
     (
@@ -195,8 +196,8 @@ class CoreHookTimingTests(unittest.TestCase):
 
     @contextmanager
     def _candidate(self):
-        with tempfile.TemporaryDirectory(prefix="codexy-hook-timing ") as temporary:
-            yield shutil.copytree(PLUGIN, Path(temporary) / "codexy")
+        with temporary_primary_checkout() as primary_cwd:
+            yield shutil.copytree(PLUGIN, primary_cwd / "codexy")
 
     def _timing(self, plugin: Path):
         path = plugin / "hooks/codexy_policy/timing.py"
@@ -233,6 +234,7 @@ class CoreHookTimingTests(unittest.TestCase):
             command,
             input=json.dumps(
                 {
+                    "cwd": str(plugin.parent.resolve()),
                     "hook_event_name": "PreToolUse",
                     "tool_name": tool,
                     "tool_input": tool_input,
