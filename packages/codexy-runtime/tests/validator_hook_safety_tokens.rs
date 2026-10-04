@@ -1,3 +1,6 @@
+//! Rejects Node.js execution tokens in generic hook command strings and script
+//! contents.
+
 #[allow(unused)]
 use crate::support;
 use std::process::Command;

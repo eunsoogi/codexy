@@ -1,3 +1,6 @@
+//! Checks both route directions, supported tool aliases and explicit settings,
+//! while distinguishing stable control-plane receipts from ordinary wording.
+
 use serde_json::json;
 
 use super::fixtures::*;

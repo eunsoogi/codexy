@@ -1,3 +1,6 @@
+//! Binds the retained capability schema and content digests to the hook
+//! matchers that expose each concern on both platforms.
+
 use super::{copy, read, text, validate};
 
 fn assert_rejected(

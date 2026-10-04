@@ -1,3 +1,6 @@
+//! Rejects ambiguous v2 policy inputs, including missing or contradictory
+//! reproduction facts, duplicate identities/risks and duplicate JSON keys.
+
 use serde_json::json;
 
 use super::policy_support as policy;

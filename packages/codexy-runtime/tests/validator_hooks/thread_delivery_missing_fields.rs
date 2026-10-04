@@ -1,3 +1,6 @@
+//! Selects model and effort remedies from the authenticated route direction,
+//! and requires malformed metadata to fail with non-retry diagnostics.
+
 use serde_json::json;
 
 use super::thread_delivery_support::{

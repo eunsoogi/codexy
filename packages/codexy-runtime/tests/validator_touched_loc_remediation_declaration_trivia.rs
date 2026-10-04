@@ -1,3 +1,6 @@
+//! Parses real module declarations through Rust trivia while ignoring text in
+//! comments and strings and resetting stale path attributes.
+
 use crate::support;
 
 use std::path::Path;

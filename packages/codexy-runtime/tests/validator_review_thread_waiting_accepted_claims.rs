@@ -1,3 +1,6 @@
+//! Prevents an accepted claim for an unresolved thread from being erased by
+//! later waiting rationale, while retaining valid not-yet-accepted waits.
+
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

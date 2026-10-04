@@ -1,3 +1,6 @@
+//! Verifies connector snapshots without pre-derived fields retain the owning
+//! issue identity when review control advances to a new head.
+
 use crate::support::TestResult;
 
 use super::{

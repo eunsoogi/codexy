@@ -1,3 +1,6 @@
+//! Rejects Cargo target evidence that crosses the validated Git repository
+//! boundary, including excluded packages and outside manifests.
+
 use crate::support;
 
 use std::path::Path;

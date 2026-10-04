@@ -1,3 +1,6 @@
+//! Resolves `#[path]` relative to the owning module and rejects extraction when
+//! an ambiguous ancestor makes that source location unverifiable.
+
 use crate::support;
 
 use std::path::Path;

@@ -1,3 +1,6 @@
+//! Builds the shared v1/v2 request contracts and checks parity between direct
+//! resolution and the validator CLI using the installed repository plugin root.
+
 use std::{path::Path, process::Command};
 
 use serde_json::{Value, json};

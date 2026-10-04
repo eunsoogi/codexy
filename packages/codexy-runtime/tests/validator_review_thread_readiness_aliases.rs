@@ -1,3 +1,6 @@
+//! Requires complete thread evidence for current readiness aliases while
+//! ignoring historical, fallback and otherwise non-current readiness prose.
+
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

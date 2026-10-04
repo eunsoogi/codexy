@@ -1,3 +1,6 @@
+//! Requires source to move into an eligible declared module or test target;
+//! unrelated additions and incidental duplicates cannot mask a collapse.
+
 use std::path::Path;
 use std::process::{Command, Output};
 

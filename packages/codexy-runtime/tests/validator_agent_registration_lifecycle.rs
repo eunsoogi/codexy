@@ -1,3 +1,6 @@
+//! Pins packaged registration dependencies, separates diagnosis gates and
+//! protects user-owned discovery files across updates and uninstall.
+
 use crate::support::FixtureCommand as Command;
 
 use crate::support;

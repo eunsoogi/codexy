@@ -1,3 +1,6 @@
+//! Builds authoritative and installed hook fixtures, injects optional routing
+//! metadata, and normalizes event-specific admission or denial results.
+
 use std::{
     io::Write,
     path::{Path, PathBuf},

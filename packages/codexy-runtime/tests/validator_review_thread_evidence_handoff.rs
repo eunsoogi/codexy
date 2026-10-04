@@ -1,3 +1,6 @@
+//! Requires complete review-thread evidence when handoff claims feedback work,
+//! with thread-specific no-change rationale and current unresolved-state checks.
+
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

@@ -1,3 +1,6 @@
+//! Checks clause and bullet boundaries so fixed actions and valid waiting
+//! rationale remain attached to the review thread each sentence references.
+
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

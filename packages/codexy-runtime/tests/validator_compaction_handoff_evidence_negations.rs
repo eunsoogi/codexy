@@ -1,4 +1,7 @@
 
+//! Ensures negated duplicate-state, ownership, and stop-condition statements
+//! cannot satisfy the required compacted-continuation evidence fields.
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 

@@ -1,4 +1,7 @@
 
+//! Distinguishes affirmative readiness claims from negative, unchecked, and
+//! blocker wording while checking claims against local status and PR evidence.
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]

@@ -1,3 +1,6 @@
+//! Limits reconciliation exemptions to recorded `main` merges; child edits and
+//! reverts to oversized main content still receive LOC enforcement.
+
 use std::path::Path;
 use std::process::{Command, Output};
 

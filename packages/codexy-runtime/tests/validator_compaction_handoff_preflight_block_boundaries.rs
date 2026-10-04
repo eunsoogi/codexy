@@ -1,4 +1,7 @@
 
+//! A later negation invalidates Git-preflight evidence even after every required
+//! command was listed, so contradictory continuation summaries fail closed.
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 

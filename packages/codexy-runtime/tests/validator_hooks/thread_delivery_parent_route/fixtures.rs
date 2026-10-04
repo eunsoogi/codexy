@@ -1,3 +1,6 @@
+//! Builds authentic routing transcripts and runs authoritative or installed
+//! hook launchers with consistent admission and denial assertions.
+
 use std::{
     io::Write,
     path::Path,

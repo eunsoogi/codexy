@@ -1,3 +1,6 @@
+//! Rejects linked or unverifiable parent checkouts while admitting the primary
+//! checkout and its ordinary subdirectories.
+
 use super::*;
 
 #[test]

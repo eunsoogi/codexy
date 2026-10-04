@@ -1,3 +1,6 @@
+//! Discovers custom targets below independent nested manifests, even when
+//! ancestor directories also contain separate Cargo workspace roots.
+
 use crate::support;
 
 use std::process::{Command, Output};

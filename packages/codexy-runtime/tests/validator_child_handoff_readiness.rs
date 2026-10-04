@@ -1,3 +1,6 @@
+//! Requires child-handoff readiness claims to match local status, PR state,
+//! captured heads, and resolved review-thread evidence.
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 #[test]

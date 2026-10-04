@@ -1,3 +1,6 @@
+//! Exercises accepted public and candidate release states, exact provenance
+//! constraints, legacy compatibility and rejection of malformed or unsafe data.
+
 use super::*;
 use std::io::Write as _;
 

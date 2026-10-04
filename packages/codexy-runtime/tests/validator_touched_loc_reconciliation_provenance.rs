@@ -1,3 +1,6 @@
+//! Verifies LOC decisions against the merge and reconciliation history that
+//! introduced each path change, including parent-side and custom resolutions.
+
 use std::path::Path;
 use std::process::{Command, Output};
 

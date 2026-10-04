@@ -1,4 +1,7 @@
 
+//! Checks the evidence boundary between captured Git commands and incidental
+//! command mentions in plans, log subjects, or incorrect rev-parse targets.
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 

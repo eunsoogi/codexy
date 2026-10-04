@@ -1,4 +1,7 @@
 
+//! Keeps captured branch-status output valid while later headings or negations
+//! cannot fill gaps in or erase a partial Git-preflight block.
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type Output = std::process::Output;
 type OutputResult = Result<Output, Box<dyn std::error::Error>>;

@@ -1,3 +1,6 @@
+//! Rejects cosmetic line-count reductions and accepts real code extraction
+//! only when the new module path is structurally valid for its source file.
+
 use crate::support;
 
 use support::touched_loc::{fixture, regular_lines, regular_lines_from, stderr, validate, write};
@@ -137,6 +140,7 @@ fn touched_loc_allows_structural_remediation_variants() -> TestResult {
     Ok(())
 }
 
+/// Moves source from an oversized fixture into its expected child module.
 fn assert_module_split(path: &str, module: &str, extracted_path: &str) -> TestResult {
     let repo = fixture(path, regular_lines(252))?;
     write(

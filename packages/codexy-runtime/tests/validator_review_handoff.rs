@@ -1,3 +1,6 @@
+//! Keeps the Sentinel's compact handoff tied to current-head direct review state
+//! without reviving retired packet, ledger or terminal-record requirements.
+
 use std::fs;
 
 use crate::support::TestResult;

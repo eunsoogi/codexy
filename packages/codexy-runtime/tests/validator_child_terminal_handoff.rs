@@ -1,3 +1,6 @@
+//! Requires one delivered parent handoff before terminal exits and goal
+//! transitions; blocked transitions also need a typed user-decision gate.
+
 use std::process::Output;
 
 #[path = "validator_child_terminal_handoff/blocked_goal.rs"]

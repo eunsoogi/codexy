@@ -1,3 +1,6 @@
+//! Preserves connector snapshot provenance through canonical control production
+//! and rejects contradictions in fields derived from connector arguments.
+
 use std::{fs, process::Command};
 
 use crate::support::TestResult;

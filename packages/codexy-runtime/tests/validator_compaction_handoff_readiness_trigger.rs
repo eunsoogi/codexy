@@ -1,4 +1,7 @@
 
+//! Distinguishes actual post-compaction continuation intent from status notes,
+//! summary headings, and explicit requests to defer work.
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 
