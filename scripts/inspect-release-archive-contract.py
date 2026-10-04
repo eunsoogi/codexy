@@ -163,7 +163,10 @@ def main() -> None:
             )
             delegate = root / "mcp" / f"codexy-mcp-{server}.cmd"
             expected = (
-                f'@echo off\n"%~dp0codexy-mcp-devtools.exe" {server} %*\n'
+                "@echo off\n"
+                "@rem Keep this server's public entrypoint on the shared native dispatcher.\n"
+                f'"%~dp0codexy-mcp-devtools.exe" {server} %*\n'
+                "@rem Propagate the dispatcher exit status to the caller.\n"
                 "exit /b %ERRORLEVEL%\n"
             ).encode()
             fail_if(

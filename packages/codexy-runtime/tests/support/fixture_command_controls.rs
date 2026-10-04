@@ -111,6 +111,17 @@ fn windows_static_python_fixture_requires_the_supported_paired_dispatch_contract
         windows_static_python_fixture(&shell),
         Some(shell.with_file_name("codexy-thread-delivery.py"))
     );
+    let annotated = std::fs::read_to_string(&command)?.replace("\r\n", "\n");
+    let mutated_comment = annotated.replace(
+        "@rem Accept configured events; unknown input defaults to PreToolUse.",
+        "@rem Accept configured events.",
+    );
+    assert_ne!(
+        mutated_comment, annotated,
+        "production template must carry the required comment"
+    );
+    std::fs::write(&command, mutated_comment)?;
+    assert_eq!(windows_static_python_fixture(&shell), None);
     for source in [
         "python -I -B \"%~dp0codexy-thread-delivery.py\" --event \"%event%\"\n",
         "py -3 fixture.py\n",
