@@ -125,7 +125,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'push' && github.event.before || '' }}
           PRIOR_PUBLIC_VERSION: ${{ inputs.prior_public_version || '' }}
-        run: | # The hook tests use the verified public runtime binary.
+        run: |
           $ErrorActionPreference = "Stop"
           $bundleRoot = Join-Path $env:RUNNER_TEMP "codexy-public-marketplace-bundle"
           $verified = python scripts/verify_public_marketplace_bundle.py --output-dir $bundleRoot
@@ -187,7 +187,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          Remove-Item Env:CODEXY_RUNTIME_DIR -ErrorAction SilentlyContinue # Check that registration resolves its packaged default runtime.
+          Remove-Item Env:CODEXY_RUNTIME_DIR -ErrorAction SilentlyContinue # The prior lifecycle tests used the verified public binary; this step checks the packaged default.
           ./.github/scripts/smoke-registered-mcp.ps1
       - name: Test dependency-aware GitHub activation
         shell: pwsh
