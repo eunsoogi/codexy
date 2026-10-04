@@ -15,8 +15,16 @@ pub(super) fn check(plugin_root: &Path, server: &str) -> Result<()> {
             display_relative(&path)
         );
     }
-    let expected =
-        format!("@echo off\n\"%~dp0codexy-mcp-devtools.exe\" {server} %*\nexit /b %ERRORLEVEL%\n");
+    let expected = format!(
+        concat!(
+            "@echo off\n",
+            "@rem Keep this server's public entrypoint on the shared native dispatcher.\n",
+            "\"%~dp0codexy-mcp-devtools.exe\" {server} %*\n",
+            "@rem Propagate the dispatcher exit status to the caller.\n",
+            "exit /b %ERRORLEVEL%\n"
+        ),
+        server = server
+    );
     let actual = std::fs::read(&path)?;
     if actual.starts_with(b"MZ") || actual != expected.as_bytes() {
         bail!(

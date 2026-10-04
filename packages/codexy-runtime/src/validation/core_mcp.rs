@@ -107,6 +107,8 @@ pub(super) fn check(plugin_root: &Path, manifest: &Value) -> Result<()> {
     let expected = format!(
         concat!(
             "@echo off\n",
+            "@rem Prefer the bundled runtime, then the checkout package, then the version-pinned release.\n",
+            "@rem Return the selected launcher's exit status unchanged.\n",
             "set \"plugin_root=%~dp0..\"\n",
             "set \"bundled_runtime=%plugin_root%\\runtime\\codexy-mcp-watcher-windows-x86_64.exe\"\n",
             "if exist \"%bundled_runtime%\" goto bundled_runtime\n",

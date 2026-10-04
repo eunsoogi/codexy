@@ -1,4 +1,6 @@
 @echo off
+@rem Prefer the bundled runtime, then the checkout package, then the version-pinned release.
+@rem Return the selected launcher's exit status unchanged.
 set "plugin_root=%~dp0.."
 set "bundled_runtime=%plugin_root%\runtime\codexy-mcp-watcher-windows-x86_64.exe"
 if exist "%bundled_runtime%" goto bundled_runtime

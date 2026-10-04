@@ -64,7 +64,7 @@ fn materializer_preserves_staged_runtime_with_space_safe_paths_without_rsync()
         assert_eq!(
             fs::read(plugin.join(format!("mcp/codexy-mcp-{server}.cmd")))?,
             format!(
-                "@echo off\n\"%~dp0codexy-mcp-devtools.exe\" {server} %*\nexit /b %ERRORLEVEL%\n"
+                "@echo off\n@rem Keep this server's public entrypoint on the shared native dispatcher.\n\"%~dp0codexy-mcp-devtools.exe\" {server} %*\n@rem Propagate the dispatcher exit status to the caller.\nexit /b %ERRORLEVEL%\n"
             )
             .as_bytes(),
             "public archive must retain the non-native {server} Windows delegate"
