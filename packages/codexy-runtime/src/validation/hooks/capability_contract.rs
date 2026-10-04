@@ -1,3 +1,6 @@
+//! Binds retained capability metadata to hook matchers and both platform
+//! launchers so the declaration and executable topology cannot drift apart.
+
 use std::path::Path;
 
 use anyhow::{Context as _, Result, anyhow, bail};
@@ -27,6 +30,7 @@ struct Expected {
     preventive: bool,
 }
 
+// This ordered table drives schema checks, hook topology, entrypoints, and digests.
 const CONCERNS: &[Expected] = &[
     Expected {
         id: "thread-delivery",
@@ -130,6 +134,7 @@ pub(super) fn check(plugin_root: &Path) -> Result<()> {
 }
 
 pub(super) fn check_topology(path: &Path, events: &Map<String, Value>) -> Result<()> {
+    // Require a closed event set and a complete, ordered binding for every concern.
     if events.len() != EVENT_ORDER.len()
         || EVENT_ORDER.iter().any(|event| !events.contains_key(*event))
     {
@@ -157,6 +162,7 @@ pub(super) fn check_topology(path: &Path, events: &Map<String, Value>) -> Result
                 .as_object()
                 .context("concern group must be an object")?;
             let handlers = object.get("hooks").and_then(Value::as_array);
+            // Interrupt and prompt-submit hooks are global; tool events bind by matcher.
             let matcher = if matches!(*event, "Interrupt" | "UserPromptSubmit") {
                 None
             } else {
@@ -194,6 +200,7 @@ pub(super) fn check_topology(path: &Path, events: &Map<String, Value>) -> Result
 }
 
 fn entrypoints(launcher: &str) -> Vec<String> {
+    // Its packaged Python name uses underscores while the shell and CMD launchers use hyphens.
     let python = if launcher == "codexy-watcher-interrupt" {
         "codexy_watcher_interrupt.py".to_owned()
     } else {
@@ -203,6 +210,7 @@ fn entrypoints(launcher: &str) -> Vec<String> {
 }
 
 fn concern_digest(concern: &Expected) -> String {
+    // Fixed field order and separators make every concern binding affect the fingerprint.
     fnv(&[
         concern.id,
         concern.trigger,
@@ -220,11 +228,13 @@ fn concern_digest(concern: &Expected) -> String {
 }
 
 fn contract_digest() -> String {
+    // The outer fingerprint also binds the schema version and concern order.
     let digests = CONCERNS.iter().map(concern_digest).collect::<Vec<_>>();
     fnv(&[SCHEMA, &digests.join("\0")].join("\0"))
 }
 
 fn fnv(value: &str) -> String {
+    // FNV-1a detects deterministic contract drift; it is not a security signature.
     let mut hash = 0xcbf2_9ce4_8422_2325_u64;
     for byte in value.as_bytes() {
         hash = (hash ^ u64::from(*byte)).wrapping_mul(0x100_0000_01b3);
