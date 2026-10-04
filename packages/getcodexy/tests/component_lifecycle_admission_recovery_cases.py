@@ -1,4 +1,4 @@
-"""Durable recovery admission cases."""
+"""A pending journal receipt blocks distinct callers before recovery mutation."""
 
 import json
 from unittest.mock import patch

@@ -1,3 +1,5 @@
+"""Git fallback validates repository and commit before invoking Cargo installation."""
+
 import shutil
 import subprocess
 import tempfile

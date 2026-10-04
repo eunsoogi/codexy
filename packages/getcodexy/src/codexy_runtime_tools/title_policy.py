@@ -50,6 +50,7 @@ def pr_title(value: object) -> bool:
 
 
 def _category_prefix(value: str) -> tuple[int, bool, bool] | None:
+    """Parse a title category while retaining where its summary may begin."""
     index = 0
     while (
         index < len(value)

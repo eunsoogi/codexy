@@ -1,4 +1,4 @@
-"""Installed-component inventory record helpers."""
+"""Inventory fixtures write the canonical schema for prestate admission."""
 
 import json
 from pathlib import Path

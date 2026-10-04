@@ -1,3 +1,5 @@
+"""Removal must not inspect retained hook activation for a removed component."""
+
 from __future__ import annotations
 
 import unittest

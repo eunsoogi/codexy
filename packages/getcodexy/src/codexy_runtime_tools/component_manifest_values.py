@@ -6,6 +6,7 @@ from typing import Any
 
 
 def strings(value: Any, field: str, *, nonempty: bool = False) -> tuple[str, ...]:
+    """Validate a JSON string array and freeze its order as a tuple."""
     if (
         not isinstance(value, list)
         or (nonempty and not value)
@@ -16,6 +17,7 @@ def strings(value: Any, field: str, *, nonempty: bool = False) -> tuple[str, ...
 
 
 def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Reject duplicate JSON keys instead of silently keeping the last value."""
     result = {}
     for key, value in pairs:
         if key in result:

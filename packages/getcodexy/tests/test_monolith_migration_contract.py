@@ -1,3 +1,5 @@
+"""The contract fixes admission, rollback order, idempotency, and receipts."""
+
 from __future__ import annotations
 
 import json

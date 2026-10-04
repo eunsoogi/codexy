@@ -40,6 +40,7 @@ def write_receipt(
         json.dumps(receipt.encode(), sort_keys=True).encode(),
     )
     if existing := _read_regular(target):
+        # Retries may repeat the same terminal receipt, but cannot replace it.
         if existing != contents:
             raise ValueError(f"operation receipt already exists: {identifier}")
         return

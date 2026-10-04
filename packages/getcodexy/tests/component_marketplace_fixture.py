@@ -1,4 +1,4 @@
-"""Marketplace materialization helpers for lifecycle fixtures."""
+"""Lifecycle fixtures copy each plugin once and add the bundled Watcher on Windows."""
 
 import os
 import shutil

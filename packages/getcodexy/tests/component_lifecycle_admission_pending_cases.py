@@ -1,4 +1,4 @@
-"""Pending inventory admission case."""
+"""Pending recovery admits installed inventory before it can touch host state."""
 
 import json
 from unittest.mock import patch

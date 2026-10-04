@@ -59,6 +59,8 @@ class ComponentLifecycleUpdateFailureCases:
 
 
 class ComponentLifecycleRegistrationCases:
+    """Exercise role synchronization, rollback, and preservation of user files."""
+
     def test_install_synchronizes_catalog_roles_and_preserves_unmanaged_files(
         self,
     ) -> None:

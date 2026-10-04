@@ -34,6 +34,7 @@ class InteractiveRpc:
         )
 
     def request(self, request):
+        """Send one frame and retain its response line for the final run record."""
         if self._process.poll() is not None:
             return None
         try:
@@ -52,6 +53,7 @@ class InteractiveRpc:
         return value if isinstance(value, dict) else None
 
     def close(self):
+        """Close the server within its wait and return bounded diagnostics."""
         try:
             self._process.stdin.close()
         except (OSError, ValueError):
@@ -81,6 +83,7 @@ class InteractiveRpc:
             except (OSError, ValueError):
                 result.put("")
 
+        # Isolate blocking stdout.readline so the caller can enforce its timeout.
         threading.Thread(target=read, daemon=True).start()
         try:
             line = result.get(timeout=self._timeout)

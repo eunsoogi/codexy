@@ -20,6 +20,7 @@ class HostExecutableError(PreAdmissionError):
 
 
 def operation_identifier(value: str | None) -> str:
+    """Require caller-supplied ids to match the normalized safe operation form."""
     identifier = operation_id(value)
     if value is not None and value != identifier:
         raise ValueError("operation ID must be a safe op- identifier")
@@ -27,6 +28,7 @@ def operation_identifier(value: str | None) -> str:
 
 
 def host_executable(codex: Path | None) -> Path:
+    """Resolve only a trusted Codex executable before admitting a transaction."""
     try:
         return trusted_codex(codex or _find_codex())
     except (OSError, RuntimeError, ValueError) as error:

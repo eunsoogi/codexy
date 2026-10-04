@@ -156,6 +156,8 @@ def _write_host(root: Path, state: Path) -> Path:
     return executable
 
 
+# Keep each Codex home in its own host-state entry so rollback and replay are
+# checked against the same isolated candidate installation.
 _HOST = r"""#!/usr/bin/env python3
 import json
 import os

@@ -1,3 +1,5 @@
+"""Shared release, app-server, and hook-probe fixtures for distribution tests."""
+
 from __future__ import annotations
 
 import csv
@@ -123,6 +125,7 @@ print(json.dumps(payload))
 
 
 def copy_marketplace_plugins(repository: Path, root: Path) -> str:
+    """Create a tagged local release and a newer main to exercise pin checks."""
     version = default_package_version()
     for plugin in ("codexy", "codexy-github", "codexy-devtools"):
         destination = root / "plugins" / plugin

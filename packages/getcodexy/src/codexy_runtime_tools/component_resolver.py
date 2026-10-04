@@ -18,6 +18,7 @@ from .plugin_resolution import MarketplaceBinding
 def resolve_components(
     manifest: ComponentManifest, requested: tuple[str, ...] | list[str]
 ) -> tuple[str, ...]:
+    """Expand dependencies into a compatible selection in manifest order."""
     requested = tuple(requested)
     if unknown := tuple(
         component for component in requested if component not in manifest.component_ids
@@ -99,7 +100,7 @@ def admit_recovery_inventory(
     marketplace_root: MarketplaceBinding | None,
     expected: tuple[str, ...],
 ) -> tuple[str, ...]:
-    """Admit a pending transaction's host state without rejecting its own mixed-version update."""
+    """Admit pending host state without rejecting its own mixed-version update."""
     if expected not in manifest.compatible_combinations:
         raise ComponentResolutionError("inconsistent-installed-state")
     classified = classify_installed_inventory(manifest, inventory)
@@ -142,6 +143,7 @@ def _reconcile_classified_inventory(
     classified: ClassifiedInstalledInventory,
     marketplace_root: MarketplaceBinding,
 ) -> tuple[str, ...]:
+    """Reject mixed or newer installed versions before returning canonical IDs."""
     records = component_records(manifest, classified, marketplace_root)
     versions = {record["version"] for record in records.values()}
     if len(versions) > 1:

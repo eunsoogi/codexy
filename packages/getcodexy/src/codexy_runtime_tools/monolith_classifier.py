@@ -17,6 +17,7 @@ class MonolithClassification:
 
 
 def classify_monolith(root: Path) -> MonolithClassification:
+    """Permit migration only for a known, byte-for-byte unmodified baseline."""
     version = _version(root)
     baseline = BASELINES.get(version) if version else None
     if baseline is None:

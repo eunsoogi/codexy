@@ -28,6 +28,7 @@ def require_pinned_registration(
     _validate_real_path(metadata_path, require_exists=False)
     expected_revision = _git_revision(marketplace_root, expected)
     if not metadata_path.exists():
+        # Without installer metadata, the checkout must prove the release pin.
         if _git_revision(marketplace_root, "HEAD") != expected_revision:
             raise RuntimeError(
                 "official marketplace checkout revision is outside the expected release tag"
@@ -95,6 +96,7 @@ def _git_revision(root: Path, reference: str) -> str:
         "SSH_ASKPASS",
     ):
         environment.pop(name, None)
+    # Ignore caller Git overrides and config so the revision check uses this checkout.
     environment.update(
         {
             "GIT_CONFIG_COUNT": "0",

@@ -174,6 +174,7 @@ def _journal_path(home: Path) -> Path:
 
 
 def _multiline_state(line: str, state: str | None) -> tuple[str | None, int | None]:
+    """Track TOML multiline strings so marker-like text inside them stays data."""
     from .component_registration_health import _quoted_end
 
     escaped = lambda p: (len(line[:p]) - len(line[:p].rstrip("\\"))) % 2 == 1

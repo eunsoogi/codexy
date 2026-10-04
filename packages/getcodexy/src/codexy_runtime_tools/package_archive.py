@@ -39,6 +39,7 @@ def _extract_tar(archive: Path, destination: Path) -> None:
                 and member_path != destination_resolved
             ):
                 raise ValueError(f"runtime package contains unsafe path: {member.name}")
+            # Case-folded keys also catch paths that would collide on Windows.
             identity = str(member_path).casefold()
             if identity in destinations:
                 raise ValueError(
@@ -77,6 +78,7 @@ def _extract_zip(archive: Path, destination: Path) -> None:
                 raise ValueError(
                     f"artifact archive contains unsafe path: {member.filename}"
                 )
+            # Treat case-only duplicates as collisions on every host.
             identity = str(member_path).casefold()
             if identity in destinations:
                 raise ValueError(

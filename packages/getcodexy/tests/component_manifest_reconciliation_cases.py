@@ -1,4 +1,4 @@
-"""Manifest inventory reconciliation cases."""
+"""Resolver reconciliation limits mixed-version inventory to matching recovery."""
 
 from pathlib import Path
 from copy import deepcopy

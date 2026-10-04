@@ -1,3 +1,5 @@
+"""Pre-session safety rejects ambiguous installs and unsafe roots before projection."""
+
 from __future__ import annotations
 
 import os

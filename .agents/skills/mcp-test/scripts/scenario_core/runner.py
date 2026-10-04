@@ -56,6 +56,7 @@ def _encoded(value: dict[str, Any]) -> bytes:
 
 
 def _request_payloads(call: SingleCall) -> tuple[bytes, bytes, bytes, bytes]:
+    """Build the ordered handshake and call frames before any process is launched."""
     payloads = (
         _encoded(
             request(
@@ -110,6 +111,7 @@ def run_single_call(call: SingleCall, cancellation: Any = None) -> ExecutionResu
     phase_errors: list[ExecutionError] = []
 
     def on_line(line: bytes, send_input) -> None:
+        # Each valid response unlocks only the next protocol phase; id 3 ends the call.
         previous = set(responses)
         parse_line(line, responses, malformed)
         if malformed.is_set():
@@ -208,7 +210,7 @@ def run_single_call(call: SingleCall, cancellation: Any = None) -> ExecutionResu
 
     call_response = responses[3]
     call_error = rpc_error(call_response)
-    if call_error:
+    if call_error:  # JSON-RPC errors may carry selected server data.
         return _result(
             call,
             call_error.kind,

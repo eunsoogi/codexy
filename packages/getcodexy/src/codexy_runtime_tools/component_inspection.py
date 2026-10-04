@@ -104,6 +104,7 @@ def _inspect(
     runner: Runner | None,
     hook_lister: HookLister | None = None,
 ) -> InspectionReport:
+    """Compare live host and hook state with recorded package data."""
     home, manifest = _absolute(codex_home), load_component_manifest()
     _validate_real_path(home, require_exists=False)
     recorded, inventory, inventory_error = _recorded(home)
@@ -115,6 +116,7 @@ def _inspect(
     host_error = probe.value if probe else None
     if probe is None:
         assert executable is not None and invoke is not None
+        # Installed-plugin and marketplace reads supply live authority for the report.
         try:
             installed = _json(
                 invoke([str(executable), "plugin", "list", "--json"]), "plugin list"
@@ -210,6 +212,7 @@ def _actual(
     installed: object,
     root: MarketplaceBinding | None,
 ) -> tuple[tuple[str, ...], dict[str, dict[str, object]], str | None]:
+    """Reconcile parsed installed records with host-admitted canonical components."""
     actual: tuple[str, ...] = ()
     records: dict[str, dict[str, object]] = {}
     try:

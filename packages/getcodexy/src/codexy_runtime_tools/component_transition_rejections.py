@@ -114,6 +114,7 @@ def variants(
     before: tuple[str, ...],
     planner: Planner,
 ) -> frozenset[Rejection]:
+    """Enumerate only rejection stages reachable for this request and pre-state."""
     request = _request_rejection(manifest, command, requested)
     if request is not None:
         return (

@@ -1,3 +1,5 @@
+"""Lifecycle admission rejects incomplete plugin identity before any host mutation."""
+
 from __future__ import annotations
 
 import json

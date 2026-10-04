@@ -1,3 +1,5 @@
+"""Journal validation rejects unsafe snapshots before they authorize host mutation."""
+
 from __future__ import annotations
 
 import base64

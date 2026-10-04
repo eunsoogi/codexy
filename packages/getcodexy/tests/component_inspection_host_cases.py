@@ -1,4 +1,4 @@
-"""Host-probe and interpreter-compatibility inspection scenarios."""
+"""Doctor keeps registration checks read-only and local probe results unverified."""
 
 from __future__ import annotations
 

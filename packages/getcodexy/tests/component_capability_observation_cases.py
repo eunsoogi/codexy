@@ -1,4 +1,4 @@
-"""Regression cases for additive doctor capability observations."""
+"""Doctor separates plugin probes from host verification."""
 
 from __future__ import annotations
 

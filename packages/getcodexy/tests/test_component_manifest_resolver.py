@@ -95,6 +95,8 @@ class ComponentManifestResolverTests(
         for size in range(len(components) + 1):
             for subset in itertools.combinations(components, size):
                 selected = subset or components
+                # Resolve implicit dependencies into manifest order, regardless of
+                # the caller's operand order checked below.
                 expected = tuple(
                     component
                     for component in components

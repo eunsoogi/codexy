@@ -18,6 +18,7 @@ def compare_step(
     candidate: StepResult,
     normalizers: Mapping[NormalizedField, Normalizer],
 ) -> None:
+    """Append only observable shape, error, linkage, and selected-value changes."""
     if baseline.invoked != candidate.invoked:
         add_difference(
             differences,
@@ -80,6 +81,7 @@ def compare_step(
                     right,
                     f"step linkage {field} changed",
                 )
+    # Presence changes were reported above; field comparison needs both results.
     if baseline.execution is None or candidate.execution is None:
         return
     left_execution = baseline.execution

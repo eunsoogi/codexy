@@ -18,6 +18,7 @@ def component_records(
     inventory: ClassifiedInstalledInventory,
     marketplace_root: MarketplaceBinding,
 ) -> dict[str, dict[str, object]]:
+    """Return unique canonical components whose source matches the marketplace."""
     root = marketplace_path(marketplace_root)
     if not root.is_absolute():
         raise ComponentResolutionError("invalid-installed-inventory")
@@ -54,6 +55,7 @@ def valid_record(
     marketplace_root: Path,
     expected_source: dict[str, str] | None = None,
 ) -> bool:
+    """Require the resolved package path after checking its observed identity."""
     if not valid_observed_record(entry, component, manifest, expected_source):
         return False
     source = entry.get("source")

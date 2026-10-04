@@ -1,3 +1,5 @@
+"""Fallback preserves canonical observations but rejects conflicting plugin records."""
+
 from __future__ import annotations
 
 import subprocess

@@ -31,6 +31,7 @@ class LifecycleWatcherTests(unittest.TestCase):
                 return result
 
             def validate_source(plugin, component, version):
+                # Snapshot host mutations here to prove source validation precedes add.
                 calls.append((component, version, tuple(state.mutations)))
                 return materialize_component_mcp(plugin, component, version)
 
@@ -82,6 +83,7 @@ class LifecycleWatcherTests(unittest.TestCase):
             calls: list[tuple[str, str, tuple[tuple[str, ...], ...]]] = []
 
             def validate_source(plugin, component, version):
+                # The recorded mutation prefix must still exclude the host update.
                 calls.append((component, version, tuple(state.mutations)))
                 return materialize_component_mcp(plugin, component, version)
 

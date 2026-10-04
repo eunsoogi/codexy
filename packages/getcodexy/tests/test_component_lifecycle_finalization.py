@@ -1,3 +1,5 @@
+"""Committed journals make receipt and cleanup finalization recoverable."""
+
 from __future__ import annotations
 
 import json

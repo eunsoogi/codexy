@@ -41,7 +41,7 @@ def health(
     activation: dict[str, str] | None = None,
     codex_home=None,
 ) -> list[dict[str, object]]:
-    expected = set(recorded or ()) | set(actual)
+    expected = set(recorded or ()) | set(actual)  # Include known and live components.
     context = (
         manifest,
         actual,
@@ -118,7 +118,7 @@ def _component_health(context, component):
         (not installed, "installed", "component-not-installed"),
         (not configured, "configured", "component-not-configured"),
     )
-    for failed, stage, reason in checks:
+    for failed, stage, reason in checks:  # Report the earliest failure.
         if failed:
             return _mark(result, stage, reason)
     if activation is not None and component in activation:
@@ -155,7 +155,7 @@ def _component_health(context, component):
 
 
 def _mark(result: dict[str, object], stage: str, reason: str) -> dict[str, object]:
-    fallback, restart = FAILURES[reason]
+    fallback, restart = FAILURES[reason]  # Map the reason to recovery guidance.
     result.update(
         first_failure_stage=stage,
         reason_code=reason,
@@ -173,7 +173,7 @@ def _mark(result: dict[str, object], stage: str, reason: str) -> dict[str, objec
 
 
 def _registration_roles(home, root, marker, expected, read_regular, max_bytes):
-    roles, managed, unmanaged = [], [], []
+    roles, managed, unmanaged = [], [], []  # Track expected and marker-owned roles.
     for name, value in expected.items():
         roles.append(
             _registered_role(home, root, name, value, marker, read_regular, max_bytes)
@@ -219,7 +219,7 @@ def _registered_role(
     read_regular,
     max_bytes: int,
 ) -> dict[str, object]:
-    try:
+    try:  # Inspect the marker-owned role file as a bounded regular input.
         current = (
             read_regular(home, root.relative_to(home) / name, max_bytes)
             .decode()

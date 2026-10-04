@@ -78,6 +78,7 @@ class GithubTitleNestedShellTests(unittest.TestCase):
                 True,
                 directory,
             )
+            # Relative workdirs are resolved from the request's inherited cwd.
             for workdir in (str(nested), "nested"):
                 self.check_code(
                     f"await tools.exec_command({json.dumps({'cmd': command, 'workdir': workdir})});",

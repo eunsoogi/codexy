@@ -28,6 +28,7 @@ class _ReferenceProblem(Exception):
 
 
 def _tokens(path: str) -> list[str]:
+    """Decode JSON Pointer path tokens before reading or filling nested data."""
     return [
         token.replace("~1", "/").replace("~0", "~") for token in path[1:].split("/")
     ]
@@ -75,6 +76,7 @@ def _set(value: object, path: str, replacement: object) -> None:
 
 def _matches_type(value: object, expected: type | tuple[type, ...]) -> bool:
     if expected is int:
+        # Python treats bool as int, but a boolean is not a numeric reference here.
         return isinstance(value, int) and not isinstance(value, bool)
     if isinstance(expected, tuple):
         return any(_matches_type(value, item) for item in expected)
@@ -161,6 +163,7 @@ def run_scenario(scenario: Scenario, cancellation: Any = None) -> ScenarioResult
     results: list[StepResult] = []
     failed_step = None
     for index, step in enumerate(scenario.steps):
+        # One scenario budget bounds every step, even if a call timeout is longer.
         remaining = scenario.deadline_seconds - (monotonic() - started)
         if remaining <= 0:
             failed_step = step.name
@@ -186,6 +189,7 @@ def run_scenario(scenario: Scenario, cancellation: Any = None) -> ScenarioResult
                     ),
                 )
             else:
+                # Count deadline-limited timeouts as scenario failures.
                 deadline_limited = call.timeout_seconds > remaining
                 bounded_call = replace(
                     call, timeout_seconds=min(call.timeout_seconds, remaining)
@@ -202,6 +206,7 @@ def run_scenario(scenario: Scenario, cancellation: Any = None) -> ScenarioResult
         results.append(result)
         completed[step.name] = result
         if failed_step is not None:
+            # Keep later declared steps visible as skipped, with their first blocker.
             results.extend(
                 _blocked(later, failed_step) for later in scenario.steps[index + 1 :]
             )

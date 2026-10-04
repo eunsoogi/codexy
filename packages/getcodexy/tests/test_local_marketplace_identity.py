@@ -113,7 +113,7 @@ class LocalMarketplaceIdentityTests(unittest.TestCase):
         with LocalHost() as host:
             foreign = host.root / "foreign-archive"
             host.selection.add("core")
-            host.installed_source = {
+            host.installed_source = {  # Simulate a source outside the selected root.
                 "sourceType": "local",
                 "source": str(foreign),
             }

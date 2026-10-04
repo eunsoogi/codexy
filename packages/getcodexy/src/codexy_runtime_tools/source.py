@@ -75,6 +75,7 @@ class RuntimeSourceIdentity:
         package_url: str,
         release: RuntimeRelease | None,
     ) -> "RuntimeSourceIdentity":
+        """Choose identity precedence without conflating overrides with release pins."""
         if explicit:
             return cls(
                 RuntimeSourceMode.EXPLICIT_OVERRIDE,

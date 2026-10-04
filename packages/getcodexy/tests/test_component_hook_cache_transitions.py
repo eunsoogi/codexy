@@ -1,3 +1,5 @@
+"""Versioned hook-cache acceptance across successive plugin registrations."""
+
 from __future__ import annotations
 
 import json

@@ -98,6 +98,7 @@ def rollback(
     journal: MigrationJournal,
     discover: Discover,
 ) -> None:
+    """Restore the legacy plugin and prove its fingerprint before clearing recovery."""
     remove_split_components(executable, runner, journal.selection)
     marketplace = reconcile_official_marketplace_root(
         executable, runner, journal.source_version, home

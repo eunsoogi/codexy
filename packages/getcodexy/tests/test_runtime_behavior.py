@@ -51,6 +51,8 @@ def configuration(root: Path, **overrides: object) -> runtime.Configuration:
 
 
 def install_paths(config: runtime.Configuration, cache: Path) -> tuple[Path, Path]:
+    # Cache keys must distinguish explicit source coordinates from the default
+    # release digest so one acquisition mode cannot silently reuse the other.
     source = (
         "\n".join(
             (
