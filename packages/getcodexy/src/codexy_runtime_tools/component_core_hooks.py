@@ -14,6 +14,8 @@ LAUNCHERS = tuple(
     for _, stem in (*COMMAND_HOOKS, *LIFECYCLE_HOOKS)
     for extension in ("sh", "cmd")
 )
+# Windows invokes the event script with `py.exe -3 -I -B`, bypassing the POSIX
+# resolver; keep the entrypoint and sibling event helper in this required set.
 DEPENDENCIES = (
     "hooks/codexy-hook-runtime.sh",
     "hooks/codexy-thread-delivery.py",

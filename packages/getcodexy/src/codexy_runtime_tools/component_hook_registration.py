@@ -69,6 +69,7 @@ _TITLE_MATCHERS = (
 
 
 def _core_hooks() -> dict[str, object]:
+    """Build core event groups, keeping interrupt and prompt callbacks matcher-free."""
     command = lambda event: [
         _command_hook(matcher, stem, event) for matcher, stem in _CORE_COMMAND_HOOKS
     ]
