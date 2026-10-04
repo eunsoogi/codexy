@@ -1,3 +1,5 @@
+"""Doctor checks registered and cached Watcher bootstraps and probes the cache copy."""
+
 from __future__ import annotations
 
 import shutil

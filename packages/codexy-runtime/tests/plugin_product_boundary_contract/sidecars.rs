@@ -15,6 +15,7 @@ fn product_boundary_contract_loads_responsibility_sidecars() -> TestResult {
         *counts.entry(record["target"].as_str().ok_or("missing record target")?)
             .or_insert(0) += 1;
     }
+    // Fixed totals catch records silently moving between product-owned sidecars.
     assert_eq!(
         counts,
         BTreeMap::from([

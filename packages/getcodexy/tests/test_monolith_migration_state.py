@@ -1,3 +1,5 @@
+"""Migration journals reject duplicate keys, bad selections, and external snapshots."""
+
 from __future__ import annotations
 
 import json

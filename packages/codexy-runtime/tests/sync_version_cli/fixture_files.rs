@@ -55,6 +55,7 @@ pub(super) const REPLACED_FILES: &[&str] = &[
     "packages/codexy-runtime/tests/runtime_workflow_recovery/ci_dispatch_fixture.rs",
 ];
 
+// Remove retired paths that can otherwise leak from the archived starting tree into fixture assertions.
 pub(super) const REMOVED_FILES: &[&str] = &[
     "scripts/download-selected-runtime-package",
     ".codex/repository-github-policy.json",

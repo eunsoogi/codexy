@@ -111,6 +111,7 @@ fn assert_trigger_path_result(workflow: &Value, event: &str, path: &str) -> Resu
 }
 
 #[test]
+// Even an immutable selected release must pass through current-source projection and archive inspection.
 fn candidate_selected_package_materializes_and_inspects_the_public_projection() {
     let root = codexy_runtime::paths::repository_root();
     let workflow =

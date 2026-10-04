@@ -1,3 +1,5 @@
+// Gate let-chain syntax against package rust-version; the scanner must catch
+// multiline leading conditions as well as same-line forms.
 use std::path::Path;
 
 #[test]

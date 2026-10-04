@@ -139,6 +139,7 @@ gh() { "$FIXTURE_ROOT/gh" "$@"; }
 timeout() { shift; "$@"; }
 "#;
 
+// The fake CLI accepts only the dispatcher's supported queries and records each workflow launch for assertions.
 const GH: &str = r#"
 import json, os, sys
 from pathlib import Path

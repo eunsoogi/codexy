@@ -17,6 +17,7 @@ fn selected_runtime_version() -> Result<String, Box<dyn std::error::Error>> {
         .to_owned())
 }
 
+// The wrapper must exhaust the explicit runtime override and bundled copy before its pinned uvx fallback.
 #[test]
 fn mcp_wrappers_order_runtime_dir_then_bundled_then_pinned_uvx()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -35,6 +36,7 @@ fn mcp_wrappers_order_runtime_dir_then_bundled_then_pinned_uvx()
     Ok(())
 }
 
+// A timeout must reap background descendants too, not merely stop waiting for the wrapper process.
 #[test]
 fn wrapper_subprocess_timeout_is_actionable() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;

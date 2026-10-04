@@ -1,3 +1,5 @@
+"""Stage verified runtime packages or pinned Git builds before publication."""
+
 from __future__ import annotations
 
 import os
@@ -160,6 +162,7 @@ def install_git(config: InstallConfig, install_root: Path, installed: Path) -> N
             for key, value in os.environ.items()
             if key not in {"GH_TOKEN", "GITHUB_TOKEN"}
         }
+        # Do not forward repository credentials into the Cargo build process.
         completed = subprocess.run(command, check=False, env=environment)
         if completed.returncode:
             raise RuntimeError(

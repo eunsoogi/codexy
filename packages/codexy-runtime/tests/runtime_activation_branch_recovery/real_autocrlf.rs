@@ -16,6 +16,7 @@ mod real_source_pointer {
 use real_fixture::Fixture;
 
 #[test]
+// Git line-ending normalization must not alter the candidate bytes authenticated by the activation receipt.
 fn real_base_activator_preserves_candidate_bytes_with_autocrlf()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new()?;

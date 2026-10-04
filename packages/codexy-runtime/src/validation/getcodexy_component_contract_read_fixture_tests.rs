@@ -18,6 +18,7 @@ fn fixture_mut<'a>(fixtures: &'a mut serde_json::Value, id: &str) -> &'a mut ser
         .expect("named fixture")
 }
 
+// Shared status and doctor fixtures must keep command, outcome, operands, and selection aligned.
 #[test]
 fn rejects_shared_read_fixture_envelope_drift() {
     let mut status_command = fixtures();

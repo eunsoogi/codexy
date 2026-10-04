@@ -22,11 +22,13 @@ class DestructivePolicy:
                 invocation.arguments, invocation.context
             )
             if alias is not None:
+                # Re-evaluate shell aliases through this same concern after Git expansion.
                 from .shell_evaluator import evaluate
 
                 denied = evaluate(alias.command, alias.context, depth + 1, self)
             if remote is None:
                 return denied, CommandEffect(outer)
+            # A remote edit cannot transfer into a different directory or Git directory context.
             if (
                 invocation.context.cwd != outer.cwd
                 or invocation.context.git_dir != outer.git_dir

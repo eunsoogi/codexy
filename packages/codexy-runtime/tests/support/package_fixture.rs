@@ -1,3 +1,6 @@
+//! Builds packaged-runtime archives and fake artifact/release endpoints with
+//! distinct main-repository and PR-origin artifacts for wrapper tests.
+
 use std::process::Command;
 
 pub(super) use super::cache_fixture::{install_cached_runtime, install_legacy_cached_runtime};
@@ -53,6 +56,7 @@ pub(super) fn create_artifact_api_response(
     std::fs::copy(package_path, &main_package)?;
     zip_package(&main_artifact_zip, &main_package)?;
     let pr_package = artifact_root.join("codexy-marketplace-plugin-pr.tar.gz");
+    // The PR-shaped entry has a different repository id so lookup must reject it as non-main.
     std::fs::write(&pr_package, "not the main runtime package\n")?;
     zip_package(&pr_artifact_zip, &pr_package)?;
     let artifact_api = root.join("artifacts.json");

@@ -4,6 +4,7 @@ use crate::support::{
     plugin_fixture_copy::{FixtureMaterialization, make_seed_readonly, materialize_seed},
 };
 
+// Text fixtures normalize line endings, while binary reads must retain every byte.
 #[test]
 fn text_fixture_normalization_preserves_raw_binary_reads() -> std::io::Result<()> {
     let temp = tempfile::tempdir()?;
@@ -38,6 +39,7 @@ fn materialized_text_fixture_keeps_executable_mode_and_canonical_lf() -> std::io
     Ok(())
 }
 
+// Sibling scripts are copied with executable mode because the fixture invokes them by relative path.
 #[cfg(unix)]
 #[test]
 fn materialized_script_fixture_keeps_shebang_siblings_available()
@@ -94,6 +96,7 @@ fn materializes_the_canonical_nested_repository_suite() -> std::io::Result<()> {
     Ok(())
 }
 
+// Root discovery is based on the supplied plugin root, not a nearby lookalike directory name.
 #[test]
 fn materializes_root_layouts_without_promoting_lookalike_parents() -> std::io::Result<()> {
     let temp = tempfile::tempdir()?;
@@ -123,6 +126,7 @@ fn materializes_root_layouts_without_promoting_lookalike_parents() -> std::io::R
     Ok(())
 }
 
+// Making one materialized overlay writable must not expose the seed or sibling overlays to mutation.
 #[test]
 fn clearing_readonly_cannot_mutate_the_seed_or_a_sibling_overlay()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -155,6 +159,7 @@ fn clearing_readonly_cannot_mutate_the_seed_or_a_sibling_overlay()
     Ok(())
 }
 
+// The profile counts files and bytes copied into a private materialization.
 #[test]
 fn materialization_profile_counts_each_private_file_and_byte()
 -> Result<(), Box<dyn std::error::Error>> {

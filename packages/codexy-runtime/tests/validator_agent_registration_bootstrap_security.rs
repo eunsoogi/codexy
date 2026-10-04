@@ -1,3 +1,6 @@
+//! Rejects ambiguous options and untrusted symlink or PATH-based bootstrap
+//! dependencies before they can execute or mutate the Codex home.
+
 use std::path::Path;
 use crate::support::FixtureCommand as Command;
 

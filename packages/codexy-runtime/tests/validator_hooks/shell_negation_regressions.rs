@@ -1,3 +1,6 @@
+//! Pins credential classification to the branch that remains reachable after
+//! shell negation changes a command's exit status.
+
 use super::admission_runtime::{TestResult, assert_event_case, plugin_root, repository};
 
 #[test]

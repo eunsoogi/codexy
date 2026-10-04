@@ -26,6 +26,8 @@ class InstalledIdentity(str, Enum):
 
 @dataclass(frozen=True)
 class ClassifiedInstalledRecord:
+    """Original host entry plus its manifest identity and canonicality result."""
+
     entry: dict[str, object]
     component: Component | None
     identity: InstalledIdentity
@@ -34,6 +36,8 @@ class ClassifiedInstalledRecord:
 
 @dataclass(frozen=True)
 class ClassifiedInstalledInventory:
+    """Ordered classification of every entry returned by the host."""
+
     records: tuple[ClassifiedInstalledRecord, ...]
 
 
@@ -60,6 +64,7 @@ def classify_installed_inventory(
         identified = by_plugin.get(identified_plugin)
         if named is not None or identified is not None:
             component = named or identified
+            # Name, pluginId, and marketplace must all identify the same manifest row.
             canonical = (
                 named is component
                 and identified is component
@@ -110,6 +115,7 @@ def preflight_unregistered_inventory(inventory: ClassifiedInstalledInventory) ->
 
 
 def plugin_id_parts(value: object) -> tuple[str | None, str | None]:
+    """Split only the exact plugin-at-marketplace identity form."""
     if not isinstance(value, str) or value.count("@") != 1:
         return None, None
     plugin, marketplace = value.split("@")
@@ -122,6 +128,7 @@ def valid_identity_triple(
     marketplace: object,
     identifier_marketplace: str | None,
 ) -> bool:
+    """Require host name fields and pluginId parts to agree without coercion."""
     return (
         isinstance(plugin, str)
         and bool(plugin)

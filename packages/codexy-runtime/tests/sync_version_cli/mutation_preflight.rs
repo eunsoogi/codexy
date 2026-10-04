@@ -12,6 +12,7 @@ use super::{
 const COMPONENT_MANIFEST: &str =
     "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
 
+// Malformed structured versions and component relationships must be rejected before any managed write.
 #[test]
 fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_writes()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -111,6 +112,7 @@ fn markerless_version_mutation_rejects_strict_component_manifest_inputs_without_
     Ok(())
 }
 
+// Both supported line endings retain preflight protection against noncanonical Cargo rewrite inputs.
 #[test]
 fn markerless_version_mutation_rejects_late_cargo_rewriter_inputs_without_writes()
 -> Result<(), Box<dyn std::error::Error>> {

@@ -1,4 +1,5 @@
 #[test]
+// The selector chooses the receipt-bound branch once; downstream steps reuse that exact checked ref.
 fn activation_steps_reuse_the_receipt_bound_generation_branch()
 -> Result<(), Box<dyn std::error::Error>> {
     let activation = super::workflow("runtime-activation.yml")?;

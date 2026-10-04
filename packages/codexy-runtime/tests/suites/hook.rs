@@ -1,3 +1,4 @@
+// Hook and GitHub workflow validators share this suite because they enforce entry-point contracts.
 #[path = "../validator_github_labels_completion_waiting.rs"]
 mod validator_github_labels_completion_waiting;
 

@@ -1,3 +1,6 @@
+//! Shared real-server fixture for Codegraph change-impact/check-selection tests.
+//! The mapped command is a sentinel: recommendation must never execute checks.
+
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
@@ -61,6 +64,7 @@ pub(super) fn run_demo(
         "mappings": {
             "checks": [{
                 "id": check_id,
+                // If selection executes this command, the sentinel assertion below fails.
                 "command": format!(
                     "touch {}",
                     fixture.root.join("recommendation-was-executed").display()

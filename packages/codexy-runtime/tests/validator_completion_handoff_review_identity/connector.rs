@@ -1,3 +1,6 @@
+//! Verifies connector source arguments and result remain bound to the captured
+//! PR identity used by completion handoff.
+
 use crate::support::TestResult;
 use serde_json::{Value, json};
 

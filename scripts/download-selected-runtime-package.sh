@@ -35,6 +35,7 @@ download_legacy() {
 
 download_public() {
 	mkdir public-release
+	# Prefer a published package only when its release receipt matches the activated staging identity.
 	gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
 		--dir public-release --pattern codexy-marketplace-plugin.tar.gz \
 		--pattern runtime-release-receipt.json
@@ -54,6 +55,7 @@ download_public() {
 		test "$(digest_file "$output")" = "$(jq -r .artifact.sha256 "$receipt")"
 		: >"$marker_dir/public-release"
 	else
+		# Older public releases without the new receipt retain the explicit legacy contract.
 		download_legacy
 	fi
 }
@@ -69,6 +71,7 @@ if test -f "$record"; then
 			cat release-view-error >&2
 			exit "$release_status"
 		fi
+		# Before publication, test the package staged by the activation record itself.
 		STAGING_RUN_ID="$(jq -er .candidate.artifact.stagingRunId "$record")"
 		SOURCE_COMMIT="$(jq -er .candidate.source.commit "$record")"
 		export STAGING_RUN_ID SOURCE_COMMIT
@@ -78,6 +81,7 @@ if test -f "$record"; then
 	fi
 	rm -f release-view-error
 else
+	# Existing legacy activation records select and verify their declared public artifact.
 	RELEASE_TAG="$(jq -er .artifact.tag "$legacy_release")"
 	export RELEASE_TAG
 	download_legacy

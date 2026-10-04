@@ -1,3 +1,6 @@
+//! Exercises Rust default and explicit module-path resolution, including raw
+//! and escaped literals, attribute trivia, inline scope, and Cargo roots.
+
 use crate::support;
 
 use std::path::Path;

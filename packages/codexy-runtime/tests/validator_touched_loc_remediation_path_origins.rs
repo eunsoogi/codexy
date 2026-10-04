@@ -1,3 +1,6 @@
+//! Resolves child modules beside explicit-path targets and discovered Cargo
+//! roots while rejecting escaping or non-equivalent target paths.
+
 use crate::support;
 
 use std::path::Path;

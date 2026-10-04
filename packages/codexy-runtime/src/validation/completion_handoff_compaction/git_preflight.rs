@@ -5,6 +5,7 @@ use super::git_preflight_lines::{
     is_git_log_graph_output_line, is_git_status_output_after_command,
 };
 
+/// Requires every graph/log preflight command plus executed, non-negated evidence within one section.
 pub(super) fn has_git_graph_log_preflight(text: &str) -> bool {
     let lines: Vec<_> = text.lines().map(str::trim).collect();
     lines.iter().enumerate().any(|(index, line)| {
@@ -18,6 +19,7 @@ pub(super) fn has_git_graph_log_preflight(text: &str) -> bool {
 }
 
 fn git_preflight_evidence_block(lines: &[&str], start: usize) -> String {
+    // Keep command output attached to its command, but stop before the next handoff evidence section.
     let mut block = String::new();
     let mut saw_git_log_command = false;
     for (index, line) in lines.iter().enumerate().skip(start) {
@@ -71,6 +73,7 @@ fn starts_unrelated_list_section(line: &str) -> bool {
 
     let line = metadata_line(line);
     let lower_line = line.to_ascii_lowercase();
+    // A local negation about preflight is evidence for the same block, not a new section boundary.
     if has_negation_phrase(&lower_line)
         && (refers_to_git_preflight(&lower_line) || is_block_local_preflight_negation(&lower_line))
     {

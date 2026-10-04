@@ -56,6 +56,7 @@ def _windows_registration_owner_state(pid: int) -> str:
             get_exit_code.restype = ctypes.c_int
             if not get_exit_code(handle, ctypes.byref(exit_code)):
                 return "unknown"
+            # Win32 keeps STILL_ACTIVE (259) until the process has exited.
             return "live" if exit_code.value == 259 else "dead"
         finally:
             close_handle = kernel32.CloseHandle

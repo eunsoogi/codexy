@@ -1,5 +1,6 @@
 use super::model::{CheckDefinition, CheckMapping, CheckMappings, MappingKind, MappingOwner};
 
+// The sample mappings keep focused module checks separate from shared fixtures, package configuration, and lockfile coverage.
 pub(super) fn supported_examples() -> CheckMappings {
     CheckMappings::new(
         vec![

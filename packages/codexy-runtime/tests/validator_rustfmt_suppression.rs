@@ -105,7 +105,7 @@ fn check_source(path: &Path, source: &str) -> Result<(), String> {
         path.display()
     ))
 }
-
+// Skip comments and string literals so marker-like text is not treated as an attribute.
 fn contains_formatter_suppression(source: &str) -> bool {
     let bytes = source.as_bytes();
     let mut index = 0;

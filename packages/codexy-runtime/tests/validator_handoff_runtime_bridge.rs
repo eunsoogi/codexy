@@ -1,3 +1,5 @@
+// The native bridge must preserve consumer lanes and authority binding, with
+// replay updates serialized so only one concurrent invocation can commit.
 use crate::support::TestResult;
 use codexy_runtime::validation::*;
 use serde_json::{Value, json};

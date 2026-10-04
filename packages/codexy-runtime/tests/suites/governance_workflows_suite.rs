@@ -1,3 +1,4 @@
+// Keeps workflow-YAML touched-LOC checks in a dedicated governance target.
 #[path = "../support/mod.rs"]
 mod support;
 

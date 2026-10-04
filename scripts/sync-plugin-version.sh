@@ -2,6 +2,7 @@
 set -eu
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 REPO_ROOT=$(CDPATH='' cd -- "$SCRIPT_DIR/.." && pwd)
+# Check mode locks Cargo resolution; mutation mode delegates to the same repository binary.
 if [ "${1:-}" = "--check" ]; then
 	exec cargo run --locked --quiet --manifest-path "$REPO_ROOT/packages/codexy-runtime/Cargo.toml" --bin codexy-sync-version -- "$@"
 fi

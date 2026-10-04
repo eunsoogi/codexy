@@ -11,6 +11,7 @@ pub(super) enum SetupActor {
     NonChild,
 }
 
+/// Resolves the grammatical setup actor, including inherited clauses and coordinated subjects.
 pub(super) fn explicit_subject(words: &[&str], start: usize, action: usize) -> Option<SetupActor> {
     together_with_subject_actor(words, start, action).or_else(|| {
         let (subject, subject_start) = clause_subject(words, start, action)
@@ -33,6 +34,7 @@ pub(super) fn explicit_subject(words: &[&str], start: usize, action: usize) -> O
 }
 
 pub(super) fn agents_fail_closed(words: &[&str], start: usize, end: usize) -> Option<SetupActor> {
+    // Any explicit child actor wins; otherwise a named parent/orchestrator blocks the child attribution.
     let mut saw_non_child = false;
     for index in start..end {
         if !actor_is_introduced_by(words, start, index) {
@@ -116,6 +118,7 @@ fn mixed_coordinated_subject(words: &[&str], start: usize, subject: usize) -> Op
         .find(|index| !subject_modifier(words[*index]))?;
     (words[conjunction] == "and").then_some(())?;
     let previous = initial_clause_subject(words, start, conjunction)?;
+    // A mixed parent/child subject includes child participation in the shared setup action.
     (words[previous.index + 1..conjunction]
         .iter()
         .all(|word| subject_modifier(word))

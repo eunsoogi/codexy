@@ -12,6 +12,7 @@ pub(super) fn current_plugin_release(
 }
 
 pub(super) fn next_plugin_release(release: &str) -> Result<String, Box<dyn std::error::Error>> {
+    // Parse the numeric release core and increment patch while dropping prerelease/build metadata.
     let core_end = release
         .find(|character| matches!(character, '-' | '+'))
         .unwrap_or(release.len());

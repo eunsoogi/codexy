@@ -2,4 +2,5 @@
 set -eu
 
 review_control_bin="${CODEXY_REVIEW_CONTROL_BIN:-codexy-review-control}"
+# Keep this public entrypoint argument-transparent; validation belongs to the shared control binary.
 exec "$review_control_bin" --build-pr-state "$@"

@@ -5,6 +5,7 @@ use crate::support::FixtureCommand;
 use super::activation_bytes;
 
 #[test]
+// Invalid receipt input must be rejected before it can rewrite activation metadata or runtime pointers.
 fn invalid_activation_is_byte_identical() -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
     let gate = root.join("scripts/activate-runtime-contract.sh");

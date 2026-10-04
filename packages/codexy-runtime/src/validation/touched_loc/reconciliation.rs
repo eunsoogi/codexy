@@ -36,6 +36,7 @@ impl IntegrationScope {
         path: &Path,
         locally_changed: bool,
     ) -> Result<Option<String>> {
+        // A stacked main merge is only a baseline for paths the child actually changed across that reconciliation.
         if self.reconciliations.is_empty() {
             return Ok(Some(requested_base.to_owned()));
         }

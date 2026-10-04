@@ -1,3 +1,6 @@
+//! Prevents malformed inline tokens inside a workspace target from fabricating
+//! module origins that would receive extraction credit.
+
 use crate::support;
 
 use std::path::Path;

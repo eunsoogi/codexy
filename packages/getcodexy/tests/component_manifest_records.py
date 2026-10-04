@@ -1,4 +1,4 @@
-"""Installed-component records for manifest resolver cases."""
+"""Plugin records bind package version to the official marketplace."""
 
 from codexy_runtime_tools.component_manifest import load_component_manifest
 

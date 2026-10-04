@@ -7,6 +7,7 @@ fn public_mcp_servers_share_one_metadata_bootstrap_without_windows_server_copies
     let plugin = root.join("plugins/codexy-devtools");
     let mcp: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(plugin.join(".mcp.json"))?)?;
 
+    // Preserve two public server identities over one shared bootstrap and runtime binary.
     for server in ["lsp", "codegraph"] {
         assert_eq!(
             mcp[server]["command"].as_str(),
@@ -33,7 +34,7 @@ fn public_mcp_servers_share_one_metadata_bootstrap_without_windows_server_copies
         );
         let windows = std::fs::read(plugin.join(format!("mcp/codexy-mcp-{server}.cmd")))?;
         let expected = format!(
-            "@echo off\n\"%~dp0codexy-mcp-devtools.exe\" {server} %*\nexit /b %ERRORLEVEL%\n"
+            "@echo off\n@rem Keep this server's public entrypoint on the shared native dispatcher.\n\"%~dp0codexy-mcp-devtools.exe\" {server} %*\n@rem Propagate the dispatcher exit status to the caller.\nexit /b %ERRORLEVEL%\n"
         );
         assert_eq!(windows, expected.as_bytes(), "{server} Windows entrypoint must be a thin delegate");
         assert!(!windows.starts_with(b"MZ"), "{server} Windows entrypoint must not contain native bytes");

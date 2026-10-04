@@ -1,3 +1,6 @@
+//! Covers binding expiry, completion, and replay rules while an interrupted
+//! long wait releases only its own lock and leaves the session available.
+
 use super::{
     LONG_WAIT_MS, TestResult, active_binding_until_true, binding_gone_until_true, binding_record,
     hook_call, now_ms, waiting_until_true, write_binding_record,

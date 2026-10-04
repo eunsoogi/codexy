@@ -20,6 +20,7 @@ from .version_lock import default_package_version
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Dispatch lifecycle and inspection commands to their stable receipt forms."""
     parser = argparse.ArgumentParser(prog="getcodexy", allow_abbrev=False)
     parser.add_argument(
         "--codex",
@@ -68,6 +69,7 @@ def main(argv: list[str] | None = None) -> int:
                 arguments.codex,
             )
     except PreAdmissionError as error:
+        # Host admission failures use machine receipts only where JSON was requested.
         if arguments.command == "bootstrap" and arguments.json_output:
             print(json.dumps(_bootstrap_host_failure(), sort_keys=True))
             return 2
@@ -92,6 +94,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _record_capability_failures(receipt: dict[str, object]) -> None:
+    """Add each known live capability failure once to doctor/status errors."""
     errors = receipt.get("errors")
     health = receipt.get("component_health")
     if not isinstance(errors, list) or not isinstance(health, list):
@@ -140,6 +143,7 @@ def _human(command: str, receipt: dict[str, object]) -> str:
     if command in {"install", "update", "remove", "bootstrap"} and receipt.get(
         "outcome"
     ) in {"completed", "pending-action"}:
+        # A new Codex task is needed because the host loads installed tools at startup.
         return (
             f"getcodexy {command}: {receipt['outcome']}; "
             "start a fresh Codex task to refresh installed plugins and MCP tools"
@@ -165,6 +169,7 @@ def _human(command: str, receipt: dict[str, object]) -> str:
 
 
 def _bootstrap_host_failure() -> dict[str, object]:
+    """Encode trusted-host admission rejection using the bootstrap receipt schema."""
     rejection = Rejection.from_failure(
         RejectionStage.HOST, StateFailure.INCONSISTENT_INSTALLED_STATE
     )
@@ -174,6 +179,7 @@ def _bootstrap_host_failure() -> dict[str, object]:
 
 
 def _migration_host_failure() -> dict[str, object]:
+    """Return the equivalent machine-readable migration rejection without running it."""
     return {
         "schema": "getcodexy.monolith-migration-receipt.v1",
         "command": "migrate",

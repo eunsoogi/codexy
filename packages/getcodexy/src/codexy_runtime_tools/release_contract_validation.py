@@ -197,6 +197,7 @@ def _validate_candidate(
         raise ValueError("runtime candidate compatibility does not match release")
     inventory = platforms(candidate.get("platforms"), require_path=True)
     if release.state == "source-selected":
+        # Staging can add candidate-only platforms while public hashes stay fixed.
         if (
             set(inventory) != CANDIDATE_PLATFORMS
             or {platform: inventory[platform] for platform in PUBLIC_PLATFORMS}

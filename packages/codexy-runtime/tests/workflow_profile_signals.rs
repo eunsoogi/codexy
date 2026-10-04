@@ -1,3 +1,4 @@
+// Signal tests separate exact strict-risk categories from harmless prefixes, local negation, and collaboration shape.
 use super::workflow_profile_contract::assert_profile_result;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

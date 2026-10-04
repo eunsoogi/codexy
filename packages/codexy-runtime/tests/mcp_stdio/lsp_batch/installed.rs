@@ -1,3 +1,6 @@
+//! Compares a one-request batch with the single-tool result from an installed
+//! rust-analyzer when that optional local server is available.
+
 use super::*;
 use std::process::Command;
 use std::time::Instant;

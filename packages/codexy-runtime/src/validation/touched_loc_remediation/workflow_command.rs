@@ -23,6 +23,7 @@ struct WorkflowWord {
 
 impl WorkflowScriptCommand {
     pub(super) fn parse(command: &str) -> Option<Self> {
+        // Accept only bounded shell syntax that names a repository scripts/ executable and has classifiable arguments.
         let mut words = lex_command(command)?.into_iter();
         let executable = parse_executable(words.next()?)?;
         let components = executable.components().collect::<Vec<_>>();

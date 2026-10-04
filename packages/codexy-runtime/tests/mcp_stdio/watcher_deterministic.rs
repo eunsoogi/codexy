@@ -1,3 +1,6 @@
+//! Checks that persisted Watcher reports retain deterministic ids, sequence
+//! numbers, health, and cursor pagination across process restarts.
+
 use super::*;
 use super::watcher_state::{initialize, open_session, tool_payload, watcher_client};
 use std::fs::{self, OpenOptions};

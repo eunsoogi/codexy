@@ -1,3 +1,6 @@
+//! Rejects same-thread action/readiness contradictions while preserving
+//! negated wait evidence and ignoring action words embedded in file paths.
+
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

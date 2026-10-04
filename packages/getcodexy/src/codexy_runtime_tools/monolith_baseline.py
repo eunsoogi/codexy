@@ -31,6 +31,7 @@ def classify_tree(root: Path, baseline: Baseline) -> str:
 
 
 def tree_digest(root: Path) -> str:
+    """Fingerprint sorted names, modes, and bytes without following filesystem links."""
     root = Path(root)
     metadata = root.lstat()
     if not stat.S_ISDIR(metadata.st_mode) or _link(metadata):

@@ -1,3 +1,4 @@
+/// Finds an affirmative phrase while rejecting checklist items, local negation, and non-claim labels.
 pub(super) fn has_affirmed_phrase(text: &str, phrase: &str) -> bool {
     let mut rest = text;
     let mut offset = 0;
@@ -36,6 +37,7 @@ fn has_unchecked_checklist_marker_before(text: &str, start: usize) -> bool {
     })
 }
 
+/// Detects a phrase whose nearby label explicitly says proof is missing, negative, or still pending.
 pub(super) fn has_non_claim_phrase_label(text: &str, phrase: &str) -> bool {
     let mut rest = text;
     let mut offset = 0;
@@ -138,6 +140,7 @@ fn is_boundary(character: Option<char>) -> bool {
 }
 
 fn is_locally_negated(prefix: &str) -> bool {
+    // Limit negation to the current clause so an earlier denial does not cancel a later affirmative claim.
     let clause_start = last_clause_boundary(prefix).unwrap_or(0);
     prefix[clause_start..]
         .split(|character: char| !character.is_ascii_alphanumeric() && character != '\'')

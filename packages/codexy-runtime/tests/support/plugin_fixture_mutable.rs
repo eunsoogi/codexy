@@ -1,3 +1,6 @@
+//! Process-local registry of declared mutable files, used to enforce reset
+//! boundaries for copied plugin fixtures.
+
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};

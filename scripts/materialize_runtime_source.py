@@ -14,6 +14,7 @@ public_release = os.environ["PUBLIC_RELEASE"] == "1"
 staging_run_id = int(os.environ["STAGING_RUN_ID"])
 
 if public_release:
+    # A public receipt must bind the requested tag, staging run, source commit, and downloaded archive.
     receipt = json.loads(Path(os.environ["PUBLIC_RECEIPT"]).read_text())
     provenance = receipt.get("provenance", {})
     staging = receipt.get("staging", {})
@@ -40,6 +41,7 @@ if public_release:
     inventory = {}
     handoff_inventory = {}
     watcher_inventory = {}
+    # Discover each public runtime family independently, then require a complete matching platform set.
     for path in sorted((staged / "runtime").iterdir()):
         if not path.is_file():
             raise SystemExit(
@@ -155,6 +157,7 @@ if public_release:
         if watcher_inventory:
             candidate["classes"]["coreWatcherMcp"] = {"platforms": watcher_inventory}
 else:
+    # Private activation selects only the candidate already captured in the local activation record.
     record = json.loads(Path(os.environ["ACTIVATION_RECORD"]).read_text())
     candidate = record["candidate"]
     if (
@@ -168,6 +171,7 @@ if manifest.get("version") != os.environ["RELEASE_TAG"].removeprefix("v"):
 
 if not public_release:
     candidate_bytes = (staged / "runtime-candidate.json").read_bytes()
+    # The staged receipt, payload digest, and parsed candidate must all describe the same selection.
     if (
         record["artifact"]["sha256"] != os.environ["STAGED_SHA"]
         or record["artifact"]["payloadManifestSha256"]
@@ -220,6 +224,7 @@ for server in ("lsp", "codegraph"):
     if legacy.exists() and not legacy_dispatcher_free:
         raise SystemExit(f"duplicate Windows server entrypoint remains: {legacy}")
 protected = {}
+# Preserve hashes for candidate-owned artifacts while the activated source projection is overlaid.
 if (staged / "handoff-runtime.json").is_file():
     protected["handoff-runtime.json"] = hashlib.sha256(
         (staged / "handoff-runtime.json").read_bytes()

@@ -1,3 +1,5 @@
+// Worktree status belongs in external evidence; capturing it must not create
+// untracked files that make a previously clean handoff appear dirty.
 #[test]
 fn pr_review_handoff_status_capture_does_not_dirty_clean_worktree()
 -> Result<(), Box<dyn std::error::Error>> {

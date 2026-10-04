@@ -1,3 +1,6 @@
+//! Preserves per-path reconciliation across later `main` advances, while
+//! requiring custom conflict resolutions to satisfy current-main limits.
+
 use std::path::Path;
 use std::process::{Command, Output};
 

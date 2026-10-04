@@ -1,3 +1,6 @@
+//! Opt-in interval instrumentation for subprocesses and test wait ownership.
+//! Dropping an interval emits its completed timing record to per-producer files.
+
 use std::ffi::OsStr;
 use std::io::Write;
 use std::sync::{Mutex, OnceLock};
@@ -85,6 +88,7 @@ impl Drop for CommandInterval {
         };
         let end = EPOCH.get_or_init(Instant::now).elapsed().as_nanos();
         if let Ok(mut metrics) = file.lock() {
+            // One serialized sequence links the duration record to its optional source-owner record.
             metrics.sequence += 1;
             let line = format!(
                 "command-interval\tv2\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
@@ -125,6 +129,7 @@ impl Drop for CommandInterval {
 fn open_metrics() -> Option<Mutex<IntervalMetrics>> {
     let directory = std::env::var_os("CODEXY_PROFILE_INTERVAL_METRICS_DIR")?;
     let session = std::env::var("CODEXY_PROFILE_INTERVAL_SESSION").ok()?;
+    // Reject malformed session names before creating any telemetry output.
     if session.len() != 32
         || !session
             .bytes()

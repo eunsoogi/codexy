@@ -4,6 +4,7 @@ use super::{has_dispatch, workflow};
 use super::super::structured_contract_artifacts::TextShape;
 
 #[test]
+// Staging creates authenticated activation inputs; it must not publish public releases or candidate tags.
 fn runtime_staging_uses_authenticated_actions_artifacts_not_candidate_releases()
 -> Result<(), Box<dyn std::error::Error>> {
     let staging = workflow("runtime-candidate.yml")?;

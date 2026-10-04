@@ -1,3 +1,5 @@
+"""Public CLI checks enforce generic title, label, and merge-message rules."""
+
 from __future__ import annotations
 
 import json

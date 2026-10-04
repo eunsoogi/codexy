@@ -1,3 +1,6 @@
+//! Verifies a shared fixture change maps to the fixture check with its
+//! repository-wide consumers represented by the selected path.
+
 use super::common::run_demo;
 
 #[test]

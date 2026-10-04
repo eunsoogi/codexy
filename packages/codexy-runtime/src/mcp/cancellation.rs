@@ -1,3 +1,6 @@
+//! Dispatches MCP tool calls on workers so a later stdio cancellation message
+//! can reach an in-flight call without interrupting frame parsing.
+
 use std::collections::HashMap;
 use std::io::{self, Read, Write};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -86,6 +89,7 @@ where
             let token = lock(calls)?.get(&request_key).cloned();
             if let Some(token) = token {
                 token.cancel();
+                // Do not resume dispatch until this request has stopped using its id.
                 token.wait_for_completion();
             }
         }
@@ -134,6 +138,7 @@ where
         .name(format!("codexy-mcp-{tool_name}"))
         .spawn(move || {
             let result = call_tool(&tool_name, &arguments, &token);
+            // Suppress the result when cancellation was already recorded before reply dispatch.
             if !token.is_cancelled() {
                 let response = match result {
                     Ok(result) => json!({

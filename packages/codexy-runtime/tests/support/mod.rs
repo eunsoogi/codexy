@@ -1,3 +1,4 @@
+// Shared fixture constructors and wrappers used by integration tests across runtime suites.
 #![allow(clippy::redundant_pub_crate)]
 #![allow(dead_code, unused_imports)]
 

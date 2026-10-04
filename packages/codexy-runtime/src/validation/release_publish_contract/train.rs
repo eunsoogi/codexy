@@ -10,6 +10,7 @@ const COMPONENT_MANIFEST: &str =
     "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
 
 pub(super) fn check(contract: &Value, path: &Path) -> Result<()> {
+    // Keep the archive bundle and component-manifest paths aligned with the installer package layout.
     let archive = contract
         .get("releaseArchive")
         .and_then(Value::as_object)

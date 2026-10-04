@@ -1,3 +1,4 @@
+// Shared Markdown projections let release tests assert section and directive structure without whole-file coupling.
 use crate::support::normalize_fixture_text;
 
 pub(super) fn has_trimmed_line(text: &str, expected: &str) -> bool {

@@ -20,6 +20,7 @@ has_invalid_title_character() {
 }
 
 has_marked_reference() {
+	# Keep issue-number references out of title summaries so the title remains a standalone description.
 	printf '%s\n' "$1" | awk '
 {
  lower = tolower($0)
@@ -41,6 +42,7 @@ check_conventional_subject() {
 	*[![:space:]]*) ;;
 	*) return 1 ;;
 	esac
+	# Accept a breaking-change marker only as the suffix of the type/scope prefix.
 	case "$prefix" in
 	*!) prefix=${prefix%!} ;;
 	*) ;;
@@ -66,6 +68,7 @@ is_label_separator() {
 }
 
 is_issue_category() {
+	# Reject category-like and Conventional Commit prefixes so issue titles stay descriptive.
 	normalized=$(printf '%s\n' "$1" | sed 's/：/:/g; s/–/-/g; s/—/-/g')
 	printf '%s\n' "$normalized" | awk '
 function valid_type(value) { return value ~ /^[a-z0-9-]+$/ }

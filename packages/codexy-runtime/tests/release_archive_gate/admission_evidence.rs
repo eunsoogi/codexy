@@ -27,6 +27,7 @@ fn archive_fixture(name: &str) -> (tempfile::TempDir, std::path::PathBuf, std::p
 }
 
 fn copy_canonical_suite(root: &std::path::Path) {
+    // Admission accepts the suite's canonical bytes at the path expected in a checkout.
     let suite = root.join("packages/codexy-runtime/tests/suites/all.rs");
     std::fs::create_dir_all(suite.parent().expect("suite parent")).expect("suite directory");
     std::fs::copy(

@@ -22,6 +22,7 @@ fn fixture_host_platform_accepts_windows_and_rejects_unknown_hosts() {
     assert!(fixture_host_platform("plan9", "mips64").is_err());
 }
 
+// Build raw tar bytes in-process so header modes and block padding stay directly assertable.
 fn entry(path: &str, mode: usize, contents: &[u8]) -> Vec<u8> {
     let mut header = [0_u8; BLOCK_SIZE];
     header[..path.len()].copy_from_slice(path.as_bytes());
@@ -58,6 +59,7 @@ fn governed_wrapper_mode_rewrite_preserves_other_entries_and_binary_contents() {
 
     force_governed_wrapper_modes(&archive, &[wrapper.clone()]).expect("rewrite");
     let rewritten = std::fs::read(&archive).expect("rewritten archive");
+    // Only governed mode fields may change; preserve all other header and payload bytes.
     assert_eq!(mode(&rewritten, 0), 0o644);
     assert_eq!(mode(&rewritten, other.len()), 0o755);
     assert_eq!(&rewritten[..MODE.start], &bytes[..MODE.start]);

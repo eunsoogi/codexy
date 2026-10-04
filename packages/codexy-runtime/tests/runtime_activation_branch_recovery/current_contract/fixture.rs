@@ -74,6 +74,7 @@ fn run_case_with_state(
     fs::create_dir_all(&bin)?;
     initialize_repository(&repo, &expected, base_version, watcher_case)?;
     if staged {
+        // Soft-reset the activation commit so its derived files stay in the index.
         git(&repo, &["reset", "--soft", "main"])?;
     }
 
@@ -114,6 +115,7 @@ fn initialize_repository(
     base_version: &str,
     watcher_case: WatcherCase,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // Keep baseline and expected branch contents separate for exact tree comparison.
     git(repo, &["init", "-b", "main"])?;
     git(repo, &["config", "core.autocrlf", "false"])?;
     git(repo, &["config", "user.name", "test"])?;

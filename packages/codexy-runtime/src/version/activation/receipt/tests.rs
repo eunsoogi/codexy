@@ -1,3 +1,5 @@
+//! Covers numeric bounds for candidate staging identity fields.
+
 use serde_json::{Map, Value, json};
 
 use super::fields::positive_integer;

@@ -19,7 +19,7 @@ struct ExpectedAgent {
     effort: &'static str,
 }
 
-const EXPECTED_AGENTS: &[ExpectedAgent] = &[
+const EXPECTED_AGENTS: &[ExpectedAgent] = &[ // Independent of packaged declarations.
     ExpectedAgent {
         name: "codexy-architect",
         filename: "codexy-architect.toml",

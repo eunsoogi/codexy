@@ -2,4 +2,6 @@
 set -eu
 
 self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# Keep runtime setup shared while this entrypoint fixes the dispatcher mode to codegraph.
+# The paired Windows launcher stays a three-line delegate because package validation compares the full template.
 exec "$self_dir/codexy-mcp-devtools" codegraph "$@"

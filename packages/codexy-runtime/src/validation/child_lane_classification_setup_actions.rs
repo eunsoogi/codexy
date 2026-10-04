@@ -8,6 +8,7 @@ pub(super) fn action_is_passive(words: &[&str], start: usize, action: usize) -> 
         .any(|word| ["is", "are", "was", "were", "been", "being", "get", "got"].contains(word))
 }
 
+/// Recognizes setup verbs and inflections while excluding prospective actions that have not occurred.
 pub(super) fn setup_action_at(words: &[&str], index: usize) -> Option<()> {
     match words[index] {
         "create" if has_direct_auxiliary(words, index) => Some(()),
@@ -66,12 +67,14 @@ fn is_governing_progressive_setup(words: &[&str], action: usize) -> bool {
         return false;
     };
     let predicate = &words[analysis.start.max(auxiliary + 1)..action];
+    // An unrelated intervening `-ing` predicate means the auxiliary does not govern this setup action.
     !predicate.iter().enumerate().any(|(index, word)| {
         word.ends_with("ing") && !predicate[index + 1..].iter().any(is_predicate_coordinator)
     })
 }
 
 fn shared_progressive_auxiliary(words: &[&str], clause_start: usize) -> Option<usize> {
+    // A coordinated second clause may inherit its progressive auxiliary from the preceding clause.
     let connector = *words.get(clause_start.checked_sub(1)?)?;
     let sentence_start = words[..clause_start]
         .iter()

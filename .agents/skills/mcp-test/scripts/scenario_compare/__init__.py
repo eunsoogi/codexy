@@ -17,6 +17,7 @@ from .types import (
     ScenarioRun,
 )
 
+# Keep low-level comparison helpers private; callers use the types and entry points.
 __all__ = [
     "ComparisonResult",
     "ComparisonStatus",

@@ -209,6 +209,7 @@ def _unlink_regular(
     ):
         return
     _read_regular(target)
+    # Do not unlink a replacement that appeared while the original was read.
     if (
         expected_identity is not None
         and (

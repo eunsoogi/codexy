@@ -21,6 +21,7 @@ def main() -> int:
     event = parser.parse_args().event
     output = evaluate(
         event,
+        # The extra byte lets the evaluator reject oversized input without reading it all.
         sys.stdin.buffer.read(1024 * 1024 + 1),
         TOOLS,
         "CODEXY_DESTRUCTIVE_COMMAND_",

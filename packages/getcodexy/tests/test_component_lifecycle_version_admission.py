@@ -1,3 +1,5 @@
+"""Older coherent installs may update; install and remove reject them pre-mutation."""
+
 from __future__ import annotations
 
 import unittest

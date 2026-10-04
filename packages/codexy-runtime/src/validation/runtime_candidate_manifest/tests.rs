@@ -4,6 +4,7 @@ use serde_json::{Map, Value, json};
 
 use super::positive_staging_identity;
 
+// Staging provenance is useful only when both the run ID and attempt are positive signed integers.
 #[test]
 fn staging_identity_fields_accept_only_positive_i64_values() {
     for field in ["stagingRunId", "stagingRunAttempt"] {

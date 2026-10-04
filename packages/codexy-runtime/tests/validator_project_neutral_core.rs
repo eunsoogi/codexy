@@ -1,3 +1,5 @@
+// The installed Core must exclude repository-maintenance entry points while
+// packaged agents retain their declared names and model settings.
 use std::{fs, path::Path};
 
 use crate::support::{TestResult, copy_dir};

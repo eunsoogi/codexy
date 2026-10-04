@@ -27,6 +27,7 @@ pub(super) fn add_path_concern<K>(
 ) where
     K: Ord,
 {
+    // Sets collapse repeated evidence so each concern lists a path once in deterministic order.
     concerns.entry(reason).or_default().insert(path.to_owned());
 }
 

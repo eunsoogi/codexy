@@ -37,6 +37,7 @@ def main() -> int:
     plugin_root = args.plugin_root.expanduser().resolve()
     codex_home = absolute(args.codex_home)
     config_path = absolute(args.config or codex_home / "config.toml")
+    # An explicit config selects its parent as discovery root; the default keeps CODEX_HOME semantics.
     discovery_home = config_path.parent if args.config else codex_home
     agents_root = discovery_home / "agents" / "codexy"
     try:
@@ -45,6 +46,7 @@ def main() -> int:
             agents_root = store.agents_root
             current = store.config_text()
             stripped, had_block = strip_managed_block(current)
+            # Diagnose and dry-run paths return before any registration transaction starts.
             if args.diagnose:
                 projections = build_projections(load_agents(plugin_root))
                 print(
@@ -109,6 +111,7 @@ def absolute(path: Path) -> Path:
 
 def build_projections(agents: list[dict[str, object]]) -> dict[str, str]:
     projections = {}
+    # The marker lets future installs distinguish managed projections from user-owned agent files.
     for agent in agents:
         filename = f"{agent['name']}.toml"
         contents = MANAGED + Path(str(agent["_path"])).read_text(encoding="utf-8")
@@ -125,6 +128,7 @@ def load_agents(plugin_root: Path) -> list[dict[str, object]]:
         raise ValueError(f"{catalog_path} must define agent_files")
 
     agents: list[dict[str, object]] = []
+    # Resolve every catalog entry beneath the packaged root before reading agent data.
     for filename in files:
         if (
             not isinstance(filename, str)
@@ -174,6 +178,7 @@ def parse_toml_subset(text: str, path: Path) -> dict[str, object]:
     values: dict[str, object] = {}
     lines = iter(enumerate(text.splitlines(), start=1))
     in_table = False
+    # The catalog contract uses root keys; nested agent tables are deliberately ignored here.
     for lineno, raw in lines:
         line = raw.strip()
         if not line or line.startswith("#"):

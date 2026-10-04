@@ -65,6 +65,7 @@ def normalize(
     try:
         aliases: dict[str, str] = {}
         rewrites: list[UrlRewrite] = []
+        # Environment-provided Git config is merged before command-line options are normalized.
         for key, value in environment_config.items():
             config = f"{key}={value}"
             alias = alias_option(config)
@@ -159,6 +160,7 @@ def _normalize(
         )
     push_like = operation.casefold() in {"push", "send-pack"}
     if rewrites or push_like:
+        # Resolve effective URL rewrites before deciding which repository/remote a push reaches.
         active_rewrites = git_url_rewrites(cwd, git_dir)
         if active_rewrites is None:
             return None
@@ -179,6 +181,7 @@ def _normalize(
     if depth >= MAX_ALIAS_DEPTH or alias_name in seen:
         return None
     if command.lstrip().startswith("!"):
+        # Shell aliases leave Git normalization and are handed to the shell policy for evaluation.
         return GitInvocation(
             None,
             [],

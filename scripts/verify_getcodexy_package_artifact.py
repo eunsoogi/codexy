@@ -27,6 +27,7 @@ def main() -> int:
         raise SystemExit(f"package distribution directory is missing: {directory}")
     wheels = sorted(directory.glob("*.whl"))
     sdists = sorted(directory.glob("*.tar.gz"))
+    # Require one artifact of each distribution type before inspecting package payloads.
     if len(wheels) != 1 or len(sdists) != 1:
         raise SystemExit(
             f"expected exactly one wheel and sdist, got wheels={len(wheels)} sdists={len(sdists)}"
@@ -100,6 +101,7 @@ def _verify_manifest(raw: bytes, expected: str, artifact: str) -> None:
         if isinstance(combinations, list)
         else []
     )
+    # Both the component matrix and every compatible combination must match the selected release.
     if (
         not isinstance(manifest, dict)
         or manifest.get("schema") != "getcodexy.component-manifest.v1"

@@ -1,3 +1,5 @@
+"""Lifecycle receipt behavior when updated hooks still need host trust."""
+
 from __future__ import annotations
 
 import json

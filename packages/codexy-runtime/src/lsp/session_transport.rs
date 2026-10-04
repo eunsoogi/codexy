@@ -1,3 +1,5 @@
+//! Frames LSP messages, matches responses, services server requests, and reaps sessions.
+
 use std::io::Write;
 use std::sync::mpsc::RecvTimeoutError;
 use std::time::{Duration, Instant};
@@ -16,6 +18,7 @@ impl LspSession {
     }
 
     pub(super) fn shutdown_until(&mut self, deadline: Option<Instant>) -> Result<()> {
+        // Request graceful shutdown when time remains, then always terminate and join readers below.
         match deadline {
             Some(deadline) if Instant::now() < deadline => {
                 let _ = self.request_until("shutdown", &Value::Null, deadline);
@@ -65,6 +68,7 @@ impl LspSession {
                 .recv_timeout(remaining.min(Duration::from_millis(POLL_MS)))
             {
                 Ok(message) => {
+                    // Respond to server-initiated requests while retaining unrelated notifications.
                     if self.handle_server_request(&message)? {
                         continue;
                     }

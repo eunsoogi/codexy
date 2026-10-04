@@ -3,6 +3,7 @@ use std::process::Command;
 
 fn repository_root() -> &'static Path { codexy_runtime::paths::repository_root() }
 
+// Cargo must find package metadata and toolchain files beside the runtime sources, not at workspace root.
 #[test]
 fn rust_runtime_is_a_module_owned_package_root() {
     let repository = repository_root();

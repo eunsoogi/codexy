@@ -1,3 +1,5 @@
+"""Current-host admission requires the pinned tag even without legacy metadata."""
+
 from __future__ import annotations
 
 import subprocess

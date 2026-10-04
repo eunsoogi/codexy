@@ -1,3 +1,5 @@
+//! Checks and updates the direct marketplace install pins in both project READMEs.
+
 use std::{
     fs,
     ops::Range,
@@ -54,6 +56,7 @@ fn paths() -> Result<Vec<PathBuf>> {
 fn pin(path: &Path) -> Result<(String, Range<usize>)> {
     let text = fs::read_to_string(path)
         .with_context(|| format!("missing required file: {}", display_relative(path)))?;
+    // Match the executable install command exactly so unrelated version prose is untouched.
     let matches = text.match_indices(PIN_PREFIX).collect::<Vec<_>>();
     if matches.len() != 1 {
         bail!(

@@ -18,6 +18,7 @@ def forbidden(command: object, cwd: object = None) -> bool:
     if not isinstance(command, str):
         return False
     parsed = segments(command)
+    # When shell syntax is unsupported, block only an unmistakable protected GitHub title command.
     if parsed is None:
         return bool(
             re.search(r"\bgh\s+(?:issue|pr)\s+(?:create|new|edit|merge)\b", command)

@@ -28,6 +28,7 @@ def main() -> int:
             command_items = []
         script_argument = False
         for item in command_items:
+            # Ignore the value of --script; archive entries come from direct plugin-relative executables.
             if script_argument:
                 script_argument = False
                 continue

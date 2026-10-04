@@ -2,6 +2,7 @@
 set -eu
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 REPO_ROOT=$(CDPATH='' cd -- "$SCRIPT_DIR/.." && pwd)
+# Tests may select a prebuilt binary only when the harness explicitly enables test mode.
 if test -n "${CODEXY_TEST_ACTIVATE_RUNTIME_BINARY:-}"; then
 	test "${CODEXY_TEST_MODE:-}" = 1 || {
 		printf '%s\n' "test activation binary requires CODEXY_TEST_MODE=1" >&2

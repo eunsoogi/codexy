@@ -1,3 +1,6 @@
+//! Reclaims expired session directories through bounded quarantine slots.
+//! Unknown files and directories that still have active locks are preserved.
+
 use std::fs;
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
@@ -76,6 +79,7 @@ pub(super) fn recover_quarantines(root: &Path) -> Result<()> {
     };
     let parent = root.parent().context("watcher state root has no parent")?;
     let cursor = read_cursor(root)? % MAX_QUARANTINE_SLOTS;
+    // Rotate the bounded scan window so a large parent directory cannot starve later slots.
     for offset in 0..MAX_QUARANTINE_SCAN_ENTRIES {
         let slot = (cursor + offset) % MAX_QUARANTINE_SLOTS;
         let path = quarantine_path(parent, slot);
@@ -129,6 +133,7 @@ fn quarantine_path(parent: &Path, slot: usize) -> PathBuf {
 }
 
 fn recover_quarantine(path: &Path) -> Result<()> {
+    // Quarantined paths may contain user data; reclaim only the exact owned-file set.
     if owned_files_if_known(path)?.is_none() {
         return Ok(());
     }

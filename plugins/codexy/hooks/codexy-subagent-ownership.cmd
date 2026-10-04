@@ -12,6 +12,7 @@ set "runtime_args=-3"
 if exist "%runtime%" goto invoke
 set "runtime="
 set "runtime_args="
+rem Fallback interpreters are restricted to SystemRoot, excluding workspace-controlled executables.
 for /f "delims=" %%I in ('"%SystemRoot%\System32\where.exe" py*.exe') do if not defined runtime if exist "%%~fI" if /I not "%%~dpI"=="%CD%\" if /I "%%~dpI"=="%SystemRoot%\" set "runtime=%%~fI"
 if defined runtime set "runtime_args=-3"
 if defined runtime goto invoke
@@ -25,6 +26,7 @@ set "CODEXY_HOOK_SILENT=1"
 set "status=%errorlevel%"
 if "%status%"=="0" exit /b 0
 :runtime_deny
+rem An unavailable checker denies this event because subagent ownership policy was not evaluated.
 if /I "%event%"=="PermissionRequest" goto permission_deny
 echo {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"CODEXY_SUBAGENT_OWNERSHIP_RUNTIME: Codexy policy MUST NOT execute this operation."}}
 exit /b 0

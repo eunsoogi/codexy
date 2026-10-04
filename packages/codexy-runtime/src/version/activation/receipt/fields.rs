@@ -1,3 +1,5 @@
+//! Validates exact receipt shapes and canonical source, digest, commit, and path fields.
+
 use anyhow::{Context as _, Result, bail};
 use serde_json::{Map, Value};
 

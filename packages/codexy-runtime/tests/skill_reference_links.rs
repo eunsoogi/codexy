@@ -36,6 +36,7 @@ fn packaged_skill_local_links_reject_missing_targets() -> TestResult {
     Ok(())
 }
 
+// External URLs and anchors need no filesystem lookup; every other target resolves from its owning skill.
 fn assert_local_links(path: &Path, text: &str) -> Result<(), String> {
     let base = path.parent().ok_or("document has no parent")?;
     for remainder in text.split("](").skip(1) {
@@ -65,6 +66,7 @@ fn skill_markdown_files(root: &Path) -> Result<Vec<PathBuf>, std::io::Error> {
     Ok(files)
 }
 
+// Recurse through each registered skill root and sort the resulting paths for stable assertions.
 fn collect_markdown_files(root: &Path, files: &mut Vec<PathBuf>) -> Result<(), std::io::Error> {
     for entry in std::fs::read_dir(root)? {
         let path = entry?.path();

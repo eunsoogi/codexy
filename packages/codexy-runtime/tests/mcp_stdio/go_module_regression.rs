@@ -1,3 +1,6 @@
+//! Verifies that Codegraph refreshes Go import resolution when a symlinked
+//! module declaration changes without restarting the stdio server.
+
 use std::fs;
 
 use serde_json::{Value, json};

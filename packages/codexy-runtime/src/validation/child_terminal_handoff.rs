@@ -13,6 +13,7 @@ const REQUIRED_FIELDS: &[&str] = &[
     "parent next action",
 ];
 
+/// Requires one confirmed delivery receipt before a terminal goal, stop, archive, or release transition.
 pub(super) fn check(lines: &[&str], source: Option<&str>) -> Vec<String> {
     let mut handoffs = TerminalHandoffs::default();
     lines
@@ -64,6 +65,7 @@ impl TerminalHandoffs {
             return Some("terminal parent handoff is missing required confirmed delivery fields");
         }
         if let Some(transition) = terminal_transition(line) {
+            // A stop permits a later ownership release; other terminal transitions consume the receipt.
             let valid = match transition {
                 TerminalTransition::Goal
                 | TerminalTransition::Archive
@@ -134,6 +136,7 @@ pub(super) fn is_blocked_goal_call(operation: &str) -> bool {
 fn confirmed_handoff(line: &str, source: Option<&str>) -> bool {
     line.strip_prefix("terminal parent handoff:")
         .is_some_and(|_| {
+            // Require concrete task identities and every delivery field; placeholders are not confirmations.
             let parent_task = field(line, "parent task");
             let child_task = field(line, "child task");
             !parent_task.is_some_and(is_local_task_target)

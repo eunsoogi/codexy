@@ -7,6 +7,7 @@ use std::{
 
 use super::fixture_files;
 
+// A shared HEAD archive gives each case the same committed starting tree without sharing mutations.
 pub(crate) struct RepositoryArchive {
     _temp: tempfile::TempDir,
     archive: PathBuf,
@@ -38,6 +39,7 @@ pub(crate) fn shared_repository_archive(
     }
 }
 
+// Apply only the fixture-specific removals and replacements after extracting the common archive.
 pub(crate) fn archive_repository(
     source: &RepositoryArchive,
     temp: &tempfile::TempDir,

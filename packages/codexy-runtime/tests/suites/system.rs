@@ -1,3 +1,4 @@
+// Integration-test shard for runtime tools, MCP, release readiness, and repository contracts.
 #[path = "../architecture_docs_inventory.rs"]
 mod architecture_docs_inventory;
 #[path = "../plugin_product_boundary_contract.rs"]
@@ -90,6 +91,7 @@ mod session_audit_event_runtime;
 #[path = "../skill_boundary_taxonomy.rs"]
 mod skill_boundary_taxonomy;
 
+// These fixtures model metadata only, so tests cannot mistake sample budgets for observed usage.
 pub(crate) mod stage_budget_test_support {
     use serde_json::{Value, json};
 

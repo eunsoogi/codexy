@@ -1,3 +1,5 @@
+"""Host activation requires exact healthy selection; rollback restores legacy state."""
+
 from __future__ import annotations
 
 import unittest

@@ -5,6 +5,7 @@ use crate::support;
 use super::super::workflow;
 
 #[test]
+// The final release must preserve staging and activation lineage through public archive materialization and smoke checks.
 fn final_publisher_materializes_and_exercises_the_public_archive()
 -> Result<(), Box<dyn std::error::Error>> {
     let publisher = workflow("publish-version-release.yml")?;

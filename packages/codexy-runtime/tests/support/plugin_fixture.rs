@@ -1,3 +1,6 @@
+//! Creates isolated plugin trees with an explicit list of files tests may
+//! mutate; reset operations restore those paths from the repository source.
+
 use std::panic::Location;
 use std::path::{Component, Path, PathBuf};
 
@@ -35,6 +38,7 @@ impl PluginFixture {
     }
 
     pub(crate) fn reset_file(&self, relative: &Path) -> std::io::Result<()> {
+        // A test may reset only paths it declared when this fixture was created.
         validate_relative_file(relative)?;
         if !self
             .mutable_files
@@ -152,6 +156,7 @@ fn materialize_fixture(
     mutable_files: &[&Path],
     identity: String,
 ) -> std::io::Result<PluginFixture> {
+    // Keep a complete isolated tree while retaining caller identity for fixture profiling.
     super::profile_metrics::record("plugin_fixture");
     let temp = tempfile::tempdir()?;
     let root = temp.path().join("codexy");
@@ -162,6 +167,7 @@ fn materialize_fixture(
 }
 
 fn fixture_identity(profile: &str, caller: &'static Location<'static>) -> String {
+    // Stable repository-relative identity makes profile records comparable across worktrees.
     let file = Path::new(caller.file());
     let relative = file
         .strip_prefix(codexy_runtime::paths::repository_root())

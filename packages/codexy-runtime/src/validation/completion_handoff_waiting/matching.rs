@@ -16,6 +16,7 @@ impl PhraseAlternatives for &[&str] {
     }
 }
 
+/// Matches any configured phrase only when it is unnegated within the bounded context window.
 pub(super) fn has_any<P: PhraseAlternatives>(text: &str, phrases: P) -> bool {
     phrases.any_phrase(|phrase| has_unnegated_phrase(text, phrase, 16))
 }
@@ -56,6 +57,7 @@ fn has_false_blocker_label(text: &str, word: &str, after_index: usize) -> bool {
         .split(|c: char| !matches!(c, '/' | '0'..='9' | 'a'..='z'))
         .next();
     let rest = first.map_or("", |f| value[f.len()..].trim_start_matches([' ', '\t']));
+    // `blocked: none` is false evidence only when the rest does not name active blockers or remaining work.
     let terminal = rest.chars().next().is_none_or(|c| ".;,\n\r".contains(c))
         || has_any(rest, ACTIVE_BLOCKERS_OR_REMAINING);
     matches!(first, Some("none" | "no" | "false" | "n/a" | "na")) && terminal

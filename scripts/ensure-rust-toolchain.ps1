@@ -1,5 +1,6 @@
 $ErrorActionPreference = "Stop"
 
+# Keep the installer pinned to the repository's requested channel, profile, and components.
 $config = Join-Path $PSScriptRoot "..\packages\codexy-runtime\rust-toolchain.toml"
 $configText = Get-Content -LiteralPath $config -Raw
 $toolchain = [regex]::Match($configText, '(?m)^channel = "([^"]+)"$').Groups[1].Value
@@ -12,6 +13,7 @@ if ([string]::IsNullOrWhiteSpace($toolchain) -or [string]::IsNullOrWhiteSpace($p
 }
 
 function Get-RustupState {
+    # Incomplete rustup output cannot prove which root toolchain will run, so treat it as unknown.
     $output = @(& rustup show 2>$null)
     if ($LASTEXITCODE -ne 0) {
         return $null
@@ -78,6 +80,7 @@ if ($null -eq $state -or -not (Test-RequiredComponents $state.Active)) {
 
 if ($null -eq $state -or -not (Test-ExpectedToolchain $state) -or
     -not (Test-RequiredComponents $state.Active)) {
+    # Installation success alone is insufficient; re-read the active toolchain and its components.
     throw "configured Rust toolchain is not the root active toolchain with required components"
 }
 

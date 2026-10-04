@@ -59,6 +59,7 @@ def run_boundary_interruption(
     item_id: str,
     environment: Mapping[str, str],
 ) -> dict[str, object]:
+    """Interrupt an installed runner at its replacement hook and read its result."""
     ready = workspace / "replacement-ready"
     ready.unlink(missing_ok=True)
     driver = temporary_root / "installed-boundary-driver.py"

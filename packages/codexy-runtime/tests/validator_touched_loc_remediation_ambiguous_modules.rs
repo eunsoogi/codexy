@@ -1,3 +1,6 @@
+//! Requires a unique Rust default module location before accepting extracted
+//! content as a valid LOC remediation.
+
 use crate::support;
 
 use std::path::Path;

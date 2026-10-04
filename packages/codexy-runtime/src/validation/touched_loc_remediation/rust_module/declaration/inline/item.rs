@@ -21,6 +21,7 @@ pub(super) fn skip_non_module_item(
     mut index: usize,
     boundary: ItemBoundary,
 ) -> Option<usize> {
+    // Skip known item shapes so a `mod` token inside their signatures or bodies is not mistaken for a sibling declaration.
     let mut angle_depth = 0usize;
     while index < bytes.len() {
         if let Some(next) = skip_non_code(bytes, index)? {

@@ -85,7 +85,7 @@ jobs:
           GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
         run: pwsh -NoProfile -NonInteractive -File .github/scripts/prepare-mcp-wheel-fixtures.ps1
       - name: Run focused package tests
-        run: UV_NO_INDEX=1 UV_FIND_LINKS="$CODEXY_SELECTED_MCP_WHEEL_DIR" UV_CACHE_DIR="$RUNNER_TEMP/codexy-focused-wheel-uv-cache" PYTHONPATH=packages/getcodexy/src python -m unittest discover -s packages/getcodexy/tests -p 'test_*.py'
+        run: UV_NO_INDEX=1 UV_FIND_LINKS="$CODEXY_SELECTED_MCP_WHEEL_DIR" UV_CACHE_DIR="$RUNNER_TEMP/codexy-focused-wheel-uv-cache" PYTHONPATH=packages/getcodexy/src python -m unittest discover -s packages/getcodexy/tests -p 'test_*.py' # Keep package resolution within the prepared wheel fixture.
       - name: Verify installed wheel and console entrypoint
         run: |
           version="$(python -c 'import tomllib; print(next(package["version"] for package in tomllib.load(open("packages/getcodexy/uv.lock", "rb"))["package"] if package["name"] == "getcodexy"))')"
@@ -187,7 +187,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          Remove-Item Env:CODEXY_RUNTIME_DIR -ErrorAction SilentlyContinue
+          Remove-Item Env:CODEXY_RUNTIME_DIR -ErrorAction SilentlyContinue # The prior lifecycle tests used the verified public binary; this step checks the packaged default.
           ./.github/scripts/smoke-registered-mcp.ps1
       - name: Test dependency-aware GitHub activation
         shell: pwsh

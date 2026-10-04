@@ -145,6 +145,7 @@ class TransactionDurabilityTests(unittest.TestCase):
             def replace_owner(path: Path, expected_identity: tuple[int, int]) -> None:
                 path.unlink()
                 path.write_text(replacement_owner, encoding="ascii")
+                # Simulate another process winning after the stale owner's probe.
                 unlink(path, expected_identity)
 
             with (

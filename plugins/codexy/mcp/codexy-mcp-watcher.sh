@@ -19,6 +19,7 @@ Linux:x86_64) platform=linux-x86_64 ;;
 esac
 
 runtime_name="codexy-mcp-watcher-$platform.bin"
+# A caller-selected runtime directory overrides the packaged binary only when it is absolute.
 if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
 	case "$CODEXY_RUNTIME_DIR" in
 	/*) ;;
@@ -33,6 +34,8 @@ if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
 fi
 
 bundled_runtime="$plugin_root/runtime/$runtime_name"
+# Prefer the installed binary before falling back to uvx and a pinned package version.
+# The Windows counterpart keeps the bundled, checkout-source, then pinned-release order in an exact validated template.
 if [ -x "$bundled_runtime" ]; then
 	exec "$bundled_runtime" "$@"
 fi

@@ -1,3 +1,6 @@
+//! Keeps documentation defects on proportional proof while mixed changes
+//! retain separate engineering test and documentation obligations.
+
 use serde_json::json;
 
 use super::policy_support as policy;

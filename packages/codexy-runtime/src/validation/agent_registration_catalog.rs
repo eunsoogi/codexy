@@ -4,6 +4,7 @@ use toml::Value;
 
 use crate::paths::display_relative;
 
+/// Enforces the supported standalone-agent registration and managed-subdirectory projection modes.
 pub(super) fn check(catalog_path: &Path, catalog: &Value) -> Vec<String> {
     let mut errors = Vec::new();
     require_value(

@@ -16,6 +16,7 @@ fn cargo_declares_the_exact_seven_integration_shards() {
         Some(false),
         "automatic integration-target discovery must stay disabled"
     );
+    // With Cargo auto-discovery disabled, this list is the authoritative shard inventory.
     let suites = manifest
         .get("test")
         .and_then(toml::Value::as_array)
@@ -24,6 +25,7 @@ fn cargo_declares_the_exact_seven_integration_shards() {
         .iter()
         .filter_map(|suite| suite.get("name").and_then(toml::Value::as_str))
         .collect();
+    // Omit debug data and symbols to keep repeatedly copied test binaries small.
     assert_eq!(
         names,
         ["suite_support", "suite_agent", "suite_child", "suite_orchestration", "suite_governance", "suite_governance_workflows", "suite_system", "suite_runtime", "suite_runtime_activation", "suite_runtime_activation_autocrlf", "suite_sync_version", "suite_archive"],
@@ -49,6 +51,7 @@ fn cargo_declares_the_exact_seven_integration_shards() {
     );
 
     let tests_root = codexy_runtime::paths::runtime_package_root().join("tests");
+    // Every top-level test crate must be reached exactly once through a registered suite.
     let expected: Vec<_> = std::fs::read_dir(&tests_root)
         .expect("tests directory")
         .filter_map(Result::ok)
@@ -132,6 +135,7 @@ fn plugin_fixtures_keep_the_large_asset_private() {
     let fixture_asset = fixture.join("assets/codexy-agent-hero.png");
     let source_metadata = std::fs::metadata(&source_asset).expect("source asset metadata");
     let fixture_metadata = std::fs::metadata(&fixture_asset).expect("fixture asset metadata");
+    // A private copy prevents fixture writes from mutating the canonical source asset.
     assert_ne!(
         (fixture_metadata.dev(), fixture_metadata.ino()),
         (source_metadata.dev(), source_metadata.ino()),

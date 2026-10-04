@@ -1,3 +1,5 @@
+// Task surface and risk determine reference selection: ordinary GitHub work
+// does not imply merge-review policy, while explicit merges retain it.
 use crate::support::TestResult;
 use codexy_runtime::validation::{
     BaseHeadSha, DirtyIndexState, HandoffAuthority, HandoffEnvelope, HandoffEvent, HandoffVolatile,

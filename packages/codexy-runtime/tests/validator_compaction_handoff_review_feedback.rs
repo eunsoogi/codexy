@@ -1,4 +1,7 @@
 
+//! Prevents resumed intent, unchecked checklists, and later prose from standing
+//! in for preserved evidence in a compacted handoff.
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 

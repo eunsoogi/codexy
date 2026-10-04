@@ -1,3 +1,5 @@
+"""A SIGKILL leaves a journal the next public operation must recover first."""
+
 from __future__ import annotations
 
 import json

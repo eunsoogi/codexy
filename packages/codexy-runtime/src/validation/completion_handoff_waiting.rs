@@ -26,6 +26,7 @@ use phrases::{
     },
 };
 
+/// Rejects blocked claims supported only by pending work, while preserving genuine impasse evidence.
 pub(super) fn check(handoff: &str) -> Option<String> {
     let text = handoff.to_ascii_lowercase();
     if let Some(error) = super::completion_handoff_pending_worktree::check(&text) {
@@ -48,6 +49,7 @@ pub(super) fn check(handoff: &str) -> Option<String> {
     let has_neutral_readiness_status = text
         .split(['\n', '.'])
         .any(readiness_status::is_neutral_heading);
+    // Treat blocked wording as a false positive only when its local context describes a non-blocking wait.
     if text.split(['\n', '.']).any(|context| {
         context
             .split([',', ';'])
@@ -113,6 +115,7 @@ fn mentions_queued_setup(text: &str) -> bool {
 }
 
 fn mentions_async_completion(text: &str) -> bool {
+    // A returned async failure is handled separately; it is not a successful completion wait.
     mentions_async_tool_result(text)
         && has_any(text, ASYNC_COMPLETION)
         && !mentions_returned_async_failure(text)

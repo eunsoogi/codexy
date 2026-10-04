@@ -22,6 +22,7 @@ def same_executable(candidate: Path, target: Path) -> bool:
 
 @lru_cache(maxsize=32)
 def digest(path: Path) -> bytes | None:
+    # Only hash bounded regular executables; other path kinds cannot establish command identity.
     try:
         metadata = path.stat()
         if not stat.S_ISREG(metadata.st_mode) or not metadata.st_mode & 0o111:

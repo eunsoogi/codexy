@@ -89,6 +89,7 @@ fn rejects_domain_error_contract_drift() {
     assert!(check_contract(&contract).is_err());
 }
 
+// The source-checkout contract must fail closed when any required source artifact is absent.
 #[test]
 fn source_contract_root_fails_closed_for_each_missing_artifact() {
     for missing in ["documentation", "contract", "fixtures"] {

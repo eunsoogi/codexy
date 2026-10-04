@@ -43,6 +43,7 @@ def list_hooks(executable: Path, codex_home: Path) -> tuple[dict[str, object], .
             "unable to determine the inspected working directory"
         ) from error
     environment = os.environ.copy()
+    # Drop inherited variables that can redirect Git or Python during host startup.
     for name in _ENVIRONMENT_UNSAFE:
         _ = environment.pop(name, None)
     environment.update(
@@ -132,6 +133,7 @@ def list_hooks(executable: Path, codex_home: Path) -> tuple[dict[str, object], .
             pass
         cleanup_failed = False
         if process.poll() is None:
+            # Stop the Windows process tree; POSIX cleans up the direct child.
             if os.name == "nt":
                 try:
                     _ = process.wait(timeout=1)
@@ -194,6 +196,7 @@ def normalize_hook_rows(value: object) -> tuple[dict[str, object], ...]:
         if isinstance(hooks, list):
             value = cast(list[object], hooks)
         elif isinstance(data, list):
+            # Host versions may group hooks by CWD; reject any group carrying warnings.
             flattened: list[dict[str, object]] = []
             for item_value in cast(list[object], data):
                 if not isinstance(item_value, dict):
@@ -223,6 +226,7 @@ def normalize_hook_rows(value: object) -> tuple[dict[str, object], ...]:
 
 
 def _response(values: queue.Queue[object], identifier: int) -> dict[str, object]:
+    """Wait for the requested JSON-RPC id within this call's timeout window."""
     deadline = time.monotonic() + HOOK_LIST_TIMEOUT_SECONDS
     while True:
         remaining = deadline - time.monotonic()

@@ -9,7 +9,7 @@ use super::{script, workflow};
 use crate::support;
 use candidate_fixture::CandidateFixture;
 const REPOSITORY: &str = "eunsoogi/codexy";
-
+// Admit only a current same-repository PR head, then bind staging provenance to the trusted workflow ref.
 #[test]
 fn exact_pr_mode_contract() -> Result<(), Box<dyn std::error::Error>> {
     let raw = fs::read_to_string(

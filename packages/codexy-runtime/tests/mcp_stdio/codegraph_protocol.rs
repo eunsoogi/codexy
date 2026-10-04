@@ -1,3 +1,6 @@
+//! Exercises Codegraph tool discovery, default and explicit roots, graph/search
+//! output, and path normalization through the real stdio server process.
+
 use super::*;
 
 #[path = "codegraph_errors.rs"]

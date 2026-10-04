@@ -1,4 +1,4 @@
-"""Mutation rollback retry cases."""
+"""Failed rollback stays journaled until a later call restores the prior selection."""
 
 import json
 

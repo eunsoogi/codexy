@@ -16,6 +16,7 @@ def after_external_command(
     """Apply bounded external filesystem and Git-config state transitions."""
     if executable == "mkdir":
         return mkdir_effect(arguments, context)
+    # Once filesystem state is opaque, later alias operations cannot be safely simulated.
     if context.opaque_filesystem_state and executable in {"ln", "cp"}:
         return None
     transition = alias_transition(

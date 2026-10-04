@@ -106,6 +106,7 @@ fn archive_fixture_completes_when_nested_cargo_is_a_failing_shim()
     )
 }
 
+// Re-run the test with a failing Cargo shim; a marker exposes any nested build attempt.
 #[cfg(unix)]
 fn run_child_with_poisoned_cargo(
     test_name: &str,

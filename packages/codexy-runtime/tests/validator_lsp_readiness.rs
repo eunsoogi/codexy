@@ -1,3 +1,5 @@
+// Readiness follows the configured executable lookup: PATHEXT is Windows-only,
+// and a missing rust-analyzer must report a concrete installation action.
 use std::process::Command;
 
 #[test]

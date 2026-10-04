@@ -47,6 +47,7 @@ pub(super) fn check(manifest: &Value, contract: &Value) -> Result<(), String> {
         .zip(COMPONENTS)
         .map(|(entry, id)| check_component(entry, id, products, dependencies))
         .collect::<Result<BTreeSet<_>, _>>()?;
+    // All component artifacts ship as one release, so mixed versions cannot form a valid manifest.
     if versions.len() != 1 {
         return Err("component manifest component versions must be lockstep".to_owned());
     }

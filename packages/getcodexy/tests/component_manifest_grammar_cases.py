@@ -1,4 +1,4 @@
-"""Manifest grammar and identity cases."""
+"""Manifest parsing pins identity and rejects duplicate keys and oversized versions."""
 
 from pathlib import Path
 from copy import deepcopy

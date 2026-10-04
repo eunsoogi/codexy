@@ -1,3 +1,4 @@
+//! Runs copied plugin wrappers with fake Cargo/runtime inputs and bounded child-process waits.
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
 #[cfg(unix)]

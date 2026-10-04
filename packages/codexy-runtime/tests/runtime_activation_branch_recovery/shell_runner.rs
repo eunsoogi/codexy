@@ -32,6 +32,7 @@ impl super::Fixture {
             .args(["activation", base, version])
             .arg(&self.receipt)
             .current_dir(&self.repo);
+        // Disable background Git maintenance so verification results reflect only this fixture command.
         command
             .env("CODEXY_TEST_MODE", "1")
             .envs([

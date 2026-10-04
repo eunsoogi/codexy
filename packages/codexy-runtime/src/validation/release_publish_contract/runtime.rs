@@ -14,6 +14,7 @@ const FINAL_PUBLISHER_WORKFLOW: &str = ".github/workflows/publish-version-releas
 const RETENTION_DAYS: i64 = 14;
 
 pub(super) fn check(contract: &Value, path: &Path) -> Result<()> {
+    // Bind runtime staging, activation, retention, and final publishing to the version-only release contract.
     let runtime = contract
         .get("runtime")
         .and_then(Value::as_object)

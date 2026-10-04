@@ -1,6 +1,7 @@
 use super::{document, run};
 
 #[test]
+// Windows must consume the selected-release verifier output instead of introducing a separate download path.
 fn windows_package_lifecycle_uses_the_selected_public_release_helper()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();

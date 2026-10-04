@@ -1,3 +1,5 @@
+// Copying the packaged plugin exercises the installed guard boundary; a local
+// origin then distinguishes Codexy label policy from generic GitHub state.
 use crate::support::FixtureCommand as Command;
 
 #[allow(unused)]

@@ -29,6 +29,7 @@ class Diagnostic:
 
 
 def _pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
+    # Reject duplicate routing or tool keys so an input cannot have conflicting meanings.
     result: dict[str, Any] = {}
     for key, value in items:
         if key in result:
@@ -64,6 +65,7 @@ def evaluate(
     diagnostic: str,
     forbidden: Callable[[Request], bool | str | Diagnostic],
 ) -> bytes:
+    # Bound the request before decoding; hook input is host-provided and must fail closed when oversized.
     if event not in EVENTS or len(payload) > MAX_INPUT:
         return deny(event, diagnostic, "ENVELOPE")
     try:

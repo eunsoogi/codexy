@@ -8,6 +8,7 @@ use super::review_thread_waiting_refs::{
 };
 
 pub(super) fn documents_unfixed_or_unaccepted(handoff: &str, thread: &Value) -> bool {
+    // A non-ready handoff may describe a blocking thread only when the waiting clause cites that thread.
     let text = handoff.to_ascii_lowercase();
     if claims_readiness(handoff) || claims_completion(handoff) || claims_thread_fixed(&text, thread)
     {
@@ -91,6 +92,7 @@ fn waiting_segments(text: &str) -> impl Iterator<Item = &str> {
 }
 
 fn splits_sentence_dot(text: &str, dot_index: usize) -> bool {
+    // Dots inside URLs and path tokens must not break the thread-specific evidence clause.
     text.as_bytes().get(dot_index) == Some(&b'.')
         && !dot_inside_url_token(text, dot_index)
         && !dot_inside_path_token(text, dot_index)

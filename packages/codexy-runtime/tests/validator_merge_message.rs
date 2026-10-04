@@ -1,3 +1,5 @@
+// Squash merge messages require the expected PR suffix and exactly one final
+// issue-closing line, whether supplied directly or through a file.
 use std::process::Command;
 
 #[test]

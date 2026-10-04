@@ -6,6 +6,15 @@ use super::{Command, candidate::make_candidate_proven_windows_package, complete_
 fn public_release_contract_accepts_exact_windows_delegates() {
     let root = tempfile::tempdir().expect("full plugin fixture");
     let plugin = full_windows_plugin(root.path());
+    for server in ["lsp", "codegraph"] {
+        fs::write(
+            plugin.join(format!("mcp/codexy-mcp-{server}.cmd")),
+            format!(
+                "@echo off\n@rem Keep this server's public entrypoint on the shared native dispatcher.\n\"%~dp0codexy-mcp-devtools.exe\" {server} %*\n@rem Propagate the dispatcher exit status to the caller.\nexit /b %ERRORLEVEL%\n"
+            ),
+        )
+        .expect("write annotated delegate");
+    }
     let output = contract(&plugin);
     assert!(
         output.status.success(),
@@ -45,7 +54,12 @@ fn public_release_contract_rejects_non_delegate_windows_launchers() {
         (
             "wrong server",
             "lsp",
-            b"@echo off\n\"%~dp0codexy-mcp-devtools.exe\" codegraph %*\nexit /b %ERRORLEVEL%\n",
+            b"@echo off\n@rem Keep this server's public entrypoint on the shared native dispatcher.\n\"%~dp0codexy-mcp-devtools.exe\" codegraph %*\n@rem Propagate the dispatcher exit status to the caller.\nexit /b %ERRORLEVEL%\n",
+        ),
+        (
+            "required comment changed",
+            "lsp",
+            b"@echo off\n@rem Keep this server's public entrypoint on the dispatcher.\n\"%~dp0codexy-mcp-devtools.exe\" lsp %*\n@rem Propagate the dispatcher exit status to the caller.\nexit /b %ERRORLEVEL%\n",
         ),
         ("native bytes", "codegraph", b"MZnot-a-delegate"),
     ] {
@@ -100,7 +114,7 @@ runtime/codexy-mcp-codegraph-linux-x86_64.bin\n",
         fs::write(
             plugin.join(format!("mcp/codexy-mcp-{server}.cmd")),
             format!(
-                "@echo off\n\"%~dp0codexy-mcp-devtools.exe\" {server} %*\nexit /b %ERRORLEVEL%\n"
+                "@echo off\n@rem Keep this server's public entrypoint on the shared native dispatcher.\n\"%~dp0codexy-mcp-devtools.exe\" {server} %*\n@rem Propagate the dispatcher exit status to the caller.\nexit /b %ERRORLEVEL%\n"
             ),
         )
         .expect("restore delegate");
@@ -132,6 +146,7 @@ fn legacy_plugin(root: &Path) -> std::path::PathBuf {
 }
 
 fn remove_runtime_contracts(plugin: &Path) {
+    // Public archives omit staging manifests, so this exercises the file-based public projection.
     for name in ["runtime-release.json", "runtime-candidate.json"] {
         let path = plugin.join(name);
         if path.exists() {

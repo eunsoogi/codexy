@@ -1,3 +1,6 @@
+//! Verifies how Codegraph tools distinguish request errors from partial source
+//! traversal results while preserving the MCP response envelope.
+
 use super::*;
 
 #[test]

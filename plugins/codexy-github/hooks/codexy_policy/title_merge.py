@@ -24,6 +24,7 @@ _VALUE_OPTIONS = frozenset(
 def forbidden(args: list[str]) -> bool:
     if "--squash" not in args:
         return False
+    # A squash is checked only when both its literal subject and an unambiguous PR selector are present.
     present, subject = _option(args, "--subject")
     if not present:
         return True

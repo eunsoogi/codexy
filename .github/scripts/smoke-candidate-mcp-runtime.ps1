@@ -5,6 +5,7 @@ $command = $env:GETCODEXY_CANDIDATE_RUNTIME
 if ([string]::IsNullOrWhiteSpace($command)) { throw "candidate getcodexy runtime executable is not configured" }
 if (-not (Test-Path -LiteralPath $command -PathType Leaf)) { throw "candidate getcodexy runtime executable is missing: $command" }
 $pluginRoot = (Resolve-Path -LiteralPath "plugins/codexy").Path
+# The candidate wheel supplies the command; its MCP server still uses the separately verified public runtime binary.
 $runtime = Join-Path $env:CODEXY_RUNTIME_DIR "codexy-mcp-watcher-windows-x86_64.exe"
 if (-not (Test-Path -LiteralPath $runtime -PathType Leaf)) { throw "verified public Watcher runtime is missing: $runtime" }
 

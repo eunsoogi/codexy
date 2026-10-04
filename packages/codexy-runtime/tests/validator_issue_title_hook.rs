@@ -1,3 +1,5 @@
+// Keep descriptive issue titles valid while rejecting label-style prefixes;
+// lifecycle events remain outside this hard-check CLI path.
 use crate::support::FixtureCommand as Command;
 
 #[test]

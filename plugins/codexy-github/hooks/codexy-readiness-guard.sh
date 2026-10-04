@@ -60,6 +60,7 @@ is_closing_issue_reference() {
 }
 
 closing_reference_count() {
+	# Count issue references attached to closing keywords; other issue numbers are not merge directives.
 	count=0
 	while [ "$#" -gt 0 ]; do
 		token="$1"
@@ -79,6 +80,7 @@ closing_reference_count() {
 }
 
 check_merge_message() {
+	# The merge contract couples the subject to its PR and requires one final-line issue closer when supplied.
 	subject=${merge_message%%"
 "*}
 	expected_suffix=" (#$expected_pr)"

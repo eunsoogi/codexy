@@ -30,6 +30,7 @@ fn discovery_resolves_pathext_candidates_and_rejects_missing_or_ambiguous_inputs
     Ok(())
 }
 
+// Projection follows recognized shell operands, leaving path-looking text and non-copy arguments unchanged.
 #[test]
 fn modeled_path_projection_touches_only_declared_operands() {
     let command = "printf cd C:\\unrelated && cd C:\\work\\foreign || exit 1 && sudo -D /c/work/foreign git status && ln -s /usr/bin/printf left && printf C:unrelated";
@@ -105,6 +106,7 @@ fn modeled_path_tokens_quote_raw_windows_values_without_touching_non_paths() {
     assert!(modeled_path_token(r"\\server\share", &|_| unreachable!()).is_err());
 }
 
+// The native fixture helper resolves known POSIX tool paths to host executables and keeps the fixture cwd.
 #[test]
 fn native_model_uses_host_identities_for_declared_posix_fixture_paths() {
     let discover = |name: &str| -> Result<String, String> {
@@ -140,6 +142,7 @@ fn native_model_uses_host_identities_for_declared_posix_fixture_paths() {
     );
 }
 
+// Cache keys include the fixture root only when a path's native mapping depends on that root.
 #[test]
 fn fixture_path_cache_key_keeps_fixture_root_context() {
     assert_ne!(
@@ -152,6 +155,7 @@ fn fixture_path_cache_key_keeps_fixture_root_context() {
     );
 }
 
+// Drive-rooted Windows paths map to MSYS form; relative drive paths and UNC paths are rejected.
 #[test]
 fn windows_fixture_paths_use_the_msys_absolute_path_contract() {
     assert_eq!(

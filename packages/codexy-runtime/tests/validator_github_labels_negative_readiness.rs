@@ -1,3 +1,5 @@
+// Negative readiness wording is not a readiness claim; the paired positive
+// case keeps the GitHub-label requirement in place for affirmative wording.
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

@@ -50,6 +50,7 @@ with tarfile.open(archive_path, "r:gz") as archive:
         name = member.name
         if count > max_entries:
             fail(f"archive contains too many entries: {count}")
+        # Only inert files and directories are accepted; links and special entries can redirect extraction.
         if not (member.isfile() or member.isdir()):
             fail(f"unsupported archive entry type: {name}")
         if member.isfile() and member.size > max_bytes:
@@ -61,6 +62,7 @@ with tarfile.open(archive_path, "r:gz") as archive:
             fail(f"unsafe archive path: {name!r}")
         if "\\" in name or ":" in name or name.startswith("/"):
             fail(f"unsafe archive path: {name}")
+        # Normalize only to detect aliases; the original spelling must still be canonical below.
         parts = tuple(part for part in name.split("/") if part != ".")
         if not parts or any(part in {"", ".."} for part in parts):
             fail(f"unsafe archive path: {name}")
@@ -88,12 +90,14 @@ with tarfile.open(archive_path, "r:gz") as archive:
                 )
             required_wrappers.remove(canonical_name)
         for part in parts:
+            # Reject names that normalize into Windows-trimmed or reserved device paths.
             folded = unicodedata.normalize("NFC", part).casefold()
             if folded.rstrip(" .") != folded:
                 fail(f"unsafe Windows-normalized archive path: {name}")
             if folded.split(".", 1)[0] in devices:
                 fail(f"unsafe Windows device archive path: {name}")
         identity = unicodedata.normalize("NFC", canonical_name).casefold()
+        # NFC case-folding catches collisions across the package's supported filesystems.
         if identity in seen:
             fail(f"case-folding archive entries collide: {name}")
         seen.add(identity)

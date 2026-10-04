@@ -55,6 +55,7 @@ fn grep_backend_gate(root: &std::path::Path) -> std::path::PathBuf {
         &format!("script_dir={}", source_dir.display()),
         1,
     );
+    // Disable only the ripgrep branch to exercise the fallback in the shipped gate script.
     let script = script.replacen(
         "if command -v rg >/dev/null 2>&1; then",
         "if false; then",
@@ -88,6 +89,8 @@ fn assert_binary_asset_scan(grep_backend: bool, secret: bool) {
     let gate = grep_gate.as_deref().unwrap_or(&source_gate);
     let backend = if grep_backend { "grep" } else { "rg" };
     let marker = "AKIA1234567890ABCDEF";
+    // The NUL prefix exercises binary scanning; secret mode also checks that output
+    // redacts the marker.
     let bytes = if secret {
         format!("\0{marker}\n").into_bytes()
     } else {

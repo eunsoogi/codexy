@@ -1,3 +1,5 @@
+//! Validates activation inputs and prepares the complete set of selected-release file updates.
+
 use std::{
     fs,
     io::Write as _,
@@ -50,6 +52,7 @@ pub(super) fn prepare(
     let release_tag = format!("v{bootstrap_version}");
     let (release, candidate) =
         receipt::activation_from_receipt(&receipt, &release_tag, core_aware)?;
+    // Hash the same canonical candidate bytes that the receipt's staging job recorded.
     let candidate_bytes = serde_json::to_vec(&canonical(candidate))?;
     let expected_manifest_sha = receipt["artifact"]["payloadManifestSha256"]
         .as_str()
@@ -88,6 +91,7 @@ fn validate_core_aware_tree(repo_root: &Path) -> Result<bool> {
     if present != 0 {
         bail!("core-handoff source inventory is partial before activation");
     }
+    // Absence is accepted only for an authenticated pre-core-handoff source tree.
     let output = std::process::Command::new("git")
         .args(["rev-list", "-1", "HEAD", "--"])
         .args(CORE_HANDOFF_SOURCES)
@@ -195,6 +199,7 @@ where
 }
 
 pub(super) fn write_staged(updates: &[Update]) -> Result<()> {
+    // Stage every replacement first; each rename is atomic per file, not across the whole set.
     let staged = updates
         .iter()
         .filter(|update| !update.delete)

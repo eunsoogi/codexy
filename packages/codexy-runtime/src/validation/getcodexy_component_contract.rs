@@ -55,6 +55,7 @@ fn validate_contract_root(root: &Path) -> Result<(), String> {
     Ok(())
 }
 
+// Restrict this repository-source contract to the canonical checkout; installed plugin roots may not have its markers.
 fn source_contract_root(plugin_root: &Path) -> Result<Option<&Path>, String> {
     let Some(root) = plugin_root.parent().and_then(Path::parent) else {
         return Ok(None);

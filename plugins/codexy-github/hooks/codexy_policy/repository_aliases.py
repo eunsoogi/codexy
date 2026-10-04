@@ -40,6 +40,7 @@ def collect(
             aliases[alias] = command_text
     except UnicodeError:
         return None
+    # Merge the parsed local worktree config last so it overrides aliases from Git's broader scopes.
     local = from_config(load_config(cwd, git_dir))
     if local is None:
         return None

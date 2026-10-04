@@ -1,3 +1,4 @@
+// These sets distinguish currently outstanding child/tool evidence from historical failures that were already resolved.
 pub(in super::super) const CHILD_WORK: &[&str] = &[
     "child-owned",
     "review-response work",

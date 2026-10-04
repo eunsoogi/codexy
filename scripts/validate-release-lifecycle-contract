@@ -31,6 +31,7 @@ for component in "$@"; do
   fi
 done
 
+# Validate the canonical version bound before comparing every selected package and release contract.
 release_tag="v$target_version"
 contract=.agents/plugins/release-publish-contract.json
 test "$(jq -r .version "$contract")" = "$target_version"
@@ -58,6 +59,7 @@ jq -e --arg version "$target_version" '
 workflow=.github/workflows/python-package.yml
 workflow_helper=scripts/verify_public_marketplace_bundle.py
 workflow_support=scripts/public_marketplace_bundle_support.py
+# The Windows lifecycle must use the selected public-release verifier and carry its baseline inputs.
 for required in \
   'scripts/verify_public_marketplace_bundle.py' \
   'scripts/public_marketplace_bundle_support.py' \
@@ -78,6 +80,7 @@ lifecycle_run="$(awk '
     print line
   }
 ' "$workflow")"
+# Inspect the extracted native test block separately so helper use and network access stay constrained.
 test -n "$lifecycle_run" || {
   printf '%s\n' "$workflow is missing the Windows native lifecycle run block" >&2
   exit 1

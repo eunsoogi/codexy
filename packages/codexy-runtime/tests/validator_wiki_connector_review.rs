@@ -1,3 +1,4 @@
+// Complete article provenance does not excuse a raw source whose ingestion date is missing or malformed.
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 use std::fs;

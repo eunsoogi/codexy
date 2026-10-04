@@ -42,6 +42,7 @@ def read(path: Path) -> dict[str, Any] | None:
 
 
 def write(path: Path, value: dict[str, Any]) -> None:
+    # Persist state by replacing a fully flushed temporary file, then flush the containing directory entry.
     temporary = path.parent / f".{path.name}.{os.getpid()}.{uuid4().hex}.tmp"
     payload = json.dumps(
         value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
@@ -69,6 +70,7 @@ def write(path: Path, value: dict[str, Any]) -> None:
 
 @contextmanager
 def lock(state_root: Path, batch_id: str) -> Iterator[None]:
+    # A nonblocking per-batch lock prevents concurrent apply runs from sharing checkpoints.
     path = state_root / f".{batch_id}.lock"
     try:
         descriptor = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)

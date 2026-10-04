@@ -1,3 +1,6 @@
+//! Requires captured PR provenance, owning-issue identity, head SHAs, and the
+//! selected review profile to stay bound through completion validation.
+
 use std::{fs, path::Path, process::Command};
 
 use crate::support::TestResult;

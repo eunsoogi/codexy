@@ -88,6 +88,7 @@ def environment(
             args = args[1:]
             break
         elif option in {"-S", "--split-string"}:
+            # env -S tokenizes its command string with shell quoting but does not run another shell.
             if len(args) < 2:
                 return None
             try:
@@ -120,6 +121,7 @@ def environment(
             context = at(context, resolve_cwd(context.cwd, option.split("=", 1)[1]))
             args = args[1:]
         elif option in {"-i", "--ignore-environment"}:
+            # Clear simulated variables before later assignments or command selection.
             context = clear(context)
             args = args[1:]
         elif option in {"-0", "--null", "-v", "--debug"}:

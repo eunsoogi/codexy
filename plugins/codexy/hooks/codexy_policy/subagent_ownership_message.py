@@ -14,6 +14,7 @@ _HINTS = (
     "소유|담당|책임|전담|맡|관리|브랜치|워크트리|리퀘스트|리뷰|구현|수정|편집|"
     "커밋|푸시|생성|열|작성|처리|해결|반영|적용"
 ).split("|")
+# Require a durable artifact or lane alongside ownership verbs; broad topic words alone do not assign work.
 _OWNER = r"(?:own(?:s|ed|ing|ership)?|owner|ownership|owned|responsible\s+for(?!\s+review(?:ing)?\b)|take\s+ownership(?:\s+of)?|manage|lead)"
 _DURABLE_OWNERSHIP = re.compile(
     r"(?:"
@@ -70,6 +71,7 @@ _DURABLE_OWNERSHIP_KO = re.compile(
     + r")",
     re.IGNORECASE,
 )
+# Separate negation checks keep prohibitions and quoted examples from becoming positive assignments.
 _DURABLE_RULES = (_DURABLE_OWNERSHIP, _DURABLE_OWNERSHIP_KO, _DURABLE_BUILD_WRITE)
 _NEGATION_RULES = (
     re.compile(
@@ -200,6 +202,7 @@ def _active_relays(message: str, spans: list[tuple[int, int]]) -> list[bool]:
 
 
 def _mask_quoted_data(message: str) -> tuple[str, bool]:
+    # Quoted examples are inert unless an active relay phrase explicitly asks the worker to follow them.
     spans, unmatched = _quote_spans(message)
     active = _active_relays(message, spans)
     masked = list(message)
@@ -233,6 +236,7 @@ def durable_owner_requested(message: str) -> bool:
         return False
     masked, unmatched_quote = _mask_quoted_data(message)
     if unmatched_quote:
+        # An unterminated quote makes the instruction boundary ambiguous, so deny the assignment.
         return True
     if not any(keyword in masked.casefold() for keyword in _HINTS):
         return False

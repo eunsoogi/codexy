@@ -16,6 +16,7 @@ def classify_activation(
     *,
     codex_home: Path | None = None,
 ) -> dict[str, str]:
+    """Require one enabled, trusted host row matching each installed hook exactly."""
     observed = normalize_hook_rows(rows)
     by_key: dict[str, list[dict[str, object]]] = {}
     for row in observed:
@@ -38,6 +39,7 @@ def classify_activation(
         component_keys = {
             row.get("key") for row in component_rows if isinstance(row.get("key"), str)
         }
+        # Extra rows indicate stale host state, even when required rows match.
         if component_keys - required_keys:
             failures[component] = "required-hook-trust-stale"
             continue

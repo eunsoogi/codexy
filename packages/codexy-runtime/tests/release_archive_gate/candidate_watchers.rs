@@ -3,6 +3,7 @@ use sha2::{Digest as _, Sha256};
 use std::path::Path;
 
 pub(super) fn materialize(plugin_root: &Path, release: &mut serde_json::Value) {
+    // Each core watcher entry binds its platform path, executable format, and content digest.
     let host = crate::support::release_archive::fixture_host_platform(
         std::env::consts::OS,
         std::env::consts::ARCH,

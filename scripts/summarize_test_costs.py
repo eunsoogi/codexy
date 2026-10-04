@@ -162,6 +162,7 @@ def summarize_run(run: dict[str, Any]) -> dict[str, Any]:
     resource = run.get("resource_metrics", {})
     if not isinstance(resource, dict):
         resource = {}
+    # Prefer recorded instrumentation kind; infer it from metrics only for older manifests.
     profile_kind = run_metadata(run, "profile_kind", "instrumentation")
     if profile_kind not in {"profiled", "unprofiled"}:
         profile_kind = (
@@ -208,6 +209,7 @@ def summarize_run(run: dict[str, Any]) -> dict[str, Any]:
 
 def _sum_metric(jobs: list[dict[str, Any]], key: str) -> int | None:
     values = [job[key] for job in jobs]
+    # Missing per-job values keep an aggregate unknown instead of creating an understated total.
     return (
         sum(values) if values and all(value is not None for value in values) else None
     )

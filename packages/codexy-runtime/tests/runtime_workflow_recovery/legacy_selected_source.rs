@@ -11,6 +11,7 @@ use sha2::{Digest as _, Sha256};
 
 #[cfg(unix)]
 #[test]
+// Legacy releases without a receipt are replayable only from the selected immutable URL and digest, never from staging.
 fn legacy_selected_source_replays_missing_receipt_without_staging_fallback()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = LegacyFixture::new(LegacyContract::Valid)?;

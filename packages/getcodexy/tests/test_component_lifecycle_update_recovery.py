@@ -224,6 +224,8 @@ def _apply_drift(state: fixture, drift: str) -> None:
         _git(state.marketplace, "checkout", "-q", "--detach", "main")
     else:
         raise AssertionError(f"unknown drift: {drift}")
+    # Keep the configured tag canonical for metadata/head cases so each probe
+    # isolates the source of repin drift; config-ref intentionally remains changed.
     if drift != "config-ref":
         config = state.home / "config.toml"
         config.write_text(f'[marketplaces.codexy]\nref = "{tag}"\n', encoding="utf-8")

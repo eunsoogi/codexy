@@ -74,6 +74,7 @@ def _invocation(
         return None
     if walked is None:
         return None
+    # Prefer the command the selected policy actually denied when several protected commands appear.
     for segment in walked:
         invocation = segment.invocation
         if (

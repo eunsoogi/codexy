@@ -16,6 +16,7 @@ plugin_root=${PLUGIN_ROOT-}
 if "${plugin_root}/hooks/codexy-hook-runtime.sh" codexy-title-check.py "$event" "$kind"; then
 	exit 0
 fi
+# Runtime failure must deny the selected event because the title contract was not checked.
 if [ "$event" = PermissionRequest ]; then
 	printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"CODEXY_TITLE_CHECK_RUNTIME: Codexy title validation could not run."}}}'
 else

@@ -102,6 +102,7 @@ def _dash_separator(value: str) -> bool:
 
 
 def _issue_category(value: str) -> bool:
+    # Reject category-like or Conventional Commit prefixes so issue titles remain descriptive titles.
     if value.startswith("[") and "]" in value:
         end = value.index("]")
         inner = value[1:end]

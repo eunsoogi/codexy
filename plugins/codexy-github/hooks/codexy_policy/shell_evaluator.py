@@ -42,6 +42,7 @@ def evaluate(
 ) -> bool:
     lexical_command = command
     syntax = opaque_syntax(command)
+    # Inspect substitutions as nested commands before simplifying shell control syntax.
     if syntax.substitutions or syntax.control:
         for nested in syntax.substitutions:
             if evaluate(nested, context, depth + 1, policy):
@@ -53,7 +54,7 @@ def evaluate(
     try:
         sequence = parse(tokens)
     except GroupSyntaxError:
-        if syntax.control:
+        if syntax.control:  # Fall back for dynamic heads in partial syntax.
             parsed = segments(command)
             if parsed is None:
                 return True
@@ -163,6 +164,7 @@ def _segment(
     depth: int,
     policy: Policy,
 ) -> tuple[bool, CommandEffect]:
+    # Each segment returns explicit success/failure contexts so later shell operators see prior effects.
     if getattr(policy, "detect_leading_credentials", False):
         command_start = command_tokens(tuple(tokens))
         if _credential_assignment(tokens[: len(tokens) - len(command_start)]):

@@ -1,3 +1,6 @@
+//! Exercises pre-mutation admission for the assigned model pair and original
+//! app-managed project worktree request across both canonical tool names.
+
 use std::{io::Write as _, path::Path, process::Stdio};
 
 use crate::support::FixtureCommand as Command;

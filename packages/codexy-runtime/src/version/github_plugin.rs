@@ -1,3 +1,5 @@
+//! Checks and updates the required GitHub plugin's version projections.
+
 use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
 

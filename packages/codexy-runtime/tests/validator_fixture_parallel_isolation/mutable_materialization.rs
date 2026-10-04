@@ -1,6 +1,7 @@
 use crate::support;
 use std::path::Path;
 
+// Only declared files become writable in a seed materialization.
 #[test]
 fn materialization_makes_declared_files_writable_and_leaves_undeclared_files_readonly()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -27,6 +28,7 @@ fn materialization_makes_declared_files_writable_and_leaves_undeclared_files_rea
     Ok(())
 }
 
+// Clear a stale read-only target before copying the authoritative source over it.
 #[test]
 fn declared_materialization_clears_a_stale_readonly_target_before_authoritative_copy()
 -> Result<(), Box<dyn std::error::Error>> {

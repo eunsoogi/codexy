@@ -1,3 +1,5 @@
+// Merge authority is bound to one PR, base, and head; only authoritative user,
+// maintainer, or repository-contract evidence can satisfy that binding.
 use std::process::Command;
 
 use serde_json::Value;

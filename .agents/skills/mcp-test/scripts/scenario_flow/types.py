@@ -12,12 +12,14 @@ from scenario_core import ExecutionResult, SingleCall
 
 
 def _pointer(path: str, label: str) -> str:
+    """Require an explicit non-root location for every reference path."""
     if not isinstance(path, str) or not path.startswith("/") or path == "/":
         raise ValueError(f"{label} must be a non-root JSON Pointer")
     return path
 
 
 def _type_spec(value: object) -> bool:
+    """Accept one runtime type or a non-empty tuple of types for a reference."""
     return isinstance(value, type) or (
         isinstance(value, tuple)
         and bool(value)
@@ -95,6 +97,7 @@ class Scenario:
         names = [step.name for step in steps]
         if len(names) != len(set(names)):
             raise ValueError("scenario step names must be unique")
+        # References are resolved from completed results, so forward links cannot run.
         seen = set()
         for step in steps:
             for reference in step.references.values():
@@ -113,6 +116,8 @@ class Scenario:
 
 @dataclass(frozen=True)
 class StepFailure:
+    """A bounded failure reason with optional field path or blocking step."""
+
     kind: FailureKind
     message: str
     path: str | None = None
@@ -121,6 +126,8 @@ class StepFailure:
 
 @dataclass(frozen=True)
 class StepResult:
+    """One step's invocation state, result, and any reason it did not succeed."""
+
     name: str
     invoked: bool
     execution: ExecutionResult | None
@@ -137,6 +144,8 @@ class StepResult:
 
 @dataclass(frozen=True)
 class ScenarioResult:
+    """Complete ordered result, retaining the first failed step and total time."""
+
     steps: tuple[StepResult, ...]
     failed_step: str | None
     elapsed_seconds: float

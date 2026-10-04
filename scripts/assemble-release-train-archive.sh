@@ -15,6 +15,7 @@ test -f "$marketplace"
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
 mkdir "$tmp_dir/extracted"
+# Validate any handoff runtime contract before the extracted payload is staged into plugin packages.
 tar --no-same-owner --no-same-permissions -xzf "$runtime_archive" -C "$tmp_dir/extracted"
 handoff_manifest="$tmp_dir/extracted/plugins/codexy-devtools/handoff-runtime.json"
 if test -f "$handoff_manifest"; then
@@ -38,6 +39,7 @@ runtime_platforms = list(activation["candidate"]["platforms"])
 runtime_classes = activation["candidate"].get("classes", {})
 core_watcher = runtime_classes.get("coreWatcherMcp")
 expected = [(item["id"], item["plugin"], item["asset"]["packageRoot"]) for item in components]
+# Keep release contents bound to the supported three-plugin inventory and release tag.
 if expected != [("core", "codexy", "plugins/codexy"), ("github", "codexy-github", "plugins/codexy-github"), ("devtools", "codexy-devtools", "plugins/codexy-devtools")]:
     raise SystemExit("unsupported release-train component inventory")
 if any(item["version"] != target for item in components):
@@ -62,6 +64,7 @@ for _, plugin, package_root in expected:
             name = f"codexy-handoff-validate-{platform}.{extension}"
             shutil.copy2(runtime_source / "runtime" / name, destination / "runtime" / name)
     if plugin == "codexy" and core_watcher:
+        # The core package owns the public watcher launchers while the build payload carries its binaries.
         (destination / "runtime").mkdir(parents=True, exist_ok=True)
         source_launcher = destination / "mcp/codexy-mcp-watcher.sh"
         public_launcher = destination / "mcp/codexy-mcp-watcher"
@@ -80,6 +83,7 @@ for _, plugin, package_root in expected:
                 if public_binary.read_bytes() != source_binary.read_bytes():
                     raise SystemExit("core watcher Windows launcher copy mismatch")
     if plugin == "codexy-devtools" and core_watcher:
+        # Remove binaries re-homed to core so the optional devtools package has no duplicate runtime owner.
         for binary in core_watcher["platforms"].values():
             (destination / binary["path"]).unlink(missing_ok=True)
     if plugin == "codexy-devtools" and any((destination / name).exists() for name in ("runtime-candidate.json", "runtime-release.json")):
@@ -96,6 +100,7 @@ marketplace_path = bundle / ".agents/plugins/marketplace.json"
 marketplace_path.parent.mkdir(parents=True)
 shutil.copy2(os.environ["MARKETPLACE"], marketplace_path)
 for path in bundle.rglob("*"):
+    # A package archive must not preserve symlinks or special filesystem entries from either source.
     if path.is_symlink():
         raise SystemExit(f"release train does not permit symlinks: {path.relative_to(bundle)}")
     if not path.is_file() and not path.is_dir():
@@ -105,6 +110,7 @@ for _, _, package_root in expected:
     plugin = bundle / package_root
     paths.extend([plugin, *sorted(plugin.rglob("*"))])
 output.parent.mkdir(parents=True, exist_ok=True)
+# Normalize ownership and timestamps so identical release inputs produce identical compressed bytes.
 with output.open("wb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as compressed, tarfile.open(fileobj=compressed, mode="w", format=tarfile.GNU_FORMAT) as archive:
     for path in paths:
         relative = path.relative_to(bundle)

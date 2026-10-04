@@ -1,5 +1,6 @@
 use std::{fs, os::unix::fs::PermissionsExt, path::Path, process::Command};
 
+// These cases allow only named verifier deltas on main and reject unrelated or non-executable projected scripts.
 pub(super) fn assert_projection_cases(
     projection: &str,
     workflow_steps: &[&str],

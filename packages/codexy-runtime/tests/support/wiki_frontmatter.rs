@@ -1,3 +1,4 @@
+//! Extracts YAML frontmatter while tolerating a BOM and CRLF delimiters used by source files.
 use serde_yaml::{Mapping, Value};
 
 pub(crate) fn mapping(source: &str) -> Option<Mapping> {

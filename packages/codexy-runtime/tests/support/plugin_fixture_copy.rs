@@ -1,3 +1,6 @@
+//! Materializes plugin fixture trees and, on Windows, reuses a private
+//! read-only seed while copying declared mutable files as writable instances.
+
 use std::path::{Path, PathBuf};
 #[cfg(windows)]
 use std::sync::{Mutex, OnceLock};
@@ -93,6 +96,7 @@ fn private_seed(source: &Path) -> std::io::Result<PathBuf> {
         .lock()
         .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "fixture seed lock"))?;
     if seed.is_none() {
+        // The shared seed is immutable; each test receives its own writable destination tree.
         let temp = tempfile::tempdir()?;
         let root = temp.path().join("codexy");
         super::copy_dir(source, &root)?;
@@ -125,6 +129,7 @@ pub(crate) fn materialize_seed(
                 profile.as_deref_mut(),
             )?;
         } else {
+            // On Windows, these copies inherit the shared seed's read-only permissions.
             if mutable_files.iter().any(|path| *path == entry_relative) {
                 materialize_declared_mutable_file(&source_path, &target_path)?;
             } else {

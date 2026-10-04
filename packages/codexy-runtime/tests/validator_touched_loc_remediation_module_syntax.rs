@@ -1,3 +1,6 @@
+//! Ignores module-looking text inside macro input, comments, and strings while
+//! preserving real outer declarations and raw identifiers.
+
 use crate::support;
 
 use support::touched_loc::{fixture, regular_lines, regular_lines_from, stderr, validate, write};

@@ -80,6 +80,7 @@ class RuntimeRelease:
         )
 
     def cache_key(self, *, platform: str, server: str) -> str:
+        """Key the cache by the complete release identity and selected binary."""
         return (
             "v3-"
             + hashlib.sha256(

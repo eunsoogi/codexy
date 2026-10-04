@@ -1,3 +1,5 @@
+"""Core install, update, remove, and recovery integration cases."""
+
 from __future__ import annotations
 
 import json

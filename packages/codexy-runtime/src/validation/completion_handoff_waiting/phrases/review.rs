@@ -1,3 +1,4 @@
+// Required security review is a blocker; a completed or unrequired review is explicitly non-blocking.
 pub(in super::super) const SECURITY_BLOCKER: &[&str] = &[
     "required security review",
     "security review required",

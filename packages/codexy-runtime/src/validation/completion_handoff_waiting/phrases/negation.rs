@@ -1,3 +1,4 @@
+// Negation matching uses a local modifier window; these tokens distinguish active/current blockers from stale mentions.
 pub(in super::super) const MODIFIERS: &[&str] = &[
     "active",
     "actually",

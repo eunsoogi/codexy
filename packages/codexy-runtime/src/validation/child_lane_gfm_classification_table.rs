@@ -1,6 +1,7 @@
 use super::child_lane_classification_schema::ClassificationTableSchema;
 use super::child_lane_ownership_phrases::metadata_key;
 
+/// Extracts exactly two cells from a pipe-delimited row; escaped pipes stay inside their cell.
 pub(super) fn classification_table_row(line: &str) -> Option<(&str, &str)> {
     let cells = gfm_table_cells(line)?;
     let [key, value] = cells.as_slice() else {
@@ -26,6 +27,7 @@ fn gfm_table_cells(line: &str) -> Option<Vec<&str>> {
 }
 
 fn is_escaped_pipe(row: &str, pipe_index: usize) -> bool {
+    // Markdown escapes a pipe only after an odd-length run of backslashes.
     row[..pipe_index]
         .bytes()
         .rev()
@@ -45,6 +47,7 @@ fn parse_table_separator(line: &str) -> GfmDelimiterRow {
     let Some(cells) = gfm_table_cells(line) else {
         return GfmDelimiterRow::Absent;
     };
+    // The classification format requires two delimiter cells, matching its key/value header.
     if cells.len() == 2 && cells.iter().all(|cell| is_gfm_delimiter_cell(cell)) {
         return GfmDelimiterRow::Valid;
     }
@@ -64,6 +67,7 @@ fn is_gfm_delimiter_cell(cell: &str) -> bool {
     cell.len() >= 3 && cell.chars().all(|character| character == '-')
 }
 
+/// Tracks table headers and ordered classification rows without treating arbitrary tables as authority.
 #[derive(Default)]
 pub(super) struct GfmClassificationTable {
     state: GfmClassificationTableState,
@@ -142,6 +146,7 @@ impl GfmClassificationTable {
             return self.invalidate();
         };
         let key = metadata_key(key);
+        // Rows advance only when the key and non-empty value match the next required schema field.
         if ClassificationTableSchema::accepts(next_field, key, value) {
             self.state = if next_field + 1 == ClassificationTableSchema::field_count() {
                 GfmClassificationTableState::Complete
@@ -156,6 +161,7 @@ impl GfmClassificationTable {
     }
 
     fn consume_complete<'a>(&mut self, line: &'a str) -> GfmClassificationTableEvent<'a> {
+        // After a complete table, the next row may signal a replacement header rather than more field data.
         match classification_table_row(line) {
             Some((key, value)) if ClassificationTableSchema::has_canonical_header(key, value) => {
                 self.state = GfmClassificationTableState::CanonicalHeader;

@@ -1,3 +1,4 @@
+//! Creates real temporary Git worktrees so reservation checks observe Git's canonical paths and state.
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -69,6 +70,7 @@ pub(super) fn canonical(path: &Path) -> PathBuf {
 }
 
 pub(super) fn snapshot(path: &Path) -> Result<WorktreeSnapshot, ReservationError> {
+    // Preserve both identity and cleanliness so later collision errors can compare reserved state.
     Ok(WorktreeSnapshot {
         path: canonical(path),
         head: git(path, ["rev-parse", "HEAD"])?.trim().to_owned(),

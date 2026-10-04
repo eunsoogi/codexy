@@ -1,3 +1,6 @@
+//! Rejects shell syntax embedded in hook entrypoint paths and requires generic
+//! command hooks to declare a positive timeout.
+
 use std::process::Command;
 
 #[allow(unused)]

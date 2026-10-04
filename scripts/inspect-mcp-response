@@ -4,4 +4,5 @@ set -eu
 response_file=${1:?response file required}
 server=${2:?server name required}
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# Keep the wrapper's user-facing CLI stable while sharing parsing logic with Python callers.
 exec python3 "$script_dir/inspect_mcp_response.py" "$response_file" "$server"

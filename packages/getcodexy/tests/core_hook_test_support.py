@@ -1,3 +1,5 @@
+"""Payload and checkout helpers for core hook invocation tests."""
+
 from __future__ import annotations
 
 from collections.abc import Generator, Mapping
@@ -10,6 +12,7 @@ from pathlib import Path
 
 @contextmanager
 def temporary_primary_checkout() -> Generator[Path, None, None]:
+    """Yield a temporary Git root that represents the primary checkout."""
     with tempfile.TemporaryDirectory(prefix="codexy-primary checkout ") as temporary:
         root = Path(temporary).resolve()
         _ = subprocess.run(["git", "init", str(root)], check=True, capture_output=True)

@@ -1,3 +1,6 @@
+//! Covers direct current-head review-control production, valid light controls
+//! and the rejection of retired ceremony inputs without output mutation.
+
 use std::{fs, process::Command};
 
 use crate::support::{FixtureCommand, TestResult};

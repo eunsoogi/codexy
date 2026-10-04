@@ -2,6 +2,7 @@ use crate::support::{self, normalize_fixture_text, FixtureCommand as Command};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+// Without an activated core plugin, GitHub bootstrap must stop before registering its managed role.
 #[test]
 fn github_bootstrap_fails_closed_without_an_activated_core() -> TestResult {
     let temp = tempfile::tempdir()?;
@@ -18,6 +19,7 @@ fn github_bootstrap_fails_closed_without_an_activated_core() -> TestResult {
     Ok(())
 }
 
+// Core activation precedes GitHub role projection, which writes only the owned agent definition.
 #[test]
 fn github_bootstrap_requires_core_and_projects_only_its_managed_role() -> TestResult {
     let temp = tempfile::tempdir()?;

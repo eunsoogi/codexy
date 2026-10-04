@@ -1,3 +1,6 @@
+//! Checks that copied plugin wrappers use their bundled runtime and preserve
+//! both newline JSON and Content-Length transport compatibility.
+
 use super::super::*;
 use crate::support::FixtureCommand as Command;
 

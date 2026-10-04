@@ -55,6 +55,7 @@ class UnsupportedPlatformError(ScenarioValidationError):
 
 
 def _json_copy(value: Any) -> Any:
+    """Reject non-JSON values and detach nested data from caller-owned objects."""
     try:
         return json.loads(json.dumps(value, allow_nan=False))
     except (TypeError, ValueError) as error:
@@ -62,6 +63,7 @@ def _json_copy(value: Any) -> Any:
 
 
 def _mapping_copy(value: Mapping[str, Any], label: str) -> Mapping[str, Any]:
+    """Validate string keys, detach JSON values, and protect only the outer map."""
     if not isinstance(value, Mapping):
         raise ScenarioValidationError(f"{label} must be a mapping")
     copied = {}
@@ -73,6 +75,7 @@ def _mapping_copy(value: Mapping[str, Any], label: str) -> Mapping[str, Any]:
 
 
 def _validate_pointer(path: str, label: str) -> str:
+    """Require a non-root JSON Pointer so extraction always selects a field."""
     if not isinstance(path, str) or not path.startswith("/") or path == "/":
         raise ScenarioValidationError(
             f"{label} must be a non-root JSON Pointer beginning with '/'"

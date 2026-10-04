@@ -16,6 +16,7 @@ from preview import InputError, preview
 def _duplicate_key(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
+        # Reject ambiguous manifests instead of letting JSON consumers choose different duplicate values.
         if key in result:
             raise InputError(f"duplicate JSON field: {key}")
         result[key] = value
@@ -47,6 +48,7 @@ def _state_tuple(metadata: os.stat_result) -> tuple[int, int, int, int, int]:
 
 
 def _open_directory(root: Path, components: tuple[str, ...]) -> int:
+    # Walk by directory descriptor so each no-follow check stays anchored if path names change concurrently.
     directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
     directory = os.open(root, directory_flags)
     try:
@@ -90,6 +92,7 @@ def ensure_parent(root: Path, relative: str) -> None:
 def _snapshot_fd(
     file_descriptor: int, display_path: Path, digest: str | None
 ) -> tuple[dict[str, Any], tuple[int, int]]:
+    # Hash and stat one open file, then reject changes observed before the snapshot is accepted.
     before = os.fstat(file_descriptor)
     if not stat.S_ISREG(before.st_mode):
         raise InputError(f"must be an existing regular file: {display_path}")
@@ -189,6 +192,7 @@ def _manifest(
 def preview_from_path(workspace_root: str | Path, input_path: str) -> dict[str, Any]:
     document, source, path, signature = _manifest(input_path)
     result = preview(workspace_root, document, source)
+    # Reject input-list edits that race with parsing or the workspace preview.
     if path is not None and (
         _signature(path) != signature or _hash_file(path) != source["sha256"]
     ):

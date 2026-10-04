@@ -99,6 +99,8 @@ def _fixture(
     (marketplace / "plugins/codexy/mcp/codexy-mcp-watcher.cmd").write_text(
         "@echo off\n", encoding="utf-8"
     )
+    # Keep the release tag behind main so each ref, metadata, and checkout drift
+    # can be injected independently after an otherwise valid pinned install.
     _git(marketplace, "init", "-q")
     _git(marketplace, "branch", "-M", "main")
     _git(marketplace, "config", "user.name", "fixture")

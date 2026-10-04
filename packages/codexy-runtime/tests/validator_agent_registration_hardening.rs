@@ -1,3 +1,6 @@
+//! Exercises registration race, rollback and filesystem-boundary protections,
+//! including no-op lock enforcement and TOML table parsing.
+
 use std::path::{Path, PathBuf};
 use std::process::{Output};
 use crate::support::FixtureCommand as Command;

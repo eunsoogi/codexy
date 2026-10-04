@@ -9,6 +9,7 @@ fn synthetic_future_release_contract_is_admitted_without_a_publish_operation()
     let temp = tempfile::tempdir()?;
     let target = temp.path();
     let version = "9.9.9";
+    // Copy only validator inputs so this future-version contract check cannot publish a release.
     let version_sources = [
         ".agents/plugins/release-publish-contract.json",
         "plugins/codexy/.codex-plugin/plugin.json",

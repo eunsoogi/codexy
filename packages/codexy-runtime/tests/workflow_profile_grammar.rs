@@ -1,3 +1,4 @@
+// These grammar cases pin where strict-category negation starts, propagates, and stops in task descriptions.
 use super::workflow_profile_contract::assert_profile_result;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

@@ -65,6 +65,7 @@ class Configuration:
     def load(
         cls, server: str, plugin_root: Path, arguments: list[str]
     ) -> "Configuration":
+        """Use the release contract unless an explicit source is selected."""
         manifest = plugin_root / ".codex-plugin/plugin.json"
         try:
             release = plugin_release(manifest)

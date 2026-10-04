@@ -1,3 +1,5 @@
+//! Resolves workspace paths, language ids, and file URIs for LSP requests.
+
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -35,6 +37,7 @@ pub(super) fn resolve_path(file_path: &str, root: Option<&str>) -> Result<String
 
 pub(super) fn workspace_root_for_file(file_path: &str) -> PathBuf {
     let path = Path::new(file_path);
+    // Preserve the starting directory as fallback when no repository marker is found above it.
     let initial = fs::metadata(path)
         .ok()
         .and_then(|meta| meta.is_dir().then(|| path.to_path_buf()))
@@ -80,6 +83,7 @@ pub(super) fn workspace_root_from_args(args: &Value, file_path: &str) -> Result<
 
 pub(super) fn normalize_ext(file_path: &str) -> String {
     let path = Path::new(file_path);
+    // Dockerfiles are selected by basename because they do not have a file extension.
     if path.file_name().and_then(|item| item.to_str()) == Some("Dockerfile") {
         return "Dockerfile".to_owned();
     }
@@ -90,6 +94,7 @@ pub(super) fn normalize_ext(file_path: &str) -> String {
 
 pub(super) fn language_for_path(file_path: &str, server: &Server) -> String {
     let extension = normalize_ext(file_path);
+    // Known extensions take precedence; the server's language label covers uncommon file types.
     let language = match extension.as_str() {
         ".js" | ".mjs" | ".cjs" => Some("javascript"),
         ".jsx" => Some("javascriptreact"),
@@ -177,6 +182,7 @@ fn language_for_label(label: &str) -> String {
 
 fn file_uri_path(path: &Path) -> String {
     let path = path.to_string_lossy().replace('\\', "/");
+    // Strip the Windows extended-path prefix and retain drive-letter URI syntax.
     let path = path.strip_prefix("//?/").unwrap_or(&path);
     if path.as_bytes().get(1) == Some(&b':') {
         format!("/{path}")

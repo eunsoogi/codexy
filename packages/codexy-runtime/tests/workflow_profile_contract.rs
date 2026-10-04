@@ -1,4 +1,4 @@
-
+// The contract requires formal ownership proof only when the active lane's risk or delegation signals demand it.
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]

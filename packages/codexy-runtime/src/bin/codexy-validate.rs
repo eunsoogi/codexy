@@ -1,3 +1,5 @@
+//! Command-line entry point for the runtime's plugin and repository validators.
+
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -180,6 +182,7 @@ fn main() -> Result<()> {
 }
 
 fn ensure_one_mode(cli: &Cli) -> Result<()> {
+    // Resolve and check flags share one CLI, so reject ambiguous dispatch before reading inputs.
     let modes = [
         cli.check,
         cli.check_lsp,

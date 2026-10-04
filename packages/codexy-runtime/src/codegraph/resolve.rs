@@ -10,6 +10,7 @@ pub(super) struct ResolvedImport {
     pub(super) resolved: bool,
 }
 
+/// Normalizes a path for graph output, keeping absolute paths outside the root explicitly rooted.
 pub(super) fn graph_path(root: &Path, input: &str) -> String {
     let path = Path::new(input);
     let relative = if path.is_absolute() {
@@ -25,6 +26,7 @@ pub(super) fn graph_path(root: &Path, input: &str) -> String {
     normalize_posix(&to_posix(&relative))
 }
 
+/// Converts language import syntax into the relative specifier form used by the shared resolver.
 pub(super) fn normalize_language_import(
     extension: &str,
     specifier: &str,
@@ -41,6 +43,7 @@ pub(super) fn normalize_language_import(
     }
 }
 
+/// Relativizes imports under the Go module prefix and leaves external module paths untouched.
 pub(super) fn normalize_go_import(
     specifier: &str,
     file: &str,
@@ -67,6 +70,7 @@ pub(super) fn resolve_import(
     specifier: &str,
     indexed_files: &BTreeSet<String>,
 ) -> ResolvedImport {
+    // Package names and other non-relative specifiers stay unresolved because they are not root paths.
     if !specifier.starts_with('.') {
         return ResolvedImport {
             to: specifier.to_owned(),
@@ -103,6 +107,7 @@ pub(super) fn resolve_import(
 
 fn normalize_python(specifier: &str, file: &str) -> String {
     if specifier.starts_with('.') {
+        // Python's leading dot count encodes parent levels; remaining dotted names are path segments.
         let dots = specifier.chars().take_while(|ch| *ch == '.').count();
         let rest = specifier
             .trim_start_matches('.')
@@ -121,6 +126,7 @@ fn normalize_python(specifier: &str, file: &str) -> String {
 }
 
 fn normalize_rust(specifier: &str, file: &str) -> String {
+    // Map Rust's crate/self/super roots before applying the source-file-relative fallback.
     if let Some(rest) = specifier.strip_prefix("crate::") {
         return relative_from(
             file,
@@ -158,6 +164,7 @@ fn normalize_package(specifier: &str, file: &str, package_name: Option<&str>) ->
         return format!("./{import_path}");
     };
     let file_dir = Path::new(file).parent().map(to_posix).unwrap_or_default();
+    // Strip the current package suffix to recover the source root for package-qualified imports.
     let source_root = file_dir
         .strip_suffix(&package_path)
         .map_or("", |prefix| prefix.trim_end_matches('/'));

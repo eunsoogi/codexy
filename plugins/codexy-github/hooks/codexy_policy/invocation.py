@@ -89,6 +89,7 @@ def _unwrap(
         if executable is None:
             return Invocation(None, [], context, opaque=True)
         args = tokens[1:]
+        # Resolve known wrappers recursively so policy sees the effective executable and its updated context.
         if executable in SHELL_INTERPRETERS | OPAQUE_INTERPRETERS and args == [
             "--version"
         ]:
@@ -191,6 +192,7 @@ def _unwrap(
 
 def _opaque_invocation(tokens: list[str], context: ExecutionContext) -> Invocation:
     """Preserve a resolved command position when only its data is dynamic."""
+    # Keep a provable executable identity even when dynamic arguments force opaque policy handling.
     head = expand(tokens[0], context) if tokens else None
     if head is None or (context.opaque_environment and "/" not in head):
         return Invocation(None, [], context, opaque=True)

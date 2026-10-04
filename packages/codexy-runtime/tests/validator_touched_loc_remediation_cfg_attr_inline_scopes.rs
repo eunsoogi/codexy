@@ -1,3 +1,6 @@
+//! Exercises effective `cfg_attr` path resolution across inline scopes,
+//! whitespace, comments, and disabled or unrelated attributes.
+
 use crate::support;
 
 use std::path::Path;

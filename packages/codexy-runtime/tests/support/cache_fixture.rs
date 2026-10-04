@@ -1,3 +1,6 @@
+//! Seeds v2, v1, and legacy wrapper-cache layouts so fallback tests can
+//! distinguish cache identity rules without contacting a package service.
+
 use std::process::{Command, Stdio};
 
 use super::make_executable;
@@ -86,6 +89,7 @@ fn v2_runtime_cache_key(
     platform: &str,
     server: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
+    // Use the packaged helper so the fixture follows the production key contract.
     let root = codexy_runtime::paths::repository_root();
     let runtime = format!("codexy-mcp-{server}");
     let output = Command::new("python3")

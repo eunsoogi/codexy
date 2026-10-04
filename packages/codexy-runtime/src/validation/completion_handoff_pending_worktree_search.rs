@@ -2,6 +2,7 @@ use super::completion_handoff_pending_worktree_text::{
     char_window_start, has_any, has_nearby_negation, phrase_has_boundaries,
 };
 
+/// Requires a positive search dimension in one bounded search clause, not in negated wording.
 pub(super) fn has_search_dimension(text: &str, dimensions: &str) -> bool {
     for marker in ["list_threads searches by", "searches by", "searched by"] {
         let mut rest = text;

@@ -1,3 +1,6 @@
+//! Ensures a server-originated JSON-RPC failure survives MCP wrapping and
+//! process shutdown without being replaced by a transport error.
+
 use super::*;
 
 #[test]

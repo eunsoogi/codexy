@@ -57,6 +57,7 @@ def _request(method, identifier=None, params=None):
 
 
 def probe_component(component, plugin, record):
+    """Probe one installed component, keeping core hook and watcher checks linked."""
     base = _base(record)
     if plugin is None:
         return base
@@ -67,6 +68,7 @@ def probe_component(component, plugin, record):
 
 
 def _probe_core(plugin, base):
+    # The watcher probe depends on a callable core hook; merge only observed results.
     hook = _probe_hook("core", plugin, base)
     if not hook.get("started") or not hook.get("callable"):
         return hook
@@ -80,6 +82,7 @@ def _probe_core(plugin, base):
 
 
 def _probe_hook(component, plugin, base):
+    """Execute a registered hook and validate its event-specific response."""
     event, marker = HOOK_SPECS[component]
     capability = f"hook:{marker}"
     payload = {"prompt": "review GitHub issue 723"}
@@ -121,6 +124,7 @@ def _probe_hook(component, plugin, base):
 
 
 def _registered_hook(plugin, event, marker):
+    """Return the platform-specific command for the registered marker, if any."""
     try:
         hooks = json.loads((plugin / "hooks/hooks.json").read_text(encoding="utf-8"))
     except (OSError, ValueError, json.JSONDecodeError):
@@ -163,6 +167,7 @@ def _argv(command, plugin, args=()):
         and values[0].lower().endswith((".bat", ".cmd"))
         and os.path.isfile(values[0])
     ):
+        # Batch files need cmd.exe quoting; other launchers remain an argv sequence.
         shell = os.environ.get("COMSPEC", "cmd.exe")
         command = f'"{values[0]}" {subprocess.list2cmdline(values[1:])}'.rstrip()
         return f'{subprocess.list2cmdline([shell])} /d /s /c "{command}"'
@@ -178,6 +183,7 @@ def probe_reason(probe, default):
 
 
 def identity_matches(manifest, component, record, probe):
+    """Require the registered release to match each probed runtime."""
     names = probe.get("runtime_names")
     versions = probe.get("runtime_versions")
     return (

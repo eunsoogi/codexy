@@ -1,3 +1,6 @@
+//! Covers wrapper bootstrap, moving and pinned source refs, and cached-runtime
+//! fallback when refresh of a moving ref fails.
+
 use super::*;
 
 #[test]

@@ -1,3 +1,5 @@
+// PR-label readiness uses captured repository taxonomy across supported API
+// shapes; nested issue or repository labels cannot replace top-level PR labels.
 use crate::support;
 use crate::support::FixtureCommand as Command;
 

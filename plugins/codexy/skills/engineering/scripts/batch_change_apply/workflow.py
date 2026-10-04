@@ -141,6 +141,7 @@ def apply_results(
     )
     state_path = _state_path(state_directory, document_value.get("batch_id"))
     if dry_run:
+        # Preview validates and renders selected changes without creating a lock or apply-state file.
         return _document_result(
             "preview",
             root,
@@ -150,6 +151,7 @@ def apply_results(
             _preview(values, selected, root, result_directory),
             entrypoint,
         )
+    # Serialize writes, then require existing checkpoints to match this exact result and workspace.
     with lock(state_directory, state_path.stem):
         loaded = read(state_path)
         state = (

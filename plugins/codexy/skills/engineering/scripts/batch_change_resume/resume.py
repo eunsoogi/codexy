@@ -9,6 +9,7 @@ from typing import Any
 sys.dont_write_bytecode = True
 
 _DIRECTORY = Path(__file__).parent
+# Expose the sibling implementation packages when this file runs as a standalone skill command.
 for _path in (
     _DIRECTORY.parent / "batch_change_input",
     _DIRECTORY.parent / "batch_change_runner",

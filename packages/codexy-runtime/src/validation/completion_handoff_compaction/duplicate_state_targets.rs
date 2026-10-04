@@ -1,5 +1,6 @@
 use serde_json::Value;
 
+/// Ensures any PR/issue numbers in a continuation match the current PR and its closing issues.
 pub(super) fn matches_current_duplicate_state_target(text: &str, pr_state: &Value) -> bool {
     let pr_refs = referenced_numbers(text, &["pr", "pull request"]);
     let issue_refs = referenced_numbers(text, &["issue"]);
@@ -31,6 +32,7 @@ fn current_issue_numbers(pr_state: &Value) -> Option<Vec<u64>> {
 }
 
 fn current_issue_values(pr_state: &Value) -> Option<Vec<&Value>> {
+    // Accept both direct arrays and GraphQL's `{ nodes: [...] }` shape from PR state.
     let issues = pr_state.get("closingIssuesReferences")?;
     Some(
         issues

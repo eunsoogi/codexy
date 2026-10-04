@@ -1,3 +1,4 @@
+# Verify edits against the protected Actions baseline so edited release data cannot redefine its own checks.
 name: Verify edited public release integrity
 
 on:

@@ -41,6 +41,7 @@ fn inventory(
         .and_then(Value::as_object)
         .ok_or_else(|| "inventory must be an object".to_owned())?;
     exact_map_string(inventory, "state", state)?;
+    // An absent inventory omits `components`; it is not equivalent to a present empty list.
     if state == "absent" {
         if inventory.len() == 1 {
             Ok(())

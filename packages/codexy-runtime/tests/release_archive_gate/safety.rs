@@ -1,4 +1,5 @@
 #[cfg(unix)]
+// Reject members that could redirect extraction or smuggle host-local paths before writing any archive content.
 #[test]
 fn archive_gate_rejects_symlink_entries() {
     use std::os::unix::fs::symlink;

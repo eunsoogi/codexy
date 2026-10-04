@@ -1,3 +1,5 @@
+"""Package tests keep GitHub workflow hooks and agents in the optional plugin."""
+
 from __future__ import annotations
 
 import json

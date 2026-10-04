@@ -1,3 +1,5 @@
+//! Reads framed server output and captures bounded stderr for LSP results.
+
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::process::{ChildStderr, ChildStdout};
@@ -53,6 +55,7 @@ pub(super) fn ensure_workspace_ready(buffer: &SharedStderr) -> Result<()> {
         return Ok(());
     };
     if state.workspace_error_seen {
+        // The marker may have aged out of the retained stderr tail, so report it from the saved verdict.
         if state.display.contains(WORKSPACE_ERROR) {
             bail!("LSP workspace initialization failed: {}", state.display);
         }
@@ -123,6 +126,7 @@ fn wait_for_fixture_stderr_gate() {
     if gate.write_all(b"stderr-buffer-pending").is_err() || gate.flush().is_err() {
         return;
     }
+    // Test fixtures release this barrier after observing the intentionally pending stderr read.
     let mut release = [0_u8; 1];
     let _ = gate.read_exact(&mut release);
 }
@@ -155,6 +159,7 @@ fn observe_workspace_error(state: &mut StderrState, text: &str) {
         state.workspace_error_probe.clear();
         return;
     }
+    // Retain enough suffix bytes to find the marker when stderr splits it across reads.
     let retained = WORKSPACE_ERROR.len().saturating_sub(1);
     if state.workspace_error_probe.len() > retained {
         let start = state.workspace_error_probe.len() - retained;

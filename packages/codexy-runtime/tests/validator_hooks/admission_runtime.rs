@@ -1,3 +1,6 @@
+//! Pins the retained shell-safety policy: GitHub mutations remain available,
+//! while credentials, destructive local effects, and opaque execution deny.
+
 use crate::support::{FixtureCommand as Command, hook_fixture_model_input};
 use serde_json::{Value, json};
 use std::io::Write as _;

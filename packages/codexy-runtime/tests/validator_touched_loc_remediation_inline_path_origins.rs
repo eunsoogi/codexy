@@ -1,3 +1,6 @@
+//! Resolves nested inline and `#[path]` origins from their owning source, and
+//! fails closed when intervening Rust syntax makes that origin uncertain.
+
 use crate::support;
 
 use std::path::Path;

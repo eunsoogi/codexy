@@ -2,6 +2,7 @@ use serde_json::Value;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+// Positive inventory shapes come first; negative cases then map to diagnostics in the same order.
 const LP_CORPUS: [(&str, &str); 20] = [
     ("LP-P01", "catalog-39"),
     ("LP-P02", "catalog-six-fields"),

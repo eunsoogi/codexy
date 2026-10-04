@@ -1,3 +1,6 @@
+//! Requires unresolved-thread handoffs to pair unresolved state with both
+//! not-fixed and not-accepted evidence, without claiming readiness or completion.
+
 use std::path::Path;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;

@@ -33,6 +33,7 @@ def main() -> None:
     override = os.environ.get("PRIOR_PUBLIC_VERSION", "").strip()
     baseline_source = "current checkout release contract"
     baseline_commit = ""
+    # Select one stable baseline from an explicit override or the prior checkout contract.
     if override:
         version = canonical_version(override, "PRIOR_PUBLIC_VERSION")
         release_tag = f"v{version}"
@@ -110,9 +111,11 @@ def main() -> None:
     if not bundle.is_file() or not receipt_path.is_file():
         fail("public release download did not contain the bundle and receipt")
     receipt = read_json(receipt_path)
+    # Verify the downloaded archive against GitHub's asset digest and the signed release receipt.
     digest = verify_bundle(bundle, receipt, release_tag, expected_digest)
     extract = output_dir / "extracted"
     safe_extract(bundle, extract)
+    # Validate the receipt's package inventory and return the Windows Watcher used by CI.
     watcher = verify_contents(extract, receipt, version)
     print(
         json.dumps(

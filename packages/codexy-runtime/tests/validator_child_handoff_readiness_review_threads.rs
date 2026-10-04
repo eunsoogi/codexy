@@ -1,4 +1,7 @@
 
+//! Unresolved review threads block readiness; unchecked ordered items remain
+//! non-claims.
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]

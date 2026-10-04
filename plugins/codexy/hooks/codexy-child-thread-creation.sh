@@ -10,6 +10,8 @@ plugin_root=${PLUGIN_ROOT-}
 if "${plugin_root}/hooks/codexy-hook-runtime.sh" codexy-child-thread-creation.py "$event"; then
 	exit 0
 fi
+# Keep the Windows denial template exact because the dispatch fixture compares its complete command text.
+# Runtime failure denies the event rather than allowing child creation without policy evaluation.
 if [ "$event" = PermissionRequest ]; then
 	printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"CODEXY_CHILD_THREAD_CREATION_RUNTIME: Codexy policy MUST NOT execute this operation."}}}'
 else

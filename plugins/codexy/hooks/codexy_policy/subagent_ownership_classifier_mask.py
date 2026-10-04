@@ -70,6 +70,7 @@ _BRANCH_REF = re.compile(r"(?i)\bbranch\s+([^\s,;.!?:]+)")
 
 
 def mask_non_delegating_data(message: str) -> str:
+    # Preserve character offsets while hiding retained owner/branch context from directive matching.
     masked = _RETAINED_RESPONSIBILITY.sub(
         lambda match: " " * len(match.group()), message
     )

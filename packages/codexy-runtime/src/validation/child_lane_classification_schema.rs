@@ -1,3 +1,4 @@
+/// Defines the canonical ordered fields accepted in child-lane classification tables.
 pub(super) struct ClassificationTableSchema;
 
 struct SchemaField {
@@ -45,6 +46,7 @@ impl ClassificationTableSchema {
     }
 
     pub(super) fn accepts(index: usize, key: &str, value: &str) -> bool {
+        // A matching label is valid only at its expected position and with a non-empty value.
         FIELDS.get(index).is_some_and(|field| {
             field
                 .names

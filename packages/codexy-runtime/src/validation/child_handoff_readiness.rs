@@ -6,7 +6,7 @@ use super::child_handoff_readiness_status::{
     status_fields,
 };
 use super::child_handoff_readiness_text::has_non_claim_phrase_label;
-
+// Reject inconsistent current Git and review evidence.
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let normalized = handoff.to_ascii_lowercase();
     let text = super::readiness_context::current_text(&normalized);
@@ -107,7 +107,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     }
     errors
 }
-
+// Only affirmative current readiness activates the PR evidence gate.
 pub(super) fn is_current_pr_readiness(handoff: &str) -> bool {
     let normalized = handoff.to_ascii_lowercase();
     let text = super::readiness_context::current_text(&normalized);

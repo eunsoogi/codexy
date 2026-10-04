@@ -1,3 +1,5 @@
+//! Shared readers for typed release metadata fields.
+
 use anyhow::{Context as _, Result};
 use serde_json::Value;
 
@@ -9,6 +11,7 @@ pub(super) fn string_array(data: &Value, field: &str, label: &str) -> Result<Vec
     values
         .iter()
         .map(|value| {
+            // Reject whitespace-only entries without trimming values used in exact comparisons.
             value
                 .as_str()
                 .filter(|item| !item.trim().is_empty())

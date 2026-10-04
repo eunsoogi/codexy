@@ -17,6 +17,7 @@ fn assert_result(output: std::process::Output, success: bool) {
 }
 
 #[test]
+// Mutated run metadata exercises the real dispatcher against active, missing, failed, and unrelated CI runs.
 fn activation_dispatch_reuses_success_and_waits_for_active_ci_without_duplicates() -> TestResult {
     let fixture = Fixture::new()?;
     fixture.change("rust-test.yml", |runs| {

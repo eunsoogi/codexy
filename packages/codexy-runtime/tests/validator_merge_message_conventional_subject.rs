@@ -1,3 +1,5 @@
+// Squash subjects need Conventional Commit syntax and the exact expected PR
+// suffix; a valid suffix cannot rescue a missing scope or extra references.
 use std::process::Command;
 
 #[test]

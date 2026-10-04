@@ -39,6 +39,7 @@ def component_observations(
         name: _entry(configured, source=_REGISTRATION_SOURCE, scope=_REGISTRATION_SCOPE)
         for name in CAPABILITIES.get(component, ())
     }
+    # Registration establishes configuration only; absent direct probes stay unknown.
     if not probe:
         return observations
     direct = probe.get("_capability_probes")
@@ -94,6 +95,7 @@ def _entry(
     source: str,
     scope: str,
 ) -> dict[str, object]:
+    """Keep unobserved capability states unknown and never infer verification."""
     return {
         "states": {
             "configured": "configured" if configured else UNKNOWN,

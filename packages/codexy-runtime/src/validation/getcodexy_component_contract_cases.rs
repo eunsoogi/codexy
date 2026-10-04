@@ -127,6 +127,7 @@ fn check_fixture_examples(fixtures: &Value) -> Result<(), String> {
     Ok(())
 }
 
+// Keep absent inventory distinct from a present inventory whose component list is empty.
 fn check_update_inventory_states(cases: &[Value]) -> Result<(), String> {
     let absent = case(cases, "update-no-recorded-selection")?;
     inventory(

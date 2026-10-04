@@ -1,3 +1,6 @@
+//! Implements session creation and report persistence. Session capabilities
+//! are stored as hashes, and event fingerprints make client retries detectable.
+
 use anyhow::{Context as _, Result, bail};
 use serde_json::{Value, json};
 
@@ -130,6 +133,7 @@ impl Store {
         let summary = summary.context("watcher material reports require summary")?;
         validate_text(&summary, "summary", 4_096)?;
         validate_evidence(&evidence)?;
+        // A client-supplied id gives retries a stable key; otherwise content and time form it.
         let seed = if let Some(id) = requested_event_id {
             safe_id(id, "eventId")?;
             format!("client|{id}")
@@ -158,6 +162,7 @@ impl Store {
         }
         let fingerprint = hash_text(&canonical_text(&fingerprint_value)?);
         let existing_events = self.reconcile_events(&mut session)?;
+        // Reusing an id is idempotent only when the full material report is unchanged.
         if let Some(previous) = existing_events
             .iter()
             .find(|event| event.event_id == event_id)

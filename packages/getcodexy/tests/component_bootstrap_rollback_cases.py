@@ -1,4 +1,4 @@
-"""Durable bootstrap rollback scenarios shared by the bootstrap test case."""
+"""Bootstrap recovery requires an exact durable snapshot before clearing its journal."""
 
 from __future__ import annotations
 

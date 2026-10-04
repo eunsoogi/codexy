@@ -1,4 +1,7 @@
 
+//! Keeps readiness blocked when PR or captured local/remote HEAD evidence is
+//! missing or blank.
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]

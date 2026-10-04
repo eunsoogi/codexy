@@ -4,6 +4,8 @@ use std::{fs, path::Path, process::Command};
 #[test]
 fn pypi_environment_admission_accepts_the_protected_shape_and_rejects_drift()
 -> Result<(), Box<dyn std::error::Error>> {
+    // Admission requires protected branches and one nonempty reviewer gate plus
+    // one branch rule.
     let valid = r#"{
       "name":"pypi",
       "deployment_branch_policy":{"protected_branches":true,"custom_branch_policies":false},
@@ -103,6 +105,7 @@ fn pypi_environment_admission_accepts_the_protected_shape_and_rejects_drift()
     }"#;
     assert!(!run(non_array_rules, "admin")?.status.success());
 
+    // Every configured reviewer must qualify, even when the first one has sufficient access.
     assert!(!run_with_second_permission(&multiple_reviewers, "admin", "read")?.status.success());
 
     let bypassed = valid.replace(

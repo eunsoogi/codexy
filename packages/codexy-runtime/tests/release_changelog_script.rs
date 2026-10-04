@@ -18,6 +18,7 @@ fn infers_previous_tag_from_release_history() -> Result<(), Box<dyn std::error::
     )?;
     run_git(temp.path(), &["tag", "v0.1.0"])?;
 
+    // The target backport branches from v0.1.0 while mainline later gets an unrelated release.
     run_git(temp.path(), &["switch", "-c", "backport", "v0.1.0"])?;
     std::fs::write(temp.path().join("file.txt"), "backport fix\n")?;
     run_git(temp.path(), &["add", "file.txt"])?;

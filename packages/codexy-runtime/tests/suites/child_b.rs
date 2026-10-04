@@ -1,3 +1,4 @@
+// Second child-lane shard: reassignment, tool routing, completion, and handoff evidence.
 #[path = "../validator_child_lane_ownership_pending_reassignment.rs"]
 mod validator_child_lane_ownership_pending_reassignment;
 

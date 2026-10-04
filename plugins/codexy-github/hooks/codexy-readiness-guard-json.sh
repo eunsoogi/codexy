@@ -1,4 +1,5 @@
 # shellcheck shell=sh
+# Parse just enough JSON structure to reject scalars, malformed objects, and trailing data without jq.
 json_is_structurally_complete_object() {
 	printf '%s\n' "$1" | LC_ALL=C awk '
 BEGIN { RS = "\034" }
@@ -100,6 +101,7 @@ END {
 }
 '
 }
+# Match a depth-one member only, so a same-named field in nested evidence cannot satisfy the guard.
 top_level_json_field_value() {
 	json_text="$1"
 	field_name="$2"
@@ -176,6 +178,7 @@ function emit_value(start,    i, c, depth, in_string, escape, seen) {
 }
 '
 }
+# Extract an object-valued depth-one member for checks that need its own child fields.
 top_level_json_object_field_value() {
 	json_text="$1"
 	field_name="$2"

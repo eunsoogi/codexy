@@ -74,6 +74,7 @@ const COMPATIBILITY_FIELDS: &[&str] = &[
 const SERVERS: [&str; 2] = ["lsp", "codegraph"];
 
 pub(super) fn check(plugin_root: &Path, supported: &[String]) -> Result<()> {
+    // Select a closed schema by release state before validating artifact, provenance, platform, and class evidence.
     let path = plugin_root.join("runtime-release.json");
     let document = load_json(&path)?;
     let root = object(&document, "root", &path)?;

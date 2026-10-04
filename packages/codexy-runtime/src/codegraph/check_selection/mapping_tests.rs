@@ -8,6 +8,7 @@ use super::model::{
 };
 use super::{recommend, recommend_with_options};
 
+// Equivalent duplicate mappings are canonicalized; conflicting definitions remain gaps instead of choosing a winner.
 fn changes(paths: &[&str]) -> ChangeSet {
     ChangeSet {
         baseline_revision: "base".into(),

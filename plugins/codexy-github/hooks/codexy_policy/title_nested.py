@@ -28,6 +28,7 @@ def forbidden(code: object, cwd: object = None) -> bool:
     if not isinstance(code, str):
         return _mentions_supported_call(code if isinstance(code, str) else "")
     bounded_code = code.strip()
+    # Parse bounded source precisely; oversized or malformed source still gets a conservative mutation scan.
     if len(bounded_code) > MAX_CODE:
         return _mentions_supported_call(code)
     try:
@@ -39,6 +40,7 @@ def forbidden(code: object, cwd: object = None) -> bool:
 def _inspect(tokens: list[Token], depth: int, cwd: object) -> bool:
     if depth > MAX_DEPTH:
         raise ParseError("nested evaluation depth")
+    # Inspect nested shell calls, literal eval strings, and template expressions at the same depth limit.
     for index, token in enumerate(tokens):
         if shell_forbidden(tokens, index, cwd):
             return True

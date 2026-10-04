@@ -45,6 +45,7 @@ def recover_if_needed(
     root: MarketplaceBinding,
     hook_lister: HookLister | None = None,
 ) -> None:
+    """Resume committed work or restore the snapshot for earlier phases."""
     journal = read_journal(home)
     if journal is None:
         return
@@ -120,7 +121,7 @@ def rollback_or_raise(
     cause: BaseException,
 ) -> None:
     try:
-        write_journal(home, journal.with_phase("rolling-back"))
+        write_journal(home, journal.with_phase("rolling-back"))  # Record phase first.
         restore_selection(home, executable, invoke, manifest, root, journal.before)
         installed = list_installed(executable, invoke)
         if reconcile_installed_inventory(manifest, installed, root) != journal.before:
@@ -158,7 +159,7 @@ def write_completed(
         clear_journal(home)
         return receipt
     write_inventory(home, installed)
-    write_journal(home, journal.with_phase("committed"))
+    write_journal(home, journal.with_phase("committed"))  # Resume on retry.
     return finish_committed(
         home,
         executable,

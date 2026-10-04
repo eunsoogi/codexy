@@ -1,4 +1,4 @@
-"""Operation receipt fixture builder."""
+"""Receipt fixtures keep the persisted selection and installed-state fields aligned."""
 
 
 def make_receipt(

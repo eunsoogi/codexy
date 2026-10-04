@@ -4,6 +4,7 @@ use crate::support;
 
 #[test]
 #[cfg(unix)]
+// The no-tags clone proves the publisher must fetch release tags before the generator can find its prior version.
 fn final_publisher_fetches_release_tags_before_generating_notes()
 -> Result<(), Box<dyn std::error::Error>> {
     let temporary = tempfile::tempdir()?;

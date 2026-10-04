@@ -108,6 +108,7 @@ def run_github_pre_session(
             activate = activate_github or sync_github_agent
             github_changed = activate(trusted_github, home)
     except Exception as error:
+        # Restore projections and remove only plugins that this attempt added.
         failures = []
         try:
             snapshot.restore()

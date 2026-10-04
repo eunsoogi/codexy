@@ -1,3 +1,5 @@
+"""Floating refs are repinned or quarantined with a recovery snapshot."""
+
 from __future__ import annotations
 
 import base64

@@ -1,3 +1,5 @@
+//! Resolves current review policy and emits review-control state for the CLI.
+
 use std::{fs, path::PathBuf};
 
 use anyhow::Result;
@@ -50,6 +52,7 @@ struct Cli {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    // Retired history and economics modes must not synthesize current review evidence.
     if cli.recover_native_history {
         anyhow::bail!(
             "legacy review-control processing is no longer supported: native review-history recovery is retired"

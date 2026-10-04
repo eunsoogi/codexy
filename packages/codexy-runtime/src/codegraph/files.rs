@@ -9,6 +9,7 @@ use sha2::{Digest, Sha256};
 use super::errors::{CodegraphError, CodegraphErrorKind, record, remember_files, was_discovered};
 use super::snapshot::{FileSnapshot, environment_digest};
 
+// This allowlist is shared by repository discovery and extensionless import resolution.
 const CODE_EXTENSIONS: &[&str] = &[
     "js", "jsx", "ts", "tsx", "mjs", "cjs", "py", "go", "rs", "rb", "java", "kt", "html", "htm",
     "css", "scss", "sass", "less", "svg", "vue", "svelte", "astro", "json", "jsonc", "yaml", "yml",
@@ -44,6 +45,7 @@ pub(super) fn repo_root(input_root: Option<&str>) -> Result<PathBuf, CodegraphEr
         ));
     }
     let candidate = PathBuf::from(input_root);
+    // Resolve relative roots from the runtime CWD, then canonicalize only after directory/read checks pass.
     let rooted = if candidate.is_absolute() {
         candidate
     } else {
@@ -102,6 +104,7 @@ pub(super) fn discover_code_files(root: &Path) -> FileSnapshot {
 }
 
 fn enumerate_code_files(root: &Path) -> Vec<String> {
+    // Preserve hidden source trees but prune repository metadata and installed dependencies before walking.
     let mut files = WalkBuilder::new(root)
         .hidden(false)
         .filter_entry(|entry| {
@@ -131,6 +134,7 @@ fn enumerate_code_files(root: &Path) -> Vec<String> {
 
 pub(super) fn read_source_snapshot(root: &Path, file: &str) -> Option<SourceSnapshot> {
     let source = read_source_text(root, file)?;
+    // The digest binds cache reuse to bytes, including same-length edits.
     Some(SourceSnapshot {
         digest: Sha256::digest(source.as_bytes()).into(),
         source,
@@ -158,6 +162,7 @@ fn read_source_text(root: &Path, file: &str) -> Option<String> {
 }
 
 fn file_error_kind(error: &io::Error, was_discovered: bool) -> CodegraphErrorKind {
+    // A path that vanished after enumeration is a race; one absent from the scan was simply missing.
     match error.kind() {
         io::ErrorKind::NotFound if was_discovered => CodegraphErrorKind::FileDeletionRace,
         io::ErrorKind::NotFound => CodegraphErrorKind::SourceMissing,
@@ -186,6 +191,7 @@ fn relative_display(root: &Path, path: &Path) -> String {
 }
 
 fn path_join_posix(root: &Path, file: &str) -> PathBuf {
+    // Graph paths use `/` regardless of host, so rebuild relative components portably.
     let candidate = Path::new(file);
     if candidate.is_absolute() {
         return candidate.to_path_buf();

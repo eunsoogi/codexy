@@ -1,3 +1,4 @@
+// Keep each mapped change-impact scenario in its own focused fixture module.
 #[path = "common.rs"]
 mod common;
 #[path = "documentation.rs"]

@@ -19,6 +19,7 @@ class Request:
 
 
 def _pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
+    # Reject duplicate JSON keys so policy fields cannot have competing interpretations.
     result: dict[str, Any] = {}
     for key, value in items:
         if key in result:
@@ -51,6 +52,7 @@ def evaluate(
     diagnostic: str,
     forbidden: Callable[[Request], bool | str],
 ) -> bytes:
+    # One sentinel byte distinguishes an oversized payload from a complete bounded request.
     if event not in EVENTS or len(payload) > MAX_INPUT:
         return deny(event, diagnostic, "ENVELOPE")
     try:

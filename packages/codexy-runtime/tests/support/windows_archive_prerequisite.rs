@@ -1,3 +1,4 @@
+/// Keeps the release scanner on provisioned Windows search paths without installing new tools.
 pub(crate) fn assert_windows_prerequisite_contract(text: &str) {
     super::release_archive::assert_structured_literals(
         text,

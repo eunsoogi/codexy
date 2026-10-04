@@ -21,6 +21,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         issue = json.loads(args.issue_json.read_text(encoding="utf-8"))
+        # The helper checks the requested shorthand against the fetched repository issue identity.
         identity = canonicalize_requested_issue(args.requested, issue, args.repository)
     except (OSError, json.JSONDecodeError, ValueError) as error:
         print(f"canonicalize-version-pr-issue: {error}", file=sys.stderr)

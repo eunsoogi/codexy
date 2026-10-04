@@ -9,6 +9,7 @@ use crate::validation::{json_array_strings, load_json};
 const BOOTSTRAP: &str = "mcp/codexy_mcp_bootstrap.py";
 const SOURCE_LAUNCHER: &str = "mcp/codexy-mcp-watcher.sh";
 
+/// Enforces the single watcher server contract, safe launchers, and platform runtime artifacts.
 pub(super) fn check(plugin_root: &Path, manifest: &Value) -> Result<()> {
     let path = super::manifest::mcp_config_path(plugin_root, manifest)?;
     let data = load_json(&path)?;
@@ -55,6 +56,7 @@ pub(super) fn check(plugin_root: &Path, manifest: &Value) -> Result<()> {
         );
     }
     let launcher = plugin_root.join(SOURCE_LAUNCHER);
+    // Inspect the directory entry itself so a symlink cannot redirect the packaged launcher.
     let launcher_metadata = std::fs::symlink_metadata(&launcher).with_context(|| {
         format!(
             "core watcher launcher is missing: {}",
@@ -101,9 +103,12 @@ pub(super) fn check(plugin_root: &Path, manifest: &Value) -> Result<()> {
         .get("version")
         .and_then(Value::as_str)
         .context("core plugin manifest version must be a string")?;
+    // Keep the Windows fallback order and version pin byte-for-byte aligned with the release contract.
     let expected = format!(
         concat!(
             "@echo off\n",
+            "@rem Prefer the bundled runtime, then the checkout package, then the version-pinned release.\n",
+            "@rem Return the selected launcher's exit status unchanged.\n",
             "set \"plugin_root=%~dp0..\"\n",
             "set \"bundled_runtime=%plugin_root%\\runtime\\codexy-mcp-watcher-windows-x86_64.exe\"\n",
             "if exist \"%bundled_runtime%\" goto bundled_runtime\n",

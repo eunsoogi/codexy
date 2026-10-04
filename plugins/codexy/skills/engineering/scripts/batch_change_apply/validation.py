@@ -45,6 +45,7 @@ def document(path_value: str) -> tuple[dict[str, Any], str]:
         raise ApplyError(f"invalid resume result: {path_value}") from error
     if not isinstance(value, dict):
         raise ApplyError("resume result must be an object")
+    # Bind resumable apply state to the exact validated result bytes, not just its batch label.
     return value, hashlib.sha256(raw).hexdigest()
 
 
@@ -90,6 +91,7 @@ def artifact(
     expected = output.get("state")
     if not isinstance(expected, Mapping):
         raise ApplyError("validated output state is missing")
+    # Recheck the validated output's location and digest before exposing bytes to the apply path.
     path = absolute_under(results_root, output.get("path"), "validated artifact")
     data, actual = read_regular(path, "validated artifact")
     if not content_matches(actual, expected):

@@ -1,3 +1,4 @@
+// Domain-specific phrase sets keep the classifier's blocker, failure, and waiting contexts distinct.
 pub(super) mod blocked;
 pub(super) mod checks;
 pub(super) mod negation;

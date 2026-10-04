@@ -29,6 +29,7 @@ const ALLOWED_FIELDS: &[&str] = &[
     "url",
 ];
 
+/// Validates custom-agent MCP server fields and delegates per-tool override validation.
 pub(super) fn check(path: &Path, value: Option<&Value>, errors: &mut Vec<String>) {
     let Some(value) = value else {
         return;
@@ -168,6 +169,7 @@ fn check_env_vars(
     fields: &toml::map::Map<String, Value>,
     errors: &mut Vec<String>,
 ) {
+    // Environment entries may be literal names or tables with only a name and optional local/remote source.
     if fields.get("env_vars").is_some_and(|value| {
         !value.as_array().is_some_and(|items| {
             items.iter().all(|item| {

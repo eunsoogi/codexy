@@ -10,6 +10,7 @@ mod projection_cases;
 #[cfg(unix)]
 use projection_cases::assert_projection_cases;
 
+// Staging and activation may use different commits, so publication must verify both lineage and activation-source scripts.
 #[test]
 fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<dyn std::error::Error>> {
     let path = codexy_runtime::paths::repository_root().join(".github/workflows/publish-version-release.yml");

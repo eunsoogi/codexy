@@ -35,6 +35,7 @@ CASES = (
 
 
 def request(process, payload):
+    # Keep one native process alive across initialize and tool calls, using the JSON-RPC reply timeout.
     process.stdin.write(json.dumps(payload) + "\n")
     process.stdin.flush()
     ready, _, _ = select.select([process.stdout], [], [], 30)
@@ -47,6 +48,7 @@ def request(process, payload):
 
 
 def smoke_case(binary, name, arguments, state_dir):
+    # Share only a temporary watcher state directory across the native smoke cases.
     process = subprocess.Popen(
         [binary],
         stdin=subprocess.PIPE,
@@ -75,6 +77,7 @@ def smoke_case(binary, name, arguments, state_dir):
         if tool.get("error") or not tool.get("result", {}).get("content"):
             raise RuntimeError(f"{binary} tool smoke failed: {tool}")
     finally:
+        # Closing stdin exercises the runtime's normal shutdown path before a forced kill is considered.
         process.stdin.close()
         try:
             process.wait(timeout=30)

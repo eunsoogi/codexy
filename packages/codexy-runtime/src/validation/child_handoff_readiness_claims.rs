@@ -80,6 +80,7 @@ pub(super) fn standalone_ready_line(text: &str) -> bool {
             return false;
         };
         let line = line.trim_end_matches('.');
+        // A readiness bullet is affirmative only when it names readiness and no following bullet negates it.
         STANDALONE_READY_PHRASES.contains(&line)
             && (!is_bullet || explicit_bullet_ready_phrase(line))
             && !has_next_non_claim_bullet(&lines[index + 1..])

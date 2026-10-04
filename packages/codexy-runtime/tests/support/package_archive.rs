@@ -1,5 +1,6 @@
 use std::process::Command;
 
+/// Places the package archive at the zip root, matching the artifact layout consumed by wrappers.
 pub(super) fn zip_package(
     artifact_zip: &std::path::Path,
     package_path: &std::path::Path,

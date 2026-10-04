@@ -5,6 +5,7 @@ set -eu
 : "${GH_TOKEN:?GH_TOKEN is required}"
 api_version='X-GitHub-Api-Version: 2026-03-10'
 environment="$(gh api -H "$api_version" "repos/$GITHUB_REPOSITORY/environments/pypi")"
+# Require the protected-branch and reviewer rules that prevent an unreviewed PyPI publication.
 printf '%s' "$environment" | jq -e '
   .name == "pypi" and
   .deployment_branch_policy.protected_branches == true and
@@ -29,6 +30,7 @@ printf '%s' "$environment" | jq -e '
 
 reviewers="$(printf '%s' "$environment" | jq -r '[.protection_rules[] | select(.type == "required_reviewers") | .reviewers[]?.reviewer.login] | unique[]')"
 test -n "$reviewers"
+# A configured reviewer must have sufficient repository access for the protection rule to function.
 printf '%s\n' "$reviewers" | while IFS= read -r reviewer; do
   test -n "$reviewer"
   permission="$(gh api -H "$api_version" "repos/$GITHUB_REPOSITORY/collaborators/$reviewer/permission" --jq '.role_name // .permission')"

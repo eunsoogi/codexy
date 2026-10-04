@@ -43,6 +43,7 @@ def resume_batch(
     """Resume one validated preview through explicit reuse/rerun decisions."""
     if not SUPPORTED_PLATFORM:
         raise ResumeError("batch resume requires POSIX process-group support")
+    # Establish output/state boundaries and validate preview identity before creating resumable state.
     validate_output_limit(output_limit_bytes)
     root = workspace(workspace_root)
     results = absolute_directory(
@@ -78,6 +79,7 @@ def resume_batch(
     identifier = stable_batch_id(preview, root, batch_id)
     state_path = state_directory / f"{identifier}.json"
     with batch_lock(state_directory, identifier):
+        # Read, extend, and persist the checkpoint under one batch-local lock.
         try:
             loaded = read_json(state_path)
         except StateError as error:
@@ -103,6 +105,7 @@ def resume_batch(
                     )
         state["operation"] = current_operation
         state["workspace"] = str(root)
+        # Publish the exact current operation before any selected item can start executing.
         persist_state(state_path, state, persistence_hook)
         run_root = Path(tempfile.mkdtemp(prefix="resume-", dir=results))
         artifact_root = run_root / "artifacts"

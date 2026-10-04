@@ -204,7 +204,7 @@ class ResumableContextCapsuleTests(unittest.TestCase):
         authority.parent.mkdir(exist_ok=True)
         document = dict(AUTHORITY_TEMPLATE)
         document.update(schema="codexy.handoff-authority.v1", stable=STABLE)
-        authority.write_text(json.dumps(document))
+        authority.write_text(json.dumps(document))  # Separate trusted authority.
         return path
 
     def _run(self, capsule: Path, *arguments: str, environment=None):

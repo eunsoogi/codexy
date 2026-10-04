@@ -1,4 +1,5 @@
 pub(super) fn is_rust_keyword(identifier: &str) -> bool {
+    // Reject language keywords, including reserved forms, as module identifiers in this parser's intentionally narrow grammar.
     matches!(
         identifier,
         "as" | "async"

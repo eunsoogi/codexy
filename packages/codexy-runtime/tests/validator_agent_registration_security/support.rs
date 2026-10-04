@@ -1,3 +1,6 @@
+//! Shares isolated installed-package fixtures and assertions for failed role
+//! discovery without accepting a count-only pass.
+
 use crate::support;
 use crate::support::FixtureCommand as Command;
 use std::process::Output;

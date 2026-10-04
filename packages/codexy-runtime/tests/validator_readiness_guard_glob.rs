@@ -1,3 +1,5 @@
+// A glob passed inside merge-message text is data, not shell syntax, and must
+// not expand into an expected closing reference.
 use std::fs::File;
 use crate::support::FixtureCommand as Command;
 

@@ -1,3 +1,6 @@
+//! Keeps manifest platform claims aligned with bundled runtime assets, the
+//! publish wrapper contract and the required public-platform baseline.
+
 use super::*;
 
 #[test]

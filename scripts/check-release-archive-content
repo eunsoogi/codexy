@@ -31,6 +31,7 @@ def safe_relative(raw: str) -> pathlib.PurePosixPath:
 def within(root: pathlib.Path, relative: pathlib.PurePosixPath) -> pathlib.Path:
     candidate = root.joinpath(*relative.parts)
     try:
+        # Resolve symlinked components before accepting an expected path under either package root.
         candidate.resolve().relative_to(root.resolve())
     except ValueError:
         fail(f"unsafe expected path: {relative}")
@@ -40,6 +41,7 @@ def within(root: pathlib.Path, relative: pathlib.PurePosixPath) -> pathlib.Path:
 def same_bytes(source: pathlib.Path, extracted: pathlib.Path) -> bool:
     try:
         with source.open("rb") as source_file, extracted.open("rb") as extracted_file:
+            # Chunked reads keep package verification bounded for large runtime files.
             while True:
                 source_chunk = source_file.read(CHUNK_SIZE)
                 extracted_chunk = extracted_file.read(CHUNK_SIZE)

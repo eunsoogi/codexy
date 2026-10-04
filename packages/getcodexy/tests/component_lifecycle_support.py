@@ -1,3 +1,5 @@
+"""Build isolated marketplace and host fixtures with injectable lifecycle faults."""
+
 from __future__ import annotations
 
 import json
@@ -16,6 +18,8 @@ VERSION = load_component_manifest().version
 
 
 class fixture:
+    """Model plugin selection, release pinning, and host mutations per test."""
+
     def __init__(
         self,
         selection: set[str] | None = None,
@@ -165,6 +169,7 @@ class fixture:
         return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
 
     def _ensure_marketplace_identity(self) -> None:
+        """Create a release-tag checkout while leaving main one commit newer."""
         if self.tag_revision is not None:
             return
         populate_plugins(self.marketplace)

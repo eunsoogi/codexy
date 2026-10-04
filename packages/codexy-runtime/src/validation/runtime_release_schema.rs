@@ -86,6 +86,7 @@ pub(super) fn exact(actual: &str, expected: &str, field: &str, path: &Path) -> R
 }
 
 pub(super) fn exact_keys(value: &Map<String, Value>, expected: &[&str], path: &Path) -> Result<()> {
+    // Release and candidate receipts are closed schemas, so both missing and extra keys are drift.
     let actual = value.keys().cloned().collect::<BTreeSet<_>>();
     let expected = expected
         .iter()

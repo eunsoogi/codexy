@@ -100,6 +100,7 @@ def probe_watcher(plugin, base):
             "arguments": {"sessionId": session, "parentToken": token},
         },
     )
+    # Close the short-lived probe session after confirming its health endpoint.
     for request in (health_request, cancel_request):
         response = rpc.request(request)
         if isinstance(response, dict) and isinstance(response.get("id"), int):

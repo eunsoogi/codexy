@@ -1,3 +1,5 @@
+//! Answers the small set of client requests that configured language servers need.
+
 use serde_json::{Value, json};
 
 pub(super) fn server_request_response(message: &Value) -> Option<Value> {
@@ -11,6 +13,7 @@ pub(super) fn server_request_response(message: &Value) -> Option<Value> {
         .unwrap_or_default();
     let result = match method {
         "workspace/configuration" => {
+            // Preserve the server's item count even though Codexy has no per-server settings here.
             let items = message
                 .pointer("/params/items")
                 .and_then(Value::as_array)

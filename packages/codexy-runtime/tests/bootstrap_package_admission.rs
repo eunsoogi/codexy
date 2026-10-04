@@ -3,6 +3,7 @@ use std::fs;
 use serde_yaml::Value;
 
 #[test]
+// Keep bootstrap-first publishing disabled until the audited final publisher owns the release path.
 fn bootstrap_first_pypi_publication_is_explicitly_fail_closed()
 -> Result<(), Box<dyn std::error::Error>> {
     let bootstrap = workflow()?;

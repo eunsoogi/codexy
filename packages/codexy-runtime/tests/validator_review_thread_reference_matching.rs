@@ -1,3 +1,6 @@
+//! Matches discussion URLs to exact comment anchors, avoiding numeric-prefix
+//! collisions while accepting a later comment within the same review thread.
+
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

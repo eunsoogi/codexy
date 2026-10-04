@@ -57,6 +57,7 @@ fn check(
     state: Option<&Value>,
     require_pass: bool,
 ) -> Result<(), String> {
+    // Review-bearing profiles bind the exact current head; a required pass also needs no unresolved findings.
     if control.get("schema").and_then(Value::as_str) != Some(CONTROL_SCHEMA) {
         return Err("review control state has an unsupported schema".into());
     }

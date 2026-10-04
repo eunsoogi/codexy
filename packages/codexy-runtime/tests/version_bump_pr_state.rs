@@ -1,3 +1,4 @@
+// Builder output must preserve exact repository/head identity and distinguish closing from explicit Tracks linkage.
 use serde_json::{json, Value};
 use std::{fs, path::Path};
 use crate::support::FixtureCommand as Command;

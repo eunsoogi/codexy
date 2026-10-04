@@ -1,3 +1,5 @@
+//! Applies a verified runtime activation receipt without publishing a release.
+
 use std::path::PathBuf;
 
 use anyhow::Result;

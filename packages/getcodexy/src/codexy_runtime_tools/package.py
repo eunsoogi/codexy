@@ -1,3 +1,5 @@
+"""Acquire and unpack verified Codexy runtime packages from supported sources."""
+
 from __future__ import annotations
 
 import hashlib
@@ -34,6 +36,7 @@ class _GithubRedirectHandler(urllib.request.HTTPRedirectHandler):
             request, file_pointer, status, message, headers, new_url
         )
         if redirected and _origin(request.full_url) != _origin(new_url):
+            # Redirects may leave GitHub; do not forward the API token.
             for redirect_headers in (redirected.headers, redirected.unredirected_hdrs):
                 for name in list(redirect_headers):
                     if name.lower() == "authorization":

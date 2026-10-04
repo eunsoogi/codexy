@@ -1,3 +1,5 @@
+//! Confirms a README-only change selects the repository documentation check.
+
 use super::common::run_demo;
 
 #[test]

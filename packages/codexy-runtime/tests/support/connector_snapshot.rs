@@ -1,3 +1,6 @@
+//! Converts a flattened PR snapshot into the source-only connector capture
+//! shape used to verify evidence provenance.
+
 use serde_json::{Value, json};
 
 pub(crate) fn source_only(snapshot: &Value) -> Value {

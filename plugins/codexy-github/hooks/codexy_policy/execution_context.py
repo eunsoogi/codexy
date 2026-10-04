@@ -30,6 +30,7 @@ def assign(value: str, context: ExecutionContext) -> ExecutionContext:
     key, assigned = value.split("=", 1)
     expanded = expand(assigned, context)
     environment = dict(context.environment)
+    # Unknown expansion must not be used as repository-selection evidence later in the command.
     if expanded is None or (key in POLICY_SELECTORS and DYNAMIC_VALUE in expanded):
         environment[key] = assigned
         return replace(
@@ -79,6 +80,7 @@ def assigned_variables(
 
 
 def at(context: ExecutionContext, cwd: str) -> ExecutionContext:
+    # A cd-like transition changes which repository owns later relative Git effects.
     owned = (
         git_directory_owned(cwd, context.git_dir)
         if context.git_dir is not None
@@ -164,6 +166,7 @@ def unset_variables(
 
 
 def clear(context: ExecutionContext) -> ExecutionContext:
+    # Model env -i by dropping inherited selectors and assignments while keeping the current directory.
     return replace(
         context,
         cwd_owned=repository_owned(context.cwd),
@@ -208,6 +211,7 @@ def expand(value: str, context: ExecutionContext) -> str | None:
 
 def git_config(context: ExecutionContext) -> dict[str, str] | None:
     """Return one complete indexed Git configuration environment, or reject ambiguity."""
+    # Git's indexed pair format is useful only when every declared entry is present and unique.
     relevant = {
         key: value
         for key, value in context.environment

@@ -3,6 +3,7 @@ use std::path::Path;
 use crate::support::FixtureCommand;
 
 pub(super) fn copy_selected_sources(repo_root: &Path) {
+    // A minimal repository projection exposes any undeclared source-checkout dependency.
     std::fs::create_dir_all(repo_root.join("packages/codexy-runtime/src/version"))
         .expect("candidate version parent");
     std::fs::create_dir_all(repo_root.join("plugins/codexy-devtools/mcp"))

@@ -1,3 +1,5 @@
+"""Command and plugin fixtures for pre-session release-pin tests."""
+
 from __future__ import annotations
 
 import json
@@ -125,6 +127,7 @@ def installed(root: Path) -> dict[str, object]:
 
 
 def make_plugin(root: Path) -> Path:
+    """Create a minimal v1.2.2 plugin and matching detached release checkout."""
     manifest = root / ".codex-plugin" / "plugin.json"
     manifest.parent.mkdir(parents=True)
     manifest.write_text(

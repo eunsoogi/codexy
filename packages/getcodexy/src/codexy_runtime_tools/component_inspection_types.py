@@ -6,6 +6,8 @@ from .component_manifest import ComponentManifest
 
 
 class InspectionReport(TypedDict):
+    """Internal read-only snapshot shared by status and doctor projections."""
+
     manifest: ComponentManifest
     actual: tuple[str, ...]
     recorded: tuple[str, ...] | None

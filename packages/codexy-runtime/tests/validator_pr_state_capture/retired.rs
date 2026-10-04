@@ -1,3 +1,5 @@
+// Retired review-control aliases must fail before replacing output, while
+// valid compact direct-state records remain usable.
 use std::fs;
 
 use crate::support::TestResult;

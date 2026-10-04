@@ -1,4 +1,5 @@
 #[derive(Debug, Clone)]
+/// Selects one validator surface and carries only the evidence that surface consumes.
 pub enum Mode {
     All,
     Lsp,

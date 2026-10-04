@@ -1,3 +1,5 @@
+"""Subprocess isolation, cancellation, and timeout integration cases."""
+
 from __future__ import annotations
 
 import json

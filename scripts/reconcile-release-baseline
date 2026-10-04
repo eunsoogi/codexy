@@ -12,6 +12,7 @@ baseline=dist/release-baseline.json
 signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
 runtime_signer="$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml"
 
+# Keep each release artifact tied to the workflow and source commit authorized to produce it.
 attestation_policies() {
   jq -n --arg signer "$signer" --arg runtime_signer "$runtime_signer" \
     --arg activation "$ACTIVATION_COMMIT" --arg staging "$1" '
@@ -37,6 +38,7 @@ download_release_asset() {
 
 gh api -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" | jq '{id, name, tagName: .tag_name, targetCommitish: .target_commitish, isDraft: .draft, isPrerelease: .prerelease, assets}' > release-state.json
 if jq -e '.assets[] | select(.name == "release-baseline.json")' release-state.json >/dev/null; then
+  # Existing baselines are verified against current release bytes and attestations, never regenerated.
   existing_baseline="$(mktemp -d)"
   existing_baseline_release="$(mktemp -d)"
   download_release_asset "$existing_baseline" release-baseline.json
@@ -66,6 +68,7 @@ test "$(jq -r .isPrerelease release-state.json)" = false
 test "$(jq -r .name release-state.json)" = "$RELEASE_TAG"
 test "$(jq -r .tagName release-state.json)" = "$RELEASE_TAG"
 test "$(jq -r .targetCommitish release-state.json)" = "$ACTIVATION_COMMIT"
+# A new baseline can describe only the expected release assets and their verified attestations.
 for name in $(jq -r '.assets[].name' release-state.json); do
   case "$name" in codexy-marketplace-plugin.tar.gz|codexy-marketplace-bundle.tar.gz|codexy-runtime-package.tar.gz|runtime-release-receipt.json) ;; *) exit 1 ;; esac
 done

@@ -1,5 +1,6 @@
 use super::Expected;
 
+// This typed table is the exhaustive expected model compared with the published JSON transitions.
 pub(super) const EXPECTED: &[Expected] = &[
     Expected {
         id: "install-all",

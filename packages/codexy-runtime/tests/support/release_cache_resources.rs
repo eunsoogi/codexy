@@ -1,3 +1,6 @@
+//! Checks wrapper failures for unavailable cache helpers and plugin manifests;
+//! Unix additionally verifies helper executable permissions.
+
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
 

@@ -1,3 +1,4 @@
+// Action auditing reads only structured workflow/job/step `uses` values, so comments and shell strings cannot hide stale actions.
 use serde_yaml::Value;
 
 #[test]

@@ -10,7 +10,7 @@ const CONTRACT_ARTIFACTS: [&str; 4] = [
     "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
     "packages/getcodexy/tests/fixtures/component-installation-cases.json",
 ];
-
+// The public plugin check requires every canonical installation-contract source artifact.
 #[test]
 fn public_validator_accepts_all_canonical_source_contract_artifacts() -> TestResult {
     let fixture = CanonicalSourceFixture::new()?;
@@ -32,7 +32,7 @@ fn public_validator_fails_closed_for_each_missing_source_contract_artifact() -> 
     }
     Ok(())
 }
-
+// A lookalike repository must not inherit canonical-source checks from a matching plugin directory name.
 #[test]
 fn public_validator_accepts_a_noncanonical_source_lookalike() -> TestResult {
     let lookalike = tempfile::tempdir()?;

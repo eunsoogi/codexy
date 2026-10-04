@@ -1,3 +1,4 @@
+// Keep present-tense failures separate from false-valued and resolved claims so old check errors do not block completion.
 pub(in super::super) const EXTERNAL_FAILURE: &[&str] = &[
     "required checks are failing",
     "required checks failed",

@@ -4,6 +4,7 @@ use std::path::Path;
 
 use crate::paths::display_relative;
 
+/// Checks installed agent-registration entrypoints, support modules, symlink policy, and Unix execute bits.
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
     let root_bootstrap = plugin_root.join("bootstrap-codexy-agents");
     let update_checker = plugin_root.join("check-codexy-agents");
@@ -55,6 +56,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
             display_relative(&bootstrap)
         ));
     }
+    // Entrypoints must remain regular files so a packaged symlink cannot redirect registration behavior.
     for entrypoint in [&root_bootstrap, &update_checker, &script, &bootstrap] {
         if entrypoint
             .symlink_metadata()
@@ -68,6 +70,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
         }
     }
     #[cfg(unix)]
+    // Check mode bits on Unix; other platforms do not expose this executable-bit contract.
     for entrypoint in [&root_bootstrap, &update_checker, &script, &bootstrap] {
         if entrypoint
             .metadata()

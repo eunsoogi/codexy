@@ -22,6 +22,7 @@ class ActivationSnapshot:
 
     @classmethod
     def capture(cls, home: Path) -> "ActivationSnapshot":
+        """Capture only Codexy activation paths and named config backups."""
         if not home.exists():
             return cls(home, ())
         files: list[Entry] = []
@@ -36,6 +37,7 @@ class ActivationSnapshot:
         return cls(home, tuple(files))
 
     def restore(self) -> None:
+        """Rebuild the captured paths without following links or overwriting files."""
         for root in (
             Path("agents/codexy-github"),
             Path("agents/codexy"),
@@ -47,6 +49,7 @@ class ActivationSnapshot:
                 _remove_tree(backup)
         if self.entries:
             self.home.mkdir(parents=True, exist_ok=True)
+        # Recreate parents before children; O_EXCL rejects unexpected replacements.
         for entry in sorted(self.entries, key=lambda item: len(item.relative.parts)):
             path = self.home / entry.relative
             if entry.data is None:
@@ -84,6 +87,7 @@ def _capture_directory(relative: Path, descriptor: int) -> list[Entry]:
     _require_safe(metadata, relative)
     entries = [Entry(relative, None, stat.S_IMODE(metadata.st_mode))]
     for name in sorted(os.listdir(descriptor)):
+        # Inspect children without following links, then confirm each opened inode.
         child = os.stat(name, dir_fd=descriptor, follow_symlinks=False)
         child_relative = relative / name
         _require_safe(child, child_relative)
@@ -174,6 +178,7 @@ def _open_directory(path: Path, expected: os.stat_result) -> int:
 
 
 def _require_safe(metadata: os.stat_result, path: Path) -> None:
+    """Reject links, multiply-linked files, and special files in activation state."""
     reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
     if (
         stat.S_ISLNK(metadata.st_mode)

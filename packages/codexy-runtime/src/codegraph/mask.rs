@@ -1,3 +1,4 @@
+/// Builds a lightweight lexical mask for regex scans, including common comments, strings, and JS literals.
 pub(super) fn code_position_mask(source: &str) -> Vec<bool> {
     let bytes = source.as_bytes();
     let mut mask = vec![true; bytes.len()];
@@ -21,6 +22,7 @@ pub(super) fn code_position_mask(source: &str) -> Vec<bool> {
     mask
 }
 
+/// Extends the shared mask with `#` comments for Python and Ruby source.
 pub(super) fn language_mask(source: &str, extension: &str) -> Vec<bool> {
     let mut mask = code_position_mask(source);
     if matches!(extension, ".py" | ".rb") {
@@ -41,6 +43,7 @@ pub(super) fn language_mask(source: &str, extension: &str) -> Vec<bool> {
     mask
 }
 
+/// Hides a quoted span while honoring backslash escapes and tolerating an unterminated string.
 fn mask_quoted(bytes: &[u8], mask: &mut [bool], start: usize, quote: u8) -> usize {
     let mut index = start;
     let mut escaped = false;
@@ -58,6 +61,7 @@ fn mask_quoted(bytes: &[u8], mask: &mut [bool], start: usize, quote: u8) -> usiz
     index
 }
 
+/// Hides template text but recursively scans `${...}` expressions for nested lexical constructs.
 fn mask_template(bytes: &[u8], mask: &mut [bool], start: usize) -> usize {
     let mut index = start;
     let mut escaped = false;
@@ -81,6 +85,7 @@ fn mask_template(bytes: &[u8], mask: &mut [bool], start: usize) -> usize {
     index
 }
 
+/// Finds the matching interpolation brace while skipping nested strings, comments, and regexes.
 fn mask_template_expression(bytes: &[u8], mask: &mut [bool], start: usize) -> usize {
     let mut index = start;
     let mut depth = 1usize;
@@ -139,6 +144,7 @@ fn mask_block_comment(bytes: &[u8], mask: &mut [bool], start: usize) -> usize {
     index
 }
 
+/// Uses the preceding token to distinguish a regex literal from the division operator.
 fn starts_regex_literal(bytes: &[u8], mask: &[bool], slash: usize) -> bool {
     if bytes
         .get(slash + 1)
@@ -209,6 +215,7 @@ const fn is_regex_prefix_keyword(word: &str) -> bool {
     )
 }
 
+/// Skips escaped slashes and character classes so only the closing regex delimiter ends the span.
 fn mask_regex_literal(bytes: &[u8], mask: &mut [bool], start: usize) -> usize {
     let mut index = start;
     let mut escaped = false;

@@ -57,6 +57,7 @@ def main(argv: list[str] | None = None) -> int:
         del signum, frame
         cancellation.set()
 
+    # Convert process interrupts into cooperative cancellation and restore host handlers on every exit.
     previous = {
         signal_number: signal.signal(signal_number, request_cancel)
         for signal_number in (signal.SIGINT, signal.SIGTERM)

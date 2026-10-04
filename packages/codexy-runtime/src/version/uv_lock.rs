@@ -1,3 +1,5 @@
+//! Checks and updates the getcodexy version in uv.lock and its pyproject projection.
+
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -117,6 +119,7 @@ fn replace_package_version(path: &Path, version: &str) -> Result<Vec<u8>> {
     let mut lines = Vec::new();
     for line in text.lines() {
         let trimmed = line.trim();
+        // Reset at each lock entry and replace only the named getcodexy package.
         if trimmed == "[[package]]" {
             matching = false;
         } else if trimmed == format!("name = \"{PACKAGE_NAME}\"") {
@@ -147,6 +150,7 @@ fn replace_pyproject_version(path: &Path, version: &str) -> Result<Vec<u8>> {
     let mut lines = Vec::new();
     for line in text.lines() {
         let trimmed = line.trim();
+        // Limit the update to [project], leaving tool and build-system versions unchanged.
         if trimmed == "[project]" {
             in_project = true;
         } else if trimmed.starts_with('[') {

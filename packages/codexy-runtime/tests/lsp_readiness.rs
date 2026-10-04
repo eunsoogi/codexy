@@ -1,3 +1,6 @@
+//! Checks LSP server matching, missing-executable readiness, config coverage,
+//! and candidate version reporting without depending on installed language servers.
+
 use std::io::{BufRead as _, BufReader, Write as _};
 #[cfg(unix)]
 use std::path::Path;

@@ -10,6 +10,7 @@ use super::parse::{import_list, parse_simple, regex_values};
 use super::python::parse_python;
 use super::resolve::{normalize_go_import, normalize_language_import};
 
+/// Dispatches extraction by syntax family, applying lexical masks before language-specific parsing.
 pub(super) fn parse_language(
     root: &Path,
     file: &str,
@@ -54,6 +55,7 @@ fn parse_masked_language(
 }
 
 fn parse_go(root: &Path, file: &str, source: &str, mask: &[bool]) -> (Vec<String>, Vec<String>) {
+    // The module path turns imports inside this module into repository-relative graph targets.
     let module_path = read_go_module_path(root);
     let mut imports = regex_values(
         source,
@@ -81,6 +83,7 @@ fn go_block_imports(
         .captures_iter(source)
         .filter_map(|caps| {
             let block = caps.get(1)?;
+            // Reject import blocks whose opening token is inside a comment or string.
             mask.get(block.start()).copied().filter(|value| *value)?;
             let block_mask = mask.get(block.start()..block.end())?;
             Some(regex_values(
@@ -95,6 +98,7 @@ fn go_block_imports(
 }
 
 fn parse_rust(file: &str, source: &str, mask: &[bool]) -> (Vec<String>, Vec<String>) {
+    // This lightweight graph includes `mod` declarations and crate-local `use` paths, not external crates.
     let mut imports = regex_values(source, mask, &[r"\bmod\s+([A-Za-z_]\w*)\s*;"])
         .into_iter()
         .map(|item| normalize_language_import(".rs", &item, file, None))
@@ -173,6 +177,7 @@ fn java_imports(source: &str, mask: &[bool]) -> Vec<String> {
             let full = caps.get(0)?;
             mask.get(full.start()).copied().filter(|value| *value)?;
             let import_path = caps.get(2)?.as_str();
+            // Static member imports point to the containing class file in this file-level graph.
             if caps.get(1).is_some() {
                 return import_path
                     .rsplit_once('.')

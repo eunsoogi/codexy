@@ -1,3 +1,5 @@
+//! Validates staged runtime receipts before deriving selected release metadata.
+
 mod fields;
 mod source_projection;
 
@@ -38,6 +40,7 @@ pub(super) fn activation_from_receipt(
     let candidate = object_field(root, "candidate", "candidate receipt")?;
     let artifact = object_field(root, "artifact", "candidate receipt")?;
     let provenance = object_field(root, "provenance", "candidate receipt")?;
+    // Validate the full receipt before projecting any of its values into release metadata.
     validate_provenance(provenance)?;
     validate_candidate(candidate, provenance, core_aware)?;
     validate_artifact(artifact)?;

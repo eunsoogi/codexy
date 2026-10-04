@@ -30,6 +30,7 @@ class ObservedVersionPrIdentity:
             raise ValueError("observed PR requires a canonical version branch")
         references = pr.get("closingIssuesReferences")
         if issue_link_mode == "nonclosing":
+            # Tracks mode deliberately accepts no GitHub closing reference.
             return cls._from_nonclosing(pr, branch, references, repository)
         if issue_link_mode != "closing":
             raise ValueError("unsupported governing issue link mode")
@@ -77,6 +78,7 @@ class ObservedVersionPrIdentity:
         body = cls._body(pr)
         if parse_body_closing_references(body, repository) != (issue,):
             raise ValueError("observed PR body must end with the governing issue link")
+        # Require the final visible line to agree with the API-resolved closing reference.
         expected_line = f"Fixes #{number}"
         if not (lines := [line for line in body.splitlines() if line]) or (
             lines[-1] != expected_line

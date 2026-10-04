@@ -16,6 +16,7 @@ use super::{
 const COMPONENT_MANIFEST: &str =
     "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
 
+// Candidate preparation must preserve selected versions in component and compatibility entries.
 #[test]
 fn candidate_preparation_preserves_the_packaged_component_manifest() -> TestResult {
     let fixture = candidate_fixture()?;
@@ -80,6 +81,7 @@ struct FixtureSeed {
 }
 
 impl FixtureSeed {
+    // Build both archives once so tests can materialize clean selected or candidate states.
     fn create() -> TestResult<Self> {
         let temp = tempfile::tempdir()?;
         let (root, selected_version) = super::super::selected_fixture(&temp, "selected-seed")?;

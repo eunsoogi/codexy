@@ -90,6 +90,7 @@ fn codegraph_reverse_deps_preserves_escaping_target_paths() -> Result<(), Box<dy
     let outside_dep = outside.path().join("dep.rs");
     fs::write(&outside_dep, "pub const OUTSIDE: u8 = 1;\n")?;
     let canonical_outside = outside_dep.canonicalize()?;
+    // Mirror the outside path below root to catch suffix-based lookup aliasing.
     let mirrored_suffix = canonical_outside
         .components()
         .filter_map(|component| match component {

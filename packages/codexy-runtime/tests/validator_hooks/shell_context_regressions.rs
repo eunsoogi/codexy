@@ -1,3 +1,6 @@
+//! Preserves read-only and GitHub command availability while keeping destructive
+//! Git actions protected through aliases, wrappers, and uncertain context.
+
 use super::admission_runtime::{
     TestResult, assert_case, assert_event_case, assert_event_cases, executable, plugin_root,
     repository,

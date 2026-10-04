@@ -11,6 +11,7 @@ use serde_yaml::Value;
 
 #[cfg(unix)]
 #[test]
+// The selected legacy archive supplies runtime bytes while only current devtools source is projected into the public bundle.
 fn legacy_public_assembly_projects_runtime_from_detected_archive_root()
 -> Result<(), Box<dyn std::error::Error>> {
     let temporary = tempfile::tempdir()?;

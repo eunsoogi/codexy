@@ -97,6 +97,7 @@ def changed_files(path: Path) -> list[str]:
         fail("changed files must not be empty")
     files: list[str] = []
     for name in lines:
+        # Paths are rendered into Markdown, so reject syntax-bearing and traversal components first.
         candidate = Path(name)
         if (
             not name
@@ -128,6 +129,7 @@ def render(
     merge_issue_flag = (
         " --expected-issue <issue-number>" if issue_link_mode == "closing" else ""
     )
+    # Provisional PRs describe pending post-creation gates; proven metadata includes their commands.
     if publication_phase == "proven":
         readiness_checks = f"""- `plugins/codexy-github/hooks/codexy-pr-title-check.sh --pr-title <title>`
 - `plugins/codexy-github/hooks/codexy-pr-label-check.sh --pr-state-file <pr-state>`
@@ -179,6 +181,7 @@ def render(
 
 def write_outputs(output_dir: Path, title: str, body: str, labels: list[str]) -> None:
     output_dir.parent.mkdir(parents=True, exist_ok=True)
+    # Stage the full metadata set before replacing any caller-visible output file.
     with tempfile.TemporaryDirectory(dir=output_dir.parent) as temporary:
         stage = Path(temporary)
         (stage / "title.txt").write_text(title, encoding="utf-8")

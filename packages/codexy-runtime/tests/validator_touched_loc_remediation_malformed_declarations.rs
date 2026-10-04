@@ -1,3 +1,6 @@
+//! Rejects malformed module paths, visibility prefixes, and names while
+//! preserving valid restricted visibility and raw-identifier controls.
+
 use crate::support;
 
 use std::path::Path;

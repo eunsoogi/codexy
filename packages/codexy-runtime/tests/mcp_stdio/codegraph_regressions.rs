@@ -1,3 +1,6 @@
+//! Guards Codegraph behavior across source changes, invalid encodings, and
+//! multiple roots so caches cannot leak stale or cross-repository results.
+
 use super::*;
 
 #[test]

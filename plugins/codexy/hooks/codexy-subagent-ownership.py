@@ -29,6 +29,7 @@ def main() -> int:
         "--event", required=True, choices=("PreToolUse", "PermissionRequest")
     )
     event = cast(str, parser.parse_args().event)
+    # The extra byte lets the envelope reject oversized requests without reading them unboundedly.
     payload = sys.stdin.buffer.read(1024 * 1024 + 1)
     timing = None
     started_ns = None

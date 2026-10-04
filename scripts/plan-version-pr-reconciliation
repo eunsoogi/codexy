@@ -24,6 +24,7 @@ def boolean(value: str) -> bool:
 def plan(
     has_changes: bool, pr_count: int, remote_exists: bool, pr_matches_origin: bool
 ) -> str:
+    # Map observed branch/PR state to one safe mutation path before authorizing identity checks.
     if not has_changes:
         return "no-op"
     if pr_count > 1:
@@ -45,6 +46,7 @@ def publication_phase(
     completion_handoff_checked: bool,
     merge_message_checked: bool,
 ) -> str:
+    # Partial readiness is not publishable; the action is provisional or all gates pass together.
     if not release_candidate_passed:
         raise ValueError("release-candidate validation must pass before publication")
     gates = (labels_checked, completion_handoff_checked, merge_message_checked)
@@ -105,6 +107,7 @@ def main() -> int:
             parser.error("--pr-count must not be negative")
         action = plan(*values)
         if action != "no-op":
+            # Mutating plans require current issue and PR evidence bound to the requested release identity.
             identity_values = (args.version, args.repository, args.issue_json)
             if any(value is None for value in identity_values):
                 parser.error(

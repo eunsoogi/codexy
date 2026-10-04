@@ -5,6 +5,7 @@ use super::super::declaration::{declarations, inline_modules};
 use super::super::normalize_relative_path;
 
 pub(super) fn is_path_attributed_module(root: &Path, target: &Path, roots: Vec<PathBuf>) -> bool {
+    // Walk reachable crate declarations with a visited set so explicit #[path] targets are recognized without cycling.
     let mut pending = roots
         .into_iter()
         .map(|path| (path, true))

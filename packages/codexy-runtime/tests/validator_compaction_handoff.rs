@@ -1,4 +1,7 @@
 
+//! Verifies that compacted continuations carry current orchestration and
+//! ownership, duplicate-state, Git preflight, and substantive stop-condition evidence.
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type Output = std::process::Output;
 type OutputResult = Result<Output, Box<dyn std::error::Error>>;

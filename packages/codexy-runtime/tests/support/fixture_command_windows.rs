@@ -10,6 +10,7 @@ struct InterpreterCacheKey {
     pathext: OsString,
 }
 
+// Include PATH and PATHEXT so tests with a changed lookup environment cannot reuse another tool.
 static INTERPRETER_CACHE: OnceLock<Mutex<HashMap<InterpreterCacheKey, PathBuf>>> = OnceLock::new();
 
 pub(crate) fn fixture_script_launcher(
@@ -82,14 +83,17 @@ fn is_absolute_python_fixture(stem: &str, python_stem: &str, command: &str) -> b
         "@echo off",
         "setlocal EnableExtensions DisableDelayedExpansion",
         "set \"event=%~1\"",
+        "@rem Accept configured events; unknown input defaults to PreToolUse.",
         "if /I \"%event%\"==\"PreToolUse\" goto evaluate",
         "if /I \"%event%\"==\"PermissionRequest\" goto evaluate",
         "set \"event=PreToolUse\"",
         ":evaluate",
+        "@rem Use the system Python launcher instead of a PATH-selected interpreter.",
         "set \"runtime=%SystemRoot%\\py.exe\"",
         "if not exist \"%runtime%\" goto runtime_deny",
         "set \"CODEXY_HOOK_SILENT=1\"",
         invoke.as_str(),
+        "@rem Only successful policy output skips the event-specific denial.",
         "set \"status=%errorlevel%\"",
         "if \"%status%\"==\"0\" exit /b 0",
         ":runtime_deny",

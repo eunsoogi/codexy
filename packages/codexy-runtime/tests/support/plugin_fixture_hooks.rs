@@ -1,3 +1,6 @@
+//! Copies only the hook configuration and referenced entrypoints needed by
+//! hook tests, while validating caller-declared mutable paths.
+
 use std::collections::BTreeSet;
 use std::path::{Component, Path, PathBuf};
 use std::time::Instant;
@@ -115,6 +118,7 @@ fn files_to_copy(source: &Path, mutable_files: &[&Path]) -> std::io::Result<Vec<
     files.insert(PathBuf::from(".codex-plugin/plugin.json"));
     files.insert(PathBuf::from("hooks/hooks.json"));
     if source.join("hooks/capability-contract.json").is_file() {
+        // Contract-backed hooks declare exact entrypoints; legacy fixtures copy the hook tree below.
         files.insert(PathBuf::from("hooks/capability-contract.json"));
         let hooks_path = source.join("hooks/hooks.json");
         let hooks = std::fs::read_to_string(&hooks_path)?;

@@ -61,6 +61,7 @@ impl LaneAuthorityContext {
 
 impl LaneAuthority {
     fn new(source: AuthoritySource, owner: OwnerSelection) -> Option<Self> {
+        // Parent-supplied ownership can authorize only a child; other owners require current-thread classification.
         matches!(
             (source, owner),
             (AuthoritySource::ParentSupplied, OwnerSelection::Child)
@@ -74,6 +75,7 @@ impl LaneAuthority {
     }
 
     pub(super) fn authorizes_child_setup(self) -> bool {
+        // Current-thread classification can authorize setup for either child or current-thread ownership.
         matches!(
             (self.source, self.owner),
             (AuthoritySource::ParentSupplied, OwnerSelection::Child)
@@ -102,6 +104,7 @@ impl LaneAuthorityRecordState {
         classification_complete: bool,
         action: AuthorityRecordAction,
     ) -> Option<bool> {
+        // Missing records opt out; incomplete/invalid records and stale classifications keep validation active.
         let authority = match self {
             Self::Absent => return None,
             Self::Incomplete | Self::Invalid => return Some(true),
@@ -124,6 +127,7 @@ pub(super) fn lane_authority_record_state_before(
     lines: &[&str],
     end: usize,
 ) -> LaneAuthorityRecordState {
+    // Build one ordered record and reset it at ownership boundaries; partial fields never become authority.
     let mut state = AuthorityRecordBuildState::Absent;
     for (index, line) in lines
         .iter()

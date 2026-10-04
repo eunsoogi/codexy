@@ -14,6 +14,7 @@ def context(
     git_config_environment: tuple[tuple[str, str], ...],
     runtime_environment: tuple[tuple[str, str], ...],
 ) -> ExecutionContext:
+    # Seed the evaluator with only the host variables its repository and Git policy understands.
     environment = (
         runtime_environment
         + tuple(
@@ -32,6 +33,7 @@ def context(
         if git_dir is not None
         else repository_owned(cwd)
     )
+    # A common-dir override makes repository identity opaque until later commands re-establish it.
     return ExecutionContext(
         cwd,
         owned,

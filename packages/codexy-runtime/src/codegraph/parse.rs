@@ -15,6 +15,7 @@ thread_local! {
     static PARSE_CALLS: Cell<usize> = const { Cell::new(0) };
 }
 
+/// Routes a source file to its language extractor and returns sorted, de-duplicated references.
 pub(super) fn parse_file(
     root: &Path,
     file: &str,
@@ -44,6 +45,7 @@ pub(super) fn parse_file(
 }
 
 fn parse_javascript(source: &str) -> (Vec<String>, Vec<String>) {
+    // Masking prevents import/export-shaped text in strings and comments from becoming graph edges.
     let mask = code_position_mask(source);
     let imports = regex_values(
         source,
@@ -90,6 +92,7 @@ pub(super) fn regex_values(source: &str, mask: &[bool], patterns: &[&str]) -> Ve
             if !mask.get(full.start()).copied().unwrap_or(false) {
                 continue;
             }
+            // Patterns with a second capture use it for the target, while single-capture patterns use the first.
             let capture = if caps.len() > 2 {
                 caps.get(2).or_else(|| caps.get(1))
             } else {

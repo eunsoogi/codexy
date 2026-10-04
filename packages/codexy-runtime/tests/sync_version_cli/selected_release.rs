@@ -7,6 +7,7 @@ use super::isolation::{fixture_version, next_patch_version};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+// Every selected public projection must reject stale values without repairing the invalid fixture.
 #[test]
 fn selected_release_projections_fail_closed_without_mutation() -> TestResult {
     let cases: &[(&str, &str, fn(String, &str) -> String)] = &[
@@ -120,6 +121,7 @@ fn selected_release_projections_fail_closed_without_mutation() -> TestResult {
     Ok(())
 }
 
+// Candidate preparation changes candidate state while the public runtime selection stays historical.
 #[test]
 fn candidate_keeps_the_selected_public_release_and_historical_fixtures() -> TestResult {
     let temporary = tempfile::tempdir()?;

@@ -72,6 +72,7 @@ jobs:
           elif test -f .agents/plugins/runtime-activation.json; then state=candidate-proven
           else state=legacy-public
           fi
+          # Project the selected immutable runtime into the current plugin tree without rebuilding runtime binaries.
           case "$state" in
           public-release)
             public_receipt=public-release/runtime-release-receipt.json
@@ -103,6 +104,7 @@ jobs:
             staged=final/plugins/codexy-devtools
             legacy_plugin_root=$(scripts/check-release-archive-entries \
               dist/selected.tar.gz 52428800 10000 268435456 --input-plugin-root auto)
+            # Carry forward this checkout's plugin metadata while leaving runtime payloads to the verified archive.
             rsync -a --exclude runtime --exclude runtime-candidate.json plugins/codexy-devtools/ "$staged/"
             for path in \
               plugins/codexy-devtools/runtime/codexy-mcp-lsp-darwin-arm64.bin \
@@ -173,6 +175,7 @@ jobs:
           $dispatcher = "plugins/codexy-devtools/mcp/codexy-mcp-devtools.exe"
           if (-not ($entries -contains $dispatcher)) {
             if ($entries -contains "plugins/codexy/") {
+              # Earlier public archives use the legacy core plugin layout and have no native devtools dispatcher.
               Write-Output "legacy selected archive has no native Windows dispatcher; Windows projection is intentionally unavailable"
               exit 0
             }
@@ -207,6 +210,7 @@ jobs:
           $entrypoint = Join-Path $public "plugins/codexy-devtools/mcp/codexy-mcp-devtools.exe"
           foreach ($server in @("lsp", "codegraph")) {
             $runtime = Join-Path $public "plugins/codexy-devtools/runtime/codexy-mcp-$server-windows-x86_64.exe"
+            # Each server binary must remain distinct from the shared dispatcher that launches it.
             if ((Get-FileHash $runtime).Hash -eq (Get-FileHash $entrypoint).Hash) { throw "$server runtime duplicates the shared dispatcher" }
             & $entrypoint $server --help
             if ($LASTEXITCODE -ne 0) { throw "native Windows projected dispatcher failed: $server" }

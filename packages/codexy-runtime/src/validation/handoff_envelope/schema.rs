@@ -170,7 +170,7 @@ fn validate_omissions(value: &HandoffVolatile) -> Result<()> {
         ensure!(
             present != value.omissions.contains_key(field),
             "omission state: {field}"
-        );
+        ); /* An omission tag must match field absence. */
     }
     ensure!(
         value.omissions.keys().all(|field| matches!(

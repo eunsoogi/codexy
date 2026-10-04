@@ -1,3 +1,6 @@
+//! Counts only local Markdown references linked from a skill facade; adjacent,
+//! unlinked, anchor-only, or mechanical fragments do not prove extraction.
+
 use super::{TestResult, fixture, regular_lines, regular_lines_from, stderr, validate, write};
 
 const SKILL_PATH: &str = "plugins/codexy/skills/example/SKILL.md";

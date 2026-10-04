@@ -8,6 +8,7 @@ from pathlib import Path
 from .common import BatchChangeResumeCase, preview, resume_batch
 
 
+# The command log lets each case prove which later batch items actually ran.
 BATCH_ABORT_COMMAND_SOURCE = """
 from pathlib import Path
 import sys

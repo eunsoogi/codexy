@@ -9,10 +9,12 @@ done
 test "$GITHUB_REF" = refs/heads/main
 test "$GITHUB_SHA" = "$(git rev-parse origin/main)"
 test "$(git rev-parse "$activation_commit")" = "$activation_commit"
+# Run from the activation commit, then import only the current main verifier files that are explicitly approved.
 git checkout --detach "$activation_commit"
 test "$(git rev-parse HEAD)" = "$activation_commit"
 
 actual_paths="$(git diff --name-only "$activation_commit" "$GITHUB_SHA" -- scripts | sort)"
+# Any unrelated script delta is rejected rather than silently changing release verification inputs.
 if test -n "$actual_paths"; then
 	while IFS= read -r path; do
 		case "$path" in
@@ -41,6 +43,7 @@ fi
 for verifier in \
 	scripts/reconcile-release-attestations \
 	scripts/verify-release-attestation-set; do
+	# Verify the resulting bytes match the main-branch verifier revision exactly.
 	test -x "$verifier"
 	test "$(git hash-object "$verifier")" = "$(git rev-parse "$GITHUB_SHA:$verifier")"
 done

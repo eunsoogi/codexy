@@ -74,6 +74,7 @@ jobs:
             cargo install --locked dprint --version "$version"
           fi
           test "$("$HOME/.cargo/bin/dprint" --version)" = "dprint $version"
+      # Only trusted main pushes save the formatter cache; pull requests can restore it but cannot populate it.
       - if: matrix.language == 'Text' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.dprint-cache.outputs.cache-hit != 'true' && success()
         uses: actions/cache/save@v5
         with:
@@ -135,6 +136,7 @@ jobs:
         run: |
           uv lock --check --directory packages/getcodexy
           ruff check .
+          # Directory discovery misses extensionless tracked Python entry points.
           git grep -lz '^#!.*python' | xargs -0r ruff check
           ruff format --check .
           git grep -lz '^#!.*python' | xargs -0r ruff format --check

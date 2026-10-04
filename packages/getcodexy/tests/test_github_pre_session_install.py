@@ -123,6 +123,7 @@ class GithubPreSessionInstallTests(GithubPreSessionRollbackCases, unittest.TestC
                     (str(codex), "plugin", "list", "--json"),
                 ],
             )
+            # The sync callbacks receive the resolved Codex home, even through an alias.
             home_alias = root / "home-alias"
             home_alias.symlink_to(home.parent, target_is_directory=True)
             self.assertEqual(len(synchronized), 3)

@@ -54,6 +54,7 @@ pub(super) fn unique_products(
     Ok(unique)
 }
 pub(super) fn contract(root: &Path) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    // Metadata owns products and topology; validated sidecars supply the surface-record inventory.
     let metadata_text = std::fs::read_to_string(root.join("docs/plugin-product-boundary.json"))?;
     let _: MetadataContract = serde_json::from_str(&metadata_text)?;
     let mut contract: serde_json::Value = serde_json::from_str(&metadata_text)?;
@@ -85,6 +86,7 @@ pub(super) fn contract(root: &Path) -> Result<serde_json::Value, Box<dyn std::er
 }
 
 pub(super) fn reject_unknown_wrapper_fields(root: &Path) -> TestResult {
+    // Surface records belong to sidecars, so metadata cannot claim a second authority.
     let mut metadata: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
         root.join("docs/plugin-product-boundary.json"),
     )?)?;
@@ -165,6 +167,7 @@ pub(super) fn validate_import(
     Ok(())
 }
 pub(super) fn policy_import_module(line: &str) -> Option<&str> {
+    // Normalize the absolute and relative import forms used by the policy hook package.
     let line = line.trim();
     let tail = line
         .strip_prefix("from codexy_policy import ")

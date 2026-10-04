@@ -1,3 +1,5 @@
+// Replay ownership-language edge cases across both hook events: direct durable
+// lane assignments are denied while quoted, negated, and review-only text passes.
 use super::validator_subagent_ownership_hook::{
     assert_denied, payload, run_payload, EVENTS, TOOLS, TestResult,
 };

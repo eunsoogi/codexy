@@ -1,3 +1,6 @@
+//! Exercises packaged-runtime and cache precedence for fresh wrappers without
+//! Cargo, including token requirements and exact ref override behavior.
+
 use super::*;
 
 #[test]

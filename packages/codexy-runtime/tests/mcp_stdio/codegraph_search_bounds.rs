@@ -1,6 +1,6 @@
 use super::*;
 
-const MATCH_LIMIT_BYTES: usize = 2_048;
+const MATCH_LIMIT_BYTES: usize = 2_048; // Includes rendered path prefixes without splitting UTF-8.
 const CONTENT_LIMIT_BYTES: usize = 8_192;
 const MEGABYTE_LINE_BYTES: usize = 1_048_576;
 

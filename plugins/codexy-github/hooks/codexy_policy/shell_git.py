@@ -27,6 +27,7 @@ class AliasCommand:
 def evaluate(
     args: list[str], context: ExecutionContext
 ) -> tuple[bool, tuple[str, str, str] | None, AliasCommand | None]:
+    # Git configuration that cannot be represented completely makes this command unresolved.
     environment_config = git_config(context)
     if environment_config is None:
         return True, None, None
@@ -90,6 +91,7 @@ def evaluate(
         ):
             return True, None, None
         return False, (invocation.arguments[1], "url", invocation.arguments[2]), None
+    # Repository ownership gates only the Git effects classified below, independent of display metadata.
     push_like = invocation.operation in {"push", "send-pack"}
     effective_repository_status = (
         context.repository_status
@@ -113,6 +115,7 @@ def evaluate(
 
 
 def _unsafe_push(arguments: list[str]) -> bool:
+    # Reject destructive long and short spellings, including refspec forms that force or delete refs.
     return any(
         arg
         in {
@@ -194,6 +197,7 @@ def _broad_stage_operand(operand: str, cwd: str) -> bool:
         lexical_candidate, lexical_current
     ):
         return True
+    # Compare canonical paths too, so symlinks and dot-segments cannot disguise a broad target.
     try:
         root = root.resolve(strict=False)
         current = Path(cwd).resolve(strict=False)

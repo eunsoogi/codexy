@@ -1,3 +1,6 @@
+//! Keeps queued setup, child work, and CI nonterminal; a blocked-wait claim
+//! needs explicit evidence that required checks are failing.
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 const CLEAN_PR_STATE: &str = r#"{

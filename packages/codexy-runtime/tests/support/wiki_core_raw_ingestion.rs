@@ -1,3 +1,4 @@
+//! Requires every provenance source to carry a parseable ingestion date before migration proceeds.
 use std::{fs, path::PathBuf};
 
 use serde_yaml::{Mapping, Value};
@@ -16,6 +17,7 @@ pub(crate) fn raw_ingestion(paths: &[PathBuf]) -> RawIngestionState {
     if paths.is_empty() {
         return RawIngestionState::Missing;
     }
+    // A single missing or malformed source record makes the complete source set unusable.
     for path in paths {
         let Some(mapping) = fs::read_to_string(path)
             .ok()

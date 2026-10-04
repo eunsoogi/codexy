@@ -1,4 +1,7 @@
 
+//! Checks that numbered readiness claims count while ordered blockers stay
+//! non-claims.
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]

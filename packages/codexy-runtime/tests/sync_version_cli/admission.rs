@@ -7,6 +7,7 @@ use super::isolation::{
 };
 use super::restoration::{ByteSnapshot, VERSION_FIXTURE_PATHS};
 
+// Each selected-identity drift case must fail admission and restore version surfaces byte-for-byte.
 #[test]
 fn version_admission_matrix_is_ordered_and_fail_closed() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
@@ -82,6 +83,7 @@ fn version_admission_matrix_is_ordered_and_fail_closed() -> Result<(), Box<dyn s
     Ok(())
 }
 
+// Candidate metadata can advance while selected public identities remain unchanged until activation.
 #[test]
 fn candidate_preparation_keeps_selected_identity_until_activation()
 -> Result<(), Box<dyn std::error::Error>> {

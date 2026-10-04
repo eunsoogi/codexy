@@ -28,6 +28,7 @@ Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
 def validate_request(
     command: str, requested: tuple[str, ...], manifest: ComponentManifest
 ) -> None:
+    """Reject invalid command selections before resolving host state or mutating it."""
     if command == "bootstrap" and requested:
         raise ComponentResolutionError("components-not-accepted")
     if command == "remove" and not requested:
@@ -69,6 +70,7 @@ def refresh_root(
     *,
     allow_official_repin: bool = False,
 ) -> MarketplaceBinding:
+    """Refresh a binding only for stable identity or an allowed official repin."""
     current = existing_marketplace(executable, invoke, manifest)
     if current is None:
         raise RuntimeError("marketplace binding disappeared during recovery")
@@ -127,6 +129,7 @@ def refresh_operation_root(
 def recorded_selection(
     home: Path, manifest: ComponentManifest
 ) -> tuple[str, ...] | None:
+    """Validate canonical ordering and the recorded supported selection."""
     selected = read_inventory(home)
     if selected is None:
         return None

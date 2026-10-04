@@ -5,6 +5,7 @@ mod overlap_boundaries;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+// The keep table must cover discoverable packaged skills so shipped instructions cannot drift unlisted.
 #[test]
 fn every_packaged_skill_has_one_keep_decision_and_stable_identity() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
@@ -77,6 +78,7 @@ fn overlap_boundaries_and_consumer_taxonomy_are_explicit() -> TestResult {
     Ok(())
 }
 
+// A display table cannot grant authority; explicit ownership metadata must establish the child lane.
 #[test]
 fn gfm_owner_decision_remains_non_authoritative_without_lane_metadata() -> TestResult {
     let partial_table = r#"| Field | Value |

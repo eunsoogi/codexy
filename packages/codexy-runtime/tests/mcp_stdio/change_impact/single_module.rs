@@ -1,3 +1,5 @@
+//! Confirms a single-module change can select its focused user-owned check.
+
 use super::common::run_demo;
 
 #[test]

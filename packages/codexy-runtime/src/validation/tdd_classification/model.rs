@@ -4,6 +4,7 @@ pub(super) const V1_REQUEST_SCHEMA: &str = "codexy.tdd-classification-request.v1
 pub(super) const V2_REQUEST_SCHEMA: &str = "codexy.tdd-classification-request.v2";
 pub(super) const V2_RESULT_SCHEMA: &str = "codexy.tdd-classification-result.v2";
 
+// V1 preserves the original boundary vocabulary; V2 narrows engineering kinds and adds per-boundary duties.
 pub(super) const ENGINEERING: [&str; 14] = [
     "production_code",
     "runtime_behavior",

@@ -36,6 +36,7 @@ def record(event: str, concern: str, started_ns: int, decision: str) -> None:
 
 
 def _target_path() -> Path | None:
+    # Instrumentation is opt-in and restricted to an absolute path without traversal components.
     value = os.environ.get(TIMING_FILE_ENV)
     if (
         not value
@@ -48,6 +49,7 @@ def _target_path() -> Path | None:
 
 
 def _append(path: Path, line: bytes) -> None:
+    # Append only to a private, single-link regular file through no-follow handles and a nonblocking lock.
     windows = None
     parent_handles = []
     parent_descriptor = descriptor = lock = None
@@ -90,6 +92,7 @@ def _append(path: Path, line: bytes) -> None:
             return
         written = os.write(descriptor, line)
         if written != len(line):
+            # Roll back a partial record so later readers see only complete JSON lines.
             os.ftruncate(descriptor, initial_size)
     except OSError:
         if initial_size is not None and descriptor is not None:

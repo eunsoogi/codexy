@@ -1,3 +1,5 @@
+"""MCP materialization validates source and repairs only the selected cache."""
+
 from __future__ import annotations
 
 import json

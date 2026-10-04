@@ -62,6 +62,7 @@ def _migrate(
     except (OSError, ValueError):
         return _rejected(default_package_version(), "corrupt-migration-journal")
     if pending is not None:
+        # Recover an interrupted activation before admitting a new plan.
         rolling = pending.with_phase("rolling-back")
         write_journal(home, rolling)
         _rollback(home, executable, runner, rolling)
@@ -97,6 +98,7 @@ def _migrate(
         write_journal(home, journal)
         _activate(home, executable, runner, plan)
     except BaseException:
+        # Roll back even on interruption after the durable intent is recorded.
         rolling = journal.with_phase("rolling-back")
         write_journal(home, rolling)
         _rollback(home, executable, runner, rolling)

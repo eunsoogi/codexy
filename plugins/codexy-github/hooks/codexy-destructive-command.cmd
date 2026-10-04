@@ -9,6 +9,7 @@ rem Static fixture pairing marker: py -3 -I -B "%~dp0codexy-destructive-command.
 py -3 -I -B -c "import subprocess,sys; p=subprocess.run([sys.executable,'-I','-B',sys.argv[1],*sys.argv[2:]],capture_output=True); sys.stdout.buffer.write(p.stdout if p.returncode==0 else b''); sys.stderr.buffer.write(p.stderr); raise SystemExit(p.returncode)" "%~dp0codexy-destructive-command.py" --event "%event%" 2>nul
 set "status=%errorlevel%"
 if "%status%"=="0" exit /b 0
+rem A missing Python runtime must fail closed with the event's native deny envelope.
 if /I "%event%"=="PermissionRequest" goto permission_deny
 echo {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"CODEXY_DESTRUCTIVE_COMMAND_RUNTIME: Codexy policy MUST NOT execute this operation."}}
 exit /b 0

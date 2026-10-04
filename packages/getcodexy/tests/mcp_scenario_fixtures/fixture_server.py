@@ -183,6 +183,7 @@ def main() -> int:
                 print("synthetic-secret-" + ("x" * 20000), flush=True)
             elif mode == "parent-exits":
                 if options.pid_file:
+                    # The inherited pipe stays open after the MCP parent exits.
                     _spawn_child(options.pid_file, inherit_output=True)
                 return 0
             else:

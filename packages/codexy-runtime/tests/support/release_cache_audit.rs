@@ -1,3 +1,6 @@
+//! Audits cache migration, plugin manifest release parsing, and helper
+//! prerequisites while keeping seeded legacy cache directories intact.
+
 use crate::support::FixtureCommand as Command;
 
 use super::cache_fixture::install_v1_cached_runtime;

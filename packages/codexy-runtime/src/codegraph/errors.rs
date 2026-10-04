@@ -4,6 +4,7 @@ use std::fmt;
 
 use serde::Serialize;
 
+/// Stable categories used in serialized codegraph diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CodegraphErrorKind {
@@ -36,6 +37,7 @@ impl CodegraphErrorKind {
     }
 }
 
+/// A path-scoped failure that can be returned without discarding other graph results.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct CodegraphError {
     pub kind: CodegraphErrorKind,
@@ -77,11 +79,13 @@ thread_local! {
 }
 
 pub(super) fn begin_operation() {
+    // Keep diagnostics and discovered-path context local to the current codegraph request.
     ERRORS.with(|errors| errors.borrow_mut().clear());
     DISCOVERED_FILES.with(|files| files.borrow_mut().clear());
 }
 
 pub(super) fn take_errors() -> Vec<CodegraphError> {
+    // Stable ordering and de-duplication make repeated walk/read failures deterministic.
     ERRORS.with(|errors| {
         let mut errors = errors.borrow_mut();
         errors.sort();

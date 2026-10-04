@@ -55,6 +55,7 @@ class GithubTitleHookInputTests(unittest.TestCase):
                     output = self._run_process(payload, environment)
                     self.assertEqual(bool(output), denied, output)
                     self.assertNotIn("secret body", output)
+            # An update with no title stays outside title admission checks.
             update = json.dumps(
                 {
                     "hook_event_name": "PreToolUse",

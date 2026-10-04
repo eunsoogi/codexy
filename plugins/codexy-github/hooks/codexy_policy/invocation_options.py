@@ -31,6 +31,7 @@ def exec_command(args: list[str]) -> list[str] | None:
 
 
 def xargs(args: list[str]) -> list[str] | None:
+    # Consume only recognized xargs flags and their values before resolving the command it launches.
     values = {
         "-a",
         "--arg-file",

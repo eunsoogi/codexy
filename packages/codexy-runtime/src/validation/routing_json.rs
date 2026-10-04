@@ -2,6 +2,7 @@ use serde::de::{Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde_json::{Map, Number, Value};
 
 pub(super) fn parse(text: &str) -> Result<Value, String> {
+    // Parse every nested object through a visitor that rejects repeated keys before serde_json collapses them.
     let mut deserializer = serde_json::Deserializer::from_str(text);
     let value = UniqueValue::deserialize(&mut deserializer)
         .map_err(|error| error.to_string())?

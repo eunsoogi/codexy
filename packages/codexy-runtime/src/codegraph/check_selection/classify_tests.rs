@@ -1,6 +1,7 @@
 use super::classify_path;
 use super::model::ChangeArea;
 
+// Deleted and not-yet-created paths still need stable categories, so classification must not consult the filesystem.
 #[test]
 fn path_classification_is_deterministic_and_does_not_access_the_filesystem() {
     assert_eq!(classify_path("README.md"), ChangeArea::Documentation);

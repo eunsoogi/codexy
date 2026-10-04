@@ -39,6 +39,7 @@ jobs:
           GITHUB_TOKEN: ""
           RELEASE_TAG: v${{ inputs.target_version }}
         run: |
+          # Download public bytes without credentials; attestation verification is isolated in the next step.
           git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
           git show "$GITHUB_SHA:scripts/project-release-verifiers.sh" > "$RUNNER_TEMP/project-release-verifiers"
           chmod 755 "$RUNNER_TEMP/project-release-verifiers"
@@ -77,6 +78,7 @@ jobs:
           cp public-release-baseline.json public-attested/release-baseline.json
           scripts/verify-release-attestation-set public-attested public-baseline-attestation.json baseline
           scripts/verify-release-attestation-set public-attested public-attestations.json
+          # Match each artifact to its allowed workflow signer and source revision, not just its file hash.
           jq -e --slurpfile baseline public-attested/release-baseline.json --slurpfile attestations public-attestations.json --arg receipt "$(sha256sum public-receipt.json | awk '{print $1}')" --arg signer "$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml" --arg runtimeSigner "$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml" --arg activation "$ACTIVATION_COMMIT" --arg staging "$STAGING_SOURCE_COMMIT" '
             $baseline[0] as $expected | ($expected.releaseReceiptSha256 == $receipt) and
             ($expected.attestationPolicies == {"codexy-marketplace-plugin.tar.gz": {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true}, "codexy-marketplace-bundle.tar.gz": {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true}, "codexy-runtime-package.tar.gz": {signerWorkflow: $runtimeSigner, sourceRef: "refs/heads/main", sourceDigest: $staging, denySelfHostedRunners: true}, "runtime-release-receipt.json": {signerWorkflow: $signer, sourceRef: "refs/heads/main", sourceDigest: $activation, denySelfHostedRunners: true}}) and
@@ -84,6 +86,7 @@ jobs:
           ' public-release-baseline.json >/dev/null
       - name: Prove exact public getcodexy package
         run: |
+          # Allow bounded PyPI propagation delay; malformed or mismatched artifacts fail immediately.
           attempt=0
           while :; do
             attempt=$((attempt + 1))

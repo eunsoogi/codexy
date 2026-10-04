@@ -21,10 +21,12 @@ test "$(git rev-parse HEAD)" = "$head_sha"
 [[ "$profiling" =~ ^(true|false)$ ]] || exit 1
 
 if [[ "$mode" == isolated || "$profiling" == true ]]; then
+	# Normal cache runs stay untouched unless profiling explicitly requests measurement setup.
 	test -n "$runner_temp"
 	test -n "$github_env"
 
 	root="$runner_temp/codexy-rust-measurement"
+	# Reset repeat-scoped evidence so prior samples cannot leak into this run.
 	rm -rf -- "$root"
 	mkdir -p "$root/metrics"
 
@@ -41,6 +43,7 @@ if [[ "$mode" == isolated || "$profiling" == true ]]; then
 	[[ "$condition" != cold ]] || printf 'cache_state=cold-empty\n' >>"$root/metrics/measurement.txt"
 
 	if [[ "$mode" == isolated ]]; then
+		# Isolated runs receive private Rust/Cargo/target directories through GITHUB_ENV.
 		mkdir -p "$root/cargo" "$root/rustup" "$root/target"
 		printf 'CARGO_HOME=%s/cargo\nRUSTUP_HOME=%s/rustup\nCARGO_TARGET_DIR=%s/target\n' \
 			"$root" "$root" "$root" >>"$github_env"

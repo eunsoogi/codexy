@@ -1,3 +1,4 @@
+// This narrow shell model separates function bodies from top-level commands so mutation ownership and gate order can be checked.
 use std::collections::BTreeMap;
 
 const PUBLISH: &str = "publish_version_pr_metadata";

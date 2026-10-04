@@ -27,6 +27,7 @@ def _root(value: str | Path) -> Path:
 def _safe_path(root: Path, raw: Any, label: str) -> tuple[Path, str]:
     relative = _text(raw, label)
     native = Path(relative)
+    # Check both host-native and Windows spellings so a manifest stays relative on every platform.
     if (
         native.is_absolute()
         or PureWindowsPath(relative).is_absolute()
@@ -35,6 +36,7 @@ def _safe_path(root: Path, raw: Any, label: str) -> tuple[Path, str]:
         raise InputError(f"{label} must be relative to the workspace")
     candidate = root / native
     current = root
+    # Reject symlink components before resolving, including links that still point inside the workspace.
     for position, component in enumerate(native.parts):
         current /= component
         if current.is_symlink():
@@ -92,6 +94,7 @@ def _output(root: Path, raw: Any, label: str) -> tuple[Path, str, dict[str, Any]
 
 
 def _file_key(relative: str, identity: tuple[int, int] | None) -> tuple[Any, ...]:
+    # Existing aliases use filesystem identity; missing outputs use normalized path spelling.
     if identity is not None:
         return ("identity", identity[0], identity[1])
     return ("path", _normalized_parts(relative))
@@ -105,6 +108,7 @@ def _normalized_parts(value: str) -> tuple[str, ...]:
 
 
 def _nested_path(left: str, right: str) -> bool:
+    # Compare normalized components so case or Unicode spelling cannot hide overlapping output trees.
     left_parts = _normalized_parts(left)
     right_parts = _normalized_parts(right)
     return (

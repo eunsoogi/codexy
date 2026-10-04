@@ -77,6 +77,7 @@ fn check_script_inner(
     forbidden_fragments: &[&str],
     check_unquoted_redirection: bool,
 ) -> Result<()> {
+    // Comments are not executed; inspect only active command lines after checking forbidden source fragments.
     let text = std::fs::read_to_string(script_path)
         .with_context(|| format!("reading {}", display_relative(script_path)))?;
     for forbidden in forbidden_fragments {

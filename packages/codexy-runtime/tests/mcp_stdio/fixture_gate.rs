@@ -1,3 +1,6 @@
+//! Coordinates subprocess timing through loopback markers so stderr and
+//! shutdown tests synchronize on observed events instead of sleeps.
+
 use super::*;
 use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::{self, Sender};
