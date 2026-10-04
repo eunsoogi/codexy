@@ -17,6 +17,7 @@ def forbidden(
     depth: int = 0,
     runtime_environment: tuple[tuple[str, str], ...] = (),
 ) -> bool:
+    """Build one command context and evaluate it against the shared destructive policy."""
     return evaluate(
         command,
         context(

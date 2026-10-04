@@ -9,6 +9,7 @@ _SELECTOR = re.compile(r"@\{([^\s{};&|()<>]*)\}")
 
 
 def protect(command: str) -> str:
+    # Hide selector braces from shell punctuation parsing until the token stream can be restored.
     return (
         _SELECTOR.sub(lambda match: f"@{_OPEN}{match.group(1)}{_CLOSE}", command)
         if "@{" in command

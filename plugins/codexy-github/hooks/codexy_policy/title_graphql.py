@@ -26,6 +26,7 @@ def forbidden(query: object) -> bool:
         return True
     try:
         tokens = _tokenize(query)
+        # Token kinds keep field names in comments and string literals out of mutation matching.
         for index, token in enumerate(tokens):
             operation = _OPERATIONS.get(token.value) if token.kind == "name" else None
             if (
@@ -72,6 +73,7 @@ def _title_values(tokens: list[_Token], start: int, end: int) -> list[object]:
 
 
 def _value(token: _Token | None) -> object:
+    # Variables and non-string expressions stay dynamic so callers cannot hide a title behind a binding.
     if token is None:
         return _DYNAMIC
     if token.kind == "string":

@@ -32,6 +32,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Reject an unadmitted source commit before any platform build starts.
           scripts/verify-runtime-candidate-source.sh
           if test -z "$EXACT_PR_NUMBER"; then
             candidate_version="$(
@@ -44,6 +45,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     needs: verify-source-commit
     permissions: { contents: read }
+    # Platform builds receive no API token; the trusted staging job handles attestation and publication credentials.
     env: { GITHUB_TOKEN: "", GH_TOKEN: "" }
     name: Build ${{ matrix.platform }} candidate
     runs-on: ${{ matrix.runner }}
@@ -173,6 +175,7 @@ jobs:
         env:
           WORKFLOW_SHA: ${{ github.workflow_sha }}
         run: |
+          # Treat PR source as data: use the assembler from the trusted workflow revision.
           git show "$WORKFLOW_SHA:scripts/assemble-runtime-candidate" > scripts/assemble-runtime-candidate
           chmod 755 scripts/assemble-runtime-candidate
       - name: Recheck exact PR admission before staging

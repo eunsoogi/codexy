@@ -13,6 +13,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($candidateVersion -ne $projectVersion) { throw "candidate package version projections are not synchronized" }
 
 $selectedWheelDir = (Resolve-Path -LiteralPath "dist").Path
+# Keep a selected-version wheel alongside the candidate when the plugin manifest still points at an older release.
 if ($candidateVersion -ne $selectedVersion) {
   $selectedSource = Join-Path $env:RUNNER_TEMP "codexy-selected-version-wheel-source"
   $selectedWheelDir = Join-Path $env:RUNNER_TEMP "codexy-selected-version-wheel"
@@ -45,6 +46,7 @@ $candidateRuntime = (Resolve-Path -LiteralPath $venvRuntime).Path
 "CODEXY_SELECTED_MCP_WHEEL_DIR=$selectedWheelDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 "GETCODEXY_CANDIDATE_RUNTIME=$candidateRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+# Activation records select an archive that needs separate provenance and runtime-binary verification.
 if (Test-Path -LiteralPath ".agents/plugins/runtime-activation.json" -PathType Leaf) {
   bash scripts/download-selected-runtime-package.sh dist/selected-runtime-package.tar.gz
   if ($LASTEXITCODE -ne 0) { throw "selected runtime download failed" }
@@ -73,11 +75,13 @@ if (Test-Path -LiteralPath ".agents/plugins/runtime-activation.json" -PathType L
   $runtimeRoot = Join-Path $env:RUNNER_TEMP "codexy-selected-runtime"
   if (Test-Path -LiteralPath $runtimeRoot) { throw "selected runtime extraction root must be fresh" }
   New-Item -ItemType Directory -Path $runtimeRoot | Out-Null
+  # Use the package archive's safe extractor so the fixture cannot write outside its fresh temporary root.
   python -c 'import sys; from pathlib import Path; sys.path.insert(0, "packages/getcodexy/src"); from codexy_runtime_tools.package_archive import _safe_extract_tar; _safe_extract_tar(Path(sys.argv[1]), Path(sys.argv[2]))' $archive $runtimeRoot
   if ($LASTEXITCODE -ne 0) { throw "selected runtime extraction failed" }
   $runtimeDir = Join-Path $runtimeRoot "plugins/codexy-devtools/runtime"
   if (-not (Test-Path -LiteralPath $runtimeDir -PathType Container)) { throw "selected runtime directory is missing" }
   $stagedArchive = -not (Test-Path -LiteralPath "dist/public-release" -PathType Leaf) -and -not (Test-Path -LiteralPath "dist/legacy-public" -PathType Leaf)
+  # Staged candidates bind each platform binary to the checksum recorded in the activation contract.
   if ($stagedArchive) {
     foreach ($className in @("coreWatcherMcp", "devtoolsMcp")) {
       $class = $record.candidate.classes.PSObject.Properties[$className].Value

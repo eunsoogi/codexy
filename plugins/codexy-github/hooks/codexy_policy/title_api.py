@@ -48,6 +48,7 @@ def forbidden(args: list[str], cwd: object = None) -> bool:
     if parsed.endpoint is None:
         return False
     body_present = bool(parsed.fields) or parsed.input_present
+    # gh api defaults requests with a body to POST unless the caller supplied an explicit method.
     method = parsed.method if parsed.method_explicit or not body_present else "POST"
     if parsed.endpoint == "graphql":
         if method == "GET":
@@ -176,6 +177,7 @@ def _api_operation(endpoint: str, method: str) -> tuple[str, bool] | None:
 
 
 def _field(fields: Sequence[str | None], name: str) -> tuple[bool, str | None]:
+    # Duplicate or dynamic title fields are unresolved evidence rather than a trusted literal.
     values = [
         value
         for value in fields
@@ -195,6 +197,7 @@ def _read_input(cwd: object, input_path: str | None) -> object:
     if input_path == "-":
         return _UNREADABLE
     try:
+        # Read one byte beyond the limit so large or ambiguous input cannot be parsed partially.
         path = Path(input_path)
         if not path.is_absolute():
             path = Path(cwd) / path

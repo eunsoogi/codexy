@@ -30,6 +30,7 @@ def without_python_script_heredoc_bodies(command: str) -> str:
         index += 1
         if not heredocs:
             continue
+        # Strip bodies only when every queued delimiter is quoted and the receiver is a direct Python reader.
         if (
             quote is not None
             or arithmetic_depth
@@ -155,6 +156,7 @@ def _python_script_receiver(prefix: str) -> bool:
     except ValueError:
         return False
 
+    # Keep only the command after the last shell operator; an earlier Python command cannot own this body.
     current: list[str] = []
     for token in tokens:
         if token in _SHELL_OPERATORS:

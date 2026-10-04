@@ -9,6 +9,7 @@ from resume_errors import ResumeError
 
 def workspace(value: str | Path) -> Path:
     path = Path(value).expanduser().absolute()
+    # Establish a real workspace root before resolving any child state or result paths.
     if path.is_symlink() or not path.is_dir():
         raise ResumeError(f"workspace root must be a real directory: {path}")
     return path.resolve(strict=True)
@@ -16,6 +17,7 @@ def workspace(value: str | Path) -> Path:
 
 def absolute_directory(value: str | Path, label: str) -> Path:
     path = Path(value).expanduser().absolute()
+    # Create missing directories, but refuse a requested path that is or becomes a symlink.
     if path.exists() and path.is_symlink():
         raise ResumeError(f"{label} must not be a symlink: {path}")
     if path.exists() and not path.is_dir():

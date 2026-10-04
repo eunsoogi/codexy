@@ -15,6 +15,7 @@ from .validation import artifact, read_target, source, target
 
 
 def _copy_atomic(target_path: Path, data: bytes, event: Event | None) -> Path:
+    # Stage beside the destination so os.replace remains an atomic same-filesystem operation.
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{target_path.name}.codexy-apply-", dir=target_path.parent
     )
@@ -72,6 +73,7 @@ def apply_one(
     try:
         if cancellation_event is not None and cancellation_event.is_set():
             raise ApplyInterrupted("interrupted before replacement")
+        # Revalidate both the recorded source and current destination immediately before replacement.
         _check_source(root, item)
         current = read_target(target_path)
         if (before is None) != (current is None):

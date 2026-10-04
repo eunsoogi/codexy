@@ -47,7 +47,7 @@ jobs:
         run: |
           git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
           main_at_admission="$(git rev-parse origin/main)"
-          test "$GITHUB_SHA" = "$main_at_admission"
+          test "$GITHUB_SHA" = "$main_at_admission" # Bind staging admission to the current protected-main event commit.
           test "$(git rev-parse HEAD)" = "$main_at_admission"
           version="$(python3 -c 'import tomllib; print(tomllib.load(open("packages/getcodexy/pyproject.toml", "rb"))["project"]["version"])')"
           test "$version" = "$(python3 -c 'import tomllib; print(next(package["version"] for package in tomllib.load(open("packages/getcodexy/uv.lock", "rb"))["package"] if package["name"] == "getcodexy"))')"
@@ -96,12 +96,12 @@ jobs:
           trusted="$RUNNER_TEMP/codexy-runtime-contract"
           mkdir "$trusted"
           git archive "$GITHUB_SHA" | tar -x -C "$trusted"
-          branch="$($trusted/scripts/select-runtime-activation-branch.sh "$BOOTSTRAP_VERSION" "$receipt")"
+          branch="$($trusted/scripts/select-runtime-activation-branch.sh "$BOOTSTRAP_VERSION" "$receipt")" # Derive the branch name from trusted code and the staged receipt.
           printf '%s\n' "$branch" > "$branch_file"
           git merge-base --is-ancestor "$(jq -r .candidate.source.commit "$RUNNER_TEMP/codexy-runtime-staging/runtime-staging-receipt.json")" "$GITHUB_SHA"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then # Existing branches must pass ancestry and content checks below.
             git fetch origin "$branch"
             existing_base="$(git merge-base "$GITHUB_SHA" "origin/$branch")"
             git merge-base --is-ancestor "$(jq -r .candidate.source.commit "$RUNNER_TEMP/codexy-runtime-staging/runtime-staging-receipt.json")" "$existing_base"
@@ -110,7 +110,7 @@ jobs:
             git merge --no-commit --no-ff "$GITHUB_SHA"
             printf '%s\n' existing > "$state_file"
           else
-            git switch -c "$branch" "$GITHUB_SHA"
+            git switch -c "$branch" "$GITHUB_SHA" # New activation branches start from the admitted main commit.
             printf '%s\n' new > "$state_file"
           fi
           git write-tree > "$RUNNER_TEMP/codexy-runtime-activation-tree"
@@ -193,7 +193,7 @@ jobs:
               packages/getcodexy/*|plugins/codexy/*|plugins/codexy-github/*|plugins/codexy-devtools/*|.agents/plugins/marketplace.json|docs/getcodexy-component-installation.md|.github/workflows/python-package.yml|.github/workflows/bootstrap-package.yml) python_needed=true ;;
             esac
           done <<< "$changed_paths"
-          workflows=(rust-test.yml language-lint.yml touched-loc-gate.yml)
+          workflows=(rust-test.yml language-lint.yml touched-loc-gate.yml) # Run core gates for every activation; add path-specific package gates below.
           $plugin_needed && workflows+=(plugin-runtime-binaries.yml)
           $python_needed && workflows+=(python-package.yml)
           if $python_needed; then

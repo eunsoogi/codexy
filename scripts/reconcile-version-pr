@@ -17,6 +17,7 @@ mkdir -p "$state_dir"
 git diff --name-only --diff-filter=ACDMRTUXB > "$state_dir/changed-files.txt"
 git diff --name-only -z --diff-filter=ACDMRTUXB > "$state_dir/changed-files.z"
 
+# Refresh issue and label authority before each publication phase instead of reusing stale inputs.
 refresh_version_pr_snapshot() {
   gh issue view "$ISSUE" --repo "$GITHUB_REPOSITORY" \
     --json number,state,url,labels,milestone,assignees > "$state_dir/issue.json"
@@ -119,6 +120,7 @@ if [ "$action" != first-run ]; then
       exit 1
     fi
     stale_existing=true
+    # An update is safe only when the existing PR's recorded path inventory matches its branch diff.
     git diff --name-only --diff-filter=ACDMRTUXB \
       origin/main..."origin/$branch" | LC_ALL=C sort \
       > "$state_dir/remote-files.txt"
@@ -143,6 +145,7 @@ render_version_pr_metadata "$publication_phase"
 title=$(sed -n '1p' "$state_dir/metadata/title.txt")
 plugins/codexy-github/hooks/codexy-pr-title-check.sh --pr-title "$title"
 
+# First-run creates the branch; other actions apply only to the already observed PR state.
 if [ "$action" = first-run ]; then
   git switch -c "$branch"
   git add packages/codexy-runtime/Cargo.toml packages/codexy-runtime/Cargo.lock .agents/plugins/marketplace.json .agents/plugins/release-publish-contract.json plugins/codexy/.codex-plugin/plugin.json plugins/codexy-devtools/.codex-plugin/plugin.json plugins/codexy-github/.codex-plugin/plugin.json packages/getcodexy/pyproject.toml packages/getcodexy/uv.lock
@@ -195,6 +198,7 @@ else
     --base main
 fi
 
+# Build final state from fresh PR and GraphQL review-thread readbacks before publishing proven metadata.
 refresh_version_pr_snapshot
 publish_version_pr_metadata "$publication_phase"
 gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" \

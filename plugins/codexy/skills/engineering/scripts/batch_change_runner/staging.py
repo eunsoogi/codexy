@@ -17,9 +17,11 @@ def _relative_path(root: Path, value: Any, label: str) -> Path:
         raise RunnerError(f"{label} must be a non-empty relative path")
     native = Path(value)
     windows = PureWindowsPath(value)
+    # Reject absolute paths from both path dialects, regardless of the host running this manifest.
     if native.is_absolute() or windows.is_absolute() or windows.drive:
         raise RunnerError(f"{label} must be relative to the workspace")
     current = root
+    # Walk path components before resolution so symlink traversal cannot hide behind an in-root target.
     for position, component in enumerate(native.parts):
         if component == ".":
             continue
@@ -91,6 +93,7 @@ def _copy_input(workspace: Path, stage: Path, relative: Path) -> Path:
     source = workspace / relative
     destination = stage / relative
     destination.parent.mkdir(parents=True, exist_ok=True)
+    # Copy from a no-follow descriptor into the isolated stage; commands never receive the original path.
     with os.fdopen(os.open(source, os.O_RDONLY | os.O_NOFOLLOW), "rb") as source_file:
         if not stat.S_ISREG(os.fstat(source_file.fileno()).st_mode):
             raise RunnerError("original is not a regular file")
@@ -119,6 +122,7 @@ def _artifact(
     index: int,
     relative: Path,
 ) -> tuple[Path, dict[str, object]]:
+    # Keep validated outputs under a per-item artifact directory instead of replacing workspace files.
     if stage_output.is_symlink() or not stage_output.is_file():
         raise RunnerError("transform did not leave a regular output file")
     destination = artifact_root / f"item-{index:04d}" / relative

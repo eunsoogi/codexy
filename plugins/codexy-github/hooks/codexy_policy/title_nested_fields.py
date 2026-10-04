@@ -23,6 +23,7 @@ def object_fields(tokens: list[Token]) -> dict[str, object] | None:
         ):
             return None
         end = value_end(tokens, index + 2, len(tokens) - 1)
+        # Duplicate object keys make a literal payload ambiguous, so callers treat it as unresolved.
         if key.value in result:
             return None
         result[key.value] = _value(tokens[index + 2 : end])

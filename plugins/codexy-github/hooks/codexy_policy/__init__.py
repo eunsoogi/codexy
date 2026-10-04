@@ -1,1 +1,1 @@
-"""Codexy GitHub package-local policy runtime."""
+"""Shared implementations for Codexy GitHub hooks, separated from their launchers."""

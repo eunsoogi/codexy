@@ -37,6 +37,7 @@ def reparse(metadata: os.stat_result) -> bool:
 
 
 def safe_ancestors(path: Path, *, directory: bool, label: str) -> os.stat_result:
+    # Check every existing path component with lstat so symlinks and Windows reparse points are not followed.
     path = absolute(path)
     existing = path if path.exists() or path.is_symlink() else path.parent
     chain = [existing, *existing.parents]
@@ -56,6 +57,7 @@ def safe_ancestors(path: Path, *, directory: bool, label: str) -> os.stat_result
 
 
 def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    # Duplicate manifest keys would let one parser select a different bridge identity than another.
     result: dict[str, object] = {}
     for key, value in pairs:
         if key in result:
@@ -138,6 +140,7 @@ def selected_bridge(root: Path, platforms: dict[str, object]) -> Path:
     if item["kind"] != KINDS[selected]:
         fail("selected platform kind mismatch")
     digest = lower_hex(item["sha256"], 64, "selected platform digest")
+    # Verify path, release digest, executable status, and native file kind before invoking this bridge.
     bridge = root / expected_path
     metadata = safe_ancestors(bridge, directory=False, label="native bridge")
     if os.name != "nt" and metadata.st_mode & 0o111 == 0:
@@ -164,6 +167,7 @@ def invoke(bridge: Path, capsule: Path, authority: Path, output: Path | None) ->
     safe_ancestors(authority, directory=False, label="authority")
     if output is not None:
         safe_ancestors(output.parent, directory=True, label="output")
+    # The bridge validates the capsule against a separate trusted authority document before use.
     result = subprocess.run(
         [bridge, "--capsule", capsule, "--authority", authority],
         capture_output=True,
@@ -175,6 +179,7 @@ def invoke(bridge: Path, capsule: Path, authority: Path, output: Path | None) ->
     if output is None:
         sys.stdout.buffer.write(result.stdout)
     else:
+        # Replace through a same-directory temporary so readers never observe a partial capsule result.
         descriptor, temporary = tempfile.mkstemp(prefix=".capsule-", dir=output.parent)
         try:
             with os.fdopen(descriptor, "wb") as destination:

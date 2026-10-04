@@ -21,6 +21,7 @@ for name in $names; do
 	artifact="$artifact_dir/$name"
 	attestations="$artifact_dir/$name.attestations.json"
 	if test "$name" = codexy-runtime-package.tar.gz; then
+		# Runtime bytes are signed by staging; public package assets are signed by activation.
 		: "${STAGING_SOURCE_COMMIT:?STAGING_SOURCE_COMMIT is required for the runtime candidate subject}"
 		signer="$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml"
 		source_digest="$STAGING_SOURCE_COMMIT"
@@ -34,6 +35,7 @@ for name in $names; do
 		--limit 1000 \
 		--format json >"$attestations"
 	if test "$name" = codexy-runtime-package.tar.gz; then
+		# A runtime candidate attestation covers both its plugin payload and provenance receipt.
 		jq -e 'type == "array" and length > 0 and all(.[]; (.verificationResult.statement.subject | type) == "array" and ([.verificationResult.statement.subject[].name] | sort) == ["codexy-marketplace-plugin.tar.gz", "runtime-staging-receipt.json"])' \
 			"$attestations" >/dev/null
 	else
@@ -49,5 +51,6 @@ for name in $names; do
 	jq -n --arg name "$name" --arg fingerprint "$fingerprint" --argjson count "$count" \
 		'{name: $name, count: $count, fingerprint: $fingerprint}' >>"$records"
 done
+# Sort the complete attestation fingerprints and publish them only after every artifact verifies.
 jq -s 'sort_by(.name)' "$records" >"$candidate"
 mv "$candidate" "$output"

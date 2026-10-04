@@ -24,5 +24,7 @@ class ExecutionContext:
 
 @dataclass(frozen=True)
 class CommandEffect:
+    """Possible execution contexts after the command's success and failure paths."""
+
     success: ExecutionContext | None
     failure: ExecutionContext | None = None

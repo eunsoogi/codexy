@@ -91,6 +91,7 @@ def _merge(request: Request) -> bool:
     data = _mapping(request.tool_input)
     if data is None:
         return True
+    # This check owns generated squash subjects; other merge methods have no squash title contract.
     if (
         _operation(request.tool) != "merge_pull_request"
         or data.get("merge_method") != "squash"

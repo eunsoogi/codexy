@@ -8,6 +8,7 @@ artifact_dir="${1:?artifact directory is required}"
 variable="${2:?GitHub environment variable is required}"
 name="${3:?artifact name is required}"
 artifact="$artifact_dir/$name"
+# Query attestations by the digest of the exact local artifact supplied to this workflow step.
 digest="sha256:$(sha256sum "$artifact" | awk '{print $1}')"
 response="$(gh api --include -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/attestations/$digest?per_page=100" 2>/dev/null || true)"
 case "$response" in
@@ -18,6 +19,7 @@ case "$response" in
 esac
 case "$total" in *[!0-9]* | '') exit 1 ;; esac
 if test "$total" = 0; then
+	# Release payloads require attestations; only the optional non-runtime artifacts may omit them.
 	if test "$name" = codexy-runtime-package.tar.gz; then
 		printf '%s\n' 'runtime candidate attestation is missing' >&2
 		exit 1
@@ -26,6 +28,7 @@ if test "$total" = 0; then
 	exit 0
 fi
 if test "$name" = codexy-runtime-package.tar.gz; then
+	# Runtime candidates use their staging workflow and must attest both package and staging receipt subjects.
 	: "${STAGING_SOURCE_COMMIT:?STAGING_SOURCE_COMMIT is required for the runtime candidate subject}"
 	signer="$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml"
 	source_digest="$STAGING_SOURCE_COMMIT"
@@ -42,6 +45,7 @@ if test "$name" = codexy-runtime-package.tar.gz; then
 	exit 0
 fi
 signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
+# Public release artifacts are checked against the activation commit and the publishing workflow identity.
 source_digest="$ACTIVATION_COMMIT"
 if ! gh attestation verify "$artifact" --repo "$GITHUB_REPOSITORY" \
 	--deny-self-hosted-runners \

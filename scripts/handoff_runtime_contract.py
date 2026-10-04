@@ -35,6 +35,7 @@ def lower_hex(value: object, length: int, label: str) -> str:
 
 
 def safe_file(root: Path, relative: str) -> Path:
+    # Check every ancestor without following links so a valid leaf cannot escape the runtime root.
     path = root / relative
     current = root
     for part in Path(relative).parts:
@@ -53,6 +54,7 @@ def safe_file(root: Path, relative: str) -> Path:
 
 
 def validate(manifest_path: Path, root: Path) -> dict:
+    # Closed field sets make unexpected generated-manifest data fail instead of being silently ignored.
     value = json.loads(manifest_path.read_text(), object_pairs_hook=unique)
     manifest = exact(value, {"schema", "version", "source", "platforms"}, "manifest")
     if manifest["schema"] != "codexy.handoff-runtime.v1" or manifest["version"] != 1:
@@ -83,6 +85,7 @@ def validate(manifest_path: Path, root: Path) -> dict:
 
 
 def unique(pairs: list[tuple[str, object]]) -> dict:
+    # JSON's default decoder keeps the last duplicate key; reject ambiguity at the boundary instead.
     result = {}
     for key, value in pairs:
         if key in result:

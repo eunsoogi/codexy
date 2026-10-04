@@ -10,6 +10,7 @@ SHELL_LITERAL_PATTERN = re.compile(r"'(?:[^']*)'|\"(?:\\.|[^\"])*\"|\\.")
 
 
 def shell_scan(line: str) -> tuple[bool, list[tuple[str, bool]]]:
+    # Mask quoted shell text first so operators inside strings do not look like heredocs or continuations.
     masked = SHELL_LITERAL_PATTERN.sub(lambda match: "_" * len(match[0]), line)
     if comment := re.search(r"(?<!\S)#", masked):
         masked = masked[: comment.start()]

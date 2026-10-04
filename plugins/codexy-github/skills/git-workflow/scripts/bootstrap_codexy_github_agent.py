@@ -34,6 +34,7 @@ def regular(path: Path, label: str) -> None:
 
 
 def plugin_root() -> Path:
+    # Validate packaged identity before projecting a role into Codex's user-level discovery tree.
     script = Path(__file__).absolute()
     regular(script, "bootstrap")
     root = script.parents[3]
@@ -63,6 +64,7 @@ def plugin_root() -> Path:
 
 def directory(path: Path) -> None:
     if path.exists():
+        # Refuse symlinked ancestors so projection never follows a redirection outside Codex home.
         metadata = path.lstat()
         if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
             raise ValueError(
@@ -126,6 +128,7 @@ def install(path: Path, expected: str) -> None:
     current = read_destination(path)
     if current and current != expected and not current.startswith(MARKER):
         raise ValueError(f"refusing to replace unmanaged specialist: {path}")
+    # Serialize writers, then replace through a private temporary and recheck concurrent edits.
     fd = lock(path)
     temporary = path.with_suffix(f".{os.getpid()}.tmp")
     try:
@@ -150,6 +153,7 @@ def install(path: Path, expected: str) -> None:
 
 
 def remove(path: Path) -> None:
+    # Uninstall only files carrying the managed marker; leave user-owned agent files untouched.
     fd = lock(path)
     try:
         current = read_destination(path)

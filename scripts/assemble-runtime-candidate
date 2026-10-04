@@ -42,6 +42,7 @@ for component in "$@"; do
 		exit 1
 	fi
 done
+# The target version is admitted by the source commit's publication contract, not by caller input alone.
 if ! candidate_contract="$(git show "$source_commit:.agents/plugins/release-publish-contract.json" 2>/dev/null)"; then
 	printf '%s\n' 'source commit lacks release-publish contract' >&2
 	exit 1
@@ -58,6 +59,7 @@ fi
 root=dist/candidate/plugins/codexy-devtools
 mkdir -p dist/candidate/plugins
 if test -n "$pull_request"; then
+	# Assemble from the exact PR commit after confirming this workflow run's own checkout identity.
 	test "$(git rev-parse HEAD)" = "$workflow_sha"
 	rm -rf dist/candidate
 	mkdir -p dist/candidate
@@ -71,16 +73,19 @@ if test -n "$pull_request"; then
 	rm -rf "$root/runtime" "$root/runtime-release.json" "$root/runtime-candidate.json" "$root/handoff-runtime.json" "$root/mcp/codexy-mcp-devtools.exe"
 	mode=exact-pr-head
 else
+	# Protected-main staging is permitted only when the selected source is the checked-out commit.
 	test "$(git rev-parse HEAD)" = "$source_commit"
 	rsync -a --exclude runtime --exclude runtime-release.json --exclude runtime-candidate.json plugins/codexy-devtools/ "$root/"
 fi
 rm -rf "$root/skills/plugin-marketplace-prep" "$root/skills/release-engineering"
+# Runtime bytes are staged separately so the source archive cannot replace the authenticated binaries.
 cp -R staged-runtime "$root/runtime"
 mv "$root/runtime/codexy-mcp-devtools-windows-x86_64.exe" "$root/mcp/codexy-mcp-devtools.exe"
 python3 scripts/inspect-release-archive-contract.py candidate-assembly "$root"
 
 core_sources="packages/codexy-runtime/schemas/handoff-runtime.schema.json plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py"
 core_count=0
+# Require the core handoff source set to be all present or all absent; partial candidates are ambiguous.
 for source in $core_sources; do test -f "$source" && core_count=$((core_count + 1)); done
 case "$core_count" in 0) core_aware=0 ;; 4) core_aware=1 ;; *)
 	echo "core-handoff source inventory is partial" >&2
@@ -135,6 +140,7 @@ for platform in ("darwin-arm64", "linux-x86_64", "windows-x86_64"):
             "kind": {"darwin-arm64": "mach-o", "linux-x86_64": "elf", "windows-x86_64": "pe"}[platform],
         }
     platforms[platform] = inventory
+    # Core-aware candidates bind watcher and handoff binaries to per-platform digests and native kinds.
     if core_aware:
         extension = "exe" if platform == "windows-x86_64" else "bin"
         path = f"runtime/codexy-handoff-validate-{platform}.{extension}"
@@ -167,6 +173,7 @@ if core_aware:
         },
     }
 open(f"{root}/runtime-candidate.json", "wb").write(json.dumps(candidate, sort_keys=True, separators=(",", ":")).encode())
+# Stamp only the staged devtools package with the complete runtime platform set.
 manifest_path = f"{root}/.codex-plugin/plugin.json"
 manifest = json.load(open(manifest_path, encoding="utf-8"))
 manifest["supportedPlatforms"] = ["darwin-arm64", "linux-x86_64", "windows-x86_64"]
@@ -180,6 +187,7 @@ if test "$core_aware" = 1; then
 fi
 
 tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C dist/candidate -czf dist/codexy-marketplace-plugin.tar.gz plugins/codexy-devtools
+# Bind the artifact and payload manifest digests to the staging run that produced this candidate.
 archive_sha="$(sha256sum dist/codexy-marketplace-plugin.tar.gz | awk '{print $1}')"
 manifest_sha="$(sha256sum "$root/runtime-candidate.json" | awk '{print $1}')"
 SOURCE_COMMIT="$source_commit" \

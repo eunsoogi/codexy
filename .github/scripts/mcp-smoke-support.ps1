@@ -4,6 +4,7 @@ function Read-McpResponse {
     [string] $Server,
     [int] $TimeoutMs = 30000
   )
+  # MCP stdio replies are newline-framed; keep a silent or stalled server from blocking the job indefinitely.
   $read = $Process.StandardOutput.ReadLineAsync()
   if (-not $read.Wait($TimeoutMs)) { throw "MCP response timed out: $Server" }
   $line = $read.Result
@@ -76,6 +77,7 @@ function Invoke-McpProtocol {
   $start.RedirectStandardOutput = $true
   $start.RedirectStandardError = $true
   foreach ($argument in $Arguments) { $start.ArgumentList.Add([string]$argument) }
+  # A candidate smoke must not accidentally inherit runtime activation from an earlier step on the runner.
   foreach ($key in @("CODEXY_RUNTIME_DIR", "CODEXY_RUNTIME_PACKAGE_PATH", "CODEXY_RUNTIME_PACKAGE_URL", "CODEXY_RUNTIME_ARTIFACTS_API_URL", "CODEXY_RUNTIME_PACKAGE_SHA256")) {
     [void]$start.Environment.Remove($key)
   }
@@ -109,6 +111,7 @@ function Invoke-McpProtocol {
       $tools = @($listed.result.tools)
       if ($tools.Count -ne $ExpectedTools) { throw "MCP tool count for $Server was $($tools.Count), expected $ExpectedTools" }
     }
+    # EOF is the server's expected shutdown signal after the protocol checks finish.
     $process.StandardInput.Close()
     if (-not $process.WaitForExit(30000)) { throw "MCP server timed out: $Server" }
     if ($null -ne $stderrTask -and -not $stderrTask.Wait(5000)) { throw "MCP stderr drain timed out: $Server" }
@@ -122,6 +125,7 @@ function Invoke-McpProtocol {
     }
   } catch {
     if ($started) {
+      # Include bounded exit and stderr diagnostics before cleanup discards the process handle.
       try {
         if (-not $process.HasExited) { $process.Kill($true) }
       } catch { }

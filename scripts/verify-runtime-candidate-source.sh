@@ -11,6 +11,7 @@ case "$source_commit" in *[!0-9a-f]* | '') fail "source SHA must be 40 lowercase
 test "${#source_commit}" -eq 40 || fail "source SHA must be 40 lowercase hexadecimal characters"
 
 pull_request=${EXACT_PR_NUMBER:-}
+# Protected-main admission and exact pull-request-head admission are separate trust modes.
 if test -z "$pull_request"; then
 	git merge-base --is-ancestor "$source_commit" origin/main || fail "source SHA is not an ancestor of protected main"
 	mode=protected-main

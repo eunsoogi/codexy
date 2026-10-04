@@ -95,6 +95,7 @@ def build_state(args: argparse.Namespace) -> dict[str, object]:
     ):
         fail("governing issue number must be a positive integer")
     references = pr.get("closingIssuesReferences")
+    # Provisional release PRs track their issue without triggering GitHub's auto-close behavior.
     if args.issue_link_mode == "nonclosing":
         if not isinstance(references, list) or references:
             fail("provisional release pull request must not close an issue")
@@ -143,6 +144,7 @@ def write_json(path: Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
     try:
+        # Publish the complete state in one replacement so readers never observe a partial JSON file.
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
             json.dump(value, handle, separators=(",", ":"), ensure_ascii=False)
             handle.write("\n")

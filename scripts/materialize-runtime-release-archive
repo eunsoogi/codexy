@@ -42,6 +42,7 @@ tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
 input_plugin=$("$script_dir/check-release-archive-entries" \
   "$staged_archive" 52428800 10000 268435456 --input-plugin-root auto)
+# Accept the current devtools package and the older core-root staging form only.
 case "$input_plugin" in
   "$source_plugin"|plugins/codexy) ;;
   *) echo "unsupported immutable input plugin root: $input_plugin" >&2; exit 1 ;;
@@ -89,6 +90,7 @@ staged = Path(os.environ["STAGED_PLUGIN"])
 legacy_dispatcher_free = os.environ["LEGACY_DISPATCHER_FREE"] == "1"
 
 def excluded(relative: Path) -> bool:
+    # Generated runtimes and provenance contracts come from the verified candidate, not checkout overlay.
     return relative.parts[0] == "runtime" or relative.name in {
         "runtime-release.json", "runtime-candidate.json", "handoff-runtime.json",
     } or (
@@ -102,6 +104,7 @@ def remove(path: Path) -> None:
         path.unlink()
 
 for path in sorted(staged.rglob("*"), key=lambda value: len(value.parts), reverse=True):
+    # Remove non-runtime files absent from activation source so staged extras cannot survive materialization.
     relative = path.relative_to(staged)
     if not excluded(relative) and not (source / relative).exists():
         remove(path)
@@ -123,6 +126,7 @@ for path in sorted(source.rglob("*"), key=lambda value: len(value.parts)):
     else:
         raise SystemExit(f"unsupported activated source entry: {relative}")
 
+# Public archives omit staging contracts and legacy projections drop unsupported Windows runtime files.
 for contract in ("runtime-release.json", "runtime-candidate.json"):
     (staged / contract).unlink(missing_ok=True)
 if legacy_dispatcher_free:
@@ -158,6 +162,7 @@ text = re.sub(r'(?<=exec uvx --from getcodexy==)[0-9]+\.[0-9]+\.[0-9]+', os.envi
 wrapper.write_text(text)
 protected = json.loads(Path(os.environ["PROTECTED"]).read_text())
 for relative, digest in protected.items():
+    # Recheck bytes captured by candidate selection after all source projection edits.
     if hashlib.sha256((staged / relative).read_bytes()).hexdigest() != digest:
         raise SystemExit(f"verified staged bytes changed: {relative}")
 PY
@@ -175,6 +180,7 @@ with (
     gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as compressed,
     tarfile.open(fileobj=compressed, mode="w", format=tarfile.GNU_FORMAT) as archive,
 ):
+    # Fixed gzip/tar metadata makes equal staged inputs produce byte-stable release archives.
     for path in paths:
         relative = path.relative_to(root)
         info = archive.gettarinfo(str(path), str(relative))

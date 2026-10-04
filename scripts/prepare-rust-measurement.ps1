@@ -18,6 +18,7 @@ if ($repeatId -notmatch '\A[A-Za-z0-9._-]{1,64}\z' -or $cacheIdentity -notmatch 
 }
 if ($profiling -notmatch '^(true|false)$') { throw "unsupported profiling flag" }
 
+# Isolated cache mode always records metrics; normal mode does so only for requested profiling.
 $instrumentationEnabled = $mode -eq "isolated" -or $profiling -eq "true"
 if ($instrumentationEnabled) {
     if ([string]::IsNullOrWhiteSpace($env:RUNNER_TEMP) -or [string]::IsNullOrWhiteSpace($env:GITHUB_ENV)) {
@@ -25,6 +26,7 @@ if ($instrumentationEnabled) {
     }
 
     $root = Join-Path $env:RUNNER_TEMP "codexy-rust-measurement"
+    # Recreate this per-run evidence tree so a previous repeat cannot contaminate the sample.
     Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Force -Path (Join-Path $root "metrics") | Out-Null
 
@@ -42,6 +44,7 @@ if ($instrumentationEnabled) {
     Set-Content -LiteralPath (Join-Path $root "metrics\measurement.txt") -Value $metadata
 
     if ($mode -eq "isolated") {
+        # Give isolated runs private Cargo/Rustup/target locations without changing normal cache runs.
         New-Item -ItemType Directory -Force -Path (Join-Path $root "cargo"), (Join-Path $root "rustup"), (Join-Path $root "target") | Out-Null
         Add-Content -LiteralPath $env:GITHUB_ENV -Value @(
             "CARGO_HOME=$(Join-Path $root 'cargo')"

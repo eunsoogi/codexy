@@ -11,6 +11,7 @@ def strip_managed_block(text: str) -> tuple[str, bool]:
     kept: list[str] = []
     multiline: str | None = None
     in_block = found = False
+    # Markers inside a TOML multiline value are data, so strip blocks only outside strings.
     for line in lines:
         marker = line.rstrip("\r\n")
         if multiline is None and marker == BEGIN:
@@ -32,6 +33,7 @@ def strip_managed_block(text: str) -> tuple[str, bool]:
 
 
 def multiline_state(line: str, state: str | None) -> tuple[str | None, int | None]:
+    # Track multiline delimiters while ignoring quoted single-line values and TOML comments.
     index, closed = 0, None
     while index < len(line):
         if state:

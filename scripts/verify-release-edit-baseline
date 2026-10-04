@@ -4,6 +4,7 @@ set -eu
 : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
 : "${GITHUB_EVENT_PATH:?GITHUB_EVENT_PATH is required}"
 event="$GITHUB_EVENT_PATH"
+# Only the release description may be edited; identity or asset changes must use another workflow path.
 test "$(jq -r .action "$event")" = edited
 test "$(jq -r '(.changes | keys | sort | join(","))' "$event")" = body
 release_id="$(jq -r .release.id "$event")"
@@ -16,6 +17,7 @@ gh api -H 'Accept: application/octet-stream' "repos/$GITHUB_REPOSITORY/releases/
 signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
 runtime_signer="$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml"
 source_digest="$(jq -r .targetCommitish release-state.json)"
+# Verify the saved baseline and current assets against their distinct signer workflows and source commits.
 ACTIVATION_COMMIT="$source_digest" scripts/verify-release-attestation-set release-baseline baseline-attestation.json baseline
 for name in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
   asset_id="$(jq -r --arg name "$name" '.assets[] | select(.name == $name) | .id' release-state.json)"

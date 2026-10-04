@@ -20,6 +20,7 @@ def hash_path_alias(args: list[str]) -> bool:
 
 
 def rm_forbidden(args: list[str], cwd: str | None = None) -> bool:
+    # Recursive force deletion is admitted only for named generated caches below a known repository cwd.
     targets = [arg for arg in args if not arg.startswith("-")]
     broad = {"/", "/*", "~", "$HOME", "${HOME}"}
     if not flag(args, "r", "--recursive") or not flag(args, "f", "--force"):
@@ -61,6 +62,7 @@ def find_forbidden(args: list[str], cwd: str | None = None) -> bool:
 
 
 def _safe_find_rm(args: list[str]) -> bool:
+    """Require find -exec to invoke one recursive, forced rm over its selected cache directories."""
     options = args[1:-2]
     return (
         len(args) >= 4

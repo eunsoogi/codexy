@@ -20,11 +20,13 @@ components = json.loads(
 )["components"]
 staging = json.loads(staging_receipt.read_text())
 run = json.loads(staging_run.read_text())
+# Bind the receipt's component inventory to the tag before inspecting packaged manifests.
 if any(component["version"] != target for component in components):
     raise SystemExit("component receipt version mismatch")
 with tarfile.open(bundle, "r:gz") as archive:
     records = []
     for component in components:
+        # Record the packaged manifest digest only after its plugin identity and tag agree.
         name = f"{component['asset']['packageRoot']}/.codex-plugin/plugin.json"
         member = archive.extractfile(name)
         content = member.read() if member else b""
@@ -74,6 +76,7 @@ receipt = {
 candidate = staging.get("candidate", {})
 core_handoff = candidate.get("classes", {}).get("coreHandoff")
 core_watcher = candidate.get("classes", {}).get("coreWatcherMcp")
+# Optional runtime class fingerprints keep downstream receipts bound to the staged handoff metadata.
 if core_handoff:
     source = candidate["source"]
     receipt["runtimeClasses"] = {

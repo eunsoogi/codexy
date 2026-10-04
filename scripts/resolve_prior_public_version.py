@@ -51,6 +51,7 @@ def public_release_tags(repository: str) -> list[str]:
 
 def resolve(target: Version, target_text: str, release_tags: list[str]) -> str:
     candidates = []
+    # Compare numeric tuples so malformed tags and the target itself cannot become a prior baseline.
     for tag in release_tags:
         parsed = parse_version(tag.strip())
         if parsed is not None and parsed[0] < target[0]:

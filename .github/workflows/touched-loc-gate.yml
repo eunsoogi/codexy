@@ -36,6 +36,7 @@ jobs:
         run: |
           test "$HEAD_SHA" = "$(git rev-parse HEAD)"
           git fetch --no-tags origin "$BASE_SHA"
+          # Resolve the exact base before the validator computes the touched-file diff.
           test "$(git rev-parse "$BASE_SHA^{commit}")" = "$BASE_SHA"
 
       - name: Validate touched implementation LOC

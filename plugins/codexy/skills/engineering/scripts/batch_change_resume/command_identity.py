@@ -38,6 +38,7 @@ def direct_script_position(argv: list[Any]) -> int | None:
         if token in {"-W", "-X", "-Q"}:
             skip_value = True
             continue
+        # Inline and module execution have no direct script file to fingerprint.
         if token in {"-c", "-m"}:
             return None
         if token == "--":

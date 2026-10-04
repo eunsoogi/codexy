@@ -12,6 +12,7 @@ set "CODEXY_HOOK_SILENT=1"
 set "status=%errorlevel%"
 if "%status%"=="0" exit /b 0
 :runtime_deny
+rem An unavailable checker denies this event because thread-delivery policy was not evaluated.
 if /I "%event%"=="PermissionRequest" goto permission_deny
 echo {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"CODEXY_THREAD_DELIVERY_RUNTIME: Codexy policy MUST NOT execute this operation."}}
 exit /b 0

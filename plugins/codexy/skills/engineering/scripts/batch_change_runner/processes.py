@@ -121,6 +121,7 @@ def run_command(
     state = "running"
     deadline = started + float(timeout_seconds)
     try:
+        # Drain both pipes concurrently without retaining text, so verbose commands cannot block or leak output.
         while process.poll() is None or selector.get_map():
             if cancellation_event is not None and cancellation_event.is_set():
                 state = "cancelled"
@@ -143,6 +144,7 @@ def run_command(
                     selector.unregister(key.fileobj)
                     continue
                 counts[key.data] += len(chunk)
+                # Enforce one combined budget across stdout and stderr before more data is drained.
                 if counts["stdout"] + counts["stderr"] > output_limit_bytes:
                     state = "output-limit"
                     _terminate_group(process)

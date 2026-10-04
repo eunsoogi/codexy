@@ -30,6 +30,7 @@ class Transaction:
     def write(
         self, path: Path, data: bytes, expected: FileState, mode: int = 0o600
     ) -> None:
+        # Recheck the observed state even for a no-op so concurrent edits are never silently accepted.
         if expected.data == data:
             assert_same(path, expected)
             return
@@ -55,6 +56,7 @@ class Transaction:
 
     def rollback(self) -> None:
         errors = []
+        # Undo in reverse order only while each path still has the state this transaction applied.
         for path, state, applied in reversed(self.history):
             try:
                 current = snapshot(path)
@@ -84,6 +86,7 @@ def snapshot(path: Path) -> FileState:
         return FileState(None)
     if is_link(metadata) or not stat.S_ISREG(metadata.st_mode):
         raise ValueError(f"{path} must be a regular non-symlink file")
+    # Compare the no-follow descriptor with lstat so a path swap cannot change what is snapshotted.
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     descriptor = os.open(path, flags)
     try:
@@ -112,6 +115,7 @@ def atomic_write(path: Path, data: bytes, expected: FileState, mode: int) -> Fil
         os.chmod(temp, mode)
         applied = snapshot(temp)
         assert_same(path, expected)
+        # Hard-link creation preserves absence as a precondition; a racing file is not overwritten.
         if expected.data is None:
             os.link(temp, path, follow_symlinks=False)
             published = True
@@ -200,6 +204,7 @@ def _trusted_parts(path: Path) -> tuple[Path, tuple[str, ...]]:
     if len(parts) == 1:
         return boundary, ()
     top_level = boundary / parts[1]
+    # Anchor traversal at a root-owned or non-reparse boundary before checking user-owned descendants.
     metadata = os.lstat(top_level)
     if os.name == "nt" and is_link(metadata):
         raise ValueError(

@@ -14,7 +14,7 @@ test "$(jq -r .source.stagingSourceCommit dist/runtime-release-receipt.json)" = 
 test "$(jq -r .source.activationCommit dist/runtime-release-receipt.json)" = "$ACTIVATION_COMMIT"
 test "$(jq -r .staging.runId dist/runtime-release-receipt.json)" = "$STAGING_RUN_ID"
 git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
-release_state() {
+release_state() { # Reduce API snapshots to fields needed for this release identity.
   gh api "repos/$GITHUB_REPOSITORY/releases/$1" |
     jq '{id, name, tagName: .tag_name, targetCommitish: .target_commitish, isDraft: .draft, isPrerelease: .prerelease, uploadUrl: .upload_url, assets: [.assets[] | {id, name, size, digest}]}'
 }
@@ -78,7 +78,7 @@ authenticated_remote_tag() {
     GIT_CONFIG_VALUE_0="Authorization: Basic $tag_auth_basic" \
     git ls-remote --refs origin "${1:-$tag_ref}"
 }
-verify_existing_tag() {
+verify_existing_tag() { # Require fetched local commit and second remote snapshot to agree.
   tag_snapshot="$1"
   tag_snapshot_oid="$(printf '%s\n' "$tag_snapshot" | awk 'NR == 1 { print $1 }')"
   test "$tag_snapshot_oid" = "$ACTIVATION_COMMIT"
@@ -222,6 +222,7 @@ verify_release_asset() {
 }
 existing_release="$(mktemp -d)"
 verified_release="$(mktemp -d)"
+# Reuse assets only after byte-for-byte comparison, then download all final assets for readback proof.
 release_assets='codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json'
 for asset in $release_assets; do
   if jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json > /dev/null; then

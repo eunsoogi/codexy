@@ -83,6 +83,7 @@ def run_item(
     if not _unchanged(workspace / original_relative, expected_state):
         return _stop(result, "preflight", "original-changed", "abort")
 
+    # Commands write only to a fresh per-item copy, keeping the caller's original outside their working tree.
     stage = run_root / f"work-{index:04d}"
     try:
         stage.mkdir()
@@ -120,6 +121,7 @@ def run_item(
             return _stop(result, "transform", reason, control)
         if cancellation_event is not None and cancellation_event.is_set():
             return _stop(result, "batch", "cancelled", "cancel")
+        # Validations inspect the staged transform output; they never write to the requested destination.
         try:
             stage_output = _stage_output(stage, output_relative)
         except RunnerError:
@@ -160,6 +162,7 @@ def run_item(
             )
         except (OSError, RunnerError):
             return _stop(result, "transform", "contract-violation", "abort")
+        # Publish a result artifact only after transforms, validations, and original checks all pass.
         result["status"] = "succeeded"
         result["output"] = {
             "path": str(artifact_path),

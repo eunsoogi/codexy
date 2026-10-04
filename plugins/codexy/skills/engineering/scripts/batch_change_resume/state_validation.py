@@ -24,6 +24,7 @@ def validate_state(
     items = value.get("items")
     if not isinstance(operation, Mapping) or not isinstance(items, Mapping):
         raise ResumeError("resume state has invalid operation or items")
+    # Keep the saved operation closed so new or missing identity fields cannot be ignored on resume.
     required_operation = {
         "schema",
         "workspace",
@@ -54,6 +55,7 @@ def validate_state(
         for item_id, identity in operation["item_identities"].items()
     ):
         raise ResumeError("resume state has invalid item identities")
+    # Validate every item's transition record before allowing it to influence reuse decisions.
     base_fields = {"spec_identity", "input_identity", "status", "invocations", "result"}
     optional_fields = {"owner_pid", "started_at_ns", "reason"}
     for item_id, saved in items.items():

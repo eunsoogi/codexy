@@ -1,5 +1,6 @@
 $ErrorActionPreference = "Stop"
 
+# Compile test targets once, then share both Cargo's downloaded sources and build outputs with the Windows test shards.
 $manifest = "packages/codexy-runtime/Cargo.toml"
 & cargo test --manifest-path $manifest --locked --no-run --lib --bins
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

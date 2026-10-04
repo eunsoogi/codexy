@@ -12,9 +12,11 @@ def main() -> int:
         raise SystemExit("usage: select_public_getcodexy_artifacts.py JSON VERSION")
     document = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
     version = sys.argv[2]
+    # Refuse a stale PyPI document before selecting artifacts from its URL list.
     if document.get("info", {}).get("version") != version:
         raise SystemExit("public getcodexy version mismatch")
     for package_type in ("bdist_wheel", "sdist"):
+        # The package proof needs exactly one wheel and one source archive, not an arbitrary latest match.
         matches = [
             item
             for item in document.get("urls", [])

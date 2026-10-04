@@ -10,6 +10,7 @@ case "$ACTIVATION_COMMIT" in ''|*[!0-9a-f]*) exit 1 ;; esac
 test "${#ACTIVATION_COMMIT}" -eq 40
 git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
 test "$(git rev-parse "$ACTIVATION_COMMIT")" = "$ACTIVATION_COMMIT"
+# Release assets may be finalized only after their activation source is reachable from protected main.
 git merge-base --is-ancestor "$ACTIVATION_COMMIT" origin/main
 signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
 runtime_signer="$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml"
@@ -22,6 +23,7 @@ release_state() {
     jq '{id, name, tagName: .tag_name, targetCommitish: .target_commitish, isDraft: .draft, isPrerelease: .prerelease, uploadUrl: .upload_url, assets}'
 }
 finalize_diagnostic() {
+  # GitHub error bodies can echo request material, so redact credentials before emitting diagnostics.
   response_file="$1"
   status_line="$(awk '$1 ~ /^HTTP\/[0-9.]+$/ { print; exit }' "$response_file" | cut -c 1-256)"
   status_code="$(printf '%s\n' "$status_line" | awk 'NF { print $2; exit }')"
@@ -63,6 +65,7 @@ authenticated_tag_snapshot() {
     git ls-remote --refs origin "$1"
 }
 verify_tag_ref() {
+  # Compare the authenticated remote tag before and after fetching to detect a moving ref.
   tag_snapshot="$(authenticated_tag_snapshot "$tag_ref")"
   test "$(printf '%s\n' "$tag_snapshot" | awk 'NF' | wc -l | tr -d '[:space:]')" -eq 1
   test "$(printf '%s\n' "$tag_snapshot" | awk 'NR == 1 { print $2 }')" = "$tag_ref"
@@ -99,6 +102,7 @@ download_release_asset() {
     "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" > "$final_release/$asset"
 }
 for asset in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json release-baseline.json; do
+  # Require the complete asset set before verifying attestations or making a draft release public.
   jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' release-state.json >/dev/null
   download_release_asset "$asset"
   if test "$asset" = release-baseline.json; then

@@ -72,6 +72,7 @@ def execute_items(
 ) -> tuple[list[dict[str, Any]], str]:
     public_items: list[dict[str, Any]] = []
     top_status = "completed"
+    # Stop before reuse or execution when any source changed, so the batch never mixes input versions.
     if not all_originals_unchanged(root, items):
         changed = {
             index
@@ -162,6 +163,7 @@ def execute_items(
                 "started_at_ns": time.time_ns(),
             }
         )
+        # Persist ownership and the in-progress state before launching a command that may be interrupted.
         persist_state(state_path, state, persistence_hook)
         result, control = run_item(
             item,
@@ -202,6 +204,7 @@ def execute_items(
                 raise ResumeError(
                     "runner returned an artifact outside the results root"
                 )
+            # Record success only after re-reading and flushing the validated artifact's current identity.
             try:
                 artifact_state = file_state(artifact_path, "validated artifact")
                 sync_file(artifact_path, "validated artifact")
@@ -228,6 +231,7 @@ def execute_items(
             )
         )
         if control == "cancel":
+            # Surface unattempted items as pending so a later invocation can resume them explicitly.
             top_status = "interrupted"
             _append_pending(public_items, items, state, index + 1, "cancelled")
             break

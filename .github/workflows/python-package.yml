@@ -85,7 +85,7 @@ jobs:
           GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
         run: pwsh -NoProfile -NonInteractive -File .github/scripts/prepare-mcp-wheel-fixtures.ps1
       - name: Run focused package tests
-        run: UV_NO_INDEX=1 UV_FIND_LINKS="$CODEXY_SELECTED_MCP_WHEEL_DIR" UV_CACHE_DIR="$RUNNER_TEMP/codexy-focused-wheel-uv-cache" PYTHONPATH=packages/getcodexy/src python -m unittest discover -s packages/getcodexy/tests -p 'test_*.py'
+        run: UV_NO_INDEX=1 UV_FIND_LINKS="$CODEXY_SELECTED_MCP_WHEEL_DIR" UV_CACHE_DIR="$RUNNER_TEMP/codexy-focused-wheel-uv-cache" PYTHONPATH=packages/getcodexy/src python -m unittest discover -s packages/getcodexy/tests -p 'test_*.py' # Keep package resolution within the prepared wheel fixture.
       - name: Verify installed wheel and console entrypoint
         run: |
           version="$(python -c 'import tomllib; print(next(package["version"] for package in tomllib.load(open("packages/getcodexy/uv.lock", "rb"))["package"] if package["name"] == "getcodexy"))')"
@@ -132,7 +132,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $release = $verified | ConvertFrom-Json
           Write-Host (@{ prior_public_release = $release.release_tag; baseline_source = $release.baseline_source; baseline_commit = $release.baseline_commit; bundle_sha256 = $release.bundle_sha256 } | ConvertTo-Json -Compress)
-          $binary = $release.watcher_binary
+          $binary = $release.watcher_binary # Use the verified public runtime binary as the hook target for this package.
           $env:CODEXY_TEST_WATCHER_BINARY = $binary
           "CODEXY_TEST_WATCHER_BINARY=$binary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           $env:PYTHONPATH = "packages/getcodexy/src;packages/getcodexy/tests"
@@ -187,7 +187,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          Remove-Item Env:CODEXY_RUNTIME_DIR -ErrorAction SilentlyContinue
+          Remove-Item Env:CODEXY_RUNTIME_DIR -ErrorAction SilentlyContinue # Check that registration resolves its packaged default runtime.
           ./.github/scripts/smoke-registered-mcp.ps1
       - name: Test dependency-aware GitHub activation
         shell: pwsh

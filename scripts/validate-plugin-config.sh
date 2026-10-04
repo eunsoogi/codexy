@@ -2,11 +2,13 @@
 set -eu
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 REPO_ROOT=$(CDPATH='' cd -- "$SCRIPT_DIR/.." && pwd)
+# Only the explicit test harness may substitute a validator binary.
 if [ "${CODEXY_TEST_MODE:-}" = 1 ] && [ -n "${CODEXY_TEST_VALIDATE_PLUGIN_CONFIG_BINARY:-}" ]; then
 	exec "$CODEXY_TEST_VALIDATE_PLUGIN_CONFIG_BINARY" "$@"
 fi
 case " $* " in
 *" --check "* | *" --check-lsp "*)
+	# Cross-check the maintained LSP catalog against its generated JSON projection before Rust validation.
 	python3 - "$REPO_ROOT" "$@" <<'PY'
 import json
 import sys
@@ -37,6 +39,7 @@ for index, argument in enumerate(args[:-1]):
         plugin_root = resolve_plugin_root(args[index + 1])
 
 catalog = tomllib.loads((plugin_root / "lsp/server-catalog.toml").read_text())
+# The validator owns the expected server count and smoke/lazy split as contract data.
 rows = catalog.get("servers")
 if not isinstance(rows, list) or len(rows) != 39:
     fail("ID_SET_MISMATCH", "catalog must contain 39 servers")

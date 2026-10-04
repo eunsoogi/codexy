@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $archive = Join-Path (Get-Location).Path "codexy-windows-rust-prepared-download/codexy-windows-rust-prepared.tar"
 if (-not (Test-Path -LiteralPath $archive -PathType Leaf)) { throw "shared Rust dependency archive is missing" }
+# Restore the two archived roots to the same paths used by Cargo so later shards can reuse the prepared cache.
 New-Item -ItemType Directory -Force -Path (Join-Path $HOME ".cargo"), "packages/codexy-runtime" | Out-Null
 & tar.exe -xf $archive -C $HOME ".cargo/registry"
 if ($LASTEXITCODE -ne 0) { throw "shared Cargo registry archive extraction failed" }

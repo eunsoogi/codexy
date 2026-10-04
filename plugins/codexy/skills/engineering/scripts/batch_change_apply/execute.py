@@ -80,6 +80,7 @@ def run(
                 "reason": None,
             }
         )
+        # Persist the attempt before touching the destination so a restart can distinguish interrupted work.
         write(state_path, state)
         prepared_diff: str | None = None
         try:
@@ -140,6 +141,7 @@ def run(
             )
         )
         if interrupted:
+            # Mark selected items after the interrupted one as incomplete without attempting them.
             for pending in values[index + 1 :]:
                 pending_id = str(pending["id"])
                 if pending_id in selected:

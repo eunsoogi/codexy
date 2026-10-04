@@ -15,6 +15,7 @@ add_isolated_state() {
 	printf 'cache_state=%s\n' "$state" >>"$measurement_file"
 }
 
+# Normal measurements prove cache-hit state; isolated measurements record it in the run evidence.
 case "$mode:$condition" in
 normal:cold)
 	case "$cache_hit" in
@@ -43,6 +44,7 @@ isolated:warm)
 	if [[ "$cache_hit" == true ]]; then
 		add_isolated_state warm-hit
 	else
+		# Record the observed miss before failing so an invalid warm sample remains diagnosable.
 		add_isolated_state warm-miss
 		printf 'isolated warm measurement requires an exact cache hit\n' >&2
 		exit 1

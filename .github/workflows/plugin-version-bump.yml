@@ -30,6 +30,7 @@ jobs:
       - name: Pin working tree to main
         run: |
           git fetch origin main
+          # Version automation always starts from the latest protected main, not an arbitrary dispatch ref.
           git reset --hard origin/main
 
       - name: Configure Git identity
@@ -66,6 +67,7 @@ jobs:
           printf 'ISSUE=%s\n' "$canonical_issue" >> "$GITHUB_ENV"
           gh label list --repo "$GITHUB_REPOSITORY" --limit 100 \
             --json name > "$state_dir/repository-labels.json"
+          # Validate issue linkage and live repository labels before changing version metadata.
           scripts/render_version_pr_metadata.py \
             --version "$VERSION" \
             --issue-json "$state_dir/issue.json" \
@@ -77,6 +79,7 @@ jobs:
       - name: Prepare candidate plugin version
         env:
           VERSION: ${{ inputs.version }}
+        # The canonical sync helper owns both version projections and their consistency checks.
         run: scripts/sync-plugin-version.sh --prepare-candidate "$VERSION"
 
       - name: Validate release candidate

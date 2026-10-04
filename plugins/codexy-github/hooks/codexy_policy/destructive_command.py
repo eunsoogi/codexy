@@ -36,6 +36,7 @@ def forbidden(request: Request) -> bool | str:
         git_config_environment,
         runtime_environment,
     )
+    # Report credential exposure and unresolved protected effects before known mutation classes.
     if credential_exposure(command, context):
         return describe("CREDENTIAL_EXPOSURE", command, context)
     if unresolved_protected_effect(command, context) or unresolved_alias_transition(

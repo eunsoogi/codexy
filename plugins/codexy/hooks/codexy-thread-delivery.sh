@@ -9,6 +9,7 @@ plugin_root=${PLUGIN_ROOT-}
 if "${plugin_root}/hooks/codexy-hook-runtime.sh" codexy-thread-delivery.py "$event"; then
 	exit 0
 fi
+# Runtime failure denies the event because the message-delivery policy was not checked.
 if [ "$event" = PermissionRequest ]; then
 	printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"CODEXY_THREAD_DELIVERY_RUNTIME: Codexy policy MUST NOT execute this operation."}}}'
 else

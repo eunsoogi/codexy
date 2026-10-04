@@ -1,6 +1,7 @@
 @echo off
 set "plugin_root=%~dp0.."
 set "bundled_runtime=%plugin_root%\runtime\codexy-mcp-watcher-windows-x86_64.exe"
+rem Prefer a packaged executable, then the checkout source for development, then the pinned release.
 if exist "%bundled_runtime%" goto bundled_runtime
 where uvx >nul 2>&1
 if errorlevel 1 (

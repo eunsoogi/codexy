@@ -1,3 +1,5 @@
+"""Synthetic end-to-end support for isolated batch-runner contract tests."""
+
 from __future__ import annotations
 
 import json
@@ -13,6 +15,7 @@ ROOT = Path(__file__).parents[6]
 INPUT_SCRIPTS = ROOT / "plugins/codexy/skills/engineering/scripts/batch_change_input"
 RUNNER_SCRIPTS = ROOT / "plugins/codexy/skills/engineering/scripts/batch_change_runner"
 RUNNER = RUNNER_SCRIPTS / "batch_change_runner.py"
+# These local command modes simulate timeout, mutation, output flooding, and descendants without external services.
 COMMAND_SOURCE = "from pathlib import Path\nimport subprocess,sys,time\nm,a=sys.argv[1],sys.argv[2:]\nif m=='copy': s,d=map(Path,a[:2]); d.parent.mkdir(parents=True,exist_ok=True); d.write_text(s.read_text().upper())\nelif m=='bad': d=Path(a[1]); d.parent.mkdir(parents=True,exist_ok=True); d.write_text('bad')\nelif m=='fail': raise SystemExit(7)\nelif m=='delete': Path(a[0]).unlink(); raise SystemExit(7)\nelif m=='validate': raise SystemExit(0 if Path(a[0]).read_text()!='bad' else 9)\nelif m=='spam': print('SECRET_TOKEN '*10000,flush=True); print('SECRET_TOKEN '*10000,file=sys.stderr,flush=True)\nelif m=='mutate': d=Path(a[1]); d.parent.mkdir(parents=True,exist_ok=True); d.write_text('output'); Path(a[2]).write_text('changed')\nelif m=='spawn': child=subprocess.Popen([sys.executable,__file__,'child']); Path(a[2]).write_text(str(child.pid)); time.sleep(30)\nelif m=='symlink': Path(a[0]).symlink_to(Path(a[1]),target_is_directory=True)\nelif m=='child': time.sleep(30)\nelse: raise SystemExit(2)\n"
 
 sys.path.insert(0, str(INPUT_SCRIPTS))

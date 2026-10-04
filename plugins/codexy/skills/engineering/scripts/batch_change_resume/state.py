@@ -63,6 +63,7 @@ def ensure_child_directory(root: Path, value: str | Path, label: str) -> Path:
         raw_relative = None
     if raw_relative is not None:
         current = root
+        # Reject lexical links before resolution, even if their targets remain inside the workspace.
         for component in raw_relative.parts:
             current /= component
             _reject_symlink(current, label)
@@ -72,6 +73,7 @@ def ensure_child_directory(root: Path, value: str | Path, label: str) -> Path:
     except ValueError as error:
         raise StateError(f"{label} must be beneath the workspace root") from error
     current = root
+    # Create and verify every resolved component separately so no intermediate symlink is followed.
     for component in relative.parts:
         current /= component
         try:
@@ -100,6 +102,7 @@ def _read_regular_bytes(path: Path, label: str) -> bytes:
         raise StateError(f"cannot read {label}: {error.strerror or error}") from error
     try:
         opened = os.fstat(descriptor)
+        # Confirm the opened handle still names the regular file observed by lstat.
         if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != (
             metadata.st_dev,
             metadata.st_ino,
@@ -147,6 +150,7 @@ def file_state(path: Path, label: str = "file") -> dict[str, int | str]:
             digest.update(chunk)
             size += len(chunk)
         after = os.fstat(descriptor)
+        # Refuse a moving source instead of persisting a digest assembled across two file versions.
         if (
             before.st_dev,
             before.st_ino,
@@ -193,6 +197,7 @@ def valid_file_state(value: Any, *, with_inode: bool) -> bool:
 
 
 def state_matches(actual: Mapping[str, Any], expected: Mapping[str, Any]) -> bool:
+    # Actual state always includes inode identity; older runner records may only contain content fields.
     if not valid_file_state(actual, with_inode=True):
         return False
     expected_with_inode = valid_file_state(expected, with_inode=True)
