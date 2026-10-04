@@ -9,6 +9,7 @@ use super::model::{
 };
 
 pub(super) fn parse_request(text: &str) -> Result<Request> {
+    // Dispatch only by a recognized schema, then deserialize with deny_unknown_fields models to reject accidental contract drift.
     let value = routing_json::parse(text).map_err(anyhow::Error::msg)?;
     match value.get("schema").and_then(Value::as_str) {
         Some(V1_REQUEST_SCHEMA) => {

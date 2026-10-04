@@ -1,4 +1,5 @@
 pub(crate) fn is_attribute_trivia(line: &str, block_comment_depth: &mut usize) -> bool {
+    // The caller carries nested block-comment depth between lines so attribute continuations cannot expose fake module syntax.
     let mut remainder = line;
     loop {
         let trimmed = remainder.trim_start();

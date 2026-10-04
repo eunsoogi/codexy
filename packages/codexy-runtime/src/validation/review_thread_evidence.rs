@@ -1,6 +1,7 @@
 use serde_json::Value;
 
 pub(super) fn check(threads: &Value) -> Option<String> {
+    // A partial GraphQL page cannot prove that every review thread has been inspected.
     let Some(has_next_page) = threads
         .get("pageInfo")
         .and_then(|page| page.get("hasNextPage"))

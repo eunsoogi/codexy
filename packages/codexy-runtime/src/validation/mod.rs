@@ -1,3 +1,4 @@
+// Keep each source contract in its own validator and re-export only the shared invocation surfaces below.
 mod agent_model_contract;
 mod agent_registration;
 mod agent_registration_catalog;

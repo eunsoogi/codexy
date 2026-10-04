@@ -12,15 +12,18 @@ pub(super) enum LaneBoundary {
 
 impl LaneBoundary {
     pub(super) fn resets_authority_record(self) -> bool {
+        // Ownership declarations start a record; later PR/review/reassignment events invalidate it.
         !matches!(self, Self::Ownership)
     }
 
     pub(super) fn requires_fresh_classification(self) -> bool {
+        // Review responses and maintainer reassignments change the lane decision context.
         matches!(self, Self::ReviewResponse | Self::MaintainerReassignment)
     }
 }
 
 pub(super) fn current_lane_start(lines: &[&str], setup_index: usize) -> usize {
+    // Only evidence after the latest lane boundary may authorize this setup action.
     (0..setup_index)
         .rev()
         .find(|index| lane_boundary(lines, *index).is_some())
@@ -32,6 +35,7 @@ pub(super) fn current_lane_record_start(lines: &[&str], end: usize) -> usize {
     let Some(boundary) = start.checked_sub(1) else {
         return 0;
     };
+    // Keep a paired authority-source line with the ownership boundary that follows it.
     let line = metadata_key(trimmed_value(lines[boundary]));
     if line.starts_with("lane ownership:")
         && boundary > 0
@@ -45,6 +49,7 @@ pub(super) fn current_lane_record_start(lines: &[&str], end: usize) -> usize {
 
 pub(super) fn lane_boundary(lines: &[&str], index: usize) -> Option<LaneBoundary> {
     let raw_line = trimmed_value(lines[index]);
+    // Markdown table rows are classification data, not independent lane-boundary records.
     if raw_line.starts_with('|') {
         return None;
     }

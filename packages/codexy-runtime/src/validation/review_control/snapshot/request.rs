@@ -5,6 +5,7 @@ use super::normalize;
 pub(crate) fn normalize_request_states(
     request: &Value,
 ) -> Result<(Option<Value>, Option<Value>), String> {
+    // Normalize connector captures only; GraphQL snapshots already use the canonical shape.
     let current = request
         .get("current_pr_state")
         .map(|state| normalize_connector(state, "current"))

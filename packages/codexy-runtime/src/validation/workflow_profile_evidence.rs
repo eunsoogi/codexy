@@ -4,6 +4,7 @@ use super::child_lane_ownership_phrases::metadata_key;
 use super::workflow_profile_grammar::value_has_strict_signal;
 
 pub(super) fn current_active_lines(evidence: &str) -> Vec<String> {
+    // Only current-lane active Markdown reaches profile selection; code samples, comments, and prior authority records are excluded.
     let raw_lines = evidence.lines().collect::<Vec<_>>();
     let (mut fence, mut state, mut lines, mut previous_block_boundary) =
         (None, MarkdownState::default(), Vec::new(), false);

@@ -1,5 +1,6 @@
 use super::git_preflight_lines::is_git_log_graph_output_line;
 
+/// Commands needed to anchor continuation edits to the current repository and branch state.
 pub(super) const REQUIRED_PREFLIGHT_COMMANDS: &[&str] = &[
     "pwd",
     "git status --short --branch",
@@ -18,6 +19,7 @@ pub(super) fn has_all_commands(text: &str) -> bool {
         .all(|phrase| contains_command_target(&text, phrase))
 }
 
+/// Rejects plans and negations, then accepts either captured shell commands or explicit run evidence.
 pub(super) fn has_executed_evidence(text: &str) -> bool {
     let lines: Vec<_> = pre_log_output_lines(text).collect();
     if lines.iter().copied().any(has_planned_execution_evidence) {
@@ -70,6 +72,7 @@ fn is_command_boundary(character: char) -> bool {
 }
 
 pub(super) fn pre_log_output_lines(text: &str) -> impl Iterator<Item = &str> {
+    // Exclude commit graph output after the log command so hashes cannot satisfy unrelated evidence checks.
     let mut saw_git_log_command = false;
     text.lines().filter(move |line| {
         if saw_git_log_command && is_git_log_graph_output_line(line) {

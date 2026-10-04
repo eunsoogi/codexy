@@ -17,6 +17,7 @@ pub(super) fn formatting_only_error(
     current_lines: usize,
     loc_limit: usize,
 ) -> Result<Option<String>> {
+    // Only diagnose a touched file that crosses the cap via whitespace or collapsed structure; ordinary edits use the hard-cap check.
     let base_path = base_path(root, baseline_ref, path)?;
     let Some(base_text) = read_base_text(root, baseline_ref, &base_path)? else {
         return Ok(None);
@@ -69,6 +70,7 @@ fn has_test_target_split(
     base: &str,
     current: &str,
 ) -> Result<bool> {
+    // Permit a cohesive test split when most removed nonblank lines reappear in a new sibling Rust test file.
     if !path.starts_with("tests/") {
         return Ok(false);
     }

@@ -1,3 +1,4 @@
+// Separate active evidence vocabularies from phrases that mark the same claims as planned or negated.
 pub(super) const DUPLICATE_STATE_PHRASES: &[&str] = &[
     "duplicate/no-active-work",
     "no-active-work",

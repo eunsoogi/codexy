@@ -3,6 +3,7 @@ pub(super) struct ActiveLine {
     pub(super) raw_text: String,
 }
 
+/// Keeps current active evidence lines and preserves both normalized and original text for classification.
 pub(super) fn active_lines(evidence: &str) -> Vec<ActiveLine> {
     let text = super::readiness_context::current_text(evidence);
     let mut lines = Vec::new();

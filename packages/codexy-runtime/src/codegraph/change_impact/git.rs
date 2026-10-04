@@ -11,6 +11,7 @@ pub(super) fn snapshot_current(root: &Path, max_files: usize) -> SnapshotGraph {
     SnapshotGraph::from_graph(build_graph(root, Some(max_files)))
 }
 
+// Read historical source from an archive in a temporary directory so impact analysis never checks out or mutates the worktree.
 pub(super) fn snapshot_revision(
     root: &Path,
     revision: &str,

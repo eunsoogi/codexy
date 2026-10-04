@@ -104,6 +104,7 @@ pub(super) fn event_words(text: &str) -> Vec<Vec<&str>> {
             starts.push(start);
         }
     }
+    // Split only at independent subject events; coordinated `neither ... nor ...` shares one negation scope.
     starts.sort_unstable();
     starts.dedup();
     starts
@@ -143,6 +144,7 @@ fn subjects(words: &[&str]) -> Vec<Subject> {
             .filter(|(phrase, _)| words[start..].starts_with(phrase))
             .max_by_key(|(phrase, _)| phrase.len())
         {
+            // Prefer the longest subject phrase at a position so `review feedback` is one unit.
             let subject_start = start;
             start += phrase.len();
             subjects.push(Subject {
@@ -176,6 +178,7 @@ fn coordination(words: &[&str], subjects: &[Subject], index: usize) -> Coordinat
     let shared_negation = first < index
         && before(subjects[first].start) == Some(&"neither")
         && before(subjects[index].start) == Some(&"nor");
+    // `neither` scopes across its `nor` chain; splitting those subjects would lose polarity.
     if shared_negation {
         Coordination::SharedNegation
     } else {

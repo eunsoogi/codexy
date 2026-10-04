@@ -7,6 +7,7 @@ pub(super) fn normalize_path(path: &str) -> String {
 }
 
 pub(super) fn mapping_matches(pattern: &str, path: &str) -> bool {
+    // Repository mappings intentionally support exact paths, directory prefixes, and simple basename suffix forms only.
     let pattern = normalize_path(pattern);
     let path = normalize_path(path);
     if pattern.is_empty() {
@@ -35,6 +36,7 @@ pub(super) fn mapping_matches(pattern: &str, path: &str) -> bool {
 
 #[must_use]
 pub fn classify_path(path: &str) -> ChangeArea {
+    // Classification is lexical, with lockfile and fixture rules taking priority over broad extension-based categories.
     let normalized = normalize_path(path);
     let lower = normalized.to_ascii_lowercase();
     let basename = lower.rsplit('/').next().unwrap_or_default();

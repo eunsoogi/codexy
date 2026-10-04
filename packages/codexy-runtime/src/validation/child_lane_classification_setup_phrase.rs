@@ -7,6 +7,7 @@ pub(super) fn is_adjunct_preposition(word: &str) -> bool {
     )
 }
 
+/// Stops a negative-condition phrase at grammar tokens that begin a new clause or predicate.
 pub(super) fn is_condition_phrase_boundary(word: &str) -> bool {
     matches!(word, "a" | "an" | "the" | "and" | "or" | "but")
         || is_preposition_or_subordinator(word)

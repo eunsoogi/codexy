@@ -16,6 +16,7 @@ impl ScopeTracker {
     }
 
     pub(super) fn observe_with_outer_remainder<'a>(&mut self, line: &'a str) -> Option<&'a str> {
+        // Braces inside comments and string/character literals do not change Rust item scope or expose an attribute remainder.
         let started_outer = self.is_outer();
         let bytes = line.as_bytes();
         let mut index = 0;

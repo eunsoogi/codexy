@@ -2,6 +2,7 @@
 
 use super::child_lane_classification_setup_phrase::is_condition_phrase_boundary;
 
+/// Recognizes negative condition phrases such as `under no circumstances` without crossing clause boundaries.
 pub(super) fn has_negative_condition_adjunct(words: &[&str]) -> bool {
     words.iter().enumerate().any(|(under, word)| {
         *word == "under"

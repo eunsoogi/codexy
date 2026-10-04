@@ -22,6 +22,7 @@ pub(super) fn overview(root: &Path, limit: Option<usize>) -> Value {
     let files = all_files[..file_limit.min(all_files.len())].to_vec();
     let file_truncated = all_files.len() > files.len();
     let mut errors = take_errors();
+    // Unknown totals stay null when discovery was incomplete instead of implying a complete scan.
     let total_files_known = errors.is_empty();
     let mut imports_truncated = false;
     let mut import_edges = files
@@ -54,6 +55,7 @@ pub(super) fn overview(root: &Path, limit: Option<usize>) -> Value {
     result
 }
 
+/// Returns import-shaped source lines for the legacy tool, capped independently per file.
 pub(super) fn imports_for(root: &Path, file_path: &str) -> (Vec<ImportLine>, bool) {
     let mut imports = read_source(root, file_path)
         .lines()

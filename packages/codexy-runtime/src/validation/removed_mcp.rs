@@ -32,6 +32,7 @@ pub(super) fn check_custom_agent(
 }
 
 fn contains_removed_reference(value: &Value) -> bool {
+    // Removed server names may be nested anywhere in a custom-agent MCP entry.
     match value {
         Value::String(text) => {
             is_removed_name(text) || is_removed_command(text) || is_removed_url(text)

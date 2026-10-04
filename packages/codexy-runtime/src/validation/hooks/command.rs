@@ -12,6 +12,7 @@ pub(super) fn check_command(
     event: &str,
     command: &str,
 ) -> Result<()> {
+    // Constrain hook commands to static, regular files inside the packaged plugin root before script checks.
     safety::check_command_text(path, event, command)?;
     if has_single_quoted_plugin_root_entrypoint(command) {
         bail!(

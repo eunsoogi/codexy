@@ -12,6 +12,7 @@ pub(super) enum Scalar {
 }
 
 pub(super) fn parse(text: &str, path: &Path) -> Result<BTreeMap<String, Scalar>> {
+    // This parser accepts only the nested scalar-map subset needed by prompt checks, not arbitrary YAML.
     let mut root = BTreeMap::new();
     let mut stack: Vec<(usize, Vec<String>)> = vec![(0, Vec::new())];
     let mut previous_indent = 0usize;

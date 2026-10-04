@@ -2,6 +2,7 @@ use serde_json::json;
 
 use super::check;
 
+// Each mutation models contract drift that the fixture validator must reject.
 fn fixtures() -> serde_json::Value {
     serde_json::from_str(include_str!(
         "../../../../packages/getcodexy/tests/fixtures/component-installation-cases.json"

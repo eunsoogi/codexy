@@ -13,6 +13,7 @@ pub(super) fn relative_clause_owns_report_predicate(
     )
 }
 
+/// Finds the main predicate after a relative clause so its subject is not mistaken for the setup actor.
 pub(super) fn main_clause_start(words: &[&str], start: usize, action: usize) -> Option<usize> {
     let relative = relative_marker(words, start, action)?;
     Some(
@@ -31,6 +32,7 @@ pub(super) fn coordinates_relative_subject(
     conjunction: usize,
     action: usize,
 ) -> bool {
+    // Keep `who/which ... and ...` together only when the relative subject owns the later predicate.
     let Some(relative) = relative_marker(words, start, action) else {
         return false;
     };
@@ -93,6 +95,7 @@ fn relative_parse(words: &[&str], start: usize, predicate: usize) -> RelativePar
     if !relative_predicate_word(words[predicate]) {
         return RelativeParse::Absent;
     }
+    // Malformed direct-relative forms must not be treated as a confident subject/predicate relation.
     if malformed_direct_relative(words, relative, predicate) {
         return RelativeParse::Malformed;
     }

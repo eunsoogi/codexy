@@ -21,7 +21,7 @@ pub(super) fn has_terminal_false_value(value: &str) -> bool {
                 .is_some_and(is_terminal_decision_remainder)
         })
 }
-
+/// Accepts explicit safe/true values only when the label is current and not locally negated or unsafe.
 pub(super) fn has_true_decision_value(text: &str, label: &str) -> bool {
     if has_unsafe_decision_remainder(text) {
         return false;
@@ -145,8 +145,8 @@ pub(super) fn has_false_bounded_search_evidence(text: &str) -> bool {
         || has_unnegated_phrase(text, "without pr search", 16)
         || has_unnegated_phrase(text, "without sha search", 16)
 }
-
 pub(super) fn has_nearby_negation(prefix: &str) -> bool {
+    // Negation is intentionally local to the preceding bounded text window at each candidate phrase.
     "no|no known|no longer|non|non-|not|not a|not an|isn't|is not|hasn't|without"
         .split('|')
         .any(|phrase| prefix.trim_end().ends_with(phrase))

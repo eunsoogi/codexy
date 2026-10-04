@@ -1,6 +1,7 @@
 use serde_json::Value;
 
 pub(super) fn thread_waiting_clauses<'a>(segment: &'a str, thread: &Value) -> Vec<&'a str> {
+    // Scope each waiting claim to the exact thread ID or comment URL instead of nearby references.
     let review_references = review_reference_token_ranges(segment);
     thread_reference_ranges(segment, thread)
         .into_iter()

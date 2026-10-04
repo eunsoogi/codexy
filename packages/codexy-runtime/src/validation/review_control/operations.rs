@@ -12,6 +12,7 @@ pub(crate) fn build_pr_state(
     control_text: &str,
     previous_text: &str,
 ) -> Result<Value> {
+    // When a previous capture is supplied, keep the current state bound to the same PR and owning issue.
     let control: Value = serde_json::from_str(control_text)?;
     request::reject_retired_inputs(&control).map_err(anyhow::Error::msg)?;
     request::reject_retired_control(&control).map_err(anyhow::Error::msg)?;

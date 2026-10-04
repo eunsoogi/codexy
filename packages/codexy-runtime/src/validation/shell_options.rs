@@ -8,6 +8,7 @@ pub(super) enum Invocation<'a> {
 }
 
 pub(super) fn invocation<'a>(tokens: &'a [&'a str]) -> Invocation<'a> {
+    // Consume known shell flags and their operands to distinguish safe invocation from a command passed to -c.
     if !matches!(tokens.first(), Some(&"sh" | &"bash" | &"dash" | &"zsh")) {
         return Invocation::NotShell;
     }

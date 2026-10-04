@@ -11,6 +11,7 @@ use super::child_lane_gfm_classification_table::{
 };
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
 
+/// Rejects branch/worktree setup claims when the latest classification does not authorize child setup.
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
     for (index, line) in lines.iter().enumerate() {
@@ -34,6 +35,7 @@ pub(super) fn formal_classification_complete_index_before(
     lines: &[&str],
     end: usize,
 ) -> Option<usize> {
+    // Control calls require the latest record to satisfy the authority-backed owner field.
     let snapshot = latest_classification_before(lines, end)?;
     snapshot
         .fields
@@ -75,9 +77,11 @@ pub(super) fn has_complete_gfm_display_before(lines: &[&str], end: usize) -> boo
             GfmClassificationTableEvent::NotGfm => {}
         }
     }
+    // A complete sequence without a confirmed table header is not valid rendered classification evidence.
     !table.has_unconfirmed_header() && fields.has_complete_child_display()
 }
 
+/// Builds the latest pre-action classification from ordered colon fields or a confirmed Markdown table.
 pub(super) fn latest_classification_before(
     lines: &[&str],
     setup_index: usize,
@@ -87,6 +91,7 @@ pub(super) fn latest_classification_before(
         GfmClassificationTable::default(),
         ColonClassificationBlock::default(),
     );
+    // Preserve raw lines for authority parsing while normalized lines drive format and lane-boundary parsing.
     let raw_lines = lines;
     let (lines, prefixed_lane_start) = normalized_metadata_lines(lines, setup_index);
     let lane_start = current_lane_start(&lines, setup_index).max(prefixed_lane_start);

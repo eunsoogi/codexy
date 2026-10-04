@@ -17,6 +17,7 @@ pub(super) fn child_to_root_route(
     capabilities: Option<&ThreadCapabilities>,
     operation: &str,
 ) -> Value {
+    // Missing model or reasoning support selects the policy's root-or-specialist fallback.
     if thread_capabilities::supports(
         capabilities,
         &policy.delivery.child_to_root.model,

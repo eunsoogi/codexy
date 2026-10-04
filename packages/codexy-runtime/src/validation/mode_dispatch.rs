@@ -36,6 +36,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             all.extend(review_control::check(plugin_root));
             all.extend(workflow_profiles::check(plugin_root));
             all.extend(getcodexy_component_contract::check(plugin_root));
+            // A core source checkout also carries the sibling devtools package whose metadata must stay valid.
             let devtools = devtools_root(plugin_root);
             if devtools.is_dir() {
                 all.extend(manifest::check(&devtools));

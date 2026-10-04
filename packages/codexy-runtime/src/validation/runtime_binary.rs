@@ -38,6 +38,7 @@ pub(super) fn check(runtime_path: &Path, platform: &str) -> Result<()> {
 }
 
 pub(super) fn check_windows_dispatcher(plugin_root: &Path) -> Result<()> {
+    // Windows ships one native dispatcher plus exact text delegates, not duplicate per-server entrypoints.
     let entrypoint = plugin_root.join("mcp/codexy-mcp-devtools.exe");
     if !entrypoint.is_file() {
         bail!(
@@ -96,6 +97,7 @@ pub(super) fn check_distinct_server_runtimes(plugin_root: &Path, platform: &str)
 }
 
 fn is_x86_64_pe(bytes: &[u8]) -> bool {
+    // Validate the PE header and characteristics, rejecting x86, PE32, DLL, and truncated images.
     if bytes.len() < 0x40 || !bytes.starts_with(b"MZ") {
         return false;
     }

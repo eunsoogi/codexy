@@ -19,6 +19,7 @@ const PACKAGE_ARCHIVE: &str = "dist/codexy-marketplace-plugin.tar.gz";
 const FUTURE_INSTALL_REF: &str = "version-tags";
 
 pub(super) fn check_snapshot_contract(platforms: &[String]) -> Result<()> {
+    // Tie the published release snapshot to its selected runtime, marketplace package, and source-checkout contract.
     let repo_root = crate::paths::repo_root()?;
     let contract_path = repo_root.join(CONTRACT_PATH);
     let contract = load_json(&contract_path)?;

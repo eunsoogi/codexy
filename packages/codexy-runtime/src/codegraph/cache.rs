@@ -9,6 +9,7 @@ use super::files::read_source_snapshot;
 use super::parse::parse_file;
 use super::snapshot::FileSnapshot;
 
+/// Approximate per-thread parse-cache budget; crossing it switches the request to uncached parsing.
 pub(super) const MAX_CACHE_BYTES: usize = 32 * 1024 * 1024;
 const CACHE_TREE_NODE_BYTES: usize = 256;
 
@@ -84,6 +85,7 @@ fn parse_one(
 
 impl ParseCache {
     fn prepare(&mut self, root: &Path, snapshot: &FileSnapshot) {
+        // File indexes and parsed edges are reusable only while the root, scan environment, and file set match.
         let current_files = snapshot.files.clone();
         let root_changed = self.root.as_deref() != Some(root);
         let environment_changed = self.environment_digest != Some(snapshot.environment_digest);
@@ -137,6 +139,7 @@ impl ParseCache {
         let bytes = cached_file_storage_size(graph, source_bytes);
         self.remove(index);
         if self.bytes.saturating_add(bytes) > MAX_CACHE_BYTES {
+            // Avoid an order-dependent prefix by dropping prior entries and disabling this request's cache.
             self.clear_entries();
             self.uncached = true;
             return;
@@ -160,6 +163,7 @@ impl ParseCache {
     }
 
     fn finish(&mut self, has_errors: bool) {
+        // A graph with read or walk errors is incomplete, so none of its parsed results are retained.
         if has_errors || self.uncached {
             self.reset();
         }

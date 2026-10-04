@@ -10,6 +10,7 @@ use crate::paths::display_relative;
 use crate::validation::prompt_yaml;
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
+    // Validate packaged and repository skill bundles, then check their invocation metadata against the same prompt rules.
     let mut errors = Vec::new();
     let mut roots = vec![plugin_root.join("skills")];
     if let Some(repo_root) = super::repository_skill_root::from_plugin_root(plugin_root) {

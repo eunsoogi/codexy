@@ -1,4 +1,5 @@
 pub(super) fn skip(bytes: &[u8], index: usize) -> Option<Option<usize>> {
+    // Consume string and character literal spans so braces and module-like text inside literal contents stay opaque.
     if let Some((hashes, content)) = raw_string_start(bytes, index) {
         return Some(Some(skip_raw_string(bytes, content, hashes)?));
     }

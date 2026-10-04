@@ -7,6 +7,7 @@ use super::{ChangeKind, ChangeScope, FileObservedState, ObservedState, WorkingTr
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+// Temporary repositories exercise Git's actual rename, mixed-scope, and stable-snapshot records.
 #[test]
 fn commit_comparison_is_repeatable_and_preserves_file_changes() -> TestResult {
     let repository = initialized_repository()?;

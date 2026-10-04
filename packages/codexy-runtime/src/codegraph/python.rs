@@ -6,6 +6,7 @@ use regex::Regex;
 use super::parse::{import_list, regex_values};
 use super::resolve::{normalize_language_import, resolve_import};
 
+/// Extracts Python imports and definitions, resolving `from` targets as submodules when present.
 pub(super) fn parse_python(
     root: &Path,
     file: &str,
@@ -57,6 +58,7 @@ fn collect_from_imports(
             format!("{base}.{target}")
         };
         let submodule = normalize_language_import(".py", &candidate, file, None);
+        // `from package import name` can name either a module or a symbol, so test the submodule first.
         if resolve_import(root, file, &submodule, indexed_files).resolved {
             imports.push(submodule);
         } else if base.chars().all(|ch| ch == '.') {

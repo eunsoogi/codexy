@@ -49,6 +49,7 @@ fn check_inner(plugin_root: &Path) -> Result<()> {
             display_relative(&path)
         );
     }
+    // Core and devtools ship distinct required server sets; optional entries still pass the same safety checks.
     let required = if manifest.get("name").and_then(Value::as_str) == Some("codexy") {
         CORE_MCP_NAMES
     } else {

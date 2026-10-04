@@ -21,6 +21,7 @@ pub(super) struct Declaration {
 }
 
 pub(super) fn declarations(source: &str) -> Vec<Declaration> {
+    // Track outer attributes and lexical scope together so only real external module declarations inherit a preceding #[path].
     let mut declarations = Vec::new();
     let mut attributed_path = None;
     let mut cfg_disabled = false;

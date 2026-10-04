@@ -16,6 +16,7 @@ pub(super) fn check_platforms(
     state: &str,
     path: &Path,
 ) -> Result<()> {
+    // Legacy and source-selected receipts keep the public two-platform shape; candidate receipts follow the supported set.
     let legacy = LEGACY_PLATFORMS
         .iter()
         .map(|item| (*item).to_owned())

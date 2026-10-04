@@ -32,6 +32,7 @@ pub(super) fn check(
 }
 
 pub(crate) fn shared_bootstrap_command(name: &str) -> Vec<String> {
+    // One argv contract is shared by the packaged watcher, LSP, and codegraph servers.
     vec![
         "uv".to_owned(),
         "run".to_owned(),

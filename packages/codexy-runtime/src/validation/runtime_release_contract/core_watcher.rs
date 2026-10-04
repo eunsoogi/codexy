@@ -8,6 +8,7 @@ use crate::validation::runtime_release_schema::{digest, exact, exact_keys, objec
 use super::PLATFORMS;
 
 pub(super) fn check(watcher: &Map<String, Value>, path: &Path) -> Result<()> {
+    // The optional core watcher inventory uses the same per-platform path, digest, and binary-kind contract.
     exact_keys(watcher, &["platforms"], path)?;
     let platforms = object_field(watcher, "platforms", path)?;
     exact_keys(platforms, &PLATFORMS, path)?;

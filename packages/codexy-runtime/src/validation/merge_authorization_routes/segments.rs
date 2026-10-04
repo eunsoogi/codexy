@@ -1,4 +1,5 @@
 pub(super) fn command_segments(line: &str) -> Vec<&str> {
+    // Shell control operators split commands only outside quotes and escaped characters.
     let mut segments = Vec::new();
     let mut start = 0;
     let mut quote = None;

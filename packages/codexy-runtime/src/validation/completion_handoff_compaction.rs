@@ -23,6 +23,7 @@ const COMPACTION_CONTEXT_PHRASES: &[&str] = &[
     "goal continuation",
 ];
 
+/// Validates continuation safeguards only when the handoff claims readiness after context compaction.
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let text = handoff.to_ascii_lowercase();
     if !claims_compacted_continuation_readiness(&text) {
@@ -49,6 +50,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
 }
 
 fn claims_compacted_continuation_readiness(text: &str) -> bool {
+    // Require compaction context plus a live resume/edit claim, possibly under a matching heading.
     let lines: Vec<_> = text.lines().map(str::trim).collect();
     lines.iter().enumerate().any(|(index, line)| {
         has_compaction_context(line)

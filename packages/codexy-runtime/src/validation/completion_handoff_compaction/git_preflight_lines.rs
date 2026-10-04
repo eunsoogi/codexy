@@ -1,3 +1,4 @@
+/// Confirms a branch header is command output by requiring the status command immediately before it.
 pub(super) fn is_git_status_output_after_command(lines: &[&str], index: usize) -> bool {
     index > 0
         && lines[index - 1].contains("git status --short --branch")
@@ -13,6 +14,7 @@ pub(super) fn is_git_log_graph_output_line(line: &str) -> bool {
     else {
         return false;
     };
+    // Graph prefixes may precede the commit id; only a leading hexadecimal token is output evidence.
     candidate.len() >= 4
         && candidate
             .chars()
@@ -43,6 +45,7 @@ fn is_git_status_short_branch_line(line: &str) -> bool {
         .next()
         .unwrap_or(status)
         .trim();
+    // Reject plain Markdown headings that happen to follow the `## ` status prefix in prose.
     if is_likely_markdown_section_heading(status) || is_known_markdown_section_heading(status) {
         return false;
     }
@@ -72,6 +75,7 @@ fn is_followed_by_status_or_command(lines: &[&str], index: usize) -> bool {
 }
 
 fn is_porcelain_status_line(line: &str) -> bool {
+    // Accept the two status columns and separator used by short porcelain output, including untracked `??`.
     if line.len() < 3 {
         return false;
     }

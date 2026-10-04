@@ -14,6 +14,7 @@ pub(super) fn imports(path: &str, source: &str) -> Result<Vec<String>> {
         if word(&tokens, index) == Some("import") {
             let (modules, next) = modules(&tokens, index + 1, path)?;
             for module in modules {
+                // A bare package import does not identify a pinned file, so reject it as ambiguous.
                 if module == "codexy_policy" {
                     bail!("packaged admission runtime rejects ambiguous policy import in {path}");
                 }

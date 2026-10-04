@@ -25,6 +25,7 @@ impl RawChange {
 }
 
 pub(super) fn parse_diff(output: &[u8]) -> Result<Vec<RawChange>> {
+    // Git's NUL-delimited records preserve spaces and tabs in paths; every path is then checked as repository-relative input.
     let mut records = output
         .split(|byte| *byte == 0)
         .filter(|record| !record.is_empty());

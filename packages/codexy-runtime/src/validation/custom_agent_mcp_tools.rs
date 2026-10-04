@@ -7,6 +7,7 @@ use crate::paths::display_relative;
 const ALLOWED_TOOL_FIELDS: &[&str] = &["approval_mode"];
 const APPROVAL_MODES: &[&str] = &["auto", "prompt", "approve"];
 
+/// Restricts each server tool override to the supported approval-mode field and values.
 pub(super) fn check(path: &Path, server: &str, value: Option<&Value>, errors: &mut Vec<String>) {
     let Some(value) = value else {
         return;

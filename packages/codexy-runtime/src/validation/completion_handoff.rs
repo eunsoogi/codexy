@@ -1,6 +1,7 @@
 use serde_json::Value;
 use std::path::Path;
 
+/// Runs completion and PR-readiness gates in order, returning the first failing category of proof.
 pub(super) fn check(plugin_root: &Path, handoff: &str, pr_state: &str) -> Vec<String> {
     let state = match serde_json::from_str::<Value>(pr_state) {
         Ok(value) => value,

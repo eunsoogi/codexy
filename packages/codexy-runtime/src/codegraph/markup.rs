@@ -1,5 +1,6 @@
 use super::parse::regex_values;
 
+/// Collects local markup references from URL-bearing attributes and inline CSS `url(...)` values.
 pub(super) fn parse_markup(source: &str) -> (Vec<String>, Vec<String>) {
     let mask = block_comment_mask(source, "<!--", "-->");
     let mut imports = regex_values(
@@ -15,6 +16,7 @@ pub(super) fn parse_markup(source: &str) -> (Vec<String>, Vec<String>) {
 }
 
 pub(super) fn parse_stylesheet(source: &str) -> (Vec<String>, Vec<String>) {
+    // Apply both block and preprocessor-style line comments before extracting local CSS references.
     let mask = line_comment_mask(source, &block_comment_mask(source, "/*", "*/"));
     let imports = regex_values(
         source,
@@ -28,6 +30,7 @@ pub(super) fn parse_stylesheet(source: &str) -> (Vec<String>, Vec<String>) {
 }
 
 fn srcset_values(source: &str, mask: &[bool]) -> Vec<String> {
+    // Each comma-separated candidate starts with its URL; density/width descriptors are not paths.
     regex_values(source, mask, &[r#"\bsrcset\s*=\s*["']([^"'#?:]+)["']"#])
         .into_iter()
         .flat_map(|srcset| {
@@ -40,6 +43,7 @@ fn srcset_values(source: &str, mask: &[bool]) -> Vec<String> {
 }
 
 fn local_imports(imports: Vec<String>) -> Vec<String> {
+    // External and fragment-only URLs do not identify files in this repository.
     imports
         .into_iter()
         .filter(|item| item.starts_with('.'))
@@ -79,6 +83,7 @@ fn line_comment_mask(source: &str, mask: &[bool]) -> Vec<bool> {
 }
 
 fn line_comment_start(line: &str, mask: &[bool], line_start: usize) -> Option<usize> {
+    // Track quoted strings and preserve `://`; only an unquoted `//` begins a line comment.
     let bytes = line.as_bytes();
     let mut quote = None;
     let mut escaped = false;

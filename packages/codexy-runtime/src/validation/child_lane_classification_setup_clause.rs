@@ -11,6 +11,7 @@ pub(super) struct SetupClauseAnalysis {
     pub(super) negated: bool,
 }
 
+// Keep modality and negation local to the setup clause, including conditions and a negated branch/worktree object.
 pub(super) fn analyze_setup_clause(
     words: &[&str],
     start: usize,

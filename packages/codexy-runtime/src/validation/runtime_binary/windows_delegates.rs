@@ -5,6 +5,7 @@ use anyhow::{Result, bail};
 use crate::paths::display_relative;
 
 pub(super) fn check(plugin_root: &Path, server: &str) -> Result<()> {
+    // Each server's .cmd file forwards to the shared dispatcher and must match the canonical bytes exactly.
     let path = plugin_root
         .join("mcp")
         .join(format!("codexy-mcp-{server}.cmd"));

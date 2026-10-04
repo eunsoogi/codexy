@@ -12,6 +12,7 @@ pub(super) struct ChangedFile {
 }
 
 pub(super) fn scoped(root: &Path, base_ref: &str) -> Result<Vec<ChangedFile>> {
+    // Combine branch changes with staged, unstaged, and untracked edits, then attach each path's correct integration baseline.
     let integration = IntegrationScope::discover(root, base_ref)?;
     let mut paths = git_diff(root, &format!("{base_ref}...{}", integration.head()))?;
     let mut local = BTreeSet::new();

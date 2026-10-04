@@ -1,5 +1,6 @@
 use super::imports;
 
+// These cases define which relative and package imports contribute pinned policy files.
 #[test]
 fn imports_track_static_policy_forms_without_tracking_neutral_imports() {
     let imports = imports(

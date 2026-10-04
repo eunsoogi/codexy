@@ -1,3 +1,4 @@
+// Phrases distinguish a current blocked claim from the user-decision evidence required for a true impasse.
 pub(in super::super) const CURRENT_CLAIM: &[&str] = &[
     "now blocked",
     "currently blocked",

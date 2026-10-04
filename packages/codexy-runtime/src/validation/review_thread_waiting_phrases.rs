@@ -9,6 +9,7 @@ pub(super) fn has_unnegated_phrase(text: &str, phrase: &str) -> bool {
 }
 
 pub(super) fn has_unnegated_readiness_phrase(text: &str, phrase: &str) -> bool {
+    // Readiness labels are ignored when nearby wording or an explicit label value negates them.
     text.match_indices(phrase).any(|(start, _)| {
         let end = start + phrase.len();
         is_boundary(text[..start].chars().next_back())

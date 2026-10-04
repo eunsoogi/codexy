@@ -31,6 +31,7 @@ pub(super) fn check_handoff(handoff: &str, pr_state: &Value) -> Option<String> {
     if !claims_ready(&text) {
         return None;
     }
+    // Only readiness claims require complete review-thread evidence and no unresolved thread.
     let Some(threads) = pr_state.get("reviewThreads") else {
         return Some(MISSING_REVIEW_THREADS.into());
     };

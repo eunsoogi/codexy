@@ -3,6 +3,7 @@ pub(super) fn check(
     expected_pr: Option<u64>,
     message: &str,
 ) -> Vec<String> {
+    // Require one closing reference on the final non-empty line so the merge cannot close extras.
     let mut errors = Vec::new();
     let subject = message.lines().next().unwrap_or_default();
     errors.extend(super::conventional_commit::check_merge_subject(

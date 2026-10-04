@@ -12,6 +12,7 @@ pub(super) fn inline_modules(source: &str) -> Vec<InlineModule<'_>> {
 }
 
 fn parse(source: &str) -> Option<Vec<InlineModule<'_>>> {
+    // This bounded scanner extracts inline module bodies only when strings, comments, attributes, and delimiters stay unambiguous.
     let bytes = source.as_bytes();
     let mut modules = Vec::new();
     let mut index = 0;

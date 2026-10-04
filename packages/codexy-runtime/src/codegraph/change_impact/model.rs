@@ -29,6 +29,7 @@ impl ImpactOptions {
     }
 }
 
+/// Known reachability and explicit unknown/limit evidence are returned together so partial results cannot imply no impact.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ImpactAnalysis {
     pub affected_files: Vec<AffectedFile>,
@@ -103,6 +104,7 @@ pub(super) struct AffectedBuilder {
 
 impl AffectedAccumulator {
     pub(super) fn add_file(&mut self, path: &str, impact: ImpactLevel, change_index: usize) {
+        // Unknown evidence dominates; otherwise any direct cause keeps the merged result direct.
         let entry = self
             .files
             .entry(path.to_owned())

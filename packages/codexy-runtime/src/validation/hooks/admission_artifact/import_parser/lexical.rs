@@ -5,6 +5,7 @@ pub(super) enum Token {
 }
 
 pub(super) fn tokens(source: &str) -> Vec<Token> {
+    // Ignore comments and string bodies so import checks reflect Python syntax rather than text matches.
     let values = source.chars().collect::<Vec<_>>();
     let mut tokens = Vec::new();
     let mut index = 0;
@@ -43,6 +44,7 @@ pub(super) fn tokens(source: &str) -> Vec<Token> {
 }
 
 pub(super) fn dynamic(tokens: &[Token]) -> bool {
+    // Dynamic loaders can escape the statically pinned package graph even when no import statement names them.
     tokens.windows(2).any(|values| {
         matches!(values, [Token::Word(name), Token::Symbol('.')] if name == "importlib")
     }) || tokens.windows(2).any(|values| {

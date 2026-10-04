@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+/// Builds a slash-separated relative path by comparing complete path components.
 pub(super) fn pathdiff(from_dir: &Path, target: &Path) -> String {
     let from = components(from_dir);
     let to = components(target);
@@ -22,6 +23,7 @@ pub(super) fn path_join_posix(root: &Path, file: &str) -> PathBuf {
         .fold(root.to_path_buf(), |path, part| path.join(part))
 }
 
+/// Lexically removes `.` and resolvable `..` components without consulting the filesystem.
 pub(super) fn normalize_path(path: &Path) -> PathBuf {
     let mut out = PathBuf::new();
     for component in path.components() {
@@ -36,6 +38,7 @@ pub(super) fn normalize_path(path: &Path) -> PathBuf {
     out
 }
 
+/// Normalizes POSIX segments while retaining unmatched leading `..` components.
 pub(super) fn normalize_posix(path: &str) -> String {
     let mut parts = Vec::new();
     for part in path.split('/') {

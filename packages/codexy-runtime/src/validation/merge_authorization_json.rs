@@ -32,6 +32,7 @@ impl<'de> Visitor<'de> for UniqueObject {
 
 struct UniqueValue;
 
+// Deserialize recursively so duplicate keys are rejected at every object depth, not only the root.
 impl<'de> Deserialize<'de> for UniqueValue {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

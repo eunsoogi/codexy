@@ -75,6 +75,7 @@ pub fn tools() -> Vec<ToolDef> {
 pub fn call_tool(name: &str, args: &Value) -> Result<Value> {
     let result = call_tool_inner(name, args);
     if result.is_err() {
+        // Failed requests may have left a partial parse operation, so discard its cached state.
         invalidate();
     }
     result
@@ -151,6 +152,7 @@ fn value_usize(value: &Value) -> Option<usize> {
     if let Some(number) = value.as_u64() {
         return usize::try_from(number).ok();
     }
+    // JSON numbers can arrive as floats; accept only finite, integral, non-negative values.
     let number = value.as_f64()?;
     if !number.is_finite() || number < 0.0 || number.fract() != 0.0 {
         return None;

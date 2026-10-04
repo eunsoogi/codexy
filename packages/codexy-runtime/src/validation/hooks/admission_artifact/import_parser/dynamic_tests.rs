@@ -1,5 +1,6 @@
 use super::imports;
 
+// Loader aliases and parenthesized imports must not bypass static package-closure validation.
 #[test]
 fn imports_reject_dynamic_import_module_aliases() {
     assert!(

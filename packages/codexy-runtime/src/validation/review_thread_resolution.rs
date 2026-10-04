@@ -14,6 +14,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     if let Some(error) = super::review_thread_evidence::check(threads) {
         return vec![error];
     }
+    // An unresolved thread must be fixed, accepted with an exact-thread rationale, or reported unresolved, unfixed, and unaccepted in a non-ready handoff.
     let Some(unresolved) = nodes
         .iter()
         .filter(|thread| thread.get("isResolved").and_then(Value::as_bool) == Some(false))

@@ -9,6 +9,7 @@ use declaration::{declarations, inline_modules};
 
 pub(super) const TARGET_ROOTS: [&str; 4] = ["src/bin", "tests", "examples", "benches"];
 
+// External modules use crate or inline-module defaults; explicit #[path] uses the containing module's attribute directory.
 pub(super) fn declared_paths(root: &Path, path: &Path, source: &str) -> Vec<PathBuf> {
     let mut paths = Vec::new();
     let default_parent = module_parent(root, path);

@@ -14,6 +14,7 @@ pub(super) struct ActiveEvent {
 
 use super::negation::{is_negation, is_token_character};
 
+/// Keeps only active evidence lines, then classifies each in source order for temporal checks.
 pub(super) fn active_events(plugin_root: &std::path::Path, evidence: &str) -> Vec<ActiveEvent> {
     super::super::child_lifecycle_events::active_lines(evidence)
         .into_iter()
@@ -28,6 +29,7 @@ pub(super) fn ordered_event(plugin_root: &std::path::Path, line: &str) -> Ordere
     let typed_review_terminal =
         super::super::review_control::is_lifecycle_terminal(plugin_root, line);
     let line = line.to_ascii_lowercase();
+    // Preserve specific blocked-call and typed-terminal events before the generic terminal-call test.
     if line
         .strip_prefix("goal tool call: ")
         .and_then(|value| value.split(';').next())
@@ -66,6 +68,7 @@ pub(super) fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {
         .map(str::trim)
         .filter_map(|part| part.strip_prefix(&prefix));
     let value = values.next()?;
+    // Duplicate fields are ambiguous evidence, so accept only exactly one occurrence.
     values.next().is_none().then_some(value)
 }
 
@@ -153,6 +156,7 @@ fn substantive_identity(
             .len(),
     );
     let short_token_budget = concepts.len() / 2;
+    // Reject filler-heavy branches, then retain embedded numbers and polarity in the comparison identity.
     (words.len() >= minimum_words
         && characters >= minimum_characters
         && repeated_short_tokens <= short_token_budget

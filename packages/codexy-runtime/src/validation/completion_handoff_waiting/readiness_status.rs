@@ -1,6 +1,7 @@
 const READINESS_WORDS: [&str; 2] = ["pr", "merge"];
 use crate::validation::readiness_state::{ReadinessField, ReadinessState, classify};
 
+/// Recognizes PR/merge readiness headings whose shared readiness classifier reports a neutral state.
 pub(crate) fn is_neutral_heading(fragment: &str) -> bool {
     let Some((heading, value)) = fragment.trim().split_once(':') else {
         return false;

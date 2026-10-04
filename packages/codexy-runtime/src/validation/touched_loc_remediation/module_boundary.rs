@@ -5,6 +5,7 @@ use anyhow::Result;
 use super::{read_base_text, rust_module, token_coverage};
 use super::{workflow_command::WorkflowScriptCommand, workflow_yaml};
 
+// Treat moved source as a legitimate boundary only when a semantic sibling module or linked document contains it.
 pub(super) fn has_new_module_boundary(
     root: &Path,
     base_ref: &str,

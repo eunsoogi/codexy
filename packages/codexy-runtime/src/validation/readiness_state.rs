@@ -22,6 +22,7 @@ const NEUTRAL_WORDS: &[&str] = &[
 const AFFIRMATIVE_WORDS: &[&str] = &["ready", "complete", "completed", "passed", "clean"];
 
 pub(crate) fn classify(value: &str, field: ReadinessField) -> Option<ReadinessState> {
+    // Negation and blocker wording take precedence so phrases such as "not ready" never pass as affirmative.
     let words = words(value);
     let first = words.first()?;
     if matches!(field, ReadinessField::Blocker) && matches!(*first, "none" | "no" | "clear") {

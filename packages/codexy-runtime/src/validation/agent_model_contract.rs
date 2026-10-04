@@ -12,6 +12,7 @@ pub(super) struct SpecialistModelContract {
     pub(super) reasoning_effort: &'static str,
 }
 
+/// Pinned model and reasoning-effort assignments required for each packaged specialist.
 pub(super) const SPECIALIST_MODEL_CONTRACTS: &[SpecialistModelContract] = &[
     contract("codexy-architect", "gpt-6-astra", "high"),
     contract("codexy-auditor", "gpt-6.1-sol", "medium"),

@@ -51,6 +51,7 @@ pub(super) fn reject_retired_inputs(state: &Value) -> Result<(), String> {
 }
 
 pub(super) fn check_handoff(plugin_root: &Path, state: &Value) -> Vec<String> {
+    // Reject retired authority records before evaluating current review state.
     if let Err(error) = request::reject_retired_inputs(state) {
         return vec![error];
     }

@@ -41,7 +41,7 @@ pub(super) fn migrate(text: &str, context: &LegacyContext) -> Result<HandoffEnve
     let delta_counts = ["## Lane", "## Delta", "## Next"]
         .map(|heading| schema::exact_heading_count(input, heading));
     let delta_present = delta_counts.iter().any(|count| *count != 0);
-    let has_delta = delta_counts.iter().all(|count| *count == 1);
+    let has_delta = delta_counts.iter().all(|count| *count == 1); /* all three delta sections once */
     let marker = "Terminal parent handoff:";
     let terminal_count = input.matches(marker).count();
     ensure!(terminal_count <= 1, "legacy terminal boundary is repeated");

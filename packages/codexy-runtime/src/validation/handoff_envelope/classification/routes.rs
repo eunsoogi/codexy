@@ -35,6 +35,7 @@ const FAIL_CLOSED_CLASSES: [&str; 6] = [
     "release",
 ];
 
+// These literal routes map stable classification labels to the policy references carried in handoffs.
 pub(super) fn known_workflow(value: &str) -> bool {
     TASK_CLASSES.contains(&value) || FAIL_CLOSED_CLASSES.contains(&value)
 }

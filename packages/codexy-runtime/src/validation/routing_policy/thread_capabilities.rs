@@ -27,6 +27,7 @@ pub(super) fn supports(
     model: &str,
     thinking: &str,
 ) -> bool {
+    // A configured route is supported only when both the exact model and requested thinking value are advertised.
     capabilities.is_some_and(|capabilities| {
         capabilities.models.iter().any(|candidate| {
             candidate.model == model && candidate.thinking.iter().any(|value| value == thinking)

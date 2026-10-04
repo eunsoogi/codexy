@@ -60,6 +60,7 @@ pub(super) fn resolve(plugin_root: &Path, text: &str) -> Result<Value> {
         "post_cap_re_review_limit": profile.post_cap_re_review_limit,
     });
     if let Some(prior) = request.prior_profile {
+        // A reclassification may discard a lower profile only when the newly selected profile is strictly higher.
         if rank(&prior) >= rank(route["profile"].as_str().unwrap_or_default()) {
             bail!("review-profile escalation must select a strictly higher profile");
         }
