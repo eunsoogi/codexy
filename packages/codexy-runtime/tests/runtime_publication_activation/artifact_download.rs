@@ -16,6 +16,7 @@ const SOURCE_COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
 fn batch_fixture_preserves_each_artifact_download_outcome()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new()?;
+    // The first two receipts are admissible; each later case breaks one identity or trust invariant.
     let outcomes = fixture.run_batch(&[
         case("authenticated", run_json(SOURCE_COMMIT), artifacts_json(false, 1), true, SOURCE_COMMIT, 42, 3),
         case("ancestor-input", run_json_at_head("fedcba9876543210fedcba9876543210fedcba98"), artifacts_json(false, 1), true, SOURCE_COMMIT, 42, 3),
@@ -117,6 +118,7 @@ impl Fixture {
     }
 }
 
+// Persist every downloader status so one rejected case does not hide later outcomes.
 const BATCH_RUNNER: &str = r##"#!/bin/sh
 set -u
 manifest=$1

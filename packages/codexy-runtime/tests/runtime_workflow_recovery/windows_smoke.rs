@@ -12,6 +12,7 @@ mod client;
 
 use client::McpClient;
 
+// Windows uses native executable names while selected runtime metadata remains the activation gate.
 #[test]
 fn candidate_keeps_windows_native_until_verified_activation()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -75,6 +76,7 @@ fn candidate_keeps_windows_native_until_verified_activation()
     Ok(())
 }
 
+// This smoke sends a nested watcher request through the built binary to check serialization beyond YAML text.
 #[test]
 fn windows_smoke_preserves_nested_watcher_requests() -> Result<(), Box<dyn std::error::Error>> {
     let candidate = super::workflow("runtime-candidate.yml")?;

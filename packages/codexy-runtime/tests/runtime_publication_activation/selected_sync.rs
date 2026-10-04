@@ -5,6 +5,7 @@ use serde_json::Value;
 use super::archive_repository;
 
 #[test]
+// Repeating sync for the selected version must preserve immutable runtime pointers instead of regenerating them.
 fn already_selected_version_sync_preserves_runtime_pointers()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;

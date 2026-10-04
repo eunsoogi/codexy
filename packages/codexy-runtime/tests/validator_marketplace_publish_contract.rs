@@ -1,3 +1,5 @@
+// Keep selected-byte provenance, public package projection, release metadata,
+// changelog range, and the all-pull-request LOC gate aligned.
 use crate::support::FixtureCommand as Command;
 
 use serde_yaml::Value;

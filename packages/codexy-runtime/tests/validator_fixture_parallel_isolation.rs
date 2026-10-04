@@ -17,6 +17,7 @@ mod mutable_materialization;
 #[path = "validator_manifest_isolation/mod.rs"]
 mod manifest_isolation;
 
+// Concurrent overlays may mutate declared files independently but must leave the seed untouched.
 #[test]
 fn parallel_manifest_aware_fixture_mutations_preserve_each_overlay_and_the_seed()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -82,6 +83,7 @@ fn parallel_manifest_aware_fixture_mutations_preserve_each_overlay_and_the_seed(
     Ok(())
 }
 
+// Manifest-aware materialization grants writable access only to each fixture's declared paths.
 #[test]
 fn declared_mutations_use_the_manifest_aware_materialization_boundary()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -96,6 +98,7 @@ fn declared_mutations_use_the_manifest_aware_materialization_boundary()
     )
 }
 
+// Undeclared writes stay private to one overlay while the seed and sibling remain unchanged.
 #[test]
 fn undeclared_mutations_cannot_escape_a_manifest_aware_overlay()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -119,6 +122,7 @@ fn undeclared_mutations_cannot_escape_a_manifest_aware_overlay()
     Ok(())
 }
 
+// Truncation, rename, and removal must preserve the same isolation boundary as ordinary writes.
 #[test]
 fn undeclared_truncate_rename_and_remove_remain_private_to_one_overlay()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -157,6 +161,7 @@ fn undeclared_truncate_rename_and_remove_remain_private_to_one_overlay()
     Ok(())
 }
 
+// Copied binary fixtures must not share mutable storage with the source seed.
 #[test]
 fn fixture_copy_binary_assets_are_private_after_truncation() -> Result<(), Box<dyn std::error::Error>> {
     use std::io::Write;
@@ -180,6 +185,7 @@ fn fixture_copy_binary_assets_are_private_after_truncation() -> Result<(), Box<d
     Ok(())
 }
 
+// The manifest records the exact mutable path set so a fixture cannot widen its write boundary.
 #[test]
 fn manifest_aware_fixture_retains_its_declared_mutable_manifest()
 -> Result<(), Box<dyn std::error::Error>> {

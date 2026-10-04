@@ -7,6 +7,7 @@ const ESCAPED_WORD_HEREDOC_PREFIXES: [&str; 3] = [
 ];
 
 #[test]
+// Declarations inside shell heredoc data are inert and cannot satisfy the active wrapper contract.
 fn candidate_assembly_rejects_declarations_inside_escaped_word_heredocs()
 -> Result<(), Box<dyn std::error::Error>> {
     for prefix in ESCAPED_WORD_HEREDOC_PREFIXES {

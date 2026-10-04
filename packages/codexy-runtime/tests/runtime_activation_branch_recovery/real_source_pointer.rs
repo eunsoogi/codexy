@@ -6,6 +6,7 @@ pub(super) use self::support::{
 };
 
 #[test]
+// Resolve the runtime pointer from the current source checkout rather than fixture-generated metadata.
 fn current_source_checkout_exposes_the_selected_runtime_pointer() -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
     let selected_version = support::selected_runtime_version(&root)?;

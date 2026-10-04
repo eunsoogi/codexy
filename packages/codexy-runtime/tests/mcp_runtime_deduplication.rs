@@ -7,6 +7,7 @@ fn public_mcp_servers_share_one_metadata_bootstrap_without_windows_server_copies
     let plugin = root.join("plugins/codexy-devtools");
     let mcp: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(plugin.join(".mcp.json"))?)?;
 
+    // Preserve two public server identities over one shared bootstrap and runtime binary.
     for server in ["lsp", "codegraph"] {
         assert_eq!(
             mcp[server]["command"].as_str(),

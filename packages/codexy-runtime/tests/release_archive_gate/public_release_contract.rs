@@ -132,6 +132,7 @@ fn legacy_plugin(root: &Path) -> std::path::PathBuf {
 }
 
 fn remove_runtime_contracts(plugin: &Path) {
+    // Public archives omit staging manifests, so this exercises the file-based public projection.
     for name in ["runtime-release.json", "runtime-candidate.json"] {
         let path = plugin.join(name);
         if path.exists() {

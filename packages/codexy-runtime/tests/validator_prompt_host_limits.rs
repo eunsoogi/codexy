@@ -1,3 +1,5 @@
+// Keep shipped default prompts within host count and character limits while
+// preserving the primary orchestration route.
 use std::process::Command;
 
 use crate::support;

@@ -5,6 +5,7 @@ use release_archive_support::{
     complete_plugin_fixture_with_stubbed_runtime, create_archive, inspect_archive,
 };
 
+// Synthetic PEM headers exercise format detection without storing key material.
 fn assert_private_key_rejected(name: &str, pem: &str) {
     let root = tempdir().expect("tempdir");
     let plugin_root =

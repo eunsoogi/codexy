@@ -4,6 +4,7 @@ use super::{
     archive_repository, isolation::next_patch_version, run_sync, shared_repository_archive,
 };
 
+// A matching package declaration is insufficient when the generated lock projection remains stale.
 #[test]
 fn sync_version_cli_rejects_a_pyproject_projection_that_differs_from_uv_lock()
 -> Result<(), Box<dyn std::error::Error>> {

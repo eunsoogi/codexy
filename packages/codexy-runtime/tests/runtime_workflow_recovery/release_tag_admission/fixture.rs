@@ -68,6 +68,7 @@ pub(super) struct Fixture {
 }
 
 impl Fixture {
+    // Commands run from a spaced temporary path with inherited GitHub and Git state scrubbed.
     pub(super) fn new(state: RemoteTag) -> Result<Self, Box<dyn std::error::Error>> {
         let temp = fixture_io!(
             "create fixture tempdir",

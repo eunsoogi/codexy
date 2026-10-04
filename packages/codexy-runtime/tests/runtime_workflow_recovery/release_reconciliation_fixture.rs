@@ -9,6 +9,7 @@ use crate::support;
 
 use super::{fake_gh, make_executable, reconciliation, ASSETS, GENERATED_NOTES, PARTIAL_NOTES};
 
+// The fake CLI and temporary release files expose reconciliation order without changing a real release.
 pub(super) struct Fixture {
     _temporary: tempfile::TempDir,
     pub(super) root: PathBuf,

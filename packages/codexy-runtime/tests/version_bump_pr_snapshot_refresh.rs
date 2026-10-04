@@ -1,3 +1,4 @@
+// Repeated renders must be stable, while a refreshed governing snapshot replaces stale body and label data.
 use serde_json::json;
 use std::{fs, path::Path};
 use crate::support::FixtureCommand as Command;

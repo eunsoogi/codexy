@@ -9,6 +9,7 @@ use super::isolation::{next_patch_version, version_surface_contents};
 
 const README_COMMAND: &str = "codex plugin marketplace add eunsoogi/codexy";
 
+// A stale historical pin is rejected without changing the already-mutated fixture bytes.
 #[test]
 fn historical_readmes_fail_closed() -> Result<(), Box<dyn std::error::Error>> {
     let fixtures = shared_fixtures()?;
@@ -35,6 +36,7 @@ fn historical_readmes_fail_closed() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+// Malformed pins cover missing, duplicate, unprefixed, empty, and non-semver values in both READMEs.
 #[test]
 fn sync_version_script_rejects_malformed_readme_pins_without_mutation()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -100,6 +102,7 @@ fn sync_version_script_rejects_malformed_readme_pins_without_mutation()
     Ok(())
 }
 
+// Restore the original README bytes after proving the checker rejects the exact malformed pin.
 fn assert_malformed(
     root: &Path,
     expected: &str,
@@ -207,6 +210,7 @@ fn stale_version_handles_semver_boundaries() -> Result<(), Box<dyn std::error::E
     Ok(())
 }
 
+// Step back one semantic-version component, rolling patch and minor underflow into the next component.
 fn stale_version(version: &str) -> Result<String, Box<dyn std::error::Error>> {
     let components: Vec<u64> = version
         .split('.')

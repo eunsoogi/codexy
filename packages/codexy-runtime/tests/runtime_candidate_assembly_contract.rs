@@ -6,7 +6,7 @@ mod fixture;
 mod heredoc;
 
 use fixture::CandidateFixture;
-
+// Active wrapper declarations must change the projection without letting inert shell text rewrite protected payloads.
 const FIRST_DECLARATION: &str = "bundled_platforms=\"darwin-arm64 linux-x86_64\"\n";
 const ACTIVATED_DECLARATION: &str = "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"\n";
 

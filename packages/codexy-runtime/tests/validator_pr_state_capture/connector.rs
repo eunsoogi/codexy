@@ -1,3 +1,5 @@
+// Connector snapshots are accepted only when recorded tool inputs, result,
+// and owning-issue provenance reproduce the current PR identity.
 use std::fs;
 
 use crate::support::TestResult;

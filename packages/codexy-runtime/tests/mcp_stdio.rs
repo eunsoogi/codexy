@@ -4,6 +4,7 @@ use std::process::{Child, Command, Stdio};
 
 use serde_json::{Value, json};
 
+// These path modules isolate protocol and lifecycle regressions while sharing one stdio client.
 #[path = "mcp_stdio/client.rs"]
 mod client;
 #[path = "mcp_stdio/codegraph_protocol.rs"]

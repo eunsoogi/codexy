@@ -10,6 +10,8 @@ mod supported_action_versions;
 #[test]
 fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_version()
 -> Result<(), Box<dyn std::error::Error>> {
+    // Follow the operator-selected version through staging, authenticated
+    // publication, and public verification.
     let publisher = workflow("publish-version-release.yml")?;
     let verifier = workflow("verify-version-release.yml")?;
     let staging = workflow("runtime-candidate.yml")?;
@@ -100,6 +102,7 @@ fn release_lifecycle_derives_every_public_identity_from_an_admitted_target_versi
     }
     let package = named_run(public, "Prove exact public getcodexy package")?;
     let package_lines: Vec<_> = package.lines().map(str::trim).collect();
+    // Capture curl's failure status before the workflow decides whether a retry is allowed.
     assert!(package_lines.windows(2).any(|lines| lines == ["else", "status=$?"]));
     for required in ["if curl --fail", "status=2", "test \"$attempt\" -ge 12", "sleep 10"] {
         assert!(package.contains(required), "missing bounded package retry contract: {required}");

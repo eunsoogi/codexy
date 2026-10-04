@@ -4,6 +4,7 @@ use crate::support::copy_dir;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+// Each plugin surface is copied independently so malformed metadata is tied to its owning validator root.
 #[test]
 fn direct_devtools_check_rejects_malformed_skill_frontmatter() -> TestResult {
     for skill_name in ["codegraph", "lsp"] {
@@ -123,6 +124,7 @@ fn github_check_rejects_explicit_only_skill_metadata() -> TestResult {
     assert_rejected(&github, "policy.allow_implicit_invocation must be true")
 }
 
+// Aggregate core validation must still traverse the packaged devtools skills and their agent metadata.
 #[test]
 fn aggregate_core_check_rejects_devtools_skill_and_agent_metadata() -> TestResult {
     for (relative, needle, replacement, expected) in [

@@ -1,3 +1,4 @@
+// Markdown comments, code spans, and fences must not hide or activate workflow evidence outside their real boundaries.
 use super::workflow_profile_contract::{assert_profile_result, formal_classification};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

@@ -25,6 +25,7 @@ fn materializer_projects_an_immutable_legacy_core_candidate_into_devtools()
         .success());
     let legacy_plugin = legacy.join("plugins/codexy-devtools");
     fs::remove_file(legacy_plugin.join("mcp/codexy-mcp-devtools.exe"))?;
+    // Recreate the older core layout with one Windows executable per server.
     for server in ["lsp", "codegraph"] {
         fs::write(
             legacy_plugin.join(format!("mcp/codexy-mcp-{server}.exe")),

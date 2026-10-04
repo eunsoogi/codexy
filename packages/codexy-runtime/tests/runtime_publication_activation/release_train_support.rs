@@ -8,6 +8,7 @@ pub(super) fn copy_devtools_inputs(
     root: &Path,
     fixture_root: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // The public bundle merges current and staged trees, so both need the startup files.
     for plugin_root in [
         fixture_root.join("plugins/codexy-devtools"),
         fixture_root.join("staged/plugins/codexy-devtools"),

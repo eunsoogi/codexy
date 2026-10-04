@@ -22,7 +22,7 @@ fn fixture_error_context_names_non_executable_fixture() -> Result<(), Box<dyn st
     fs::write(&path, "#!/bin/sh\nexit 0\n")?;
     fixture::assert_fixture_error_context(&path, temp.path(), true)
 }
-
+// Unsafe or ambiguous remote tag states must stop before draft creation or any unauthenticated push.
 #[test]
 fn remote_version_tag_reconciliation_stays_fail_closed() -> Result<(), Box<dyn std::error::Error>> {
     for state in [
@@ -104,7 +104,7 @@ fn release_script_uses_the_immutable_draft_contract() -> Result<(), Box<dyn std:
     );
     Ok(())
 }
-
+// New and reused draft cases check retarget/readback, uploads, and baseline order before publication.
 #[cfg(unix)]
 #[test]
 fn draft_release_flow_checks_payload_tag_and_assets_before_baseline() -> Result<(), Box<dyn std::error::Error>> {

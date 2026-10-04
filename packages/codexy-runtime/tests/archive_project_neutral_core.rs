@@ -2,6 +2,7 @@ use std::{fs, process::Command};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+// Repository maintenance entrypoints are deliberately absent from the core plugin archive.
 const FORBIDDEN_ARCHIVE_LITERALS: [&str; 4] = [
     "scripts/validate-plugin-config.sh",
     "scripts/sync-plugin-version.sh",

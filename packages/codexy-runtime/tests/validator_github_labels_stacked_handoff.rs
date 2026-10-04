@@ -1,3 +1,5 @@
+// Stacked PRs use the exact closing line plus same-repository linked-issue
+// evidence; default-branch PRs continue to require closingIssuesReferences.
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

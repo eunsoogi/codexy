@@ -1,3 +1,4 @@
+// These fixtures keep the touched-file limit aligned for packaged and repository-only skills.
 use std::process::Command;
 
 use crate::support;

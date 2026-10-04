@@ -99,6 +99,7 @@ fn runtime_contract_requires_authenticated_windows_staging_identity()
     let platforms = contract["platforms"]
         .as_object()
         .ok_or("runtime-release platforms must be an object")?;
+    // Windows can join the public runtime set only with a receipt-bound staging identity.
     if platforms.contains_key("windows-x86_64") {
         let candidate: Json = serde_json::from_str(&fs::read_to_string(
             root.join("plugins/codexy-devtools/runtime-candidate.json"),

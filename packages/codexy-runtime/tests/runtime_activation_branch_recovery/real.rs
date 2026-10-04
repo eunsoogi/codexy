@@ -16,6 +16,7 @@ mod future_fixture;
 use real_fixture::Fixture;
 
 #[test]
+// A historical committed tree ensures the retry matrix exercises real source inputs rather than only current fixtures.
 fn real_pre_671_committed_tree_authenticates_retry_and_metadata_matrix()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new()?;

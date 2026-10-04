@@ -1,6 +1,7 @@
 use std::process::Command;
 
 #[test]
+// Explicit LF checkout attributes keep workflow and contract inputs stable across host line-ending defaults.
 fn repository_contract_inputs_check_out_with_lf() -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
     let inputs = [

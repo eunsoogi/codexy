@@ -6,6 +6,7 @@ use std::{
 
 use crate::support::FixtureCommand;
 
+// The submodules exercise separate version transitions against disposable repository snapshots.
 #[path = "sync_version_cli/admission.rs"]
 mod admission;
 #[path = "sync_version_cli/archive.rs"]
@@ -130,6 +131,7 @@ fn selected_fixture(
     Ok((root, version))
 }
 
+// Start from the shared archive and copy the selected-version parser into each version fixture.
 fn selected_fixture_snapshot(
     temp: &tempfile::TempDir,
     name: &str,

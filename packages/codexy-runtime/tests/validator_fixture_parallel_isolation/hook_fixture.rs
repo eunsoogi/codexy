@@ -2,6 +2,7 @@ use crate::support;
 use std::path::Path;
 use std::sync::{Arc, Barrier};
 
+// Concurrent hook copies use per-worker roots and do not retain shared mutable-path metadata.
 #[test]
 fn parallel_hook_fixture_mutations_preserve_each_overlay_and_the_source()
 -> Result<(), Box<dyn std::error::Error>> {

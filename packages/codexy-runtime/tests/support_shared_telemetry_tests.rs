@@ -12,6 +12,7 @@ fn fixture_materialization_records_use_the_profiler_contract() {
     );
 }
 
+// Wait records keep a safe command family instead of a host-specific executable path.
 #[test]
 fn command_wait_records_keep_only_safe_categories() {
     assert_eq!(
@@ -77,6 +78,7 @@ fn fixture_copy_ignores_a_disappeared_git_maintenance_lock()
     Ok(())
 }
 
+// Platform selection is injected so fixture results do not depend on host environment variables.
 #[test]
 fn fixture_platform_selector_is_explicit_and_never_reads_host_environment()
 -> Result<(), Box<dyn std::error::Error>> {

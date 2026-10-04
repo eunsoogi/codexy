@@ -1,3 +1,5 @@
+// Invalid UTF-8 in unrelated review-thread prose must not block valid PR and
+// repository label evidence at the shell boundary.
 use crate::support::FixtureCommand as Command;
 
 #[test]

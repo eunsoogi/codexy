@@ -3,6 +3,7 @@ use crate::support::FixtureCommand as Command;
 use crate::support::{self, FixturePlatform, FixtureProbe, WrapperFixture, install_fixture_probe, run_wrapper_command};
 
 #[test]
+// All wrapper entry points must agree on host mapping before locating a platform-specific runtime binary.
 fn wrappers_share_platform_detection_across_supported_shells()
 -> Result<(), Box<dyn std::error::Error>> {
     for (host, platform) in [

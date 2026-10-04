@@ -39,6 +39,7 @@ fn overlap_boundaries_reject_stale_extra_and_duplicate_records() {
     assert!(!has_exact_canonical_set(&duplicate));
 }
 
+// Treat this as a closed set so missing, retired, extra, or duplicate boundary rows fail.
 fn has_exact_canonical_set(boundaries: &[String]) -> bool {
     boundaries.len() == canonical_boundaries().len()
         && boundaries.iter().cloned().collect::<BTreeSet<_>>()

@@ -11,6 +11,7 @@ struct CandidateFixtureSeed {
     root: PathBuf,
 }
 
+// Share one seed repository while each test receives an independent writable copy.
 static CANDIDATE_FIXTURE_SEED: OnceLock<Mutex<Option<CandidateFixtureSeed>>> = OnceLock::new();
 
 pub(super) fn candidate_fixture_seed() -> Result<PathBuf, Box<dyn std::error::Error>> {

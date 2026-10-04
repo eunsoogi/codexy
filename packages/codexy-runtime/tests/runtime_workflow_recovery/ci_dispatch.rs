@@ -1,6 +1,7 @@
 use super::*;
 
 #[test]
+// Reuse only a successful run tied to the frozen activation head; other purposes and stale heads cannot satisfy CI.
 fn activation_dispatches_reusable_ci_for_the_frozen_pr_head()
 -> Result<(), Box<dyn std::error::Error>> {
     let activation = workflow("runtime-activation.yml")?;

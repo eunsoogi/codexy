@@ -1,3 +1,4 @@
+// This end-to-end fixture carries rendered metadata through title, label, handoff, and merge-message gates.
 use serde_json::json;
 use std::{fs, path::Path};
 use crate::support::{FixtureCommand as Command, read_text_fixture};

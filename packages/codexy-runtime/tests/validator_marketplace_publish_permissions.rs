@@ -1,3 +1,5 @@
+// Workflow permissions follow trust boundaries: validation stays read-only,
+// while staging, activation, publication, and public verification get distinct grants.
 use serde_yaml::{Mapping, Value};
 
 use crate::support;

@@ -2,6 +2,7 @@
 
 use std::collections::BTreeSet;
 
+// TextShape normalizes punctuation and case so checks depend on concepts rather than formatting.
 pub(crate) struct TextShape {
     normalized: String,
 }
@@ -52,6 +53,7 @@ impl TextShape {
     }
 }
 
+// Only the listed English endings count as an inflection match.
 fn contains_inflected_lexeme(token: &str, stem: &str) -> bool {
     token.match_indices(stem).any(|(index, _)| {
         matches!(
@@ -77,6 +79,7 @@ fn contains_phrase(text: &str, phrase: &str) -> bool {
     })
 }
 
+// Parse only the prompt fields consumed by invocation-contract checks.
 pub(crate) struct Prompt {
     display_name: String,
     default_prompt: String,
@@ -127,6 +130,7 @@ fn yaml_string<'a>(
         .ok_or_else(|| format!("prompt {key}").into())
 }
 
+// Only list entries ending in a colon contribute template slots.
 pub(crate) struct Template {
     slots: BTreeSet<String>,
 }
@@ -154,6 +158,7 @@ impl Template {
     }
 }
 
+// JSON pointers keep required and forbidden fields tied to their nested object paths.
 pub(crate) struct JsonShape {
     value: serde_json::Value,
 }

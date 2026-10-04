@@ -1,3 +1,5 @@
+// Keep the packaged specialist set exact: retired names stay uncallable even
+// when historical prose mentions them, and catalog drift is rejected.
 use std::{collections::BTreeSet, path::Path, process::Command};
 
 use serde_json::json;

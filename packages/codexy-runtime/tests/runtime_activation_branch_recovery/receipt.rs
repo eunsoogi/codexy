@@ -13,6 +13,7 @@ pub(super) fn receipt_value() -> Value {
             "windows-x86_64": {"lsp": {"path": "runtime/codexy-mcp-lsp-windows-x86_64.exe", "sha256": "9".repeat(64)}, "codegraph": {"path": "runtime/codexy-mcp-codegraph-windows-x86_64.exe", "sha256": "a".repeat(64)}}
         }
     });
+    // Bind payloadManifestSha256 to canonical candidate bytes so object-key order cannot change it.
     let candidate_bytes = serde_json::to_vec(&canonical(candidate.clone())).unwrap();
     json!({
         "schema": "codexy-runtime-candidate-receipt/v1", "candidate": candidate,

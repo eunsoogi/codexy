@@ -1,3 +1,5 @@
+// Reject removed MCP names and endpoints at their identity boundaries while
+// preserving unrelated commands, hosts, and lookalike URL components.
 use std::process::Command;
 
 use crate::support;

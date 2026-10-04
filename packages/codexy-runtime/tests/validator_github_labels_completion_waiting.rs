@@ -1,3 +1,5 @@
+// Colon-form verification text describes progress, so it must not trigger the
+// separate GitHub-label gate reserved for completion claims.
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

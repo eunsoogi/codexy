@@ -1,3 +1,5 @@
+// MCP commands must stay rooted in the packaged plugin and use the shared
+// bootstrap, rejecting arbitrary runtimes and hook-only command overrides.
 use std::process::Command;
 
 use crate::support;

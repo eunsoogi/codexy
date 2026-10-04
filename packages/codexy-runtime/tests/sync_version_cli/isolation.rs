@@ -54,6 +54,7 @@ pub(super) fn next_patch_version(
     Ok(format!("{major}.{minor}.{next}"))
 }
 
+// The command must mutate only CODEXY_REPO_ROOT and leave source and bootstrap wrapper bytes untouched.
 #[test]
 fn sync_version_cli_updates_only_the_supplied_isolated_root()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -128,6 +129,7 @@ fn select_next_public_identities(
     Ok(())
 }
 
+// This byte snapshot defines the public version identities protected by preflight and isolation checks.
 pub(super) fn version_surface_contents(
     root: &Path,
 ) -> Result<Vec<(PathBuf, Vec<u8>)>, Box<dyn std::error::Error>> {

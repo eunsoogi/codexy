@@ -17,6 +17,7 @@ const ACTIVATION: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
 #[test]
 #[cfg(unix)]
+// Confirmed absence may use staging, but a mismatched or unavailable public release must stop selection.
 fn public_release_selection_falls_back_only_when_release_is_confirmed_absent()
 -> Result<(), Box<dyn std::error::Error>> {
     let public = Fixture::new("present", false)?;
@@ -154,6 +155,7 @@ impl Fixture {
 
     fn assert_public_projection(&self) -> Result<(), Box<dyn std::error::Error>> {
         self.assert_result(true, false)?;
+        // Deliberately stale activation fields prove public projection follows the verified receipt instead.
         fs::write(
             self.root.join(".agents/plugins/runtime-activation.json"),
             r#"{"candidate":{"source":{"commit":"cccccccccccccccccccccccccccccccccccccccc"},"artifact":{"stagingRunId":99,"stagingRunAttempt":1}},"provenance":{"runId":99}}"#,

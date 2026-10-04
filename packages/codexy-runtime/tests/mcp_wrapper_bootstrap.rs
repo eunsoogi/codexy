@@ -23,6 +23,8 @@ fn install_fake_uvx(
 
 fn selected_runtime_version() -> Result<String, Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::repository_root();
+    // Read the release contract so wrapper expectations follow the runtime version
+    // selected for publication.
     let contract: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
         root.join(".agents/plugins/release-publish-contract.json"),
     )?)?;
@@ -50,6 +52,7 @@ fn wrappers_dispatch_only_the_pinned_uvx_contract() -> Result<(), Box<dyn std::e
             format!("{}:/usr/bin:/bin", fixture.cargo_bin.display()),
         )
         .env("CODEXY_RUNTIME_PLATFORM", "linux-x86_64")
+        // Spaced values and a delimiter-like argument exercise exact argv forwarding.
         .args(["--stdio", "value with spaces", "--literal=--"]);
     assert!(run_wrapper_command(&mut command)?.status.success());
     let plugin_root = support::fixture_path_text(&fixture.plugin_root)?;
@@ -108,6 +111,7 @@ fn core_source_launcher_bootstraps_watcher_without_bundled_runtime()
     let mut command = Command::new(plugin_root.join("mcp/codexy-mcp-watcher.sh"));
     command
         .env("PATH", format!("{}:/usr/bin:/bin", fake_bin.display()))
+        // Removing the bundle override exercises the source checkout's uvx fallback.
         .env_remove("CODEXY_RUNTIME_DIR")
         .args(["--stdio", "value with spaces", "--literal=--"]);
     assert!(run_wrapper_command(&mut command)?.status.success());

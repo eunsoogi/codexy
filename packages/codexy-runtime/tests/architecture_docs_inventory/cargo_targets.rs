@@ -19,6 +19,8 @@ pub(super) fn selection_probe() -> bool {
 fn documented_cargo_test_command_selects_the_inventory_tests() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let guide = std::fs::read_to_string(root.join("docs/architecture.md"))?;
+    // Cargo re-enters this target to verify test selection. The environment probe
+    // prevents that second pass from launching the command recursively.
     if selection_probe() {
         return Ok(());
     }

@@ -58,6 +58,7 @@ pub(crate) fn restore_pre_activation_runtime_inputs(
     repo: &Path,
     revision: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // Restore these inputs from the verified pre-activation revision, not current main.
     for relative in [
         "plugins/codexy-devtools/mcp/codexy-mcp-devtools",
         "plugins/codexy-devtools/runtime-release.json",

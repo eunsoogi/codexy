@@ -1,3 +1,5 @@
+// Pin matcher and launcher behavior: known specialists remain bounded helpers,
+// while generic roles and durable ownership requests fail closed.
 use std::{io::Write as _, process::Stdio};
 
 use crate::support::FixtureCommand as Command;

@@ -11,6 +11,7 @@ use sha2::{Digest, Sha256};
 #[path = "release_reconciliation/release_attestation_reconciliation.rs"]
 mod release_attestation_reconciliation;
 
+// Creation, baseline binding, and final publication must stay behind the matching attestation checks.
 #[test]
 fn release_reconciliation_authenticates_a_draft_before_finalization()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -101,6 +102,7 @@ fn finalization_verifies_all_attested_assets_before_publication()
     Ok(())
 }
 
+// A body-only event is safe only while release identity, asset digests, baseline, and attestations still match.
 #[cfg(unix)]
 #[test]
 fn edited_release_verifier_accepts_only_a_body_change_from_an_authenticated_baseline()

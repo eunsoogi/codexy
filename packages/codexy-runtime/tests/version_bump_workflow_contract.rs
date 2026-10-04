@@ -1,3 +1,4 @@
+// The workflow contract is the named publication step plus the adapter's connected render-and-mutate sequence.
 use serde_yaml::Value;
 
 use super::version_bump_workflow_model::validate_version_pr_adapter;

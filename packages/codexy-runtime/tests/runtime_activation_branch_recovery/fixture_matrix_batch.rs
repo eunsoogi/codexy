@@ -68,6 +68,7 @@ impl FixtureMatrix {
 }
 
 fn manifest_text(cases: &[BatchCase], root: &Path) -> Result<String, Box<dyn std::error::Error>> {
+    // Reject control characters before joining fields so a case cannot add TSV records.
     let mut records = Vec::with_capacity(cases.len());
     for (index, case) in cases.iter().enumerate() {
         let state = root.join(format!("state-{index}"));

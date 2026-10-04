@@ -127,6 +127,8 @@ fn validate_guide(root: &Path, guide: &str) -> Result<(), String> {
     Ok(())
 }
 
+// The catalog is the shipping boundary; scanning the directory alone would
+// incorrectly count agent files that are not registered.
 fn packaged_agents(root: &Path) -> Result<BTreeMap<String, Agent>, String> {
     let agents_root = root.join("plugins/codexy/agents");
     let catalog = parse_toml(&agents_root.join("catalog.toml"))?;

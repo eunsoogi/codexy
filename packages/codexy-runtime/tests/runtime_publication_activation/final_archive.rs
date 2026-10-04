@@ -76,6 +76,7 @@ fn materializer_preserves_staged_runtime_with_space_safe_paths_without_rsync()
 #[test]
 fn materializer_projects_current_source_onto_an_immutable_public_runtime()
 -> Result<(), Box<dyn std::error::Error>> {
+    // Public projection refreshes current source while retaining already-published runtime bytes.
     let fixture = FinalArchiveFixture::new()?;
     fs::write(
         fixture.root.join(".agents/plugins/runtime-activation.json"),

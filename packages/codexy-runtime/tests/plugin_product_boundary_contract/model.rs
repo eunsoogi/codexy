@@ -1,5 +1,6 @@
 use serde::Deserialize;
 
+// Product rows are ID, public name, package root, allowed dependencies, and forbidden dependencies.
 pub(super) const PRODUCTS: [(&str, &str, &str, &[&str], &[&str]); 3] = [
     (
         "codexy",

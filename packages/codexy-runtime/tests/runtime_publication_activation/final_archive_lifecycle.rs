@@ -57,6 +57,7 @@ struct LifecycleFixture {
 
 impl LifecycleFixture {
     fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        // Separate staging and protected-main commits make branch ancestry and advancement observable.
         let temporary = tempfile::tempdir()?;
         let remote = temporary.path().join("protected.git");
         assert!(Command::new("git").args(["init", "--bare"]).arg(&remote).status()?.success());

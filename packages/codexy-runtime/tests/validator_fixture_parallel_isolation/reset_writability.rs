@@ -1,6 +1,7 @@
 use crate::support;
 use std::path::Path;
 
+// Reset restores authoritative bytes and declared writability without affecting the sibling fixture or source.
 #[test]
 fn reset_file_restores_declared_writability_and_fixture_isolation()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -26,6 +27,7 @@ fn reset_file_restores_declared_writability_and_fixture_isolation()
     Ok(())
 }
 
+// Reset refuses paths absent from the fixture explicit mutable allowlist.
 #[test]
 fn reset_file_rejects_undeclared_mutable_path() -> Result<(), Box<dyn std::error::Error>> {
     let declared = Path::new(".codex-plugin/plugin.json");

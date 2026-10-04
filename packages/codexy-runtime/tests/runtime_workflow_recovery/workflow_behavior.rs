@@ -1,6 +1,7 @@
 use super::{named_step, step_index, workflow};
 use crate::support;
 
+// Run artifacts are attempt-scoped and expire so stale staging bundles cannot be reused indefinitely.
 #[test]
 fn staging_publication_uses_expiring_authenticated_artifacts()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -18,6 +19,7 @@ fn staging_publication_uses_expiring_authenticated_artifacts()
     Ok(())
 }
 
+// Protocol smoke precedes packaging so broken platform binaries never enter the authenticated archive.
 #[test]
 fn candidate_builds_run_platform_local_lsp_and_codegraph_protocol_smokes()
 -> Result<(), Box<dyn std::error::Error>> {

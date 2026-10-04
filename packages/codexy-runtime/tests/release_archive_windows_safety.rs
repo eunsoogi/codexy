@@ -48,6 +48,7 @@ with tarfile.open(archive_path, "w:gz") as archive:
 }
 
 #[test]
+// Windows-normalized aliases and links must be rejected before extraction can overwrite the same destination.
 fn archive_gate_rejects_windows_aliases_collisions_and_hardlinks_before_extraction() {
     for (scenario, expected) in [
         ("backslash", "unsafe archive path"),

@@ -54,6 +54,7 @@ fn parser_matrix_is_cargo_covered_in_one_python_process() {
     );
 }
 
+// Workflow CI and the archive gate must delegate to the same MCP response parser.
 #[test]
 fn workflow_delegates_mcp_stdout_validation_to_the_shared_checker() {
     let root = codexy_runtime::paths::repository_root();

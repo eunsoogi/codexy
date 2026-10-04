@@ -12,6 +12,7 @@ pub(super) fn validate_contract(root: &Path, value: &serde_json::Value) -> TestR
     validate_typed(root, &serde_json::from_value(value.clone())?)
 }
 
+// Keep product identities and repository topology aligned with the shipped package boundaries.
 pub(super) fn validate_typed(root: &Path, contract: &BoundaryContract) -> TestResult {
     if contract.schema != "codexy-plugin-product-boundary/v1" {
         return Err("unexpected product-boundary schema".into());
@@ -78,6 +79,7 @@ pub(super) fn validate_typed(root: &Path, contract: &BoundaryContract) -> TestRe
     validate_records(root, &contract.surface_records)
 }
 
+// Whole paths and selector paths must form an exact, non-overlapping inventory of governed files.
 pub(super) fn validate_records(root: &Path, records: &[SurfaceRecord]) -> TestResult {
     let mut ids = BTreeSet::new();
     let mut categories = BTreeSet::new();

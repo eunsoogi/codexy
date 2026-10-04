@@ -51,6 +51,7 @@ fn archive_content_helper_compares_binary_paths_with_spaces() {
 }
 
 #[test]
+// Byte-level diagnostics identify the divergent member before a digest-only report can obscure the cause.
 fn archive_content_helper_reports_byte_mismatches_before_digest_mismatches() {
     let root = tempdir().expect("tempdir");
     let source = root.path().join("source");

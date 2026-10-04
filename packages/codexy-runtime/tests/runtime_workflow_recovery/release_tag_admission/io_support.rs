@@ -2,6 +2,7 @@ use std::{io, path::Path, process::Output};
 
 use crate::support::FixtureCommand as Command;
 
+// Keep spawn failures actionable by retaining the executable, working directory, argv, and OS error.
 pub(super) fn contextual_error(
     stage: &str,
     path: &Path,

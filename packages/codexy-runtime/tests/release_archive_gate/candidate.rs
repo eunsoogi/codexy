@@ -55,6 +55,7 @@ fn archive_gate_rejects_a_candidate_runtime_path_outside_its_contract() {
     assert!(!status.success());
 }
 fn run_candidate_gate(root: &Path, archive: &Path, plugin_root: &Path) -> std::process::Output {
+    // Stage only the repository inputs used to validate this target-version package.
     let repo_root = root.join("candidate-repository");
     std::fs::create_dir_all(repo_root.join(".agents/plugins")).expect("candidate contract parent");
     std::fs::create_dir_all(repo_root.join(".github/workflows"))
@@ -119,6 +120,7 @@ fn make_candidate_proven_windows_package_with_core(plugin_root: &Path, core_awar
         "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
     );
     std::fs::write(wrapper, updated).expect("candidate wrapper");
+    // Minimal PE headers let the gate validate Windows artifacts without compiling fixtures.
     let mut windows = vec![0; 4096];
     windows[0..2].copy_from_slice(b"MZ");
     windows[0x3c..0x40].copy_from_slice(&0x80_u32.to_le_bytes());
@@ -140,6 +142,7 @@ fn make_candidate_proven_windows_package_with_core(plugin_root: &Path, core_awar
         .expect("Windows dispatcher");
     let mut core_platforms = serde_json::Map::new();
     if core_aware {
+        // Newer candidates carry a separate core handoff runtime class and manifest.
         let host_platform = release_archive_support::fixture_host_platform(
             std::env::consts::OS,
             std::env::consts::ARCH,

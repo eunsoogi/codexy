@@ -25,6 +25,7 @@ pub(super) const VERSION_FIXTURE_PATHS: &[&str] = &[
     "README.ko.md",
 ];
 
+// Capture raw bytes so failed fixture mutations can be restored without normalization.
 pub(super) struct ByteSnapshot(Vec<(PathBuf, Vec<u8>)>);
 
 impl ByteSnapshot {
@@ -62,6 +63,7 @@ impl ByteSnapshot {
     }
 }
 
+// Drop restores the snapshot unless the test has explicitly completed checked restoration.
 pub(super) struct Restoration<'a> {
     snapshot: &'a ByteSnapshot,
     restored: bool,

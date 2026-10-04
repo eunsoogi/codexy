@@ -84,6 +84,7 @@ fn publication_phases_are_separate_and_explicitly_gated() -> TestResult {
         "open-activation-pr",
         "Create exactly one activation pull request",
     )?;
+    // Prove staging identity, apply its selection contract, stage it, then open one PR.
     assert!(proof < apply && apply < stage && stage < pr);
     assert!(
         run(
