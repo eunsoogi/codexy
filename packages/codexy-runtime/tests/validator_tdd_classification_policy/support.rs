@@ -1,5 +1,5 @@
-//! Builds the shared v1/v2 request contracts and checks parity between direct
-//! resolution and the validator CLI using the installed repository plugin root.
+//! Builds shared v1/v2 request helpers for direct resolver and CLI checks;
+//! CLI invocations use an empty temporary plugin root.
 
 use std::{path::Path, process::Command};
 
