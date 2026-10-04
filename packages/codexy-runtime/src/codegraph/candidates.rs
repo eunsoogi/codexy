@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use super::files::code_extensions;
 
-/// Lists import targets in resolver order, keeping explicit extensions exact and expanding extensionless paths.
+/// Lists import targets in resolver order, adding `.ts` and `.tsx` fallbacks for JavaScript-family suffixes and expanding extensionless imports.
 pub(super) fn candidates(candidate: &Path, from_extension: Option<&str>) -> Vec<PathBuf> {
     let extension = candidate.extension().and_then(|item| item.to_str());
     if extension.is_some() {

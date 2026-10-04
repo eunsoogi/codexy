@@ -98,7 +98,7 @@ fn bound_content(output: &mut SearchOutput) {
     if serialized_size(output) <= SEARCH_CONTENT_LIMIT_BYTES {
         return;
     }
-    // Preserve as many diagnostics as fit first, then matches; clear both if fixed metadata still exceeds the cap.
+    // Trim diagnostics while retaining matches; shorten matches only if the payload still exceeds the cap.
     output.truncation.content_bytes = true;
     let error_count = largest_fitting_error_prefix(output);
     output.errors.truncate(error_count);
