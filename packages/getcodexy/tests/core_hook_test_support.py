@@ -27,3 +27,15 @@ def hook_payload(
     if cwd is not None:
         value["cwd"] = str(cwd)
     return json.dumps(value).encode()
+
+
+def worker_creation_input() -> dict[str, object]:
+    return {
+        "model": "gpt-6-luna",
+        "thinking": "max",
+        "target": {
+            "type": "project",
+            "projectId": "test-project",
+            "environment": {"type": "worktree"},
+        },
+    }
