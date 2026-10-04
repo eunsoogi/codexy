@@ -1,3 +1,5 @@
+//! Packaged fixture executable for checking argument forwarding and process status.
+
 use std::{env, fs, path::PathBuf, process};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

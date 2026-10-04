@@ -1,3 +1,4 @@
+//! Models task reservations and enforces that a path stays owned through terminal archival.
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
@@ -116,6 +117,7 @@ impl ReservationRegistry {
         if task_ids.is_empty() {
             return Err(ReservationError::UnknownWorktree(path));
         }
+        // Release is valid only after every owner is terminal and archived.
         if task_ids.iter().any(|task_id| {
             let reservation = &self.reservations[task_id];
             reservation.state != TaskState::Terminal || !reservation.archived

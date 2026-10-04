@@ -1,3 +1,4 @@
+// Collects formatting and touched-LOC policy tests under the governance profile.
 #[path = "../support/mod.rs"]
 mod support;
 

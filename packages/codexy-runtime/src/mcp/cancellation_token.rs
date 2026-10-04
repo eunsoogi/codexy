@@ -37,6 +37,7 @@ impl CancellationToken {
     }
 
     pub(crate) fn wait(&self, timeout: Duration) {
+        // This is a wake hint for polling callers; they re-check cancellation after waking.
         let completed = lock(&self.0.completed);
         let _ = self.0.wake.wait_timeout(completed, timeout);
     }

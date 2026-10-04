@@ -1,3 +1,5 @@
+//! Verifies an explicitly supplied runtime package installs and runs without Cargo.
+
 use super::*;
 
 pub(crate) fn assert_wrapper_installs_packaged_runtime_without_cargo(

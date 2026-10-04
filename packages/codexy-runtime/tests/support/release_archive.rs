@@ -1,3 +1,4 @@
+// Shared archive fixtures omit runtime binaries so tests can install exact host or stub runtimes.
 use super::wrapper_copy::is_generated_fixture_directory;
 #[allow(unused_imports)]
 use std::process::Command;

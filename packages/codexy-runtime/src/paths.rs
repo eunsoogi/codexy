@@ -1,3 +1,6 @@
+//! Resolves repository and plugin roots from the runtime package, with explicit
+//! environment overrides for installed runtimes and test fixtures.
+
 use std::{
     path::{Path, PathBuf},
     sync::OnceLock,

@@ -1,3 +1,6 @@
+//! Selects interpreters for materialized fixture scripts and limits generated
+//! script dispatch to recognized files under the temporary directory.
+
 use std::{
     ffi::{OsStr, OsString},
     process::Command,
@@ -92,6 +95,7 @@ pub(super) fn materialized_script_command(
         program.to_owned()
     };
     let mut command = Command::new(interpreter);
+    // Preserve the original source path as shell `$0` for scripts with source-relative lookups.
     command
         .arg("-c")
         .arg("materialized=$1\nshift\n. \"$materialized\"")

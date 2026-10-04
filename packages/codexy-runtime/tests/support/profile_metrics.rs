@@ -1,3 +1,6 @@
+//! Writes optional test profiling counters only when the corresponding
+//! environment variable selects an output file or directory.
+
 use std::io::Write;
 use std::sync::{Mutex, OnceLock};
 

@@ -1,3 +1,5 @@
+//! Resolves configured server commands against workspace roots and the host PATH.
+
 use std::ffi::OsStr;
 use std::path::Path;
 
@@ -9,6 +11,7 @@ pub(crate) fn resolve_command(command: &[String], root: Option<&str>) -> Result<
     let Some(first) = command.first() else {
         return Ok(Vec::new());
     };
+    // Bare program names are resolved through PATH; only explicit relative paths use the root.
     if first.contains(std::path::MAIN_SEPARATOR)
         && !Path::new(first).is_absolute()
         && let Some(root) = root
@@ -75,6 +78,7 @@ fn executable_names_for_platform(
         return names;
     }
     if is_windows {
+        // The runtime launches directly without a shell, so PATHEXT command shims are not usable.
         names.push(format!("{executable}.exe"));
     }
     names

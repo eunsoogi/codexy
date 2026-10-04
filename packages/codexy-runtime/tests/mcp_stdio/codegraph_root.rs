@@ -1,3 +1,6 @@
+//! Confirms malformed explicit root values fail as JSON-RPC tool errors rather
+//! than being coerced into a default repository path.
+
 use super::*;
 
 #[test]

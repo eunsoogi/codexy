@@ -1,3 +1,5 @@
+//! Checks and updates only the runtime package's Cargo manifest and lock entry.
+
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -131,6 +133,7 @@ fn replace_toml_package_version(path: &PathBuf, version: &str) -> Result<Vec<u8>
     let mut lines = Vec::new();
     for line in text.lines() {
         let trimmed = line.trim();
+        // Stop at the next table so a dependency's version is never rewritten.
         if trimmed.starts_with('[') {
             in_package = trimmed == "[package]";
         }
@@ -155,6 +158,7 @@ fn replace_cargo_lock_package_version(path: &PathBuf, version: &str) -> Result<V
     let mut lines = Vec::new();
     for line in text.lines() {
         let trimmed = line.trim();
+        // Lock files contain many packages; arm the replacement only for codexy-runtime.
         if trimmed == "[[package]]" {
             in_matching_package = false;
         } else if trimmed == format!("name = \"{CARGO_PACKAGE_NAME}\"") {

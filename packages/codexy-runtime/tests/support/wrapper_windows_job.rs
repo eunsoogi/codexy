@@ -1,3 +1,4 @@
+//! Owns Windows wrapper processes in a kill-on-close Job Object before allowing them to run.
 use std::ffi::c_void;
 use std::io;
 use std::mem::size_of;
@@ -92,6 +93,7 @@ impl JobObject {
         }
         let mut job = Self { handle };
         let mut limits = ExtendedLimitInformation::default();
+        // Closing the job on timeout or fixture drop must also terminate spawned descendants.
         limits.basic.limit_flags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
         let set_result = unsafe {
             SetInformationJobObject(
@@ -111,6 +113,7 @@ impl JobObject {
     }
 
     pub(crate) fn resume_primary_thread(&self, process_id: u32) -> io::Result<()> {
+        // std::process exposes the child process handle, so locate its suspended primary thread by PID.
         let snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0) };
         if snapshot == INVALID_HANDLE_VALUE {
             return Err(last_error("CreateToolhelp32Snapshot"));
@@ -179,6 +182,7 @@ impl JobObject {
         if unsafe { TerminateJobObject(self.handle, 124) } == 0 {
             return Err(last_error("TerminateJobObject"));
         }
+        // Wait for the job to reach zero active processes before reporting timeout cleanup complete.
         match unsafe { WaitForSingleObject(self.handle, TERMINATION_WAIT_MS) } {
             WAIT_OBJECT_0 => Ok(()),
             WAIT_TIMEOUT => Err(io::Error::new(

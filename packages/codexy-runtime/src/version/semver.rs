@@ -3,6 +3,7 @@ use anyhow::{Result, bail};
 pub(crate) const MAX_COMPONENT: u32 = 2_147_483_647;
 
 /// Requires the repository's bounded, canonical MAJOR.MINOR.PATCH version.
+/// Prerelease/build suffixes and leading-zero components are intentionally rejected.
 pub(crate) fn require(version: &str) -> Result<()> {
     let mut parts = version.split('.');
     let valid = (0..3).all(|_| {

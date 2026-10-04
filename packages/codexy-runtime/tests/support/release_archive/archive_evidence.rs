@@ -1,3 +1,6 @@
+//! Appends opt-in JSONL receipts containing raw tar headers before or after
+//! archive transformations, including missing-wrapper evidence.
+
 use std::io::Write;
 
 pub(super) fn record_archive_header_receipt(
@@ -6,6 +9,7 @@ pub(super) fn record_archive_header_receipt(
     wrappers: &[String],
 ) -> std::io::Result<()> {
     let Some(path) = std::env::var_os("CODEXY_ARCHIVE_HEADER_EVIDENCE") else {
+        // Most callers need no receipt; evidence output is enabled only by the explicit test setting.
         return Ok(());
     };
     append_archive_header_receipt(std::path::Path::new(&path), phase, archive, wrappers)

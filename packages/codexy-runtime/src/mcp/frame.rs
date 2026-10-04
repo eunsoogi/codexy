@@ -1,3 +1,6 @@
+//! Parses bounded MCP input in either Content-Length framing or newline JSON
+//! form, retaining incomplete frames until the next read.
+
 use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
 
@@ -18,6 +21,7 @@ impl FrameParser {
     }
 
     pub(crate) fn next_frame(&mut self) -> Result<Option<Value>> {
+        // An incomplete header-like prefix may still become a Content-Length frame.
         if let Some(header_end) = find_header_end(&self.buffer) {
             let header = std::str::from_utf8(&self.buffer[..header_end])
                 .context("MCP header is not UTF-8")?;

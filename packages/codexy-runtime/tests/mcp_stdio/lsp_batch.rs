@@ -1,3 +1,6 @@
+//! Tests the lsp_batch MCP contract using a controllable fake server, covering
+//! initialization reuse, ordered partial results, and the batch deadline.
+
 use super::*;
 
 #[path = "lsp_batch/validation.rs"]

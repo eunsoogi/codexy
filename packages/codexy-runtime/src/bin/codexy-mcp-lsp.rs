@@ -1,3 +1,5 @@
+//! Starts the LSP tools over the shared MCP stdio transport.
+
 use anyhow::Result;
 
 fn main() -> Result<()> {

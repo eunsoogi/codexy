@@ -1,3 +1,6 @@
+//! Writes normalized text fixtures atomically while preserving source
+//! permissions and tracking materialized scripts back to their originals.
+
 use std::{
     collections::HashMap,
     io::Write,
@@ -25,6 +28,7 @@ pub(crate) fn write_fixture_atomically(
         .ok_or_else(|| std::io::Error::other("fixture path must have a parent"))?;
     std::fs::create_dir_all(parent)?;
     let mut staged = tempfile::NamedTempFile::new_in(parent)?;
+    // Prepare the staged file before persist so readers see either old or fully prepared content.
     staged.write_all(source)?;
     prepare(staged.path())?;
     staged.as_file().sync_all()?;
@@ -54,6 +58,7 @@ pub(crate) fn materialize_lf_text_fixture(
 ) -> std::io::Result<()> {
     materialize_lf_text_fixture_file(source, target)?;
     if read_text_fixture(source)?.starts_with("#!") {
+        // Copy executable siblings together so a materialized script can still find its helpers.
         let source_dir = source
             .parent()
             .ok_or_else(|| std::io::Error::other("fixture source must have a parent"))?;

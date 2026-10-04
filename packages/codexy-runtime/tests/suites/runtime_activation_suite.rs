@@ -1,3 +1,4 @@
+// Runs the platform-neutral runtime activation recovery cases.
 #[path = "../support/mod.rs"]
 mod support;
 

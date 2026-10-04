@@ -1,3 +1,5 @@
+//! Checks and updates the optional Devtools plugin's version projections.
+
 use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
 
@@ -34,6 +36,7 @@ pub(super) fn validate_mutation_inputs() -> Result<()> {
 
 fn validated_versions() -> Result<Option<(String, String)>> {
     let manifest_path = repo_path(MANIFEST)?;
+    // A repository-only runtime checkout may not package the optional Devtools plugin.
     if !manifest_path.is_file() {
         return Ok(None);
     }

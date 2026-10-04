@@ -1,3 +1,4 @@
+// Package fallback assertions are split by cache, default discovery, and explicit override policy.
 use std::process::Command;
 
 use super::WrapperCommandExt;

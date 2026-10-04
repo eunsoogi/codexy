@@ -37,6 +37,7 @@ pub(crate) fn project_modeled_paths(
     convert: impl Fn(&str) -> Result<String, String>,
 ) -> Result<String, String> {
     let mut command = command.to_owned();
+    // Rewrite only declared path-taking commands, not matching words inside quoted data or arguments.
     for prefix in ["cd ", "pushd "] {
         let mut start = 0;
         while let Some(found) = command[start..].find(prefix) {
@@ -137,6 +138,7 @@ fn shell_command_boundary(command: &str, offset: usize) -> bool {
 }
 
 fn shell_command_terminator(segment: &str) -> usize {
+    // Shell operators end a command only outside quotes, so paths may contain spaces safely.
     let mut quote = None;
     let bytes = segment.as_bytes();
     let mut index = 0;
@@ -161,6 +163,7 @@ fn shell_command_terminator(segment: &str) -> usize {
 }
 
 fn modeled_path_operand_bounds(segment: &str, copy_source: bool) -> Option<(usize, usize)> {
+    // These fixtures model source paths for link/copy commands; destinations stay in shell form.
     if !copy_source {
         let path_end = segment.rfind(char::is_whitespace)?;
         return Some((0, path_end));

@@ -1,3 +1,5 @@
+//! Exercises promotion, identity preservation, and mutation-free activation rejection.
+
 use std::fs;
 
 use anyhow::{Context as _, Result, bail};
@@ -227,6 +229,7 @@ fn reject_activation(version: &str, mutate: impl FnOnce(&Fixture) -> Result<()>)
 
 fn new_fixture() -> Result<Fixture> {
     let fixture = Fixture::new()?;
+    // Begin from the prior public runtime so activation must update the selected wrapper pin.
     write(
         &fixture.root,
         "plugins/codexy-devtools/mcp/codexy-mcp-devtools",

@@ -1,3 +1,4 @@
+// Validator coverage for registered agent definitions, specialist roles, and reviewer contracts.
 #[path = "../validator_agent_model_assignments.rs"]
 mod validator_agent_model_assignments;
 

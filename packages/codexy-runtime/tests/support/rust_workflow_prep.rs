@@ -1,3 +1,4 @@
+//! Verifies Windows toolchain preparation shares cache identity and artifacts with its test job.
 use std::fs;
 
 use serde_yaml::Value;

@@ -1,3 +1,6 @@
+//! Converts only declared fixture path values between native Windows paths and
+//! Git-Bash syntax; unrelated environment values remain byte-for-byte strings.
+
 use std::ffi::{OsStr, OsString};
 
 const POSIX_PATH_ENVIRONMENTS: &[&str] = &[
@@ -46,6 +49,7 @@ pub(crate) fn windows_fixture_environment_value(key: &str, value: &str) -> Resul
     if POSIX_PATH_ENVIRONMENTS.contains(&key) {
         match windows_to_posix_fixture_path(value) {
             Ok(path) => Ok(path),
+            // Git may expose these two values in its own native representation.
             Err(_) if matches!(key, "GIT_COMMON_DIR" | "GIT_DIR") => Ok(value.to_owned()),
             Err(error) => Err(error),
         }

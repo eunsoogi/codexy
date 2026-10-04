@@ -1,3 +1,5 @@
+//! Reads and prepares the selected and candidate versions embedded in runtime source.
+
 use std::fs;
 
 use anyhow::{Context as _, Result, bail};
@@ -41,6 +43,7 @@ struct Declaration {
 
 fn declaration(text: &str, name: &str) -> Result<Declaration> {
     let prefix = format!("pub(super) const {name}: &str = \"");
+    // Count malformed or non-line-start duplicates too, not only declarations that parse below.
     let marker_count = text.matches(&prefix).count();
     let mut declarations = Vec::new();
     let mut offset = 0;

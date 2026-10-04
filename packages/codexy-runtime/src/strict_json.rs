@@ -83,6 +83,7 @@ impl<'de> Visitor<'de> for StrictVisitor {
         let Some(first_key) = access.next_key::<String>()? else {
             return Ok(StrictValue(Value::Object(values)));
         };
+        // serde_json represents arbitrary-precision numbers as a private one-field map.
         if first_key == ARBITRARY_NUMBER_KEY {
             let raw = access.next_value::<String>()?;
             if access.next_key::<String>()?.is_some() {

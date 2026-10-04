@@ -1,3 +1,6 @@
+//! Asserts a matching cache runs before a default refresh while legacy cache
+//! entries are ignored and replaced by a current package.
+
 use super::*;
 
 pub(crate) fn assert_wrapper_reuses_cache_before_default_package_refresh_without_cargo(

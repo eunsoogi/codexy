@@ -1,3 +1,4 @@
+//! Snapshots migration fixtures and enforces additive-only changes to article, index, history, and log.
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,

@@ -1,3 +1,6 @@
+//! Reads a consistent event cursor and implements the single active long-poll
+//! contract, including both MCP cancellation and cross-request bindings.
+
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -22,6 +25,7 @@ impl Store {
         let mut session = self.load_session(session_id)?;
         let events = self.reconcile_events(&mut session)?;
         drop(state);
+        // Keep reclamation out until the caller has reserved the session's waiter slot.
         Ok((session, events, transition))
     }
 

@@ -1,3 +1,6 @@
+//! Verifies batch-wide bounds and context checks reject invalid requests before
+//! the fake server is spawned or receives any LSP request.
+
 use super::*;
 
 #[test]

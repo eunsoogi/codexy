@@ -1,3 +1,5 @@
+//! Test LSP peer with environment-controlled responses and observable session state.
+
 use std::io::{self, Read as _, Write as _};
 use std::net::TcpStream;
 use std::path::Path;

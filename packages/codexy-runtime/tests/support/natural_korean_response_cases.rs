@@ -1,3 +1,6 @@
+//! Samples user-facing Korean summaries against protected machine evidence,
+//! checking honorific tone and preventing internal orchestration terms from leaking.
+
 pub(super) const INTERNAL_TERMS: [&str; 6] = [
     "intake receipt",
     "terminal receipt",

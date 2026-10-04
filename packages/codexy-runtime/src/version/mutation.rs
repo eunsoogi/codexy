@@ -1,3 +1,5 @@
+//! Prepares and applies version changes across every managed release projection.
+
 use std::{fs, path::PathBuf};
 
 use anyhow::{Context as _, Result, bail};
@@ -55,6 +57,7 @@ pub fn prepare_candidate(version: &str) -> Result<String> {
     let mut publish = load_json(&publish_path)?;
     publish["bootstrap"]["candidateVersion"] = Value::String(version.to_owned());
     publish["runtime"]["selectedTag"] = Value::String(selected_runtime_tag);
+    // Candidate preparation changes candidate projections while preserving the selected release.
     let mut updates = vec![
         uv_lock::prepare_version(version)?,
         uv_lock::prepare_pyproject_version(version)?,
@@ -167,6 +170,7 @@ fn semantic(version: &str) -> (u64, u64, u64) {
 }
 
 fn prepare(version: &str) -> Result<Vec<Update>> {
+    // Build and validate all replacement bytes before set_version starts writing files.
     let root = preflight(version)?;
     let manifest_path = repo_path(PLUGIN_MANIFEST)?;
     let market_path = repo_path(MARKETPLACE)?;

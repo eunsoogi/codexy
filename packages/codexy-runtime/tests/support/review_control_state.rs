@@ -1,3 +1,4 @@
+//! Normalizes older PR fixture payloads into the current namespaced review-control shape.
 use serde_json::{Value, json};
 
 pub(crate) fn namespace_review_control(state: &mut Value) {

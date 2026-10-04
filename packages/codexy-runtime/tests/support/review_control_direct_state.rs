@@ -1,3 +1,4 @@
+//! Minimal direct-state fixtures for exercising review-control provenance and strict profile data.
 #![allow(dead_code, unused_imports)]
 
 use serde_json::{Value, json};

@@ -1,3 +1,6 @@
+//! Creates copied Devtools fixtures while restricting mutable files to regular
+//! descendants of the packaged plugin source tree.
+
 use std::path::Path;
 
 pub(crate) fn copy_into_with_mutable_files(

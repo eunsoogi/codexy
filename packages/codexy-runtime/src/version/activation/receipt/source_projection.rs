@@ -1,3 +1,5 @@
+//! Projects validated candidate receipt data into the selected runtime-release record.
+
 use anyhow::{Context as _, Result};
 use serde_json::{Map, Value, json};
 
@@ -62,6 +64,7 @@ pub(super) fn build(
 
 fn source_platforms(platforms: &Map<String, Value>) -> Result<Map<String, Value>> {
     let mut projected = Map::new();
+    // Source-selected releases contain only the two platforms built from source.
     for platform in SOURCE_PLATFORMS {
         projected.insert(
             platform.to_owned(),

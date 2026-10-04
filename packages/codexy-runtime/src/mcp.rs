@@ -1,3 +1,5 @@
+//! JSON-RPC tool dispatch and stdio transport shared by the Codexy MCP servers.
+
 mod cancellation;
 mod frame;
 
@@ -84,6 +86,7 @@ fn handle_message<F>(
 where
     F: FnMut(&str, &Value) -> Result<Value>,
 {
+    // A JSON-RPC notification has no id and therefore must not receive a response.
     let id = message.get("id").cloned();
     let method = message
         .get("method")

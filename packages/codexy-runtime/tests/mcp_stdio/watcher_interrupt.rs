@@ -1,3 +1,6 @@
+//! Exercises native interrupt delivery for an armed or active Watcher wait,
+//! preserving the session while scoping cancellation to its request binding.
+
 use super::*;
 use super::watcher_state::{initialize, open_session, tool_payload, watcher_client};
 use std::fs;

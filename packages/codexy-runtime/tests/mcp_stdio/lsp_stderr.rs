@@ -1,3 +1,6 @@
+//! Checks that the display-tail cap does not hide early workspace failures and
+//! that long unrelated diagnostics remain available as non-fatal output.
+
 use super::*;
 
 #[test]

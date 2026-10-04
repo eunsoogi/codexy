@@ -1,3 +1,6 @@
+//! Maps the public Watcher MCP tool names to validated state operations while
+//! keeping transport cancellation attached to long waits only.
+
 mod arguments;
 
 use anyhow::{Context as _, Result, bail};

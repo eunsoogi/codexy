@@ -1,3 +1,6 @@
+//! Wraps test commands with platform-aware fixture launchers, path conversion,
+//! and optional archive-inspector receipts while preserving Command access.
+
 use std::ffi::{OsStr, OsString};
 use std::process::Command;
 #[path = "archive_inspection_receipt.rs"]
@@ -108,6 +111,7 @@ impl FixtureCommand {
         V: AsRef<OsStr>,
     {
         let key = key.as_ref();
+        // Shell-backed fixtures need path values in the same syntax as their interpreter.
         let value = if self.uses_posix_paths {
             fixture_path_environment_value(key, value.as_ref())
                 .unwrap_or_else(|error| panic!("{error}"))
@@ -151,6 +155,7 @@ impl FixtureCommand {
         I: IntoIterator<Item = V>,
         V: AsRef<OsStr>,
     {
+        // Preserve each platform's path-list separator after translating individual entries.
         let values = values
             .into_iter()
             .map(|value| self.path_value(value.as_ref()))

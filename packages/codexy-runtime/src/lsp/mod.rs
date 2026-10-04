@@ -1,3 +1,5 @@
+//! LSP server selection, process sessions, protocol handling, and MCP tools.
+
 mod batch;
 pub(crate) mod command;
 mod config;

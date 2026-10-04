@@ -63,6 +63,7 @@ pub(crate) fn check(root: &Path, expected: &str) -> Result<()> {
         .strip_prefix('v')
         .context("runtime release artifact tag must start with v")?;
     super::require_semver(runtime_version)?;
+    // The runtime may lag the selected plugin version, but must never lead it.
     if semantic(runtime_version) > semantic(expected) {
         bail!(
             "{} artifact.tag must not be newer than release contract runtime.selectedTag: expected at most {expected_tag:?}, got {artifact_tag:?}",

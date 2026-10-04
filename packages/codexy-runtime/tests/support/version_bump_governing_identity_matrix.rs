@@ -1,3 +1,4 @@
+//! Drives the version-PR identity guard through success and rejection cases before mutation is allowed.
 use crate::support::FixtureCommand as Command;
 use serde_json::{json, Value};
 use std::{fs, path::Path};
@@ -30,6 +31,7 @@ cases = json.loads(cases_path.read_text())
 
 for case in cases:
     with tempfile.TemporaryDirectory(prefix="codexy-version-identity-") as directory:
+        # A rejected identity must leave this sentinel unchanged.
         sentinel = pathlib.Path(directory) / "mutation-sentinel"
         sentinel.write_text("unchanged\n")
         try:

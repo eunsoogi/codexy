@@ -1,3 +1,5 @@
+//! Keeps component and compatible-combination versions aligned with the core plugin.
+
 use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
 

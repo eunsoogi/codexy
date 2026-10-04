@@ -1,3 +1,5 @@
+//! Validates and executes bounded LSP batches through one shared server session.
+
 use std::path::{Component, Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -70,6 +72,7 @@ pub(super) fn call(args: &Value) -> Result<Value> {
 
     let path_root = path_resolution_root_from_args(args).map(|root| root.0);
     let mut requests = Vec::with_capacity(items.len());
+    // The batch reuses one child process, so all requests must resolve to one server and workspace.
     let mut common_server: Option<Server> = None;
     let mut common_workspace: Option<PathBuf> = None;
     for item in items {
@@ -202,6 +205,7 @@ fn ensure_path_within_root(raw_path: &str, file_path: &str, root: Option<&str>) 
     let Some(root) = root else {
         return Ok(());
     };
+    // Canonical paths catch symlink escapes; lexical normalization still handles missing files.
     let root = normalize_path(
         &Path::new(root)
             .canonicalize()

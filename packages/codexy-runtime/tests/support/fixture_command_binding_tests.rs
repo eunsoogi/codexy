@@ -1,3 +1,4 @@
+//! Exercises generated shell command bindings against identifier safety and the host shell parser.
 use std::{io::ErrorKind, process::Command};
 
 use crate::support::{

@@ -1,3 +1,6 @@
+//! Compares single and batched LSP error handling at the process boundary,
+//! including failures that appear only when server stderr is drained.
+
 use super::*;
 use crate::system::mcp_stdio::fixture_gate::StderrPublicationGate;
 
@@ -7,6 +10,7 @@ fn lsp_batch_rechecks_workspace_errors_after_cleanup() -> Result<(), Box<dyn std
     std::fs::write(root.path().join("sample.toml"), "value = 1\n")?;
     let fake_lsp = env!("CARGO_BIN_EXE_codexy-fake-lsp");
 
+    // Hold stderr publication until shutdown has been observed to make the late failure deterministic.
     let mut single_gate = StderrPublicationGate::new()?;
     let single_reader = single_gate.reader_address()?;
     let single_shutdown = single_gate.shutdown_address()?;

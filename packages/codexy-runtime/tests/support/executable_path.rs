@@ -1,3 +1,6 @@
+//! Resolves test executables using an explicit PATH/PATHEXT snapshot so
+//! platform-specific lookup behavior can be exercised without running them.
+
 use std::{collections::BTreeSet, ffi::OsStr, path::PathBuf};
 
 pub(crate) fn executable_path(command: &str) -> Result<PathBuf, String> {
@@ -29,6 +32,7 @@ fn executable_suffixes(command: &str, extensions: &OsStr) -> Result<Vec<String>,
     }
     let mut seen = BTreeSet::new();
     let mut suffixes = vec![String::new()];
+    // Duplicate or malformed PATHEXT entries make command identity ambiguous, so reject them.
     for extension in extensions
         .to_string_lossy()
         .split(';')

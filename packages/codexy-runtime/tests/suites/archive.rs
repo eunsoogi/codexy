@@ -1,3 +1,4 @@
+// Release archive tests focus on path safety, embedded binaries, and secret handling.
 #[path = "../support/archive.rs"]
 mod support;
 

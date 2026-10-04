@@ -1,3 +1,6 @@
+//! Ensures wrapper-mode edits preserve every non-mode byte and reject missing
+//! requested entries while retaining full header evidence.
+
 use super::*;
 
 fn entry(path: &str, mode: usize, contents: &[u8]) -> Vec<u8> {

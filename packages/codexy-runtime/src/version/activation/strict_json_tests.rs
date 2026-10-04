@@ -1,3 +1,5 @@
+//! Ensures duplicate JSON keys fail before any activation target is mutated.
+
 use std::fs;
 
 use anyhow::Result;

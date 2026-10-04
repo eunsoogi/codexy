@@ -1,3 +1,6 @@
+//! Verifies wrapper runtime selection across unsupported platforms, an explicit
+//! runtime directory, source checkouts, and non-Codex Rust host projects.
+
 use super::super::*;
 use crate::support::FixtureCommand as Command;
 

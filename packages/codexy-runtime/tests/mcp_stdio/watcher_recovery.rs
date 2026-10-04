@@ -1,3 +1,6 @@
+//! Tests event-log recovery after interrupted writes and session cleanup rules
+//! that preserve unknown files while reclaiming known atomic-write leftovers.
+
 use super::*;
 use super::watcher_state::{initialize, open_session, tool_payload, watcher_client};
 

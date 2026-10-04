@@ -1,3 +1,4 @@
+// Archive tests share only the fixture commands and archive helpers they require.
 #![allow(clippy::redundant_pub_crate)]
 #![allow(dead_code, unused_imports)]
 
