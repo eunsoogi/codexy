@@ -12,7 +12,7 @@ fn validator_rejects_local_parent_routes_in_terminal_only_handoffs() -> TestResu
         );
         assert!(
             String::from_utf8_lossy(&local.stderr)
-                .contains("child goal reporting must not use local agents /root routing")
+                .contains("terminal child handoff must not use local agents /root routing")
         );
     }
 

@@ -206,12 +206,8 @@ fn formal_classification_for(source: &str, owner: &str) -> &'static str {
         ("current-thread-classified", "current-thread-owned") => "Ownership metadata source: current-thread-classified\nLane ownership: current-thread-owned\nTask classification:\n| Field | Value |\n| --- | --- |\n| Lane type | implementation |\n| Secondary surfaces | validators |\n| Owner decision | affirmative current-thread-owned because the active thread owns the work |\n| Atomic scope | issue-sized |\n| Required skills | orchestration |\n| Required tools/evidence | focused validation |\n| First allowed action | implement after classification |\n| Stop/blocker | None |",
         ("parent-supplied", "child-owned") => concat!(
             "Source thread id: parent-workflow-profile\n",
-            "Goal control state: source_thread_id=parent-workflow-profile\n",
             "Assignment objective: validate child ownership\n",
             "Success criteria: preserve valid workflow classification\n",
-            "Authorized goal objective: validate child ownership\n",
-            "Goal tool call: get_goal; parent task=parent-workflow-profile; transition key=workflow:get\n",
-            "Parent goal post-result: operation=get_goal; exact tool result={\"goal\":{\"objective\":\"validate child ownership\",\"status\":\"active\"}}; parent task=parent-workflow-profile; delivery=confirmed; task surface=codex task/thread; transition key=workflow:get\n",
             "Ownership metadata source: parent-supplied\n",
             "Lane ownership: child-owned\n",
             "Task classification:\n",

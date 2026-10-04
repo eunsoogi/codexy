@@ -177,7 +177,8 @@ re-enter planning when it is already selected and in progress.
   for Worker events, handling an ordinary Worker idle-wait handoff, or deciding
   whether scheduled monitoring applies.
 - MUST read [goal transition reporting](references/goal-transition-reporting.md)
-  when delivering child goal state or a terminal transition to the parent.
+  when delivering blocked-goal recovery or terminal handoff receipts to the
+  parent.
 - MUST read [parent stop preflight](references/parent-stop-preflight.md) before
   an implementation edit that may need child-owned Git or PR state.
 - MUST read [plugin public contracts](references/plugin-public-contracts.md)

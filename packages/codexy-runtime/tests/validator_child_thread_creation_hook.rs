@@ -9,102 +9,19 @@ const TOOLS: &[&str] = &["codex_app__create_thread", "mcp__codex_app__create_thr
 const LAUNCHER: &str = "codexy-child-thread-creation.sh";
 const WINDOWS_LAUNCHER: &str = "codexy-child-thread-creation.cmd";
 
-#[test]
-fn windows_permission_request_runtime_failure_fallback_is_valid_json() -> TestResult {
-    let root = codexy_runtime::paths::repository_root().join("plugins/codexy");
-    let source = std::fs::read_to_string(root.join("hooks").join(WINDOWS_LAUNCHER))?;
-    let fallback = source
-        .lines()
-        .find(|line| {
-            line.starts_with("echo {\"hookSpecificOutput\"")
-                && line.contains("\"hookEventName\":\"PermissionRequest\"")
-        })
-        .ok_or("PermissionRequest fallback")?;
-    let denial: Value = serde_json::from_str(fallback.strip_prefix("echo ").ok_or("echo")?)?;
-    assert_eq!(denial["hookSpecificOutput"]["hookEventName"], "PermissionRequest");
-    assert_eq!(
-        denial["hookSpecificOutput"]["decision"]["behavior"],
-        "deny"
-    );
-    Ok(())
-}
+#[path = "validator_child_thread_creation_hook/installed_contract.rs"]
+mod installed_contract;
 
-#[test]
-fn installed_matcher_covers_both_canonical_create_thread_tool_names() -> TestResult {
-    let root = codexy_runtime::paths::repository_root().join("plugins/codexy/hooks");
-    let hooks: Value = serde_json::from_str(&std::fs::read_to_string(root.join("hooks.json"))?)?;
-    let matcher = hooks["hooks"]["PreToolUse"][1]["matcher"]
-        .as_str()
-        .ok_or("create_thread matcher")?;
-    let matcher = regex::Regex::new(matcher)?;
-    for tool in TOOLS {
-        assert!(matcher.is_match(tool), "matcher misses {tool}");
-    }
-    for tool in [
-        "mcp__codex_app__send_message_to_thread",
-        "codex_app__create_thread_extra",
-        "mcp__codex_app__create_thread_extra",
-    ] {
-        assert!(!matcher.is_match(tool), "matcher overmatches {tool}");
-    }
-    Ok(())
-}
-
-#[test]
-fn installed_thread_delivery_matcher_covers_both_canonical_tool_names() -> TestResult {
-    let root = codexy_runtime::paths::repository_root().join("plugins/codexy/hooks");
-    let hooks: Value = serde_json::from_str(&std::fs::read_to_string(root.join("hooks.json"))?)?;
-    let matcher = hooks["hooks"]["PreToolUse"][0]["matcher"]
-        .as_str()
-        .ok_or("send_message_to_thread matcher")?;
-    let matcher = regex::Regex::new(matcher)?;
-    for prefix in ["codex_app__", "mcp__codex_app__"] {
-        let tool = format!("{prefix}send_message_to_thread");
-        assert!(matcher.is_match(&tool), "matcher misses {tool}");
-    }
-    assert!(!matcher.is_match("mcp__codex_app__create_thread"));
-    Ok(())
-}
-
-#[cfg(windows)]
-#[test]
-fn native_windows_worker_launcher_runtime_failure_emits_valid_permission_denial() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let launcher = temp.path().join(WINDOWS_LAUNCHER);
-    std::fs::copy(
-        codexy_runtime::paths::repository_root()
-            .join("plugins/codexy/hooks")
-            .join(WINDOWS_LAUNCHER),
-        &launcher,
-    )?;
-    std::fs::write(
-        temp.path().join("codexy-child-thread-creation.py"),
-        "import sys\nsys.exit(1)\n",
-    )?;
-    let output = std::process::Command::new("cmd")
-        .arg("/d")
-        .arg("/c")
-        .arg(&launcher)
-        .arg("PermissionRequest")
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()?;
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
-    let denial: Value = serde_json::from_slice(&output.stdout)?;
-    assert_eq!(denial["hookSpecificOutput"]["hookEventName"], "PermissionRequest");
-    assert_eq!(denial["hookSpecificOutput"]["decision"]["behavior"], "deny");
-    Ok(())
-}
+#[path = "validator_child_thread_creation_hook/parent_checkout.rs"]
+mod parent_checkout;
 
 #[test]
 fn exact_wave_zero_omitted_field_call_is_rejected_before_mutation() -> TestResult {
+    let cwd = primary_checkout();
     for tool in TOOLS {
-        let input = json!({
-            "hook_event_name": "PreToolUse",
-            "tool_name": tool,
-            "tool_input": {
+        let input = pre_tool_input_at(
+            tool,
+            json!({
                 "prompt": "Implement Codexy #598 in a Worker worktree.",
                 "target": {
                     "type": "project",
@@ -112,8 +29,9 @@ fn exact_wave_zero_omitted_field_call_is_rejected_before_mutation() -> TestResul
                     "environment": {"type": "worktree"}
                 },
                 "title": "Codexy #598 context tiers"
-            }
-        });
+            }),
+            &cwd,
+        );
         assert_hook(&input, true)?;
     }
     Ok(())
@@ -138,59 +56,6 @@ fn worker_pair_is_admitted_and_arbitrary_pairs_are_rejected() -> TestResult {
         }
     }
     Ok(())
-}
-
-#[test]
-fn parent_worktree_is_rejected_before_worker_creation() -> TestResult {
-    let (_temp, primary, worktree) = git_worktree_fixture()?;
-    for tool in TOOLS {
-        let input = pre_tool_input_at(
-            tool,
-            json!({"model":"gpt-6-luna","thinking":"max"}),
-            &worktree,
-        );
-        let output = hook_output(&input, "PreToolUse")?;
-        let reason = output["hookSpecificOutput"]["permissionDecisionReason"]
-            .as_str()
-            .ok_or("worktree denial reason")?;
-        assert!(reason.contains("PARENT_WORKTREE"), "{reason}");
-        assert!(reason.contains("handoff_thread"), "{reason}");
-        assert!(reason.contains("primary checkout"), "{reason}");
-    }
-    drop(primary);
-    Ok(())
-}
-
-#[test]
-fn verified_primary_checkout_admits_the_assigned_worker_pair() -> TestResult {
-    let (_temp, primary, _worktree) = git_worktree_fixture()?;
-    for tool in TOOLS {
-        assert_hook(
-            &pre_tool_input_at(
-                tool,
-                json!({"model":"gpt-6-luna","thinking":"max"}),
-                &primary,
-            ),
-            false,
-        )?;
-    }
-    Ok(())
-}
-
-#[test]
-fn tool_input_cannot_claim_primary_cwd_for_a_worktree_parent() -> TestResult {
-    let (_temp, primary, worktree) = git_worktree_fixture()?;
-    let input = json!({
-        "hook_event_name":"PreToolUse",
-        "tool_name":TOOLS[0],
-        "cwd":worktree,
-        "tool_input":{
-            "model":"gpt-6-luna",
-            "thinking":"max",
-            "cwd":primary,
-        }
-    });
-    assert_hook(&input, true)
 }
 
 #[test]
@@ -229,10 +94,12 @@ fn required_fields_reject_partial_and_empty_pairs() -> TestResult {
 
 #[test]
 fn both_preventive_events_apply_admission_before_mutation() -> TestResult {
-    let input = json!({
-        "tool_name":TOOLS[0],
-        "tool_input":{"prompt":"Wave 0 omitted model and thinking"}
-    });
+    let cwd = primary_checkout();
+    let input = pre_tool_input_at(
+        TOOLS[0],
+        json!({"prompt":"Wave 0 omitted model and thinking"}),
+        &cwd,
+    );
     for event in ["PermissionRequest", "PreToolUse"] {
         let mut event_input = input.clone();
         event_input["hook_event_name"] = json!(event);

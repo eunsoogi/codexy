@@ -27,11 +27,11 @@ Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
 - Worker creation, Orchestrator-to-Worker, Watcher: `gpt-6-luna` / `max`.
 - Inspector: `gpt-6.1-sol` / `medium`.
 
-Codex MUST use a pair only when the actual tool contract permits and MUST obey
-higher-priority omission and authorization rules. If child creation cannot use
-the pair, Codex MUST report the limitation and keep the lane pending; Codex MUST
-NOT substitute a model, sender setting, owner, or task. Model metadata MUST stay
-separate from role identity; host/runtime IDs remain compatibility values.
+Every app-thread creation and recipient delivery MUST include the assigned `model` and
+`thinking` values. If the host cannot accept the pair, Codex MUST NOT invoke an omitted,
+partial, or defaulted call; it MUST report the exact incompatibility and keep the lane
+pending. Codex MUST NOT substitute a model, copy sender settings, change owners, or create
+duplicate tasks; it MUST keep model metadata separate from role identity and host/runtime IDs as compatibility values.
 
 ## Message visibility and style
 
@@ -75,8 +75,8 @@ alter protected technical text.
   explicit no-PR marker); Workers MUST NOT infer targets from transcript
   visibility. The Watcher MUST validate assignment, separate tasks/lanes,
   deduplicate identities, and relay action-required deltas through
-  `watcher_report`. Goal and terminal receipts remain direct-Orchestrator;
-  reports are signals, not acceptance.
+  `watcher_report`. Blocked-goal and terminal handoff receipts remain direct to the Orchestrator;
+  initial goal registration/readback MUST stay task-local and unreported; Worker reports are signals, not acceptance.
 - A verified-unavailable route or concrete emergency permits one marked
   direct-Orchestrator fallback; Worker MUST report one limitation and MUST NOT
   resume routine direct reporting or duplicate it. Routine reads and

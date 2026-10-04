@@ -3,11 +3,11 @@ use std::path::{Path, PathBuf};
 use anyhow::{Result, bail};
 
 use super::{
-    Mode, child_goal_blocked_audit, child_goal_reporting, child_lane_ownership,
-    child_lifecycle_events, child_terminal_handoff, completion_handoff, conventional_commit,
-    getcodexy_component_contract, github_labels, hooks, lsp, manifest, mcp, merge_authorization,
-    merge_message, review_control, roles, roles_yaml, routing_policy, runtime, tdd_classification,
-    touched_loc, workflow_profile_evidence, workflow_profiles,
+    Mode, child_goal_blocked_audit, child_lane_ownership, child_lifecycle_events,
+    child_terminal_handoff, completion_handoff, conventional_commit, getcodexy_component_contract,
+    github_labels, hooks, lsp, manifest, mcp, merge_authorization, merge_message, review_control,
+    roles, roles_yaml, routing_policy, runtime, tdd_classification, touched_loc,
+    workflow_profile_evidence, workflow_profiles,
 };
 
 /// Runs plugin contract validation for the selected mode.
@@ -70,7 +70,6 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
         Mode::RuntimeArtifacts => runtime::check_artifacts(plugin_root),
         Mode::ChildLaneOwnership { evidence } => {
             let mut errors = child_lane_ownership::check(&evidence);
-            errors.extend(child_goal_reporting::check(&evidence));
             errors.extend(workflow_profiles::check_evidence(plugin_root, &evidence));
             errors.extend(review_lifecycle_errors(plugin_root, &evidence));
             errors.extend(child_terminal_errors(&evidence));
@@ -104,7 +103,7 @@ fn child_terminal_errors(evidence: &str) -> Vec<String> {
             .and_then(|route| route.split([';', ',', ' ']).next())
             .is_some_and(child_terminal_handoff::is_local_task_target)
     }) {
-        errors.push("child goal reporting must not use local agents /root routing".into());
+        errors.push("terminal child handoff must not use local agents /root routing".into());
     }
     errors
 }
