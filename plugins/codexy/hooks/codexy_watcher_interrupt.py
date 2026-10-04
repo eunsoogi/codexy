@@ -33,15 +33,15 @@ if sys.version_info < (3, 10):
 def main() -> int:
     parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument("--event", required=True, choices=EVENTS)
-    event = parser.parse_args().event
-    raw = sys.stdin.buffer.read(1024 * 1024 + 1)  # +1 detects oversize without unbounded input.
+    event = parser.parse_args().event  # Accept only registered hook events.
+    raw = sys.stdin.buffer.read(1024 * 1024 + 1)  # +1 detects oversize.
     if len(raw) > MAX_INPUT_BYTES:  # Ignore oversized payloads.
         return 0
     try:
         payload = json.loads(raw)
     except (TypeError, ValueError, json.JSONDecodeError):
         return 0
-    if not isinstance(payload, dict) or payload.get("hook_event_name") != event:  # Require the invoked event.
+    if not isinstance(payload, dict) or payload.get("hook_event_name") != event:
         return 0
     if event in ("Interrupt", "UserPromptSubmit"):
         handle_input_event(event, payload, _invoke)
@@ -56,9 +56,9 @@ def main() -> int:
         return 0
     result = _invoke("--hook-pretool", payload)
     binding = result.get("requestBinding") if isinstance(result, dict) else None
-    if not isinstance(binding, str) or not binding:  # Bind only after runtime confirmation.
+    if not isinstance(binding, str) or not binding:
         return 0
-    updated = dict(tool_input)
+    updated = dict(tool_input)  # Copy before adding the confirmed wait binding.
     updated["requestBinding"] = binding
     output = {
         "hookSpecificOutput": {
@@ -136,7 +136,7 @@ def _platform_name() -> str:
     return f"{operating_system}-{architecture}"
 
 
-def _cached_runtime(root: Path) -> Path | None:  # Cache only the versioned package-default runtime.
+def _cached_runtime(root: Path) -> Path | None:  # Only cache package defaults.
     if (  # Custom release/source selection must never fall back to a package-default cache.
         (root / "runtime-release.json").is_file()
         or any(
@@ -203,8 +203,8 @@ def _plugin_release(path: Path) -> str | None:
     return release if isinstance(release, str) and SEMVER.fullmatch(release) else None
 
 
-def _manifest_matches(root: Path, install_root: Path) -> bool:  # Match this plugin's package identity.
-    try:
+def _manifest_matches(root: Path, install_root: Path) -> bool:
+    try:  # Cache only when package identity matches.
         expected = json.loads(
             (root / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
         )
@@ -213,7 +213,7 @@ def _manifest_matches(root: Path, install_root: Path) -> bool:  # Match this plu
         )
     except (OSError, UnicodeError, ValueError, json.JSONDecodeError):
         return False
-    fields = ("name", "repository", "version")
+    fields = ("name", "repository", "version")  # Stable identity for cache hits.
     if not isinstance(expected, dict) or not isinstance(observed, dict):
         return False
     expected_identity = tuple(expected.get(field) for field in fields)
@@ -229,7 +229,7 @@ def _manifest_matches(root: Path, install_root: Path) -> bool:  # Match this plu
 
 def _executable(path: Path) -> bool:
     try:
-        metadata = os.lstat(path)  # Inspect the path itself so symlinks are not followed.
+        metadata = os.lstat(path)  # Do not follow symlinks.
     except FileNotFoundError:
         return False
     reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
