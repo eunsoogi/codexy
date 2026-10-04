@@ -1,3 +1,6 @@
+//! Validates shared hook-handler shape, then applies the topology required by
+//! Codexy core and the GitHub extension.
+
 mod admission_artifact;
 mod capability_contract;
 mod command;
@@ -67,6 +70,7 @@ fn check_inner(plugin_root: &Path) -> Result<()> {
             check_group(&path, plugin_root, event, group)?;
         }
     }
+    // Manifest identity still rejects a missing core contract.
     if core_contract || is_core_plugin(plugin_root)? {
         capability_contract::check_topology(&path, events)?;
         capability_contract::check(plugin_root)?;
@@ -152,6 +156,7 @@ fn check_handler(path: &Path, plugin_root: &Path, event: &str, handler: &Value) 
             ),
         }
     }
+    // Both platform launch strings are required and use the same command-safety checks.
     let command = object
         .get("command")
         .and_then(Value::as_str)
