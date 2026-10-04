@@ -6,9 +6,9 @@ This is the receipt contract for blocked-goal recovery and terminal child
 handoffs. Native goal startup is governed by `goal-lifecycle`: the owner uses
 the native `get_goal`/`create_goal`/active-readback sequence without parent
 registration receipts. Issue #1036 owns native-Watcher-first ordinary report
-routing; Issue #367 owns runtime task delivery and transition receipt
-mechanics; Issue #373 owns runtime deduplication, restart recovery, worktree
-preservation, and replacement.
+routing; Issue #367 owns runtime task delivery and transition receipt mechanics;
+Issue #373 owns runtime deduplication, restart recovery, worktree preservation,
+and replacement.
 
 ## Source Parent Binding
 

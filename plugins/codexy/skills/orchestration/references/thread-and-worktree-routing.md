@@ -53,13 +53,13 @@ Before calling `create_thread`, the Orchestrator MUST read back separately:
 - the current task and existing active owner for the same issue or lane.
 
 The Orchestrator MUST verify its actual task CWD before child creation. If the
-CWD is in a linked Git worktree or cannot be verified inside the saved
-project's primary checkout, it MUST NOT call `create_thread`. A different
-controlling task MUST use the supported handoff surface to move the Orchestrator
-to the primary repository; `handoff_thread` cannot move its own caller. After
-handoff, the controlling task MUST verify the destination CWD and primary
-checkout from current task readback before the Orchestrator resumes child
-creation. An unverified destination MUST keep the lane pending.
+CWD is in a linked Git worktree or cannot be verified inside the saved project's
+primary checkout, it MUST NOT call `create_thread`. A different controlling task
+MUST use the supported handoff surface to move the Orchestrator to the primary
+repository; `handoff_thread` cannot move its own caller. After handoff, the
+controlling task MUST verify the destination CWD and primary checkout from
+current task readback before the Orchestrator resumes child creation. An
+unverified destination MUST keep the lane pending.
 
 For a selected child-owned lane, the Orchestrator MUST select the assigned
 recipient model and effort automatically and MUST NOT ask the user to choose or

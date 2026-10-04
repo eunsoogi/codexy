@@ -34,20 +34,20 @@ a self-declared role name as specialist identity. The packaged Watcher declares
 
 When creating a Worker, Codex MUST bind the assigned model and effort to the
 authenticated recipient. For existing tasks, Codex MUST send to the
-authenticated `threadId` with the recipient's assigned model and effort; it
-MUST NOT copy sender settings. If the actual message-tool contract cannot accept
-that pair, Codex MUST NOT send an omitted or partial call or rely on defaults;
-it MUST preserve the lane as pending and report the exact incompatibility. The
-existing host-envelope
-directions `root_to_child` and `child_to_parent` are serialized compatibility
-identifiers: they represent Orchestrator-to-Worker delivery using `gpt-6-luna`
-at `max` and Worker-to-Orchestrator delivery using `gpt-6-astra` at `medium`,
-respectively. The runtime request's serialized `parent_to_generic` and
-`child_to_root` directions remain unchanged for the same two routes. These
-serialized identifiers do not authorize parameters that the actual tool contract
-forbids. Unsupported or mismatched recipient settings MUST leave the lane
-pending with the exact limitation. Missing observations MUST be reported as
-unavailable/not observed. Codex MUST NOT fall back to the sender route.
+authenticated `threadId` with the recipient's assigned model and effort; it MUST
+NOT copy sender settings. If the actual message-tool contract cannot accept that
+pair, Codex MUST NOT send an omitted or partial call or rely on defaults; it
+MUST preserve the lane as pending and report the exact incompatibility. The
+existing host-envelope directions `root_to_child` and `child_to_parent` are
+serialized compatibility identifiers: they represent Orchestrator-to-Worker
+delivery using `gpt-6-luna` at `max` and Worker-to-Orchestrator delivery using
+`gpt-6-astra` at `medium`, respectively. The runtime request's serialized
+`parent_to_generic` and `child_to_root` directions remain unchanged for the same
+two routes. These serialized identifiers do not authorize parameters that the
+actual tool contract forbids. Unsupported or mismatched recipient settings MUST
+leave the lane pending with the exact limitation. Missing observations MUST be
+reported as unavailable/not observed. Codex MUST NOT fall back to the sender
+route.
 
 Worker selection owns recipient and model routing, not verification policy. The
 closed route in [context tiers](context-tiers.md) selects profile, sequencing,
@@ -74,8 +74,8 @@ ban on the Worker's required review.
 
 When a handoff contract requires a receipt, it MUST carry that contract's stable
 `transition key`, `event id`, or `state fingerprint`. A completed delivery with
-the same recipient, phase, and key MUST NOT be sent again; unchanged status
-MUST remain silent. Initial `get_goal`, `create_goal`, and the required active
+the same recipient, phase, and key MUST NOT be sent again; unchanged status MUST
+remain silent. Initial `get_goal`, `create_goal`, and the required active
 readback MUST happen in the owning task before task work, but MUST NOT generate
 separate parent registration receipts. Blocked-goal recovery and terminal
 handoff receipts remain governed by their canonical references.

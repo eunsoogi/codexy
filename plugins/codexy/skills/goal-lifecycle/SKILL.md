@@ -97,9 +97,9 @@ task work, the task MUST call `get_goal` and MUST use its current result:
    work.
 
 For initial registration, the owning task MUST use the native `get_goal`,
-`create_goal` when allowed, and active `get_goal` readback results directly.
-It MUST complete that sequence before implementation or dispatch and MUST NOT
-send pre-delivery or post-result parent reports for those calls. Existing
+`create_goal` when allowed, and active `get_goal` readback results directly. It
+MUST complete that sequence before implementation or dispatch and MUST NOT send
+pre-delivery or post-result parent reports for those calls. Existing
 blocked-goal recovery and terminal-handoff reporting rules continue to apply to
 their respective transitions.
 
@@ -177,8 +177,8 @@ MUST NOT perform repository or external mutation. The task MUST use the existing
 `$orchestration` receipts required for blocked-recovery delivery and terminal
 handoff. Native goal calls and their readbacks MUST remain in the owning task
 without separate registration reports. The task MUST NOT add a parser,
-validator, hook, workflow, schema, runtime service, or compatibility wrapper
-for this behavior.
+validator, hook, workflow, schema, runtime service, or compatibility wrapper for
+this behavior.
 
 ## Verification
 
