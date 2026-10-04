@@ -55,6 +55,7 @@ pub(super) struct Guard {
 }
 
 #[allow(unreachable_pub)]
+// Bind this authenticated wait to its host invocation for later request-scoped cancellation.
 pub fn prepare_request_binding(payload: &Value) -> Result<String> {
     let root = state_root()?;
     let main_session_id = text(payload.get("session_id"), "session_id", 256)?;
@@ -133,6 +134,7 @@ fn cancel_unique_binding(root: &Path, matches: impl Fn(&Binding) -> bool) -> Res
         .into_iter()
         .filter(|binding| matches!(binding.status.as_str(), "armed" | "active") && matches(binding))
         .collect::<Vec<_>>();
+    // If host metadata is ambiguous, do not guess which concurrent wait should be released.
     let Some(binding) = bindings.first().filter(|_| bindings.len() == 1) else {
         return Ok(false);
     };
@@ -172,6 +174,7 @@ pub(super) fn claim(
     if now >= binding.expires_at_ms {
         bail!("watcher request binding has expired");
     }
+    // Extend the short-lived arm after validating the session identity and parent capability.
     "active".clone_into(&mut binding.status);
     binding.expires_at_ms = now.saturating_add(MAX_WAIT_MS);
     write_json(&path, &serde_json::to_value(binding)?)?;

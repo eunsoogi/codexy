@@ -3,6 +3,7 @@ use std::io::{self, Read, Write};
 use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
 
+// Bound host-provided hook JSON before parsing it from stdin.
 const MAX_HOOK_INPUT_BYTES: usize = 1_048_576;
 
 fn main() -> Result<()> {

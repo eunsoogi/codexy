@@ -3,6 +3,7 @@ use serde_json::json;
 
 use crate::mcp::ToolDef;
 
+// Keep the advertised wait default and ceiling tied to the state store's accepted limits.
 fn wait_tool(name: &str, description: &str) -> ToolDef {
     ToolDef::new(
         name,

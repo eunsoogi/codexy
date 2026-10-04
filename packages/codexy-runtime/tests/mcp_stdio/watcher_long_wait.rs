@@ -56,6 +56,7 @@ fn wait_request(
     })
 }
 
+// Use a separate health request to prove the pending long poll owns wait.lock before signaling it.
 fn waiting_until_true(
     observer: &mut McpClient,
     session: &str,
@@ -190,6 +191,7 @@ fn ttl_expiry_preserves_queued_events_on_disk() -> TestResult {
 
     let mut reconnect = watcher_client(state.path())?;
     initialize(&mut reconnect)?;
+    // Expiry returns no page of events, but the durable queue must still report its original depth.
     let still_expired = tool_payload(&reconnect.send(&wait_request(
         5,
         &session,

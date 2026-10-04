@@ -67,6 +67,7 @@ fn interrupted_utf8_event_tail_is_recovered_before_the_next_report() -> Result<(
     events.extend_from_slice(
         br#"{"eventId":"interrupted","sequence":2,"kind":"gate_ready","target":{"threadId":"target"},"summary":"#,
     );
+    // End mid-codepoint as well as mid-record so recovery must discard the incomplete final line.
     events.extend_from_slice(&"완료".as_bytes()[..1]);
     std::fs::write(&path, events).map_err(|error| error.to_string())?;
 
@@ -110,6 +111,7 @@ fn complete_event_without_final_newline_is_preserved_before_append() -> Result<(
     }
     let path = event_path(state.path(), &session);
     let mut events = std::fs::read(&path).map_err(|error| error.to_string())?;
+    // This is still a complete record: appending must restore its line separator, not discard it.
     if events.pop() != Some(b'\n') {
         return Err("event log did not end with a newline".to_owned());
     }

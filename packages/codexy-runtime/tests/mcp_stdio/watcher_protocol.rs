@@ -99,6 +99,7 @@ fn watcher_wait_is_released_by_mcp_cancellation_without_consuming_later_events(
     }
     assert!(waiting, "waiter did not acquire wait.lock before cancellation");
     thread::sleep(Duration::from_millis(2));
+    // Cancel only request 4, then prove the session can accept another wait and durable report.
     client.send_without_read(&json!({
         "jsonrpc":"2.0","method":"notifications/cancelled",
         "params":{"requestId":4,"reason":"user input"}
