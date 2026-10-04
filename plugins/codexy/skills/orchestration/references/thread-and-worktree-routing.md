@@ -52,15 +52,25 @@ Before calling `create_thread`, the Orchestrator MUST read back separately:
 - the current user authority for a separate new task; and
 - the current task and existing active owner for the same issue or lane.
 
+The Orchestrator MUST verify its actual task CWD before child creation. If the
+CWD is in a linked Git worktree or cannot be verified inside the saved project's
+primary checkout, it MUST NOT call `create_thread`. A different controlling task
+MUST use the supported handoff surface to move the Orchestrator to the primary
+repository; `handoff_thread` cannot move its own caller. After handoff, the
+controlling task MUST verify the destination CWD and primary checkout from
+current task readback before the Orchestrator resumes child creation. An
+unverified destination MUST keep the lane pending.
+
 For a selected child-owned lane, the Orchestrator MUST select the assigned
 recipient model and effort automatically and MUST NOT ask the user to choose or
-reconfirm them. It MUST obey the actual `create_thread` contract, including any
-rule that requires omitting `model` unless the user explicitly requested one. If
-that prevents the assigned pair from being supplied, or the host does not
-support it, the Orchestrator MUST report the exact limitation and keep the lane
-pending. It MUST NOT assume the host default matches, supply a forbidden
-override, switch models, implement in the parent, or create a duplicate Worker.
-Model routing does not grant authority to create a separate task.
+reconfirm them. Every Worker `create_thread` call MUST include the assigned
+`model` and `thinking` pair. If the actual host contract cannot accept that
+pair, the Orchestrator MUST NOT call with an omitted field or rely on a default;
+it MUST report the exact incompatibility and keep the lane pending. It MUST NOT
+switch models, implement in the parent, or create a duplicate Worker. A separate
+Orchestrator task is distinct from Worker-only admission and MUST use its own
+assigned pair when explicitly requested. Model routing does not grant authority
+to create a separate task.
 
 When no separate task was requested and the current task is already explicitly
 assigned as the implementation owner for that lane, the current-task route MUST

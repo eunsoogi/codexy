@@ -61,8 +61,8 @@ branch, worktree, PR, durable child context, or review-response ownership:
     receive only a bounded observation assignment; the Worker owns
     implementation and its finite goal. The Orchestrator MUST keep these
     surfaces separate and use
-    [goal-transition-reporting.md](goal-transition-reporting.md) for goal and
-    terminal receipts.
+    [goal-transition-reporting.md](goal-transition-reporting.md) for
+    blocked-goal recovery and terminal transition receipts.
 11. Only the assigned Watcher MAY call `wait_threads` for Worker targets. The
     Orchestrator MUST await `watcher_wait` and MUST NOT directly wait, retry, or
     poll them. A native reviewer's terminal delivery is a separate surface and

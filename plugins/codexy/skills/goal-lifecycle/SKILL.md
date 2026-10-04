@@ -27,11 +27,8 @@ contract. The child MUST NOT require a second instruction containing the word
 `goal` or another opt-in phrase.
 
 The parent handoff MUST state the assigned objective once as
-`Assignment objective:`. The child MUST project that exact value into an
-`Authorized goal objective:` control record and MUST use it unchanged for
-`create_goal`, the create result, and the active `get_goal` readback. This
-record documents the assignment already given; it MUST NOT act as a second
-authorization, broaden the parent-supplied objective, or become a user opt-in.
+`Assignment objective:`. The child MUST use that exact value for its finite goal
+and MUST NOT broaden it or treat it as a second authorization or user opt-in.
 
 For an Orchestrator/Worker arrangement, the Orchestrator MUST establish or
 continue its exact overall goal before its task work and before Worker dispatch.
@@ -73,10 +70,12 @@ reuse a parent-owned Watcher session or token.
 During that assignment, ordinary Worker progress, completion, findings, and
 attention reports MUST go to the exact Watcher task supplied by the Orchestrator
 through the host's supported task-message route. The Watcher deduplicates
-unchanged reports and relays only meaningful changes or required decisions;
-goal-transition and terminal handoff receipts remain direct-parent control-plane
-messages. A verified unavailable route or concrete emergency permits one marked
-direct-parent fallback, not routine duplicate reporting.
+unchanged reports and relays only meaningful changes or required decisions.
+Blocked-goal recovery and terminal handoff receipts remain direct-parent
+control-plane messages. Initial goal registration and active readback stay in
+the owning task and MUST NOT be sent as separate parent reports. A verified
+unavailable route or concrete emergency permits one marked direct-parent
+fallback, not routine duplicate reporting.
 
 ## Required first transition
 
@@ -97,11 +96,12 @@ task work, the task MUST call `get_goal` and MUST use its current result:
    state, the task MUST preserve the exact readback and MUST stop before task
    work.
 
-For delegated children, the task MUST preserve the existing `$orchestration`
-pre-delivery, terminal-handoff, and post-result receipts around the goal calls.
-These receipts are control-plane reporting only; the task MUST NOT treat them as
-releasing ownership, authorizing task work, or altering the recovery sequence. A
-delivery failure MUST stop the transition, and the task MUST NOT retry it.
+For initial registration, the owning task MUST use the native `get_goal`,
+`create_goal` when allowed, and active `get_goal` readback results directly. It
+MUST complete that sequence before implementation or dispatch and MUST NOT send
+pre-delivery or post-result parent reports for those calls. Existing
+blocked-goal recovery and terminal-handoff reporting rules continue to apply to
+their respective transitions.
 
 For a `blocked` result, the task MUST perform this exact sequence:
 
@@ -114,7 +114,7 @@ For a `blocked` result, the task MUST perform this exact sequence:
    when the authoritative readback is exactly `goal=null` or exactly
    `status=complete`. If it is `active`, `blocked`, an error, `unknown`,
    `missing`, malformed, or any other unexpected state, the task MUST preserve
-   the exact receipt and MUST stop.
+   the exact readback and MUST stop.
 4. The task MUST create a new finite goal for the same authorized work, MUST
    read back that the new goal is `active`, and MUST create or refresh the
    current plan.
@@ -157,10 +157,10 @@ objective cannot be marked `complete`:
 
 This fallback MUST preserve singular ownership of the existing branch, worktree,
 and task context. The task MUST NOT treat it as issue, PR, implementation,
-proof, merge, release, or external-gate completion. Parent-delivery and
-post-result receipts around the fork, archive, and goal calls MUST remain
-control-plane evidence; they MUST NOT authorize task work before the new goal is
-active.
+proof, merge, release, or external-gate completion. Required parent-delivery
+receipts for the fork and archive MUST remain control-plane evidence; they MUST
+NOT authorize task work before the fork's native `get_goal`/`create_goal` calls
+and active readback confirm the new goal.
 
 ## Completion boundary
 
@@ -174,9 +174,11 @@ the ordinary proof and handoff rules.
 
 Between observing `blocked` and confirming the new goal is `active`, the task
 MUST NOT perform repository or external mutation. The task MUST use the existing
-`$orchestration` transition receipts for delegated parent delivery and exact
-post-result readback. The task MUST NOT add a parser, validator, hook, workflow,
-schema, runtime service, or compatibility wrapper for this behavior.
+`$orchestration` receipts required for blocked-recovery delivery and terminal
+handoff. Native goal calls and their readbacks MUST remain in the owning task
+without separate registration reports. The task MUST NOT add a parser,
+validator, hook, workflow, schema, runtime service, or compatibility wrapper for
+this behavior.
 
 ## Verification
 

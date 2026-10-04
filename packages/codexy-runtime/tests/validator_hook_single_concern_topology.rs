@@ -6,8 +6,11 @@ use std::process::Stdio;
 
 const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
 const LIFECYCLE_MATCHER: &str = "^(?:mcp__[^ ]+__)?watcher_wait$";
-type TestResult = Result<(), Box<dyn std::error::Error>>;
+type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 type LauncherResult = Result<Option<Value>, Box<dyn std::error::Error>>;
+
+#[path = "validator_hook_single_concern_topology/admitted_payload.rs"]
+mod admitted_payload;
 
 struct Concern {
     id: &'static str,
@@ -143,7 +146,7 @@ fn capability_contract_accounts_for_every_concern_once() -> TestResult {
 fn each_concern_rejects_wrong_events_with_its_diagnostic_family() -> TestResult {
     for event in EVENTS {
         for concern in CONCERNS {
-            let payload = admitted_payload(concern, event);
+            let payload = admitted_payload::admitted_payload(concern, event)?;
             let admitted = run_launcher(concern, event, payload.clone())?;
             assert!(admitted.is_none(), "{} valid input denied", concern.id);
             let other_event = EVENTS
@@ -162,18 +165,6 @@ fn each_concern_rejects_wrong_events_with_its_diagnostic_family() -> TestResult 
         }
     }
     Ok(())
-}
-
-fn admitted_payload(concern: &Concern, event: &str) -> Value {
-    let tool_input = match concern.id {
-        "thread-delivery" | "child-thread-creation" => {
-            json!({"model":"gpt-6-luna","thinking":"max"})
-        }
-        "subagent-ownership" => json!({"agent_type":"explorer","message":"Bounded read-only inspection."}),
-        _ => unreachable!(),
-    };
-    json!({"hook_event_name": event, "tool_name": concern.tool, "tool_input": tool_input,
-        "cwd": codexy_runtime::paths::repository_root().display().to_string()})
 }
 
 fn expected_group(group: &Value, event: &str) -> Option<&'static Concern> {

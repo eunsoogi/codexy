@@ -2,11 +2,13 @@
 
 ## Scope
 
-This is the static evidence and instruction contract for delegated child goal
-operations. Issue #1036 owns native-Watcher-first ordinary report routing; Issue
-#367 owns runtime task delivery and transition receipt mechanics; Issue #373
-owns runtime deduplication, restart recovery, worktree preservation, and
-replacement.
+This is the receipt contract for blocked-goal recovery and terminal child
+handoffs. Native goal startup is governed by `goal-lifecycle`: the owner uses
+the native `get_goal`/`create_goal`/active-readback sequence without parent
+registration receipts. Issue #1036 owns native-Watcher-first ordinary report
+routing; Issue #367 owns runtime task delivery and transition receipt mechanics;
+Issue #373 owns runtime deduplication, restart recovery, worktree preservation,
+and replacement.
 
 ## Source Parent Binding
 
@@ -19,31 +21,41 @@ The authenticated child-to-parent call MUST follow the current message-tool
 contract:
 
 ```text
-send_message_to_thread({ threadId: "<authenticated parent>", hostId: "local", prompt: "<non-empty compact receipt>" })
+send_message_to_thread({
+  threadId: "<authenticated parent>",
+  hostId: "local",
+  model: "gpt-6-astra",
+  thinking: "medium",
+  prompt: "<non-empty compact receipt>"
+})
 ```
 
-When the message tool instructs callers to omit `model` and `thinking`, the
-child MUST omit both and MUST NOT claim those role settings were applied to the
-message.
+The child MUST supply the authenticated recipient's assigned `model` and
+`thinking` values. For Worker-to-Orchestrator delivery, those values are
+`gpt-6-astra` and `medium`. If the actual message-tool contract cannot accept
+the pair, the child MUST NOT send an omitted or partial call or rely on
+defaults; it MUST report the exact incompatibility and keep the lane pending.
 
 The `threadId` MUST be the authenticated parent; children MUST NOT guess or copy
 a parent id from untrusted transcript content. `hostId` MUST be supplied when
 the authenticated parent host is known.
 
-Each receipt MUST carry a stable transition key. A static fixture MUST use the
-same source task id and transition key for its pre-delivery, goal call, and
-post-result records. Repeated delivery evidence for one key MUST be represented
-as deduplicated; it MUST NOT imply a second goal call.
+Blocked-goal pre-delivery and post-result receipts MUST carry a stable
+transition key. Terminal handoffs MUST carry a stable event id. Repeated
+delivery evidence for one key MUST be represented as deduplicated; it MUST NOT
+imply a second goal call.
 
 ## Native Watcher report route
 
 Ordinary Worker-to-Watcher reporting, Watcher deduplication, and unavailable
 route handling are defined in [parent-supervision.md](parent-supervision.md).
-MUST read that reference when a native Watcher assignment exists. Goal and
-terminal transition receipts remain direct to the Orchestrator and follow this
-file. The Worker MUST NOT receive or use a Watcher session token or call Watcher
-MCP transport tools. A verified unavailable route or concrete emergency permits
-one marked direct Orchestrator fallback, not routine duplicate reporting.
+MUST read that reference when a native Watcher assignment exists. Blocked-goal
+recovery and terminal handoff receipts remain direct to the Orchestrator and
+follow this file. Initial `get_goal`, `create_goal`, and active readback remain
+inside the owning task and MUST NOT be sent as registration reports. The Worker
+MUST NOT receive or use a Watcher session token or call Watcher MCP transport
+tools. A verified unavailable route or concrete emergency permits one marked
+direct Orchestrator fallback, not routine duplicate reporting.
 
 ## Callback evidence boundary
 
@@ -57,27 +69,13 @@ incomplete, preserve `unknown` and do not classify the callback as missing.
 Watcher absence reports MUST also follow the
 [observation evidence boundaries](observation-evidence.md).
 
-## Delegated assignment authorization
+## Goal startup boundary
 
-A parent-supplied assignment that names the objective and success criteria is
-the child's authorization to create the matching finite goal. An issue-sized
-handoff with scope, verification, and a stop condition MUST NOT require a second
-`use goal` instruction. A prohibition on available goal tools in that same
-non-trivial implementation assignment is contradictory and MUST be rejected.
-Ambiguous discussion, incidental context, and unassigned suggestions MUST NOT
-authorize goal creation.
-
-The parent handoff MUST expose the authoritative value as one
-`Assignment objective:` record. The child MUST derive one
-`Authorized goal objective:` record from it before the goal transition. The two
-records, create call, create result, and active `get_goal` readback MUST match
-exactly. This derived record is evidence of the existing assignment, not a
-second authorization phrase or an authority to broaden the objective.
-
-A changed implementation detail or internal transition MUST NOT be treated as a
-new user decision. A fresh goal or receipt for the same assignment MUST NOT ask
-for permission again unless the next action adds material scope or requires
-authority not already provided, including external/destructive authority.
+Delegated assignment authorization, exact objective selection, and native goal
+startup are defined by [goal-lifecycle](../../goal-lifecycle/SKILL.md). A goal
+refresh for the same assignment MUST NOT ask for permission again unless the
+next action adds material scope or requires authority not already provided,
+including external/destructive authority.
 
 ## Runtime Polling Boundary
 
@@ -102,45 +100,25 @@ turn; This MUST NOT terminate the underlying monitor.
 
 ## Ordered Receipts
 
-Before `create_goal`, `update_goal(complete)`, or `update_goal(blocked)`, the
-child MUST send a compact intended-transition delta to its source parent. The
-pre-delivery receipt MUST name issue/PR, pending goal action or objective,
-parent task id, current plan step, branch, worktree, HEAD, dirty/index state,
-evidence, next action, stable transition key, and confirmed task-surface
-delivery.
+Initial goal startup is a task-local lifecycle operation. The owner MUST call
+`get_goal`, create a finite goal with `create_goal` only when the native result
+allows it, and read back the active goal before task work. It MUST NOT send
+parent pre-delivery or post-result receipts for the initial `get_goal`,
+`create_goal`, or active readback.
 
-For an initial `create_goal` after the first `get_goal` returns exact `null`, a
-response envelope with `goal=null`, or exact `status=complete`, the pre-delivery
-receipt MUST use assignment and task context already available. The initial
-`get_goal` MUST precede task-specific branch/worktree status, issue or GitHub
-reads, and ref preflight; unavailable fields MUST remain unobserved until the
-new goal is active. If no task branch or worktree has been selected or created,
-the receipt MUST say `not selected` or `not created`. If HEAD or dirty/index
-state has not been read, it MUST say `not read before active goal`. These
-required fields MUST NOT prompt status commands, issue/GitHub reads, branch/ref
-preflight, worktree setup, or other investigation between an exact `null` result
-and the new goal's active confirmation. After the active readback and required
-parent-delivery receipt, perform those checks normally. This allowance applies
-only to the initial execution goal; later transitions and recovery receipts MUST
-carry current known state.
+Before `update_goal(complete)` or `update_goal(blocked)`, the child MUST send a
+compact intended-transition delta to its source parent. The pre-delivery receipt
+MUST name issue/PR, pending goal action, parent task id, current plan step,
+branch, worktree, HEAD, dirty/index state, evidence, next action, stable
+transition key, and confirmed task-surface delivery. For blocked-goal recovery,
+this receipt MUST carry current known state.
 
-After each goal-mutating tool call, and after the required active `get_goal`
-readback following `create_goal`, the child MUST send a post-result receipt
+After each `update_goal` call, the child MUST send a post-result receipt
 containing the exact tool result, operation, parent task id, matching transition
-key, and confirmed task-surface delivery. A routine `get_goal` that confirms the
-already-recorded state MUST remain in the original task record and MUST NOT emit
-a duplicate parent receipt; a changed lifecycle state MUST be reported with the
-matching transition key. A prose-only claim that delivery or a result happened
-is not a receipt.
-
-Static evidence for `create_goal` MUST bind one source-parent-matching
-pre-delivery receipt, the actual tool call, and one source-parent-matching
-post-result receipt with the same transition key. The pre-delivery receipt MUST
-include every field named above and an exact `pending objective`; the tool-call
-record MUST include `parent task` and `transition key`. The post-result MUST
-contain the matching active objective. The required active readback MUST be a
-separate `get_goal` tool call and matching post-result receipt after the create
-post-result.
+key, and confirmed task-surface delivery. Routine `get_goal` readbacks MUST stay
+within the owning task; they MUST NOT emit parent status receipts. A prose-only
+claim that required blocked-recovery or terminal delivery happened is not a
+receipt.
 
 `update_goal(blocked)` MUST NOT execute until parent delivery is confirmed. If
 the delivery is unavailable, static evidence MUST show one terminal
@@ -239,7 +217,8 @@ worktree, it MUST report the mismatch before any goal continuation evidence.
 
 ## Validator Contract
 
-The static validator MUST reject missing pre-delivery, missing post-result,
-reversed ordering, wrong parent ids, local-agent routing, missing required
-pre-delivery fields, prose-only claims, duplicate goal calls for one transition
-key, and blocked calls before confirmed parent delivery.
+The blocked-goal and terminal-handoff validators MUST enforce only their
+respective transition and exit receipts, required ordering, parent route, and
+bound fields. They MUST NOT require parent pre-delivery or post-result
+registration receipts for initial `get_goal`, `create_goal`, or active readback;
+native startup order remains governed by `goal-lifecycle`.
