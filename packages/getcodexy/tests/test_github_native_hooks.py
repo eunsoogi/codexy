@@ -163,6 +163,83 @@ class GithubNativeHooksTests(
                 output = self._run_process([str(hook), event], payload, environment)
                 self.assertIn('"deny"', output, command)
 
+    def test_destructive_hook_treats_quoted_python_heredoc_as_data(self) -> None:
+        hook = PLUGIN / "hooks/codexy-destructive-command.sh"
+        environment = {**os.environ, "PLUGIN_ROOT": str(PLUGIN)}
+
+        def assert_allowed(command: str) -> None:
+            payload = json.dumps(
+                {
+                    "hook_event_name": "PreToolUse",
+                    "tool_name": "Bash",
+                    "tool_input": {"command": command},
+                    "cwd": str(PLUGIN.parents[1]),
+                }
+            )
+            self.assertEqual(
+                self._run_process([str(hook), "PreToolUse"], payload, environment),
+                "",
+                command,
+            )
+
+        metadata_command = """git diff --check 6a2abd471a610bcf2a64cad5864fb4d304f449fc..HEAD && python3 - <<'PY'
+import json, pathlib, tomllib
+r=pathlib.Path('.')
+for p in ('plugins/codexy/.codex-plugin/plugin.json','plugins/codexy-github/.codex-plugin/plugin.json','plugins/codexy-devtools/.codex-plugin/plugin.json'):
+ x=json.loads((r/p).read_text()); print(p, x['version'])
+m=json.loads((r/'.agents/plugins/marketplace.json').read_text()); print('marketplace',[(p['name'],p.get('version')) for p in m['plugins']])
+c=json.loads((r/'.agents/plugins/release-publish-contract.json').read_text()); print('release',c['version'],c['bootstrap'],c['runtime']['selectedTag'],c['currentMarketplace']['ref'])
+p=tomllib.loads((r/'packages/getcodexy/pyproject.toml').read_text()); l=tomllib.loads((r/'packages/getcodexy/uv.lock').read_text()); print('package',p['project']['version'],'lock',l['package'][0]['version'])
+for f in ('README.md','README.ko.md'):
+ print(f,'exists', (r/f).is_file())
+PY"""
+        assert_allowed(metadata_command)
+
+        read_only_command = """git diff --check && python3 - <<'PY'
+import json
+import struct
+
+with open("fixture/app.asar", "rb") as archive:
+    header_size = struct.unpack(">I", archive.read(4))[0]
+    header = json.loads(archive.read(header_size))
+    offset = int(header["files"]["app.js"]["offset"])
+    archive.seek(8 + header_size + offset); s = archive.read(4096).decode("utf-8", errors="replace"); i = s.index("function kf("); print(s[i:])
+PY"""
+        assert_allowed(read_only_command)
+
+        def assert_denied(command: str, expected_code: str) -> None:
+            credential_payload = json.dumps(
+                {
+                    "hook_event_name": "PreToolUse",
+                    "tool_name": "Bash",
+                    "tool_input": {"command": command},
+                    "cwd": str(PLUGIN.parents[1]),
+                }
+            )
+            output = self._run_process(
+                [str(hook), "PreToolUse"], credential_payload, environment
+            )
+            self.assertIn('"permissionDecision":"deny"', output, command)
+            self.assertIn(expected_code, output, command)
+
+        for command in (
+            "gh auth token",
+            "python3 - <<EOF\n$(gh auth token)\nEOF",
+            "sh -c 'sh -s' <<'EOF'\ngh auth token\nEOF",
+        ):
+            with self.subTest(command=command):
+                assert_denied(command, "CODEXY_DESTRUCTIVE_COMMAND_CREDENTIAL_EXPOSURE")
+
+        assert_denied(
+            "sh -c 'sh -s' <<'EOF'\nrm -rf /\nEOF",
+            "CODEXY_DESTRUCTIVE_COMMAND_DESTRUCTIVE_EFFECT",
+        )
+
+        assert_denied(
+            "(( 8 << 'EOF' ))\nrm -rf /\nEOF",
+            "CODEXY_DESTRUCTIVE_COMMAND_DESTRUCTIVE_EFFECT",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

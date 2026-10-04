@@ -3,21 +3,29 @@
 This reference keeps the `child-routing-policy.md` filename for compatibility;
 the product role described by the ordinary route is Worker.
 
-Named packaged specialists are selected first and caller model overrides are
-forbidden. Ordinary Worker work defaults to `gpt-6-luna` at `max`; when that
-route is unavailable, it fails closed to the Orchestrator or named-specialist
-route. Simple work uses the same Worker route when all simple predicates are
-complete.
+Named packaged specialists MUST be selected when their role matches the task;
+their catalogued model and effort apply automatically, and callers MUST NOT
+override them. Ordinary Worker work selects `gpt-6-luna` at `max`, including
+simple work when all simple predicates are complete. Codex MUST NOT ask the user
+to choose or reconfirm a defined pair. If the selected host or tool cannot honor
+it, Codex MUST report the exact limitation and keep the lane pending; it MUST
+NOT silently substitute a model, sender settings, parent implementation, or
+duplicate Worker. A specialist is a separate route only when its role matches
+the task, not a fallback for model unavailability.
 
 The native `create_thread` admission hook MUST enforce the Worker pair,
 including rejecting omissions and caller-selected model or thinking changes
-before mutation. The installed concern and launcher retain their
-`child_thread_creation` identifiers for compatibility. Native specialists remain
-a separate catalogued route with their assigned settings; a caller-written role
-or prompt MUST NOT authorize a Worker override. Requested fields and
-source-level hook admission do not prove effective host state; missing
-observations MUST be recorded as unavailable/not observed, not claimed as
-observed.
+before mutation when the actual tool contract permits those fields. Codex MUST
+obey any higher-priority `create_thread` rule that forbids a field, including
+omitting `model` unless the user explicitly requested one. If this prevents the
+Worker pair from being supplied, the lane MUST remain pending and the exact
+limitation MUST be reported; Codex MUST NOT bypass the tool contract. The
+installed concern and launcher retain their `child_thread_creation` identifiers
+for compatibility. Native specialists remain a separate catalogued route with
+their assigned settings; a caller-written role or prompt MUST NOT authorize a
+Worker override. Requested fields and source-level hook admission do not prove
+effective host state; missing observations MUST be recorded as unavailable/not
+observed, not claimed as observed.
 
 For bounded native observation of assigned Codex Workers, the Orchestrator MUST
 select the packaged `codexy-watcher` specialist and summon it through the host's
@@ -25,15 +33,20 @@ native subagent facility. It MUST NOT substitute an unassigned subagent or treat
 a self-declared role name as specialist identity. The packaged Watcher declares
 `gpt-6-luna` at `max`; caller overrides remain forbidden.
 
-Thread delivery MUST bind `model` and `thinking` to the authenticated recipient,
-not copy the sender settings. The existing host-envelope directions
-`root_to_child` and `child_to_parent` are serialized compatibility identifiers:
-they represent Orchestrator-to-Worker delivery using `gpt-6-luna` at `max` and
-Worker-to-Orchestrator delivery using `gpt-6-astra` at `medium`, respectively.
-The runtime request's serialized `parent_to_generic` and `child_to_root`
-directions remain unchanged for the same two routes. Both fields MUST be
-explicit. Unsupported or mismatched recipient settings MUST fail closed instead
-of falling back to the sender route.
+When creating a Worker, Codex MUST bind the assigned model and effort to the
+authenticated recipient where `create_thread` permits. For existing tasks, Codex
+MUST send to the authenticated `threadId` and MUST NOT copy sender settings. If
+a message-tool contract forbids `model` and `thinking`, Codex MUST omit both and
+MUST NOT claim that the message applied the pair. The existing host-envelope
+directions `root_to_child` and `child_to_parent` are serialized compatibility
+identifiers: they represent Orchestrator-to-Worker delivery using `gpt-6-luna`
+at `max` and Worker-to-Orchestrator delivery using `gpt-6-astra` at `medium`,
+respectively. The runtime request's serialized `parent_to_generic` and
+`child_to_root` directions remain unchanged for the same two routes. These
+serialized identifiers do not authorize parameters that the actual tool contract
+forbids. Unsupported or mismatched recipient settings MUST leave the lane
+pending with the exact limitation. Missing observations MUST be reported as
+unavailable/not observed. Codex MUST NOT fall back to the sender route.
 
 Worker selection owns recipient and model routing, not verification policy. The
 closed route in [context tiers](context-tiers.md) selects profile, sequencing,
