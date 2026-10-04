@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Bind Watcher waits to the host turn and release them on Interrupt."""
+"""Bind Watcher waits to the host turn and release them on interruption or input."""
 
 import argparse
 import hashlib
@@ -7,14 +7,15 @@ import json
 import os
 import platform as host_platform
 import re
+from runpy import run_path
 import stat
 import subprocess
 import sys
 from pathlib import Path
 
-MAX_INPUT_BYTES = 1024 * 1024
-EVENTS = ("PreToolUse", "Interrupt")
-UNSUPPORTED_INTERPRETER_EXIT = 125
+MAX_INPUT_BYTES, EVENTS, UNSUPPORTED_INTERPRETER_EXIT, handle_input_event = run_path(
+    Path(__file__).with_name("codexy_watcher_interrupt_events.py")
+)["HOOK_API"]
 REPOSITORY = "https://github.com/eunsoogi/codexy"
 PROTOCOL = "stdio-newline-v1"
 SUPPORTED_PLATFORMS = ("darwin-arm64", "linux-x86_64", "windows-x86_64")
@@ -42,8 +43,8 @@ def main() -> int:
         return 0
     if not isinstance(payload, dict) or payload.get("hook_event_name") != event:
         return 0
-    if event == "Interrupt":
-        _invoke("--hook-interrupt", payload)
+    if event in ("Interrupt", "UserPromptSubmit"):
+        handle_input_event(event, payload, _invoke)
         return 0
     tool_name = payload.get("tool_name")
     tool_input = payload.get("tool_input")

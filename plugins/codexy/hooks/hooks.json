@@ -92,6 +92,18 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-watcher-interrupt.sh\" UserPromptSubmit",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-watcher-interrupt.cmd\" UserPromptSubmit",
+            "timeout": 3
+          }
+        ]
+      }
     ]
   }
 }

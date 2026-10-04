@@ -114,17 +114,26 @@ pub fn interrupt_request_binding(payload: &Value) -> Result<bool> {
     let root = state_root()?;
     let main_session_id = text(payload.get("session_id"), "session_id", 256)?;
     let turn_id = text(payload.get("turn_id"), "turn_id", 256)?;
+    cancel_unique_binding(&root, |binding| {
+        binding.main_session_id == main_session_id && binding.turn_id == turn_id
+    })
+}
+
+#[allow(unreachable_pub)]
+pub fn cancel_request_binding_for_user_prompt(payload: &Value) -> Result<bool> {
+    let root = state_root()?;
+    let main_session_id = text(payload.get("session_id"), "session_id", 256)?;
+    cancel_unique_binding(&root, |binding| binding.main_session_id == main_session_id)
+}
+
+fn cancel_unique_binding(root: &Path, matches: impl Fn(&Binding) -> bool) -> Result<bool> {
     let directory = bindings_dir(&root)?;
     let _lock = LockGuard::acquire(&root.join(LOCK), 500)?;
-    let matches = live_bindings(&root, &directory, now_ms())?
+    let bindings = live_bindings(root, &directory, now_ms())?
         .into_iter()
-        .filter(|binding| {
-            matches!(binding.status.as_str(), "armed" | "active")
-                && binding.main_session_id == main_session_id
-                && binding.turn_id == turn_id
-        })
+        .filter(|binding| matches!(binding.status.as_str(), "armed" | "active") && matches(binding))
         .collect::<Vec<_>>();
-    let Some(binding) = matches.first().filter(|_| matches.len() == 1) else {
+    let Some(binding) = bindings.first().filter(|_| bindings.len() == 1) else {
         return Ok(false);
     };
     write_json(

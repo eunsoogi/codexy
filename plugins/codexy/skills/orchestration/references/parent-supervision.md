@@ -166,13 +166,12 @@ alter protected technical text.
   validates each event, reads the Worker/app surface, and sends or verifies
   corrections through the supported Worker route.
 - Same-connection `notifications/cancelled` or packaged Watcher
-  `PreToolUse`/`Interrupt` releases only that wait when the host propagates it
-  and preserves the durable session; `watcher_cancel` is separately authorized
-  and durably ends it. A host/task message or outer wait may leave it active
-  when cancellation is unavailable; report that limitation, keep
-  installed-candidate Stop success unproven until propagation is verified, and
-  open a new assignment/session. A cancelled queue/cursor is readback only,
-  never continuity; the assignment MUST NOT resume.
+  `PreToolUse`/`Interrupt`/`UserPromptSubmit` releases only that wait when the
+  host delivers the event and preserves the durable session. `watcher_cancel`
+  instead ends the session and requires a fresh assignment. See [Watcher wait
+  cancellation](watcher-wait-cancellation.md) for event matching, fail-closed
+  cases, and host-propagation proof boundaries. A cancelled queue/cursor is
+  readback only, never continuity; the assignment MUST NOT resume.
 - The Orchestrator MUST own the exact overall task objective and MUST preserve
   its active goal through Watcher creation, reports, correction, review, and
   external waits. Creating a Watcher subagent MUST NOT create a second overall

@@ -10,6 +10,9 @@ fn main() -> Result<()> {
         None | Some("--stdio") => run_stdio(),
         Some("--hook-pretool") => run_hook(codexy_runtime::watcher::run_pretool_hook),
         Some("--hook-interrupt") => run_hook(codexy_runtime::watcher::run_interrupt_hook),
+        Some("--hook-user-prompt-submit") => {
+            run_hook(codexy_runtime::watcher::run_user_prompt_submit_hook)
+        }
         Some(argument) => bail!("unsupported codexy-mcp-watcher argument: {argument}"),
     }
 }

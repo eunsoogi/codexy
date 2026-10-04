@@ -19,6 +19,9 @@ mod mcp_client;
 #[path = "validator_hook_watcher_interrupt/active_wait.rs"]
 mod active_wait;
 #[cfg(unix)]
+#[path = "validator_hook_watcher_interrupt/user_prompt_submit.rs"]
+mod user_prompt_submit;
+#[cfg(unix)]
 use mcp_client::McpClient;
 #[cfg(unix)]
 #[path = "mcp_stdio/watcher_state.rs"]
@@ -84,11 +87,21 @@ fn watcher_wait_interrupt_registration_is_explicit_and_synchronous() -> TestResu
     assert_eq!(interrupt_handler["command"], format!("{SHELL} Interrupt"));
     assert_eq!(interrupt_handler["commandWindows"], format!("{WINDOWS} Interrupt"));
     assert_eq!(interrupt_handler["timeout"], 3);
+
+    let prompt = hooks["hooks"]["UserPromptSubmit"]
+        .as_array()
+        .ok_or("UserPromptSubmit groups")?;
+    assert_eq!(prompt.len(), 1);
+    assert!(prompt[0].get("matcher").is_none());
+    let prompt_handler = &prompt[0]["hooks"][0];
+    assert_eq!(prompt_handler["command"], format!("{SHELL} UserPromptSubmit"));
+    assert_eq!(prompt_handler["commandWindows"], format!("{WINDOWS} UserPromptSubmit"));
+    assert_eq!(prompt_handler["timeout"], 3);
     Ok(())
 }
 
 #[test]
-fn watcher_wait_interrupt_contract_is_a_lifecycle_concern() -> TestResult {
+fn watcher_wait_cancellation_contract_is_a_lifecycle_concern() -> TestResult {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy/hooks");
     let contract: Value = serde_json::from_str(&std::fs::read_to_string(
         root.join("capability-contract.json"),
@@ -102,11 +115,14 @@ fn watcher_wait_interrupt_contract_is_a_lifecycle_concern() -> TestResult {
         })
         .ok_or("watcher lifecycle concern")?;
     assert_eq!(concern["trigger"], MATCHER);
-    assert_eq!(concern["events"], serde_json::json!(["PreToolUse", "Interrupt"]));
+    assert_eq!(
+        concern["events"],
+        serde_json::json!(["PreToolUse", "Interrupt", "UserPromptSubmit"])
+    );
     assert_eq!(concern["preventive"], false);
     assert_eq!(
         concern["inputContract"],
-        "codexy.hooks.watcher-wait-interruption.v1"
+        "codexy.hooks.watcher-wait-interruption.v2"
     );
     assert_eq!(
         concern["entrypoints"],
@@ -143,7 +159,8 @@ fn binding_cancelled(state: &Path, nonce: &str) -> bool {
 #[cfg(unix)]
 fn copy_plugin(source: &Path, target: &Path) -> Result<(), Box<dyn std::error::Error>> {
     for relative in [".codex-plugin/plugin.json", "hooks/codexy-hook-runtime.sh",
-        "hooks/codexy-watcher-interrupt.sh", "hooks/codexy_watcher_interrupt.py"] {
+        "hooks/codexy-watcher-interrupt.sh", "hooks/codexy_watcher_interrupt.py",
+        "hooks/codexy_watcher_interrupt_events.py"] {
         let destination = target.join(relative);
         std::fs::create_dir_all(destination.parent().ok_or("plugin parent")?)?;
         std::fs::copy(source.join(relative), destination)?;

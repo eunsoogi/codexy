@@ -6,7 +6,7 @@ codexy-child-thread-creation.py | codexy-subagent-ownership.py | codexy-thread-d
 *) exit 1 ;;
 esac
 case "$event" in
-PreToolUse | PermissionRequest | Interrupt) ;;
+PreToolUse | PermissionRequest | Interrupt | UserPromptSubmit) ;;
 *) exit 1 ;;
 esac
 

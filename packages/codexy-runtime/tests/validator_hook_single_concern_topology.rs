@@ -67,7 +67,7 @@ fn packaged_hooks_bind_each_concern_and_event_once() -> TestResult {
     let hooks: Value = serde_json::from_str(&std::fs::read_to_string(root.join("hooks.json"))?)?;
     let events = hooks["hooks"].as_object().ok_or("hooks object")?;
 
-    assert_eq!(events.len(), EVENTS.len() + 1, "preventive and lifecycle events are retained");
+    assert_eq!(events.len(), EVENTS.len() + 2, "preventive and lifecycle events are retained");
     for event in EVENTS {
         let groups = events[*event]
             .as_array()
