@@ -226,7 +226,7 @@ def normalize_hook_rows(value: object) -> tuple[dict[str, object], ...]:
 
 
 def _response(values: queue.Queue[object], identifier: int) -> dict[str, object]:
-    """Wait for the requested JSON-RPC id within the single hooks/list deadline."""
+    """Wait for the requested JSON-RPC id within this call's timeout window."""
     deadline = time.monotonic() + HOOK_LIST_TIMEOUT_SECONDS
     while True:
         remaining = deadline - time.monotonic()

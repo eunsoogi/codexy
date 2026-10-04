@@ -63,7 +63,7 @@ def _json_copy(value: Any) -> Any:
 
 
 def _mapping_copy(value: Mapping[str, Any], label: str) -> Mapping[str, Any]:
-    """Validate string keys and freeze copied JSON values behind a read-only map."""
+    """Validate string keys, detach JSON values, and protect only the outer map."""
     if not isinstance(value, Mapping):
         raise ScenarioValidationError(f"{label} must be a mapping")
     copied = {}

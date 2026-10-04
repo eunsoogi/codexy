@@ -100,7 +100,10 @@ def _references(message: str) -> int:
 def check_merge_message(
     message: str, expected_pr: int, expected_issue: int | None
 ) -> None:
-    """Require the expected PR subject and one exact final issue-closing line."""
+    """Validate the PR subject and enforce its issue-closing policy.
+
+    Require the exact closing line for an expected issue; otherwise forbid closers.
+    """
     subject = message.splitlines()[0] if message.splitlines() else ""
     suffix = f" (#{expected_pr})"
     if not subject.endswith(suffix):
