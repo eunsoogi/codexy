@@ -116,8 +116,8 @@ codexy/
   is renamed; every tracked caller MUST use the canonical filename.
 - When writing or changing code, MUST add or update explanatory comments that
   clarify its purpose, important logic, and non-obvious decisions or constraints.
-  MUST keep comments accurate as the implementation changes. Comments MUST NOT
-  mechanically restate every line.
+  MUST keep comments accurate as the implementation changes.
+  Comments MUST NOT mechanically restate every line.
 - MUST use Codexy codegraph MCP for repository exploration when available, then
   MUST confirm exact files with direct reads before editing.
 - Prefer repository-specific guidance over generic agent advice.
