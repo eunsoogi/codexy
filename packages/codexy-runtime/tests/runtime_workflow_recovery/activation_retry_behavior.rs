@@ -8,6 +8,7 @@ pub(super) use receipt::receipt_with_identity;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+// Retry must integrate advanced main while preserving the staged artifact and avoiding a needless second commit.
 fn activation_retry_integrates_advanced_main_preserving_artifact_and_same_pr() -> TestResult {
     let fixture = Fixture::new("valid")?;
     let old_head = fixture.remote_head()?;
@@ -53,6 +54,7 @@ fn activation_retry_integrates_advanced_main_preserving_artifact_and_same_pr() -
 
 #[test]
 fn activation_retry_rejects_unexpected_changes_provenance_and_merge_conflicts() -> TestResult {
+    // Isolate each source-tree mutation; a rejected retry must never move the remote activation ref.
     for mutation in ["unexpected", "provenance", "conflict"] {
         let fixture = Fixture::new(mutation)?;
         let old_head = fixture.remote_head()?;
@@ -158,6 +160,7 @@ fn activation_post_push_pr_readback_accepts_bounded_metadata_delay() -> TestResu
 
 #[test]
 fn activation_post_push_pr_readback_rejects_wrong_missing_or_duplicate_prs() -> TestResult {
+    // Wrong or absent exact-head metadata is retried only within the bounded readback window.
     for mode in ["readback-wrong", "readback-missing", "readback-duplicate"] {
         let fixture = Fixture::new(mode)?;
         let old = fixture.remote_head()?;

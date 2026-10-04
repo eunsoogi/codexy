@@ -1,3 +1,5 @@
+// Without an expected issue, merge validation still requires the PR suffix
+// and forbids issue-closing references in either subject or body.
 use std::process::Command;
 
 #[test]

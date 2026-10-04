@@ -1,3 +1,5 @@
+// Build readiness from current PR snapshots and direct review-control facts;
+// stale history, quota, or ledger fields are not substitutes for current evidence.
 use std::{fs, path::Path};
 
 use crate::support::{FixtureCommand, TestResult};

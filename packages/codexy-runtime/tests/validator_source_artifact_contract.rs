@@ -1,3 +1,5 @@
+// The checked-in devtools plugin is a source artifact; generated binary and
+// runtime directories belong only in release packages.
 use crate::support;
 
 #[test]

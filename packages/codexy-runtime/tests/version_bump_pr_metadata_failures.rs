@@ -1,3 +1,4 @@
+// Rejected authority inputs must fail before replacing any previously published metadata.
 use serde_json::json;
 use std::{fs, path::Path};
 use crate::support::FixtureCommand as Command;

@@ -1,6 +1,7 @@
 use crate::support;
 use std::path::Path;
 
+// Clearing permissions on an undeclared overlay file must not expose the seed or its sibling.
 #[test]
 fn clearing_readonly_keeps_the_seed_and_sibling_overlay_private()
 -> Result<(), Box<dyn std::error::Error>> {

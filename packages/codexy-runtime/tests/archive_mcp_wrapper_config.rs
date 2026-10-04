@@ -14,6 +14,7 @@ fn run_gate(archive: &std::path::Path, plugin_root: &std::path::Path) -> std::pr
         .expect("archive gate should start")
 }
 
+// Vary the top-level map and command shape to cover both supported MCP registration layouts.
 fn write_mcp_config(plugin_root: &std::path::Path, nested: bool, argv: bool) {
     let lsp_command = if argv {
         json!(["./mcp/codexy-mcp-lsp", "--stdio"])

@@ -7,6 +7,7 @@ const REQUIRED_JOBS: [(&str, &str, &str); 2] = [
     ("windows-rust-test", "Windows", "windows-latest"),
 ];
 const WINDOWS_PREP_JOB: &str = "windows-rust-prep";
+// This exact union keeps both OS jobs sharded across every required integration suite.
 const REQUIRED_TARGETS: [&str; 13] = [
     "--lib --bins",
     "--test suite_support",
@@ -78,6 +79,7 @@ fn workflow_text() -> Result<String, Box<dyn std::error::Error>> {
     )?)
 }
 
+// Parse the workflow structure so forbidden shortcuts and missing matrix entries fail closed.
 fn workflow_failures(workflow: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let document: Value = serde_yaml::from_str(&workflow)?;
     let jobs = mapping_field(document.as_mapping(), "jobs", "workflow")?;

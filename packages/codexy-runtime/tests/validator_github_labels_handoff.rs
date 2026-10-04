@@ -1,3 +1,5 @@
+// Readiness claims are checked against captured PR and linked-issue label
+// state, including accepted API shapes, repository identity, and overrides.
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

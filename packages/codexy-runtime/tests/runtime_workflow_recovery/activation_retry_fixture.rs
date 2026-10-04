@@ -129,6 +129,7 @@ impl Fixture {
         )?;
         let workflow = super::super::workflow("runtime-activation.yml")?;
         let mut body = String::from("set -euo pipefail\n");
+        // Clear inherited credentials per step so only declared GitHub tokens reach verifier calls.
         for step in [
             "Prepare one version-selection branch",
             "Apply verified activation and version-selection contract",
@@ -149,6 +150,7 @@ impl Fixture {
             }
             body.push_str(super::super::run(&workflow, "open-activation-pr", step)?);
             body.push('\n');
+            // Mutate the index after branch selection to prove the later verifier catches post-check drift.
             if self.mutation == "late-index" && step == "Prepare one version-selection branch" {
                 body.push_str(
                     "printf tampered > retry-main-marker.txt\ngit add retry-main-marker.txt\n",

@@ -6,6 +6,7 @@ use std::process::Output;
 use fixture::{WatcherCase, run_case, run_staged_case};
 
 #[test]
+// The verifier keeps current and previous package versions usable while rejecting tampered runtime payloads.
 fn verifier_tracks_current_and_older_package_versions_and_watcher_outputs()
 -> Result<(), Box<dyn std::error::Error>> {
     for (base_version, watcher_case) in [

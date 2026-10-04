@@ -1,3 +1,5 @@
+// Packaged prompts must keep their orchestration route, and skill frontmatter
+// must retain valid YAML identity and delimiters.
 use std::process::Command;
 
 use crate::support;

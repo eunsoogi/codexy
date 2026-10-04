@@ -19,6 +19,7 @@ pub(crate) fn git_fixture() -> &'static str { r#"#!/bin/sh
 case "$1" in fetch|merge-base) exit 0 ;; rev-parse) printf '%s\n' "$ACTIVATION_COMMIT" ;; ls-remote) printf '%s\trefs/tags/%s\n' "$ACTIVATION_COMMIT" "$RELEASE_TAG" ;; *) exit 1 ;; esac
 "# }
 
+// Model release visibility, numeric-ID asset I/O, and rejected tag-selected routes locally.
 pub(crate) fn gh_fixture() -> &'static str { r#"#!/usr/bin/env python3
 import hashlib,json,os,pathlib,shutil,sys,urllib.parse
 root=pathlib.Path.cwd(); remote=root/'remote'; exists=root/'exists'; created=root/'created'; visibility=root/'visibility'; draft=root/'draft'; log=root/'log'; reads=root/'reads'; patch_mode=root/'patch-mode'; tag=os.environ['RELEASE_TAG']; commit=os.environ['ACTIVATION_COMMIT']

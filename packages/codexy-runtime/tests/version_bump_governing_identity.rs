@@ -1,3 +1,4 @@
+// Eligibility follows the observed PR's canonical issue reference, not incidental prose in its body.
 use serde_json::{json, Value};
 use std::{fs, path::Path};
 use crate::support::FixtureCommand as Command;

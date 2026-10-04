@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
 
 use crate::support::{self, FixtureCommand as Command};
-
+// Separate staged, public, and activation inputs expose exactly which bytes final materialization may refresh.
 const STAGING_COMMIT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const ACTIVATION_COMMIT: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 pub(super) const RUNTIME: &[u8] = b"#!/bin/sh\nprintf 'final archive runtime\\n'\n";

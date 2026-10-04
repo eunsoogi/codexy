@@ -20,6 +20,8 @@ fn readmes_match_the_distributed_skill_inventory() -> TestResult {
         return Err(std::io::Error::other("English and Korean inventory skill sets differ").into());
     }
     for (name, english_skill) in &english_rows {
+        // Translated summaries may vary, but both tables must link the same skill
+        // within the same shipped component.
         let korean_skill = korean_rows
             .get(name)
             .ok_or_else(|| std::io::Error::other(format!("Korean inventory misses {name}")))?;

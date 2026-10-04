@@ -11,6 +11,7 @@ use crate::support::copy_dir;
 pub(super) fn synchronize_current_plugin_validation_inputs(
     repo: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // Align copied package versions to the fixture baseline before candidate activation checks.
     let root = codexy_runtime::paths::repository_root();
     fs::copy(root.join(".gitattributes"), repo.join(".gitattributes"))?;
     let core_plugin = repo.join("plugins/codexy");

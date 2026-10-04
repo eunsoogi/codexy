@@ -58,6 +58,7 @@ pub(super) fn skill_path_consumer_count(guide: &str) -> Result<usize, String> {
         .map_err(|error| format!("invalid skill path-consumer count: {error}"))
 }
 
+// Resolve links from the source document; external URLs and in-page anchors need no file check.
 pub(super) fn assert_local_links(root: &Path, source: &Path, text: &str) -> Result<(), String> {
     let base = source.parent().ok_or("document has no parent")?;
     for remainder in text.split("](").skip(1) {

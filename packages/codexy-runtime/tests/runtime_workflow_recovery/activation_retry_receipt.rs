@@ -11,6 +11,7 @@ pub(crate) fn receipt_with_identity(
     staging_run_id: u64,
     staging_run_attempt: u64,
 ) -> Value {
+    // Canonicalize the candidate before hashing so JSON object-key order cannot change receipt identity.
     let mut devtools = json!({});
     let mut handoff = json!({});
     let mut watcher = json!({});

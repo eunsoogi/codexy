@@ -3,6 +3,7 @@ use std::{fs, process::Command};
 #[path = "release_publication_recovery/fixture.rs"]
 mod fixture;
 use fixture::{gh_fixture, git_fixture, publish_executable};
+// These artifacts form the public release set; the release baseline is verified separately.
 const ASSETS: [&str; 4] = [
     "codexy-marketplace-plugin.tar.gz",
     "codexy-marketplace-bundle.tar.gz",
@@ -31,6 +32,7 @@ case "$3" in
   *) printf '%s\n' '[{"verificationResult":{"statement":{"subject":[{"name":"artifact"}]}}}]' ;;
 esac
 "#)?;
+    // Fake GitHub responses isolate attestation-set validation from network state.
     let run = |mode: &str, output: &std::path::Path, fail: bool, runtime_subjects: &str| {
         let path = format!("{}:{}", bin.display(), std::env::var("PATH").unwrap());
         let mut command = Command::new(codexy_runtime::paths::repository_root().join("scripts/verify-release-attestation-set"));
@@ -118,6 +120,7 @@ fn mismatched_existing_asset_fails_before_any_upload_or_baseline_mutation()
     assert!(fixture.read("log")?.is_empty(), "mismatch mutated release state");
     Ok(())
 }
+// Each fixture runs copied production scripts against local GitHub and Git command shims.
 struct Fixture {
     _temp: tempfile::TempDir,
     root: std::path::PathBuf,

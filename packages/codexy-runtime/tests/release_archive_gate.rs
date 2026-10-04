@@ -44,6 +44,7 @@ fn archive_gate_allows_documentation_path_examples() {
     )
     .expect("Windows archive scanner prerequisite");
     assert_archive_scanner_contract(&script, &entries, &checker);
+    // Reject undeclared runtime files before copying archive contents into a checkout-shaped tree.
     assert!(script.find("unexpected runtime artifact") < script.find("source_check_root"));
     assert_windows_prerequisite_contract(&prerequisite);
 }

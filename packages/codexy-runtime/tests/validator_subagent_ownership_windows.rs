@@ -1,3 +1,5 @@
+// Exercise the shipped Windows launcher without quoting its path and prove a
+// current-directory py.cmd cannot shadow the configured interpreter.
 use std::{ffi::OsString, io::Write as _, path::Path, process::Stdio};
 
 use crate::support::FixtureCommand as Command;

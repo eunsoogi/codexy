@@ -11,6 +11,7 @@ use serde_yaml::Value;
 use crate::support;
 
 #[test]
+// A public artifact is trusted only when its receipt matches; staging fallback is reserved for confirmed absence.
 fn selected_runtime_verification_uses_the_immutable_release_after_publication()
 -> Result<(), Box<dyn std::error::Error>> {
     let path = codexy_runtime::paths::repository_root()

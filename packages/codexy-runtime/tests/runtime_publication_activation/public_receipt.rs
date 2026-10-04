@@ -10,6 +10,7 @@ pub(super) fn write(
     root: &Path,
     archive: &Path,
 ) -> std::io::Result<PathBuf> {
+    // Bind both source commits and the staging run to the exact public archive bytes.
     const STAGING_COMMIT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     const ACTIVATION_COMMIT: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
     let receipt = root.join("public-release/runtime-release-receipt.json");

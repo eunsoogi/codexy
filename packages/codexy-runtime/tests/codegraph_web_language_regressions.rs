@@ -8,6 +8,8 @@ fn codegraph_indexes_html_css_and_resolves_local_web_edges()
     let temp = tempfile::tempdir()?;
     let root = temp.path();
     fs::create_dir_all(root.join("assets"))?;
+    // Mix live references with commented decoys so extraction distinguishes
+    // syntax from example text.
     fs::write(
         root.join("index.html"),
         r#"<!doctype html>

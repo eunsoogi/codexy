@@ -1,3 +1,4 @@
+// Persisting one shared selection state lets lifecycle commands prove install and health without full Git history.
 pub(super) fn fake_getcodexy() -> &'static str {
     r##"#!/bin/sh
 set -eu

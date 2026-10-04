@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
+// Preserve the complete JSON registration so argument boundaries and mixed
+// fields remain distinguishable in equality checks.
 #[derive(Debug, Eq, PartialEq)]
 pub(super) struct Registration {
     config: serde_json::Value,

@@ -1,3 +1,5 @@
+// Compact review control depends on the current-head result and unresolved
+// findings, not imported transcripts, quota counters, or prior snapshots.
 use super::*;
 
 #[test]

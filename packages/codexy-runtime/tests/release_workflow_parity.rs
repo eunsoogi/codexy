@@ -94,6 +94,7 @@ fn bootstrap_identity_supports_selected_and_candidate_prepared_states()
         .as_str()
         .ok_or("selected runtime tag")?;
     assert_eq!(contract["bootstrap"]["selectedVersion"], selected_version);
+    // A prepared Python candidate keeps using the currently selected runtime until promotion.
     let expected_runtime_tag = if package_version == selected_version {
         format!("v{selected_version}")
     } else {

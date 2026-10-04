@@ -22,6 +22,7 @@ fn release_workflows_use_supported_action_version_tags() -> Result<(), Box<dyn s
                 let Some(uses) = step["uses"].as_str() else {
                     continue;
                 };
+                // Require a readable version-tag marker rather than an all-hex commit SHA.
                 assert!(
                     uses.rsplit_once('@').is_some_and(|(_, tag)|
                         !tag.is_empty() && !tag.bytes().all(|byte| byte.is_ascii_hexdigit())),

@@ -3,6 +3,7 @@ use std::{fs, path::Path};
 use serde_json::{Value, json};
 
 
+// Advance the selected identities in the contract and bootstrap fixture while retaining its candidate value.
 pub(super) fn select_version_advance(
     root: &Path,
     target: &str,

@@ -2,7 +2,7 @@ use crate::support::TestResult;
 use codexy_runtime::validation::*;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
-#[test]
+#[test] // Canonical events separate reusable policy identity from owner-bound replay state.
 fn canonical_serialization_separates_stable_and_volatile_payloads() -> TestResult {
     let first = HandoffEnvelope::new(stable(), volatile("red"));
     let canonical = first.canonical_json()?;

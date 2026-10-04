@@ -6,6 +6,7 @@ use tempfile::tempdir;
 use crate::support::release_archive as release_archive_support;
 
 #[cfg(unix)]
+// A fast compressor failure must return promptly instead of waiting out the configured timeout.
 #[test]
 fn archive_fixture_reaps_a_failing_compressor_without_waiting_for_its_timeout() {
     let root = tempdir().expect("tempdir");

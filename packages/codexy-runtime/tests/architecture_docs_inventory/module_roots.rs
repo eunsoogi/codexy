@@ -1,5 +1,6 @@
 use crate::support::TestResult;
 
+// Each pair records the current module-owned path and its stale pre-move root path.
 const ARCHITECTURE_PATHS: &[(&str, &str)] = &[
     (
         "packages/codexy-runtime/src/validation/roles_yaml.rs",

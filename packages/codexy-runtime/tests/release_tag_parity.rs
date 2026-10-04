@@ -53,6 +53,7 @@ fn rejects_each_synchronized_source_mismatch() -> Result<(), Box<dyn std::error:
 fn archive_repository(
     temp: &tempfile::TempDir,
 ) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    // Run the synchronizer against a repository-shaped archive instead of the live checkout.
     let archive = temp.path().join("repo.tar");
     let repo = temp.path().join("repo");
     assert!(
@@ -88,6 +89,7 @@ fn fixture_tree() -> Result<String, Box<dyn std::error::Error>> {
 }
 
 fn stale_runtime_lock(text: &str, replacement: &str) -> String {
+    // Cargo.lock repeats version fields; mutate only the codexy-runtime package entry.
     let mut runtime = false;
     text.lines()
         .map(|line| {

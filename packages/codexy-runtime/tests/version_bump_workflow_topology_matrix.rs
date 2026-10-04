@@ -1,3 +1,4 @@
+// Valid and disconnected shell shapes ensure publication commands remain attached to the required transaction boundaries.
 use super::version_bump_workflow_contract::validate_version_pr_publication;
 
 #[test]

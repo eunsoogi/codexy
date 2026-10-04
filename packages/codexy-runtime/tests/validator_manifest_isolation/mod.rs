@@ -1,3 +1,5 @@
+// A manifest mutation in one overlay must leave its sibling and repository
+// seed unchanged.
 use std::path::Path;
 
 pub(super) fn assert_manifest_aware_overlay_isolation(

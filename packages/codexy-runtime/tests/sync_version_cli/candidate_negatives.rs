@@ -29,6 +29,7 @@ enum NegativeCase {
     CheckFalsePositive,
 }
 
+// Each mutation is rejected before writes, with a byte snapshot checking the full managed surface.
 #[test]
 fn candidate_state_negative_matrix_fails_closed_without_mutation() -> TestResult {
     let selected = selected_fixture()?;

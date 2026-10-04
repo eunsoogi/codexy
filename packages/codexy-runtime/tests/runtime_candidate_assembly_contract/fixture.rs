@@ -87,6 +87,7 @@ impl CandidateFixture {
     }
 
     pub(super) fn enable_core_runtime(&self) -> Result<(), Box<dyn std::error::Error>> {
+        // Include every handoff target and the schema inputs that make it a protected core payload.
         for (platform, extension) in [
             ("darwin-arm64", "bin"),
             ("linux-x86_64", "bin"),

@@ -5,6 +5,7 @@ pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Err
     let root = tempfile::tempdir()?;
     let repo = root.path().join("repo");
     let source = codexy_runtime::paths::repository_root();
+    // A real local bare remote preserves Git ancestry and ref-update behavior while keeping the fixture offline.
     success(
         Command::new("git")
             .args(["clone", "--shared", "--no-hardlinks"])

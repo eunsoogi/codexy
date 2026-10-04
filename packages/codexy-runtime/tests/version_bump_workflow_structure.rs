@@ -1,3 +1,4 @@
+// These checks bind the workflow's required issue, permission, validation, and one-PR reconciliation steps in order.
 use serde_yaml::Value;
 use std::fs;
 

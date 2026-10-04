@@ -1,3 +1,5 @@
+// Exercise the shipped guard's CLI boundary: lifecycle calls fail closed,
+// while PR-title and merge-message checks retain the shared validation rules.
 use crate::support::FixtureCommand as Command;
 
 #[test]

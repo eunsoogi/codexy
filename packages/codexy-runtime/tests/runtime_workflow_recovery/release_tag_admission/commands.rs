@@ -2,6 +2,7 @@ use std::fs;
 
 use super::RemoteTag;
 
+// Keep tag-admission cases focused on release state by replacing only changelog generation.
 pub(super) fn release_step() -> Result<String, Box<dyn std::error::Error>> {
     Ok(fs::read_to_string(
         codexy_runtime::paths::repository_root().join("scripts/publish-verified-release"),
@@ -12,6 +13,7 @@ pub(super) fn release_step() -> Result<String, Box<dyn std::error::Error>> {
     ))
 }
 
+// Translate each enum state to the matching fake remote-tag response used by the fixture.
 pub(super) fn remote_state(state: RemoteTag) -> &'static str {
     match state {
         RemoteTag::Wrong => "wrong",

@@ -7,6 +7,7 @@ pub(super) fn fake_gh(path: &Path) -> std::io::Result<()> {
 }
 
 pub(super) fn fake_activator(path: &Path) -> std::io::Result<()> {
+    // The fake activator copies only paths admitted by the activation contract.
     executable(
         path,
         r##"#!/bin/sh

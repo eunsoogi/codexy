@@ -1,5 +1,6 @@
 use std::{fs, process::Command};
 
+// The fake GitHub client covers absent, prior-source, current-source, paginated, and malformed subject sets.
 #[test]
 fn attestation_reconciliation_admits_only_absent_or_exact_authenticated_state()
 -> Result<(), Box<dyn std::error::Error>> {

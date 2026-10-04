@@ -1,3 +1,5 @@
+// Each obsolete or malformed publication field is tested against the same
+// clean HEAD snapshot, isolating validator behavior from the working tree.
 use std::{fs, path::PathBuf, process::Command};
 
 use serde_json::{Value, json};

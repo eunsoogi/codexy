@@ -1,4 +1,4 @@
-
+// The production adapter is exercised against fake GitHub/Git commands to pin mutations and fail-closed race handling.
 use super::version_pr_workflow_fixture::{Scenario, WorkflowFixture, BRANCH};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

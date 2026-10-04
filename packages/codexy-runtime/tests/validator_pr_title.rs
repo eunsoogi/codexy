@@ -1,3 +1,5 @@
+// PR titles use scoped Conventional Commit form, while issue titles remain
+// descriptive prose and reject label-like prefixes and control characters.
 use std::process::Command;
 
 #[test]

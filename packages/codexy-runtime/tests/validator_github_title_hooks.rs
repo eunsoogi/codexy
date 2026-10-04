@@ -1,3 +1,5 @@
+// Exercise title checks at issue, PR, and merge boundaries, including nested
+// tool calls and size-limit fallbacks without constraining free-form bodies.
 use serde_json::{Value, json};
 use std::io::Write as _;
 use std::process::Stdio;

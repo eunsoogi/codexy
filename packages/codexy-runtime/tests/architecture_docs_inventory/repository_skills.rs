@@ -4,6 +4,7 @@ use crate::support::TestResult;
 
 use super::{exact_names, rows};
 
+// These skills remain repository-local and must not leak into the packaged plugin.
 const PROJECT_SKILLS: &[&str] = &[
     "mcp-test",
     "plugin-marketplace-prep",

@@ -1,3 +1,5 @@
+// Skip literal bodies bytewise so suppression-like text inside Rust strings
+// cannot be mistaken for an attribute by the source scanner.
 pub(super) fn raw_string_start(bytes: &[u8], index: usize) -> Option<(usize, usize)> {
     let mut cursor = index;
     if bytes.get(cursor) == Some(&b'b') {

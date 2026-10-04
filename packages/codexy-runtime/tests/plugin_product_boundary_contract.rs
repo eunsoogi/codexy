@@ -1,3 +1,4 @@
+// Each module owns one slice of the shared product boundary; together they validate its full inventory.
 #[path = "plugin_product_boundary_contract/contract.rs"]
 mod contract;
 #[path = "plugin_product_boundary_contract/inventory.rs"]

@@ -1,4 +1,4 @@
-
+// Windows workflow assertions keep selected-candidate extraction and public-archive projection behind distinct proof gates.
 #[test]
 fn windows_selected_candidate_proof_preserves_legacy_public_boundary() {
     let workflow = std::fs::read_to_string(

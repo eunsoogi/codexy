@@ -40,6 +40,7 @@ fn final_package_is_smoked_before_public_release_and_published_afterward() -> Te
         .iter()
         .position(|step| step["name"] == "Publish exact final getcodexy package")
         .ok_or("package publication")?;
+    // Exercise the exact package and archive before release creation, finalization, and PyPI upload.
     assert!(
         materialize < smoke
             && package < smoke
@@ -177,6 +178,7 @@ fn final_package_is_smoked_before_public_release_and_published_afterward() -> Te
 
 #[test]
 fn raw_digest_output_matches_materialized_archive_bytes() -> TestResult {
+    // Receipt evidence must hash the archive bytes directly, not a digest-of-digests value.
     let publisher = document("publish-version-release.yml")?;
     let materialize = run(
         &publisher,

@@ -20,6 +20,7 @@ fn real_future_transitions_are_successive_repeatable_and_windows_native()
 
     let first_base = format!("base-{first_future}");
     fixture.branch_from(&first_activation, &first_base)?;
+    // Build the next candidate from the version just promoted by the first transition.
     let second = builder.build(&first_future, &second_future)?;
     fixture.prepare_candidate(&second.sync, &second_future)?;
     fixture.commit(&format!("candidate {second_future}"))?;

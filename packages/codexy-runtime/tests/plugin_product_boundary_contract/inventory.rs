@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
+// Each record ID has one expected owner and lifecycle disposition.
 pub(super) fn record_matrix() -> BTreeMap<&'static str, (&'static str, &'static str)> {
     BTreeMap::from([
         ("hooks.instruction", ("codexy", "retain")),
@@ -39,6 +40,7 @@ pub(super) fn governed_universe(
     root: &Path,
 ) -> Result<BTreeSet<String>, Box<dyn std::error::Error>> {
     let mut governed = BTreeSet::new();
+    // Recurse through directory-owned surfaces; the next list adds standalone files.
     for path in [
         ".agents/skills",
         ".codex",

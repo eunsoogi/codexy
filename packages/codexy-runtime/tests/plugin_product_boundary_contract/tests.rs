@@ -13,6 +13,7 @@ fn assert_invalid(root: &std::path::Path, value: &serde_json::Value) {
 }
 
 #[test]
+// Every current public surface must have one documented owner so the inventory cannot silently omit or duplicate it.
 fn product_boundary_contract_owns_each_current_surface_once() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     validate_contract(root, &contract(root)?)?;
@@ -35,6 +36,7 @@ fn product_boundary_contract_owns_each_current_surface_once() -> TestResult {
 }
 
 #[test]
+// Keep developer tooling in the devtools package while the core plugin owns only its runtime-facing MCP surface.
 fn core_and_devtools_packages_keep_developer_tool_surfaces_separate() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let core_manifest: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
@@ -86,6 +88,7 @@ fn core_and_devtools_packages_keep_developer_tool_surfaces_separate() -> TestRes
 }
 
 #[test]
+// Independent malformed records ensure validation fails closed at each schema and path boundary.
 fn product_boundary_contract_rejects_invalid_surface_records() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     reject_unknown_wrapper_fields(root)?;
@@ -211,6 +214,7 @@ fn product_boundary_contract_rejects_invalid_surface_records() -> TestResult {
 }
 
 #[test]
+// Portable identities must not change meaning across hosts with different path separators and normalization rules.
 fn governed_path_identities_are_portable_and_fail_closed() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let identities = files(root.join("plugins/codexy/hooks"))?

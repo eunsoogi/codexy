@@ -89,6 +89,8 @@ fn rejects_repeated_dot_segment_alias_without_rejecting_canonical_member() {
         "plugins/codexy-devtools/.codex-plugin/plugin.json",
     );
     let canonical_output = run_gate(&canonical_archive, &plugin_root);
+    // The member is incomplete, so the gate fails later. Path validation must still
+    // accept its canonical spelling.
     assert!(
         !canonical_output.status.success(),
         "fixture is intentionally incomplete"

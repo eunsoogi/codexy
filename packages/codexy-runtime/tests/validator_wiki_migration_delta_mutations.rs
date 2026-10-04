@@ -1,3 +1,4 @@
+// These mutations pin the additive boundary: raw history stays fixed while only approved derived records may be added.
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 use std::{fs, ops::Deref, path::{Path, PathBuf}};

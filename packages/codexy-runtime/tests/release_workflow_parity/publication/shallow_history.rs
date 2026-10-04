@@ -100,6 +100,7 @@ fn release_workflows_resolve_and_forward_the_explicit_upgrade_version() -> TestR
 }
 
 fn create_fixture(root: PathBuf) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    // One tagged commit reproduces the shallow activation checkout used by public smoke.
     let repository = codexy_runtime::paths::repository_root();
     fs::create_dir_all(root.join("scripts"))?;
     for name in [

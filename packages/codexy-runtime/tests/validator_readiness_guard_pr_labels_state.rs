@@ -1,3 +1,5 @@
+// Enforce label evidence only for open Codexy PRs with complete JSON state;
+// malformed input and nested lookalikes fail closed while valid Unicode remains accepted.
 use crate::support;
 
 #[test]

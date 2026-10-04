@@ -1,3 +1,5 @@
+// Validate agent TOML against the supported custom-agent schema, allowing
+// documented MCP and skill-config layers while rejecting unknown shapes.
 use crate::support;
 
 #[test]

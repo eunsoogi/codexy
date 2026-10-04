@@ -1,3 +1,5 @@
+// Compare CLI and in-process results under shared fixtures, keep mutable
+// manifests isolated, and pin release-archive contents and compression.
 use crate::support;
 
 use std::path::Path;

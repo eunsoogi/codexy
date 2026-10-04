@@ -62,6 +62,7 @@ impl Fixture {
         sync: &Path,
         selected: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        // Align the core manifest with marketplace platforms before syncing the selected version.
         normalize_core_platforms(&self.repo)?;
         run_binary(sync, &self.repo, &["--version", selected])
     }
@@ -161,6 +162,7 @@ impl Fixture {
     }
 }
 
+// Initialize only a missing fixture checkout, then delegate activation to the future binary.
 const ACTIVATOR_BOOTSTRAP: &str = r#"#!/bin/sh
 set -eu
 root=

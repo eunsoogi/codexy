@@ -203,6 +203,7 @@ fn release_train_inspector_accepts_the_complete_activation_checkout()
 }
 
 fn materialize_core_handoff_fixture(checkout: &Path, staged: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    // Extend the activated receipt with the core handoff and watcher runtime classes.
     let activation_path = checkout.join(".agents/plugins/runtime-activation.json");
     let mut activation: Value = serde_json::from_slice(&fs::read(&activation_path)?)?;
     let mut platforms = serde_json::Map::new();

@@ -1,3 +1,5 @@
+// The package-owned LOC checker must enforce the 250-line boundary from an
+// explicit path even when invoked from an unrelated working directory.
 use std::{fs, process::Command};
 
 use crate::support::TestResult;

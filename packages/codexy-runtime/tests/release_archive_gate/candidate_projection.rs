@@ -16,6 +16,7 @@ fn projection(appended: &str) -> std::process::Output {
 }
 
 #[test]
+// An active assignment changes the candidate contract, while identical text printed as data must remain inert.
 fn source_projection_rejects_executable_platform_mutations_and_ignores_inert_text() {
     for (appended, succeeds) in [
         (

@@ -8,6 +8,7 @@ use crate::support::FixtureCommand as Command;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type LauncherResult = Result<Option<Value>, Box<dyn std::error::Error>>;
 
+// Event groups bind each matcher to both launchers and exclude unrelated workflow hooks.
 #[test]
 fn github_hooks_bind_only_context_and_local_bash_safety() -> TestResult {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy-github");
@@ -113,6 +114,7 @@ fn github_hooks_bind_only_context_and_local_bash_safety() -> TestResult {
     Ok(())
 }
 
+// The direct Bash launcher ignores GitHub mutations but denies credential reads and destructive commands.
 #[test]
 fn destructive_launcher_preserves_github_mutation_and_credential_boundaries() -> TestResult {
     for event in ["PermissionRequest", "PreToolUse"] {

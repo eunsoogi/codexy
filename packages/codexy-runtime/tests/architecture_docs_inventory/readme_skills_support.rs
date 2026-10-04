@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
+// Explicit roots keep discovery aligned with the three independently shipped plugin components.
 const COMPONENT_ROOTS: &[(&str, &str)] = &[
     ("core", "plugins/codexy/skills"),
     ("github", "plugins/codexy-github/skills"),

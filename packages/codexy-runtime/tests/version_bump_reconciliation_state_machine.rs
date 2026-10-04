@@ -1,3 +1,4 @@
+// The planner must reject inconsistent repository state before mutation and advance only through satisfied publication gates.
 use std::{fs, path::Path};
 use crate::support::FixtureCommand as Command;
 

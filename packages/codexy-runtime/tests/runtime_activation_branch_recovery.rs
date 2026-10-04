@@ -22,6 +22,7 @@ fn existing_activation_branch_authenticates_exact_derived_tree_and_pr_state()
         "exact activation failed: {}",
         String::from_utf8_lossy(&exact.stderr)
     );
+    // Batch file drift, PR-state ambiguity, and the guarded test override through one verifier run.
     let batch = [
         matrix.batch_case("exact", Change::Exact, "OPEN", true)?,
         matrix.batch_case("wrapper-drift", Change::WrapperDrift, "OPEN", true)?,

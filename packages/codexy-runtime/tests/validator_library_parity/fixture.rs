@@ -8,6 +8,8 @@ pub(super) fn copy_plugin_fixture(
     Ok(support::copy_plugin_fixture_with_mutable_files(mutable_files)?)
 }
 
+// Normalize runner-specific prefixes only when the diagnostic ends at the
+// declared relative fixture path; lookalikes and unrelated paths stay visible.
 fn normalize_fixture_stderr_text(stderr: &str, path: &Path) -> String {
     let components = path
         .components()

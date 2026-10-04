@@ -161,6 +161,7 @@ fn activation_pr_creation_reuses_an_existing_verified_staging_branch()
 }
 
 #[test]
+// New and retry paths must converge on the same post-transform tree proof before a branch is staged or pushed.
 fn activation_new_and_retry_paths_share_post_transform_tree_verification()
 -> Result<(), Box<dyn std::error::Error>> {
     let activation = workflow("runtime-activation.yml")?;
@@ -201,6 +202,7 @@ fn activation_new_and_retry_paths_share_post_transform_tree_verification()
     Ok(())
 }
 
+// Read checked-in workflow and script inputs so these contracts track the actual release path.
 fn workflow(name: &str) -> Result<Value, Box<dyn std::error::Error>> {
     let path = codexy_runtime::paths::repository_root()
         .join(".github/workflows")

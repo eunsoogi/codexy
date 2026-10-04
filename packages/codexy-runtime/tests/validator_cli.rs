@@ -1,5 +1,6 @@
 use std::process::Command;
 
+// Exercise every supported validation mode through the packaged command entry point.
 #[test]
 fn validator_cli_checks_all_contract_surfaces() -> Result<(), Box<dyn std::error::Error>> {
     for mode in [
@@ -143,6 +144,7 @@ fn touched_loc_fixture(
     touched_loc_fixture_with_line_count(251, exception_text)
 }
 
+// Synthetic commits isolate the exact 250/251 boundary and the removed exception-file path.
 fn touched_loc_fixture_with_line_count(
     line_count: usize,
     exception_text: Option<&str>,

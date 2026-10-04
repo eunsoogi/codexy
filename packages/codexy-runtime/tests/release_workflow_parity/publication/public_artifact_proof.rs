@@ -5,6 +5,7 @@ use super::super::{document, steps};
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+// The retired bootstrap workflow must remain a fail-closed stub so it cannot bypass the verified publisher.
 fn retired_bootstrap_workflow_has_no_public_artifact_proof_path() -> TestResult {
     let bootstrap = document("bootstrap-package.yml")?;
     let steps = steps(&bootstrap, "publish-bootstrap")?;

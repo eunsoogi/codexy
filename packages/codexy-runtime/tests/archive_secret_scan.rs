@@ -37,6 +37,8 @@ fn assert_secret_rejected_quietly(output: Output, secret: &str) {
     assert!(!output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
+    // The gate exposes one generic diagnostic. Key material and its matched
+    // source line must stay hidden.
     assert_eq!(stderr, "archive contains a secret or local path\n");
     assert!(!stdout.contains(secret));
     assert!(!stderr.contains(secret));
@@ -48,6 +50,7 @@ fn assert_secret_rejected_quietly(output: Output, secret: &str) {
 fn grep_only_path(root: &Path) -> PathBuf {
     use std::os::unix::fs::symlink;
 
+    // Keep helper tools reachable while shadowing every PATH directory that could supply ripgrep.
     let bin = root.join("grep-only-bin");
     fs::create_dir(&bin).expect("fallback bin");
     let path_dirs: Vec<_> =

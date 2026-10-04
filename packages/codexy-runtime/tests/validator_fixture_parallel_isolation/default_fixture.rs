@@ -1,6 +1,7 @@
 #[cfg(any(unix, windows))]
 use crate::support;
 
+// Unix overlays may write their copy, but the sibling and immutable source retain the original bytes.
 #[cfg(unix)]
 #[test]
 fn default_fixture_keeps_mutations_private_from_the_seed_and_sibling()
@@ -20,6 +21,7 @@ fn default_fixture_keeps_mutations_private_from_the_seed_and_sibling()
     Ok(())
 }
 
+// On Windows, an undeclared file remains read-only and the attempted write fails closed.
 #[cfg(windows)]
 #[test]
 fn default_fixture_fails_closed_for_undeclared_mutation() -> Result<(), Box<dyn std::error::Error>> {

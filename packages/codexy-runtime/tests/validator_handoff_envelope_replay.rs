@@ -1,3 +1,5 @@
+// Rejected batches must not consume event IDs; committed replay state is shared
+// by authority clones so a previously accepted event cannot be reused.
 use crate::support::TestResult;
 use codexy_runtime::validation::*;
 use std::collections::BTreeMap;

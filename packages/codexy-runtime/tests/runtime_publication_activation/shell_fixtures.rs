@@ -3,6 +3,7 @@ use std::fs;
 use crate::support;
 
 #[test]
+// Shell fixture paths must flow through argument and environment helpers that preserve spaces across platforms.
 fn runtime_publication_shell_fixtures_project_every_path()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = codexy_runtime::paths::runtime_package_root();

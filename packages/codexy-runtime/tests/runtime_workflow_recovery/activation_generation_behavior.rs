@@ -4,6 +4,7 @@ use std::fs;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+// Branch identity combines owner, base, staging attempt, inventory capacity, and retained legacy refs.
 fn activation_generation_blocks_a_competing_open_owner_before_push() -> TestResult {
     let fixture = Fixture::new("competing")?;
     let before = fixture.remote_head()?;

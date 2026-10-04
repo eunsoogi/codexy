@@ -1,6 +1,7 @@
 use std::{fs, io, path::Path};
 
 pub(super) fn write_receipt_archive(path: &Path, receipt: &[u8]) -> io::Result<()> {
+    // Build one stored ZIP entry directly so downloader cases need no archive utility.
     let name = b"runtime-staging-receipt.json";
     let name_length = u16::try_from(name.len()).map_err(|_| io::Error::other("fixture name"))?;
     let size = u32::try_from(receipt.len()).map_err(|_| io::Error::other("fixture receipt"))?;

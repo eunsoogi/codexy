@@ -1,3 +1,4 @@
+// Model the exact pull-request identity and readback queries; any unexpected GitHub mutation fails closed.
 pub(super) const GH: &str = r#"#!/bin/sh
 set -eu
 test "${GH_TOKEN:-}" = fixture-github-token || { echo "verifier GitHub query requires GH_TOKEN: $CODEXY_FIXTURE_STEP" >&2; exit 4; }
