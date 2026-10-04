@@ -62,6 +62,7 @@ pub(super) const POLICY_SOURCES: &[Source] = &[
     source!("codexy_policy/shell_entry.py"),
     source!("codexy_policy/shell_evaluator.py"),
     source!("codexy_policy/shell_git.py"),
+    source!("codexy_policy/shell_heredoc.py"),
     source!("codexy_policy/shell_opaque.py"),
     source!("codexy_policy/shell_reflog.py"),
     source!("codexy_policy/shell_segments.py"),
