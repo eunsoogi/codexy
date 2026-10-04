@@ -30,4 +30,5 @@ DEPENDENCIES = (
     "hooks/codexy-watcher-interrupt.sh",
     "hooks/codexy-watcher-interrupt.cmd",
     "hooks/codexy_watcher_interrupt.py",
+    "hooks/codexy_watcher_interrupt_events.py",
 )

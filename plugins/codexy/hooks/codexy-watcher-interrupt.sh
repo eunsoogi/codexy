@@ -1,7 +1,7 @@
 #!/bin/sh
 event=${1-}
 case "$event" in
-PreToolUse | Interrupt) ;;
+PreToolUse | Interrupt | UserPromptSubmit) ;;
 *) exit 0 ;;
 esac
 plugin_root=${PLUGIN_ROOT-}

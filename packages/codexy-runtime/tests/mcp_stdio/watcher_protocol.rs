@@ -73,7 +73,7 @@ fn watcher_wait_is_released_by_mcp_cancellation_without_consuming_later_events(
     client.send_without_read(&json!({
         "jsonrpc":"2.0","id":4,"method":"tools/call",
         "params":{"name":"watcher_wait","arguments":{
-            "sessionId":session,"parentToken":parent_token,"timeoutMs":30000
+            "sessionId":session,"parentToken":parent_token
         }}
     }))?;
     let duplicate = client.send(&json!({

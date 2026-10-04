@@ -6,7 +6,7 @@ codexy-child-thread-creation.py | codexy-subagent-ownership.py | codexy-thread-d
 *) exit 1 ;;
 esac
 case "$event" in
-PreToolUse | PermissionRequest | Interrupt) ;;
+PreToolUse | PermissionRequest | Interrupt | UserPromptSubmit) ;;
 *) exit 1 ;;
 esac
 
@@ -46,7 +46,8 @@ set -- \
 [ -n "$runtime_git_repository" ] && set -- "$@" "CODEXY_RUNTIME_GIT_REPOSITORY=$runtime_git_repository"
 [ -n "$runtime_git_ref" ] && set -- "$@" "CODEXY_RUNTIME_GIT_REF=$runtime_git_ref"
 [ -n "$runtime_source_override" ] && set -- "$@" "CODEXY_RUNTIME_SOURCE_OVERRIDE=1"
-for candidate in /usr/local/bin/python3 /usr/bin/python3; do
+# Prefer Apple Silicon Homebrew Python over an Intel interpreter running under Rosetta.
+for candidate in /opt/homebrew/bin/python3 /usr/local/bin/python3 /usr/bin/python3; do
 	[ -x "$candidate" ] || continue
 	/usr/bin/env -i "$@" \
 		"$candidate" -I -B "${plugin_root}/hooks/${entrypoint}" --event "$event" \

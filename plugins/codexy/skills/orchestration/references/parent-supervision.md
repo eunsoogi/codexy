@@ -121,17 +121,17 @@ alter protected technical text.
   elapsed time. A native reviewer's terminal delivery is a non-Watcher target;
   the Orchestrator MUST NOT observe Worker targets assigned to a native Watcher.
 - Native Watcher routes: only the assigned Watcher MAY call `wait_threads`; the
-  Orchestrator MUST await `watcher_wait`, omitting `timeoutMs` for the 300,000
-  ms default; explicit `timeoutMs=300000` is equivalent; `MAX_WAIT_MS` stays
+  Orchestrator MUST await `watcher_wait`, omitting `timeoutMs` for the 295,000
+  ms default; explicit `timeoutMs=295000` is equivalent; `MAX_WAIT_MS` stays
   3,600,000 ms. The host limit MUST be read and reported: if it supports 300,000
   ms, the Watcher MUST use `wait_threads(timeoutMs=300000)` as the semantic
   event wait; otherwise, it MUST use the confirmed actual maximum. Output-yield
-  cadence is separate; MUST NOT shorten or replace the semantic wait. With a
-  confirmed 300-second MCP transport, `timeoutMs=295000` is the empty-wait
-  margin. Shorter waits MUST have a reason and MUST NOT become repeated polls.
-  While pending, the Orchestrator MUST stay in one quiet tool await and MUST NOT
-  emit reasoning, progress, short polls, unrelated work, retry, or poll merely
-  because no event has arrived. Fallbacks MUST report and recover.
+  cadence is separate; MUST NOT shorten or replace the semantic wait. The
+  295,000 ms default leaves a five-second margin under a confirmed 300-second
+  MCP transport. Shorter waits MUST have a reason and MUST NOT become repeated
+  polls. While pending, the Orchestrator MUST stay in one quiet tool await and
+  MUST NOT emit reasoning, progress, short polls, unrelated work, retry, or poll
+  merely because no event has arrived. Fallbacks MUST report and recover.
 - Implementation Workers MUST NOT use Orchestrator-owned Watcher session/token.
   One bounded readback after an actionable report is judgement-only.
 - The native Watcher loop is defined in "Watcher MCP flow"; its report, Worker
@@ -165,13 +165,13 @@ alter protected technical text.
   validates each event, reads the Worker/app surface, and sends or verifies
   corrections through the supported Worker route.
 - Same-connection `notifications/cancelled` or packaged Watcher
-  `PreToolUse`/`Interrupt` releases only that wait when the host propagates it
-  and preserves the durable session; `watcher_cancel` is separately authorized
-  and durably ends it. A host/task message or outer wait may leave it active
-  when cancellation is unavailable; report that limitation, keep
-  installed-candidate Stop success unproven until propagation is verified, and
-  open a new assignment/session. A cancelled queue/cursor is readback only,
-  never continuity; the assignment MUST NOT resume.
+  `PreToolUse`/`Interrupt`/`UserPromptSubmit` releases only that wait when the
+  host delivers the event and preserves the durable session. `watcher_cancel`
+  instead ends the session and requires a fresh assignment. See
+  [Watcher wait cancellation](watcher-wait-cancellation.md) for event matching,
+  fail-closed cases, and host-propagation proof boundaries. A cancelled
+  queue/cursor is readback only, never continuity; the assignment MUST NOT
+  resume.
 - The Orchestrator MUST own the exact overall task objective and MUST preserve
   its active goal through Watcher creation, reports, correction, review, and
   external waits. Creating a Watcher subagent MUST NOT create a second overall

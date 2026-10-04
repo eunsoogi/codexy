@@ -5,7 +5,7 @@ use crate::support::FixtureCommand as Command;
 #[allow(unused)]
 use crate::support;
 
-const QUIET_EVENTS: &[&str] = &["SessionStart", "UserPromptSubmit"];
+const QUIET_EVENTS: &[&str] = &["SessionStart"];
 const HARD_CHECKS: &[&str] = &[
     "codexy-issue-title-check.sh",
     "codexy-pr-title-check.sh",
@@ -14,7 +14,7 @@ const HARD_CHECKS: &[&str] = &[
 ];
 
 #[test]
-fn packaged_hooks_are_lifecycle_quiet() -> Result<(), Box<dyn std::error::Error>> {
+fn packaged_hooks_keep_unowned_lifecycle_events_quiet() -> Result<(), Box<dyn std::error::Error>> {
     let hooks = packaged_hooks()?;
     let events = hooks["hooks"]
         .as_object()

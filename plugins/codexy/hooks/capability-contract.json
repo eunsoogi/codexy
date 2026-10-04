@@ -1,6 +1,6 @@
 {
   "schema": "codexy.hooks.capability-contract.v3",
-  "contentDigest": "5886c2463a257d72",
+  "contentDigest": "67e57cfb1fd13c43",
   "concerns": [
     {
       "concernId": "thread-delivery",
@@ -43,8 +43,8 @@
     {
       "concernId": "watcher-wait-interruption",
       "trigger": "^(?:mcp__[^ ]+__)?watcher_wait$",
-      "events": ["PreToolUse", "Interrupt"],
-      "inputContract": "codexy.hooks.watcher-wait-interruption.v1",
+      "events": ["PreToolUse", "Interrupt", "UserPromptSubmit"],
+      "inputContract": "codexy.hooks.watcher-wait-interruption.v2",
       "preventive": false,
       "entrypoints": [
         "codexy-watcher-interrupt.sh",
@@ -52,7 +52,7 @@
         "codexy_watcher_interrupt.py"
       ],
       "diagnosticFamily": "CODEXY_WATCHER_INTERRUPT_",
-      "contentDigest": "2a1ececb391e6153"
+      "contentDigest": "041204472a02970c"
     }
   ]
 }

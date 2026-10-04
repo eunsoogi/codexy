@@ -6,8 +6,10 @@ a permitted operation writes zero bytes; a denied operation emits only the
 official event-native denial schema with its concern's diagnostic family. The
 Watcher lifecycle concern is the explicit exception: its `PreToolUse` handler
 binds an authenticated `watcher_wait` to an opaque, short-lived request record,
-and its synchronous `Interrupt` handler writes a request-only cancellation
-marker. Direct Watcher callers remain binding-free.
+its synchronous `Interrupt` handler cancels the exact host session and turn, and
+its synchronous `UserPromptSubmit` handler cancels only a unique pending binding
+for the host session. Ambiguous matches fail closed. The prompt body is not
+forwarded to the Watcher runtime. Direct Watcher callers remain binding-free.
 
 When the native host supplies a bounded, host-authenticated
 `codexy_thread_delivery` v2 envelope, the installed Codexy plugin validates it

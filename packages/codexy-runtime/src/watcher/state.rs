@@ -4,6 +4,7 @@ mod operations;
 mod recovery;
 #[allow(unreachable_pub)]
 pub mod request_binding;
+mod session_directories;
 mod validation;
 mod wait;
 
@@ -23,8 +24,8 @@ pub(crate) const MAX_TARGETS: usize = 8;
 pub(crate) const MAX_EVENTS: usize = 64;
 pub(crate) const MAX_SESSIONS: usize = 128;
 pub(crate) const MAX_REPORTS: usize = 8;
-/// Default wait duration for callers that omit `timeoutMs` (five minutes).
-pub(crate) const DEFAULT_WAIT_MS: u64 = 300_000;
+/// Default wait duration, with five seconds below the host's 300-second deadline.
+pub(crate) const DEFAULT_WAIT_MS: u64 = 295_000;
 /// Maximum bounded wait duration accepted by the Watcher MCP (60 minutes).
 pub(crate) const MAX_WAIT_MS: u64 = 3_600_000;
 pub(crate) const MAX_TTL_SECONDS: u64 = 86_400;
@@ -58,24 +59,7 @@ impl Store {
     }
 
     fn session_dirs(&self) -> Result<Vec<PathBuf>> {
-        let mut directories = Vec::new();
-        for entry in fs::read_dir(&self.root)? {
-            let entry = entry?;
-            let path = entry.path();
-            let file_type = entry.file_type()?;
-            if file_type.is_symlink() {
-                reject_link(&path)?;
-            }
-            if file_type.is_dir() {
-                let name = entry
-                    .file_name()
-                    .into_string()
-                    .map_err(|_| anyhow::anyhow!("watcher session id is not UTF-8"))?;
-                safe_id(&name, "sessionId")?;
-                directories.push(path);
-            }
-        }
-        Ok(directories)
+        session_directories::list(&self.root)
     }
 
     pub(super) fn reclaim_sessions(&self, now: u64) -> Result<()> {

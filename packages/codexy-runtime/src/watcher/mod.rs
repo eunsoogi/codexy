@@ -25,3 +25,9 @@ pub fn run_interrupt_hook(payload: &Value) -> Result<Value> {
         "cancelled": state::interrupt_request_binding(payload)?,
     }))
 }
+
+pub fn run_user_prompt_submit_hook(payload: &Value) -> Result<Value> {
+    Ok(json!({
+        "cancelled": state::request_binding::cancel_request_binding_for_user_prompt(payload)?,
+    }))
+}

@@ -10,7 +10,12 @@ use crate::validation::load_json;
 const PATH: &str = "hooks/capability-contract.json";
 const SCHEMA: &str = "codexy.hooks.capability-contract.v3";
 const PREVENTIVE_EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
-const EVENT_ORDER: &[&str] = &["PermissionRequest", "PreToolUse", "Interrupt"];
+const EVENT_ORDER: &[&str] = &[
+    "PermissionRequest",
+    "PreToolUse",
+    "Interrupt",
+    "UserPromptSubmit",
+];
 
 struct Expected {
     id: &'static str,
@@ -53,10 +58,10 @@ const CONCERNS: &[Expected] = &[
     Expected {
         id: "watcher-wait-interruption",
         trigger: "^(?:mcp__[^ ]+__)?watcher_wait$",
-        input: "codexy.hooks.watcher-wait-interruption.v1",
+        input: "codexy.hooks.watcher-wait-interruption.v2",
         launcher: "codexy-watcher-interrupt",
         diagnostic: "CODEXY_WATCHER_INTERRUPT_",
-        events: &["PreToolUse", "Interrupt"],
+        events: &["PreToolUse", "Interrupt", "UserPromptSubmit"],
         preventive: false,
     },
 ];
@@ -152,7 +157,7 @@ pub(super) fn check_topology(path: &Path, events: &Map<String, Value>) -> Result
                 .as_object()
                 .context("concern group must be an object")?;
             let handlers = object.get("hooks").and_then(Value::as_array);
-            let matcher = if *event == "Interrupt" {
+            let matcher = if matches!(*event, "Interrupt" | "UserPromptSubmit") {
                 None
             } else {
                 Some(concern.trigger)

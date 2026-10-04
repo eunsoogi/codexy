@@ -1,8 +1,8 @@
 //! Tests event-log recovery after interrupted writes and session cleanup rules
 //! that preserve unknown files while reclaiming known atomic-write leftovers.
 
-use super::*;
 use super::watcher_state::{initialize, open_session, tool_payload, watcher_client};
+use super::*;
 
 fn event_path(state: &Path, session: &str) -> PathBuf {
     state
@@ -120,7 +120,9 @@ fn complete_event_without_final_newline_is_preserved_before_append() -> Result<(
     initialize(&mut reporter).map_err(|error| error.to_string())?;
     let appended = reporter_report(&mut reporter, &session, &watcher_token, 4, "appended")?;
     if appended["status"] != "accepted" || appended["cursor"] != "2" {
-        return Err(format!("append after complete tail was invalid: {appended}"));
+        return Err(format!(
+            "append after complete tail was invalid: {appended}"
+        ));
     }
     let mut reader = watcher_client(state.path()).map_err(|error| error.to_string())?;
     initialize(&mut reader).map_err(|error| error.to_string())?;
@@ -141,15 +143,15 @@ fn complete_event_without_final_newline_is_preserved_before_append() -> Result<(
 #[test]
 fn incomplete_session_with_known_atomic_temp_is_reclaimed() -> Result<(), String> {
     let state = tempfile::tempdir().map_err(|error| error.to_string())?;
-    let orphan = state.path().join("codexy-watcher/orphan");
+    let orphan = state.path().join("codexy-watcher/.user-owned");
     std::fs::create_dir_all(&orphan).map_err(|error| error.to_string())?;
     let temporary = orphan.join(format!(".session.json.tmp-{}", "a".repeat(24)));
     std::fs::write(&temporary, b"partial session").map_err(|error| error.to_string())?;
 
     let mut client = watcher_client(state.path()).map_err(|error| error.to_string())?;
     initialize(&mut client).map_err(|error| error.to_string())?;
-    let opened = open_session(&mut client, "reclaim-known-temp", 2)
-        .map_err(|error| error.to_string())?;
+    let opened =
+        open_session(&mut client, "reclaim-known-temp", 2).map_err(|error| error.to_string())?;
     if temporary.exists() || orphan.exists() || opened.0.is_empty() {
         return Err("known atomic temporary was not reclaimed".to_owned());
     }
@@ -159,7 +161,7 @@ fn incomplete_session_with_known_atomic_temp_is_reclaimed() -> Result<(), String
 #[test]
 fn incomplete_session_with_unknown_file_is_preserved_and_rejected() -> Result<(), String> {
     let state = tempfile::tempdir().map_err(|error| error.to_string())?;
-    let orphan = state.path().join("codexy-watcher/orphan");
+    let orphan = state.path().join("codexy-watcher/.user-owned");
     std::fs::create_dir_all(&orphan).map_err(|error| error.to_string())?;
     let lock = orphan.join("state.lock");
     std::fs::write(&lock, b"user-owned lock").map_err(|error| error.to_string())?;
@@ -177,7 +179,9 @@ fn incomplete_session_with_unknown_file_is_preserved_and_rejected() -> Result<()
         }))
         .map_err(|error| error.to_string())?;
     if response["error"]["message"] != "watcher session directory is incomplete" {
-        return Err(format!("unknown incomplete session was not rejected: {response}"));
+        return Err(format!(
+            "unknown incomplete session was not rejected: {response}"
+        ));
     }
     if !lock.exists() {
         return Err("unknown incomplete-session file was removed".to_owned());

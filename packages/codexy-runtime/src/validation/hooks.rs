@@ -12,7 +12,7 @@ use crate::paths::display_relative;
 use crate::validation::load_json;
 
 const HOOKS_PATH: &str = "hooks/hooks.json";
-const CORE_QUIET_EVENTS: &[&str] = &["SessionStart", "UserPromptSubmit"];
+const CORE_QUIET_EVENTS: &[&str] = &["SessionStart"];
 const ALLOWED_EVENTS: &[&str] = &[
     "PermissionRequest",
     "Interrupt",
