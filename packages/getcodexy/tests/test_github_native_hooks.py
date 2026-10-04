@@ -182,20 +182,16 @@ class GithubNativeHooksTests(
                 command,
             )
 
-        metadata_command = """git diff --check && python3 - <<'PY'
-from pathlib import Path
-
-for path in (
-    "plugins/codexy/.codex-plugin/plugin.json",
-    ".agents/plugins/marketplace.json",
-    ".agents/plugins/release-publish-contract.json",
-    "packages/getcodexy/pyproject.toml",
-    "packages/getcodexy/uv.lock",
-):
-    target = Path(path)
-    assert target.is_file()
-    target.read_text(encoding="utf-8")
-assert Path("README.md").is_file()
+        metadata_command = """git diff --check 6a2abd471a610bcf2a64cad5864fb4d304f449fc..HEAD && python3 - <<'PY'
+import json, pathlib, tomllib
+r=pathlib.Path('.')
+for p in ('plugins/codexy/.codex-plugin/plugin.json','plugins/codexy-github/.codex-plugin/plugin.json','plugins/codexy-devtools/.codex-plugin/plugin.json'):
+ x=json.loads((r/p).read_text()); print(p, x['version'])
+m=json.loads((r/'.agents/plugins/marketplace.json').read_text()); print('marketplace',[(p['name'],p.get('version')) for p in m['plugins']])
+c=json.loads((r/'.agents/plugins/release-publish-contract.json').read_text()); print('release',c['version'],c['bootstrap'],c['runtime']['selectedTag'],c['currentMarketplace']['ref'])
+p=tomllib.loads((r/'packages/getcodexy/pyproject.toml').read_text()); l=tomllib.loads((r/'packages/getcodexy/uv.lock').read_text()); print('package',p['project']['version'],'lock',l['package'][0]['version'])
+for f in ('README.md','README.ko.md'):
+ print(f,'exists', (r/f).is_file())
 PY"""
         assert_allowed(metadata_command)
 
