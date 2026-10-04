@@ -34,14 +34,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument("--event", required=True, choices=EVENTS)
     event = parser.parse_args().event
-    raw = sys.stdin.buffer.read(1024 * 1024 + 1)
-    if len(raw) > MAX_INPUT_BYTES:
+    raw = sys.stdin.buffer.read(1024 * 1024 + 1)  # +1 detects oversize without unbounded input.
+    if len(raw) > MAX_INPUT_BYTES:  # Ignore oversized payloads.
         return 0
     try:
         payload = json.loads(raw)
     except (TypeError, ValueError, json.JSONDecodeError):
         return 0
-    if not isinstance(payload, dict) or payload.get("hook_event_name") != event:
+    if not isinstance(payload, dict) or payload.get("hook_event_name") != event:  # Require the invoked event.
         return 0
     if event in ("Interrupt", "UserPromptSubmit"):
         handle_input_event(event, payload, _invoke)
@@ -56,7 +56,7 @@ def main() -> int:
         return 0
     result = _invoke("--hook-pretool", payload)
     binding = result.get("requestBinding") if isinstance(result, dict) else None
-    if not isinstance(binding, str) or not binding:
+    if not isinstance(binding, str) or not binding:  # Bind only after runtime confirmation.
         return 0
     updated = dict(tool_input)
     updated["requestBinding"] = binding
@@ -95,7 +95,7 @@ def _invoke(argument: str, payload: dict[str, object]) -> object:
         return {}
 
 
-def _runtime() -> Path | None:
+def _runtime() -> Path | None:  # Lookup order: explicit, packaged, cached.
     root = Path(os.environ.get("PLUGIN_ROOT", Path(__file__).resolve().parents[1]))
     name, extension = _runtime_name()
     configured = os.environ.get("CODEXY_RUNTIME_DIR")
@@ -136,8 +136,8 @@ def _platform_name() -> str:
     return f"{operating_system}-{architecture}"
 
 
-def _cached_runtime(root: Path) -> Path | None:
-    if (
+def _cached_runtime(root: Path) -> Path | None:  # Cache only the versioned package-default runtime.
+    if (  # Custom release/source selection must never fall back to a package-default cache.
         (root / "runtime-release.json").is_file()
         or any(
             name in os.environ
@@ -176,7 +176,7 @@ def _cached_runtime(root: Path) -> Path | None:
     extension = ".exe" if platform == "windows-x86_64" else ""
     install_root = cache / key
     installed = install_root / "bin" / f"{runtime}{extension}"
-    if not _executable(installed):
+    if not _executable(installed):  # Invalid cache entries are misses.
         return None
     return installed if _manifest_matches(root, install_root) else None
 
@@ -203,7 +203,7 @@ def _plugin_release(path: Path) -> str | None:
     return release if isinstance(release, str) and SEMVER.fullmatch(release) else None
 
 
-def _manifest_matches(root: Path, install_root: Path) -> bool:
+def _manifest_matches(root: Path, install_root: Path) -> bool:  # Match this plugin's package identity.
     try:
         expected = json.loads(
             (root / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
@@ -229,7 +229,7 @@ def _manifest_matches(root: Path, install_root: Path) -> bool:
 
 def _executable(path: Path) -> bool:
     try:
-        metadata = os.lstat(path)
+        metadata = os.lstat(path)  # Inspect the path itself so symlinks are not followed.
     except FileNotFoundError:
         return False
     reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
