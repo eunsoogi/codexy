@@ -1,3 +1,5 @@
+// These checks keep installed concerns one-to-one across hook events and
+// exercise that each launcher rejects an envelope for the wrong event.
 use crate::support::FixtureCommand as Command;
 use serde_json::{json, Value};
 use std::collections::HashSet;

@@ -1,3 +1,5 @@
+// Keep preventive and lifecycle hook ownership distinct: diagnostics stay out
+// of unowned lifecycle events, while GitHub hard checks remain usable alone.
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
 use crate::support::FixtureCommand as Command;
