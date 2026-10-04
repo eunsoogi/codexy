@@ -15,13 +15,13 @@ When this arrangement is authorized, Codex MUST keep these roles distinct:
   lanes it MUST assign one Worker or retain an existing usable owner; it MUST
   NOT implement, patch, or duplicate the lane, or merge/publish without separate
   authority.
-- The native `codexy-watcher` is bounded and read-only. It MUST NOT own,
-  recreate, or transfer the task/release goal; any finite goal MUST stay in scope.
+- The bounded, read-only native `codexy-watcher` MUST NOT own, recreate, or
+  transfer task/release goals; finite goals MUST stay in scope.
 - A Worker app task MUST own implementation files, branch, verification, review
   patches, and its finite goal. Its idle-wait and blocked recovery MUST stay
   separate from the Orchestrator's lifecycle; the Watcher MUST remain distinct.
 
-Codex MUST auto-select role/model/effort pairs; it MUST NOT ask users to choose or reconfirm:
+Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
 
 - Orchestrator and Worker-to-Orchestrator: `gpt-6-astra` / `medium`.
 - Worker creation, Orchestrator-to-Worker, Watcher: `gpt-6-luna` / `max`.

@@ -86,8 +86,8 @@ goal MUST NOT stand in for the Worker's task-scoped goal.
 
 For selected child-owned issue lanes, the Orchestrator MUST assign one Worker
 before implementation; that Worker owns implementation and review-response
-patches. Existing usable Workers retain ownership, and the Orchestrator MUST
-NOT patch the lane or create a duplicate. The Orchestrator MUST coordinate and
+patches. Existing usable Workers retain ownership, and the Orchestrator MUST NOT
+patch the lane or create a duplicate. The Orchestrator MUST coordinate and
 verify; merge and publication remain separately authorized. Model and effort
 MUST be selected automatically from recipient role without asking the user to
 choose or reconfirm, subject to the actual tool contract.
