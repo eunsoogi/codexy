@@ -1,3 +1,5 @@
+// Keep lifecycle registrations aligned with the capability contract, then
+// exercise Unix runtime resolution without inheriting host environment state.
 use serde_json::Value;
 
 #[cfg(unix)]
@@ -41,6 +43,7 @@ fn run_hook(
     event: &str,
     payload: Value,
 ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+    // Keep host runtimes and watcher state from masking the fixture paths.
     let mut command = Command::new("/bin/sh");
     command
         .arg(plugin_root.join("hooks/codexy-watcher-interrupt.sh"))

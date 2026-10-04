@@ -2,6 +2,8 @@ use super::super::{McpClient, Path, binding_cancelled, run_hook, watcher_state};
 use super::wait_is_active;
 use serde_json::json;
 
+// Open an independent watcher session while the first request-bound wait is
+// live, proving that session creation neither removes nor cancels that binding.
 pub(super) fn open_after_live_binding(
     plugin: &Path,
     cache: &Path,

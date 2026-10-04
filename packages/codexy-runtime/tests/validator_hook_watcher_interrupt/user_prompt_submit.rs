@@ -8,6 +8,8 @@ const TEST_WAIT_MS: u64 = 30_000;
 #[path = "user_prompt_submit/session_binding_open.rs"]
 mod session_binding_open;
 
+// A prompt releases a wait only when one live request binding matches its host
+// session; ambiguous or different-session inputs must leave the waits running.
 #[test]
 fn user_prompt_submit_cancels_only_a_unique_wait_for_its_host_session() -> TestResult {
     let root = codexy_runtime::paths::repository_root();

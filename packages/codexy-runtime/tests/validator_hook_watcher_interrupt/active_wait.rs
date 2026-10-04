@@ -2,6 +2,8 @@ use super::*;
 use std::thread;
 use std::time::Duration;
 
+// Only the matching host session and turn release this bound wait; watcher
+// state remains usable afterward, and unsupported runtime resolution stays quiet.
 #[cfg(unix)]
 #[test]
 fn watcher_hook_resolves_and_interrupts_the_standard_cached_runtime() -> TestResult {
