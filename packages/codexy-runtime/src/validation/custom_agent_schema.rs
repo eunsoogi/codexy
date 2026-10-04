@@ -6,6 +6,7 @@ use crate::paths::display_relative;
 
 const ALLOWED_SKILLS_CONFIG_FIELDS: &[&str] = &["enabled", "path"];
 
+/// Validates the supported custom-agent `skills.config` array and rejects unknown schema fields.
 pub(super) fn check_skills_config(path: &Path, value: Option<&Value>, errors: &mut Vec<String>) {
     let Some(value) = value else {
         return;

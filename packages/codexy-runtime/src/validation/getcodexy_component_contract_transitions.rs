@@ -82,6 +82,7 @@ fn parse(value: &Value) -> Result<Transition, String> {
                 .ok_or_else(|| "transition error.code must be a string".to_owned())
         })
         .transpose()?;
+    // Success must preserve dependency closure; rejected or rolled-back rows must preserve inventory.
     match outcome.as_str() {
         "completed" => check_dependencies(&after)?,
         "rejected" | "rolled-back" if before == after => {}

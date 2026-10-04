@@ -9,6 +9,7 @@ use super::super::change_input::ChangeKind;
 use super::{ImpactLevel, ImpactOptions, UnknownReason, analyze, analyze_with_options};
 use fixtures::repository;
 
+// Real committed baselines verify reverse reachability, while unknown causes and bounded omissions stay explicit.
 #[test]
 fn python_changes_include_direct_and_transitive_dependents() -> Result<()> {
     let fixture = repository(&[

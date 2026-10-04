@@ -52,6 +52,7 @@ pub(super) fn issue_nodes(issues: Option<&Value>) -> Vec<&Value> {
 }
 
 pub(super) fn stacked_issue_evidence(pr_state: &Value) -> Option<Vec<&Value>> {
+    // A stacked PR is tied to the issue named by its terminal closing keyword and repository URL.
     let issue_number = closing_keyword_issue_number(pr_state.get("body").and_then(Value::as_str))?;
     let issues = issue_nodes(pr_state.get("linkedIssueReferences"))
         .into_iter()

@@ -28,6 +28,7 @@ struct RunStep {
 }
 
 pub(super) fn run_commands(workflow: &str) -> Vec<String> {
+    // Extract only YAML step `run` values; malformed workflows and non-mapping steps contribute no script evidence.
     let Ok(workflow) = serde_yaml::from_str::<Workflow>(workflow) else {
         return Vec::new();
     };

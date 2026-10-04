@@ -1,3 +1,4 @@
+// Setup failures and queued setup are tracked separately because a queued worktree is pending, not yet a failure.
 pub(in super::super) const FAILURE: &[&str] = &[
     "failed",
     "failure",

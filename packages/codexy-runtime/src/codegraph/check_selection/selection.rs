@@ -27,6 +27,7 @@ pub(super) fn select(
     mappings: &CheckMappings,
     options: &SelectionOptions,
 ) -> SelectionOutput {
+    // Selection accumulates recommendations and visible gaps together; incomplete impact or dependency evidence keeps the result partial.
     let mut state = SelectionState::new(mappings);
     for (path, evidence) in paths {
         state.add_path(path, evidence, mappings);

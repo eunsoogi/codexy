@@ -27,6 +27,7 @@ pub(super) fn collect_impact(root: &Path, args: &Value) -> Result<(ChangeSet, Im
 }
 
 fn change_scope(args: &Value) -> Result<ChangeScope> {
+    // A revision comparison is a pair; without either revision, analyze the working tree instead.
     match (
         optional_string(args, "base")?,
         optional_string(args, "head")?,
@@ -57,6 +58,7 @@ const fn impact_explanation(impact: &ImpactAnalysis) -> &'static str {
     }
 }
 
+/// Makes clear that analysis reports impact but neither runs checks nor decides completion.
 pub(super) fn proof_boundary() -> Value {
     json!({
         "checksExecuted": false,

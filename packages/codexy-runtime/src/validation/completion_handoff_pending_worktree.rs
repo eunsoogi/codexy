@@ -13,7 +13,7 @@ use super::completion_handoff_pending_worktree_text::{
 };
 
 const PENDING_WORKTREE_STATE_ERROR: &str = "pending worktree ids must resolve to a surfaced thread, explicit setup failure, or bounded timeout state with safe retry/reassignment evidence";
-
+/// Checks each unique affirmative pending-worktree ID for surfaced, failed, or bounded-timeout evidence.
 pub(super) fn check(text: &str) -> Option<String> {
     let pending_mentions = pending_worktree_mentions(text);
     if pending_mentions.is_empty() {
@@ -34,6 +34,7 @@ pub(super) fn check(text: &str) -> Option<String> {
     }
     None
 }
+// Ignore negated/false mentions and collapse repeated references to the same local identifier.
 fn pending_worktree_mentions(text: &str) -> Vec<usize> {
     let mut matches = Vec::new();
     for phrase in [
@@ -199,7 +200,6 @@ fn mentions_failed_pending_worktree_setup(text: &str) -> bool {
         )
         && mentions_actionable_setup_failure_detail(text)
 }
-
 fn mentions_actionable_setup_failure_detail(text: &str) -> bool {
     has_any(
         text,

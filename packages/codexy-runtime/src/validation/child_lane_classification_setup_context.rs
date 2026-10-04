@@ -16,12 +16,14 @@ use super::child_lane_ownership_phrases::{
     field_value, has_absent_field_value, metadata_key, trimmed_value,
 };
 
+/// Decides whether setup evidence falls in a child-owned lane or requires a fresh classification.
 pub(super) fn child_setup_context_applies(
     lines: &[&str],
     setup_index: usize,
     explicit_child_scope: bool,
     setup_before_classification: bool,
 ) -> bool {
+    // A present but invalid authority record is stronger than heuristic owner wording below.
     let classification_complete = latest_classification_before(lines, setup_index)
         .is_some_and(|snapshot| snapshot.has_complete_authority_record());
     if let Some(applies) = lane_authority_record_state_before(lines, setup_index)
@@ -121,6 +123,7 @@ pub(super) fn prior_child_lane_context_applies(lines: &[&str], index: usize) -> 
 }
 
 fn is_child_owned_lane_evidence(line: &str) -> bool {
+    // Table display text is not itself authoritative owner-decision evidence.
     let gfm_display_row = line.trim_start().starts_with('|');
     let line = metadata_key(line);
     matches!(line, "child-owned" | "child-owned lane")
@@ -147,6 +150,7 @@ fn requires_child_setup_validation(line: &str) -> bool {
 }
 
 fn has_complete_child_classification_before(lines: &[&str], end: usize) -> bool {
+    // Accept either the latest colon-form classification or a complete GFM display in the current lane.
     latest_classification_before(lines, end)
         .is_some_and(|snapshot| snapshot.has_complete_child_display())
         || {

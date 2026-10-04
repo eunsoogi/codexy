@@ -71,6 +71,7 @@ pub(super) fn check(value: &Value, label: &str) -> Result<(), String> {
 }
 
 pub(super) fn normalize(value: &Value, label: &str) -> Result<Value, String> {
+    // Connector snapshots are projected from captured source data and then checked with the same canonical contract.
     let is_connector = value
         .get("capture")
         .and_then(Value::as_object)
@@ -101,6 +102,7 @@ fn check_graphql_capture(capture: &Map<String, Value>, label: &str) -> Result<()
 }
 
 pub(super) fn same_pr(previous: &Value, current: &Value) -> Result<(), String> {
+    // Snapshot refreshes may advance SHAs, but cannot switch the owning PR or its base branch.
     for field in ["repository", "number", "url", "baseRefName"] {
         if previous.get(field) != current.get(field) {
             return Err(format!(

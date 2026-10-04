@@ -1,4 +1,5 @@
 pub(super) fn has_negative_label_value(suffix: &str) -> bool {
+    // Only an explicit colon or question-mark label value can negate the preceding claim.
     let Some(value) = label_value(suffix) else {
         return false;
     };

@@ -75,6 +75,7 @@ pub(in crate::validation) fn classify_wait_text(text: &str) -> Option<WaitDispos
     if reviewer == Some(WaitDisposition::Actionable) {
         return reviewer;
     }
+    // Explicit actionable review takes precedence; otherwise nonterminal work keeps the wait open.
     if event_words(text)
         .iter()
         .any(|event| is_nonterminal_wait(event))
@@ -125,6 +126,7 @@ fn classify_reviewer_words(words: &[&str]) -> Option<WaitDisposition> {
     if resolution_states.contains(&WaitDisposition::Nonterminal) {
         return Some(WaitDisposition::Nonterminal);
     }
+    // Match affirmed actionable phrases only after subject-scoped resolution states are checked.
     if ACTIONABLE_REVIEW_STATES
         .iter()
         .any(|phrase| has_affirmative_phrase(words, phrase))
@@ -180,6 +182,7 @@ fn local_state_negation(words: &[&str], state_index: usize) -> bool {
 }
 
 fn review_subject_owns_state(words: &[&str], subject: ReviewSubject, state_index: usize) -> bool {
+    // A later resolution state starts a new clause and cannot inherit this subject's status.
     state_index >= subject.end
         && !words[subject.end..state_index]
             .iter()
@@ -197,6 +200,7 @@ fn review_subjects(words: &[&str]) -> Vec<ReviewSubject> {
             })
         })
         .collect::<Vec<_>>();
+    // Also recognize maintainer feedback when the words appear nearby in a different phrase order.
     for (index, word) in words.iter().enumerate() {
         if *word == "feedback"
             && words[index.saturating_sub(3)..words.len().min(index + 4)].contains(&"maintainer")

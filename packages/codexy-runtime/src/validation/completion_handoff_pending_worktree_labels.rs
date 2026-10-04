@@ -8,6 +8,7 @@ pub(super) fn has_false_actionable_error_evidence(text: &str) -> bool {
         || find_phrase(text, "missing actionable error")
 }
 
+/// Detects false label values after common separators while respecting phrase boundaries.
 pub(super) fn has_false_label_value(text: &str, label: &str) -> bool {
     let mut rest = text;
     let mut offset = 0;

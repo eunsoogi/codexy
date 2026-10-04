@@ -28,6 +28,7 @@ struct OwnerDecision {
     affirmation: OwnerAffirmation,
 }
 
+/// Recognizes affirmative child ownership or routing-only context that implies child delegation is required.
 pub(super) fn is_child_delegation_owner_decision(value: &str) -> bool {
     let value = trimmed_value(value);
     is_affirmative_child_owner_decision(value)
@@ -100,6 +101,7 @@ fn parse_explicit_owner_decision(value: &str) -> Option<OwnerDecision> {
         .map_or((value, None), |(selection, remainder)| {
             (selection, Some(remainder))
         });
+    // If a rationale is supplied, require the explicit `because` form with substantive text after it.
     if rationale.is_some_and(|rationale| {
         rationale
             .strip_prefix("because ")
@@ -114,6 +116,7 @@ fn parse_explicit_owner_decision(value: &str) -> Option<OwnerDecision> {
 }
 
 fn parse_legacy_owner_decision(value: &str) -> Option<OwnerDecision> {
+    // Preserve the older `<owner> implementation lane` spelling as affirmative display evidence.
     let (selection, assertion) = value.split_once(char::is_whitespace)?;
     let remainder = assertion.strip_prefix("implementation lane")?;
     if !remainder.is_empty() && !remainder.starts_with(char::is_whitespace) {

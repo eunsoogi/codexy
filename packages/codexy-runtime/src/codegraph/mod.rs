@@ -30,14 +30,14 @@ use self::files::{discover_code_files, result_limit};
 use self::resolve::{graph_path, resolve_import};
 
 pub use self::errors::{CodegraphError, CodegraphErrorKind};
-
+/// Imports and exports extracted from one discovered source file.
 #[derive(Debug, Clone, Serialize)]
 pub struct GraphFile {
     pub path: String,
     pub imports: Vec<String>,
     pub exports: Vec<String>,
 }
-
+/// An import specifier, its normalized target path, and whether that target resolved.
 #[derive(Debug, Clone, Serialize)]
 pub struct GraphEdge {
     pub from: String,
@@ -45,12 +45,12 @@ pub struct GraphEdge {
     pub specifier: String,
     pub resolved: bool,
 }
-
+/// Metadata view of whether discovery exceeded the returned file limit.
 #[derive(Debug, Clone, Serialize)]
 pub struct GraphMetadata {
     pub truncated: bool,
 }
-
+/// Bounded graph results plus total-scan, truncation, and partial-error state.
 #[derive(Debug, Clone, Serialize)]
 pub struct Graph {
     pub root: PathBuf,
@@ -66,13 +66,13 @@ pub struct Graph {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub errors: Vec<CodegraphError>,
 }
-
+/// A source path and specifier that resolve to a reverse-dependency target.
 #[derive(Debug, Clone, Serialize)]
 pub struct Dependent {
     pub path: String,
     pub specifier: String,
 }
-
+/// Files that reference one normalized graph path.
 #[derive(Debug, Clone, Serialize)]
 pub struct ReverseDeps {
     pub root: PathBuf,
@@ -84,12 +84,12 @@ pub struct ReverseDeps {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub errors: Vec<CodegraphError>,
 }
-
+/// One file path returned by a neighborhood traversal.
 #[derive(Debug, Clone, Serialize)]
 pub struct GraphNode {
     pub path: String,
 }
-
+/// A breadth-first neighborhood of resolved imports around a starting file.
 #[derive(Debug, Clone, Serialize)]
 pub struct Neighborhood {
     pub root: PathBuf,
@@ -104,7 +104,7 @@ pub struct Neighborhood {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub errors: Vec<CodegraphError>,
 }
-
+/// Discovers source files, parses the bounded result set, and resolves imports against the full file index.
 #[must_use]
 pub fn build_graph(root: &Path, limit: Option<usize>) -> Graph {
     begin_operation();
@@ -145,7 +145,7 @@ pub fn build_graph(root: &Path, limit: Option<usize>) -> Graph {
         errors,
     }
 }
-
+/// Scans the full graph for imports resolving to `target_path`, then bounds returned dependents.
 #[must_use]
 pub fn reverse_deps(root: &Path, target_path: &str, limit: Option<usize>) -> ReverseDeps {
     let bounded_limit = result_limit(limit);
@@ -172,7 +172,7 @@ pub fn reverse_deps(root: &Path, target_path: &str, limit: Option<usize>) -> Rev
         errors,
     }
 }
-
+/// Traverses resolved outgoing imports breadth-first, retaining only nodes and edges within the result bound.
 #[must_use]
 pub fn neighborhood(
     root: &Path,

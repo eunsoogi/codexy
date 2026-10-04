@@ -93,6 +93,7 @@ struct CargoTargets {
 }
 
 fn cargo_target_paths(root: &Path) -> CargoTargets {
+    // Cargo metadata is offline and dependency-free; missing or invalid metadata falls back to conventional package roots.
     let mut targets = cargo_manifest_paths(root)
         .into_iter()
         .map(|manifest| cargo_target_paths_for_manifest(root, &manifest))

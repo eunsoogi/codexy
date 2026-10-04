@@ -4,6 +4,7 @@ use super::child_lane_classification_setup::formal_classification_complete_index
 use super::child_lane_classification_setup_context::prior_child_lane_context_applies;
 use super::child_terminal_handoff::without_metadata_prefix;
 
+/// Requires a formal lane classification before control calls when prior evidence establishes child ownership.
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
     if lines.iter().enumerate().any(|(index, line)| {
@@ -37,6 +38,7 @@ pub(super) fn normalized_metadata_lines<'a>(
     lines: &[&'a str],
     end: usize,
 ) -> (Vec<&'a str>, usize) {
+    // Strip list/checklist wrappers while retaining the latest prefixed lane boundary as the scan start.
     let lane_start = lines
         .iter()
         .take(end)

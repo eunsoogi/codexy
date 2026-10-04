@@ -28,6 +28,7 @@ pub(super) fn is_stale(segment: &str) -> bool {
 }
 
 pub(super) fn current_text(text: &str) -> String {
+    // Remove quoted, fenced, and historical examples before readiness claims are evaluated.
     let lines: Vec<_> = text.lines().collect();
     let mut current = String::new();
     let mut stale_heading = false;

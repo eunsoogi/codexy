@@ -3,6 +3,7 @@ pub(super) fn field_value<'a>(line: &'a str, field: &str) -> Option<&'a str> {
         .and_then(|(key, value)| metadata_key(key).contains(field).then_some(value.trim()))
 }
 
+/// Normalizes list and checked-box prefixes before metadata labels are compared.
 pub(super) fn metadata_key(key: &str) -> &str {
     let key = key.trim().trim_start_matches(['-', '*']).trim_start();
     key.strip_prefix("[x]")
@@ -19,6 +20,7 @@ fn has_absent_value(value: &str) -> bool {
 }
 
 pub(super) fn has_absent_field_value(value: &str, field: &str) -> bool {
+    // A generic absence marker negates a specific field only when no explicit field value remains.
     let value = trimmed_value(value);
     if has_absent_value(value) {
         return true;

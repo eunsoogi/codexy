@@ -93,6 +93,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
 }
 
 pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
+    // Named specialists win first; simple and generic routes require their complete evidence/capability gates.
     let policy = contract();
     let request = parse_request(request)?;
     if let Some(agent_type) = request

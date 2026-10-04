@@ -81,6 +81,7 @@ pub(crate) fn check(
     devtools_platforms: &Map<String, Value>,
     path: &Path,
 ) -> Result<()> {
+    // Class receipts bind the devtools payloads and core handoff bridges to one source commit and tree.
     let watcher_aware = classes.contains_key("coreWatcherMcp");
     if watcher_aware {
         exact_keys(
@@ -156,6 +157,7 @@ pub(super) fn check_manifest(
     release: &Map<String, Value>,
     release_path: &Path,
 ) -> Result<()> {
+    // Verify the packaged core manifest's bytes and source/platform identities against the release receipt.
     let classes = object_field(release, "classes", release_path)?;
     let core = object_field(classes, "coreHandoff", release_path)?;
     let identity = object_field(core, "manifest", release_path)?;

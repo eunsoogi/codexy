@@ -24,6 +24,7 @@ pub(super) fn has_setup_action(line: &str) -> bool {
         || (relations.is_empty() && setup_action_indices(&words(line)).next().is_some())
 }
 
+/// Splits setup mentions into action-scoped clauses with independent actor, polarity, and timing evidence.
 pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
     let words = words(line);
     let actions = setup_action_indices(&words).collect::<Vec<_>>();
@@ -91,6 +92,7 @@ pub(super) fn setup_relations(line: &str) -> Vec<SetupRelation> {
 }
 
 fn timing_phrase_is_negated(words: &[&str], timing: usize) -> bool {
+    // Stop at the nearest action, actor, or clause boundary so a prior denial does not cross relations.
     for index in (0..timing).rev() {
         if matches!(words[index], "not" | "never") {
             return true;
@@ -125,6 +127,7 @@ fn relation_window_end(words: &[&str], action: usize, next_action: Option<usize>
 }
 
 fn words(line: &str) -> Vec<&str> {
+    // Preserve lexical hyphens but insert explicit boundaries at punctuation for later clause analysis.
     let mut words = Vec::new();
     for sentence in line.split_inclusive(['.', '!', '?']) {
         let mut clause_start = 0;
@@ -187,6 +190,7 @@ fn and_coordinates_setup_subjects(
     conjunction: usize,
     action: usize,
 ) -> bool {
+    // Keep a shared action together only when the coordinated subjects identify different actors.
     let actors = [start..conjunction, conjunction + 1..action]
         .map(|range| words[range].iter().find_map(|word| actor_word(word)));
     matches!(actors, [Some(left), Some(right)] if left != right)

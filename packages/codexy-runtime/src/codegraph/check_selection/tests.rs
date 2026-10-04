@@ -8,7 +8,7 @@ use super::model::{
     ManualReason, MappingKind, MappingOwner, SelectionOptions,
 };
 use super::{recommend, recommend_with_options};
-
+// Synthetic inputs isolate mappings; hostile command text must stay inert.
 fn changes(paths: &[&str]) -> ChangeSet {
     ChangeSet {
         baseline_revision: "base".into(),

@@ -1,3 +1,4 @@
+/// Requires PR titles to use the repository's Conventional Commit subject form.
 pub(super) fn check_pr_title(title: &str) -> Vec<String> {
     if is_conventional_subject(title, true) {
         Vec::new()
@@ -6,6 +7,7 @@ pub(super) fn check_pr_title(title: &str) -> Vec<String> {
     }
 }
 
+/// Keeps issue titles descriptive and uppercase-led, outside the commit-category syntax.
 pub(super) fn check_issue_title(title: &str) -> Vec<String> {
     if is_issue_category(title) {
         vec!["issue title must not use Conventional Commit style".to_string()]
@@ -16,6 +18,7 @@ pub(super) fn check_issue_title(title: &str) -> Vec<String> {
     }
 }
 
+/// Validates a merge subject while allowing only the expected terminal pull-request reference.
 pub(super) fn check_merge_subject(subject: &str, expected_pr: Option<u64>) -> Vec<String> {
     let subject = subject_without_expected_pr_suffix(subject, expected_pr);
     if is_conventional_subject(subject, expected_pr.is_some()) {
@@ -95,6 +98,7 @@ fn is_issue_category(value: &str) -> bool {
 }
 
 fn parse_category_prefix(value: &str) -> Option<(usize, bool, bool)> {
+    // Consume type, optional scope, and optional breaking marker in order; callers validate the remaining separator.
     let bytes = value.as_bytes();
     let mut index = 0;
     while index < bytes.len() && is_type_character(bytes[index]) {

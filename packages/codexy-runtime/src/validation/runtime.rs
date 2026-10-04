@@ -19,6 +19,7 @@ pub(super) fn check_source_contract(plugin_root: &Path, manifest: &Value) -> Res
     let platforms = supported_platforms(manifest, &path)?;
     let release = plugin_root.join("runtime-release.json");
     let candidate = plugin_root.join("runtime-candidate.json");
+    // A release receipt opts into immutable-package checks; an unproven source tree stays on the public bootstrap baseline.
     if release.exists() {
         crate::validation::runtime_release_contract::check(plugin_root, &platforms)?;
     } else if candidate.exists() || platforms != ["darwin-arm64", "linux-x86_64"] {
@@ -59,6 +60,7 @@ fn check_packaged_runtime_artifacts(plugin_root: &Path, manifest: &Value) -> Res
     }
     let path = manifest_path(plugin_root);
     let platforms = supported_platforms(manifest, &path)?;
+    // Validate each server payload per declared platform and require the separate Windows dispatcher when applicable.
     for server in REQUIRED_RUNTIME_SERVERS {
         for platform in &platforms {
             let runtime_path = plugin_root

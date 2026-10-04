@@ -61,6 +61,7 @@ impl SnapshotGraph {
         limit: usize,
         existing_paths: &BTreeSet<Vec<String>>,
     ) -> ReversePaths {
+        // Expand only supported-language dependents; unsupported files remain visible as leaves rather than implying known reachability.
         let mut queue = VecDeque::from([(start.to_owned(), vec![start.to_owned()])]);
         let mut visited = BTreeSet::from([start.to_owned()]);
         let mut known_paths = existing_paths.clone();

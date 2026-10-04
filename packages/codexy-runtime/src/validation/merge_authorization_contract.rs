@@ -1,6 +1,7 @@
 use serde_json::Value;
 
 pub(super) fn check(record: &Value, pr_state: &Value, errors: &mut Vec<String>) {
+    // The repository contract is accepted only when its exact OWNER/MEMBER comment appears on the PR.
     require(record, "target", "current-pull-request", errors);
     let id = string(record, "contractCommentId");
     let url = string(record, "contractCommentUrl");

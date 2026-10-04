@@ -8,6 +8,7 @@ use super::child_lane_classification_setup_relations::{has_setup_action, setup_r
 use super::child_lane_classification_setup_relative::preserves_relative_subject_coordination;
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
 
+/// Extracts setup clauses while excluding metadata values that describe required negative proof.
 pub(super) fn matched_child_branch_or_worktree_setup_clauses(line: &str) -> Vec<&str> {
     let line = trimmed_value(line);
     if line.split_once(':').is_some_and(|(key, value)| {
@@ -47,6 +48,7 @@ pub(super) fn child_setup_claims_before_classification(line: &str) -> bool {
 }
 
 fn setup_clauses(line: &str) -> Vec<&str> {
+    // Split independent clauses for local actor/negation decisions but preserve relative-subject coordination.
     let mut clauses = line
         .split(&[',', ';', '.'][..])
         .flat_map(|clause| clause.split(" but "))
@@ -77,6 +79,7 @@ fn split_and_clauses(clause: &str) -> Vec<&str> {
 
 fn clause_has_child_branch_or_worktree_setup(line: &str) -> bool {
     let actor = setup_actor(line);
+    // Unqualified setup counts as child work only when no explicit parent actor or absent-setup claim overrides it.
     (clause_has_explicit_child_scope(line)
         || has_codexy_branch_setup_subject(line)
         || has_unqualified_branch_or_worktree_setup(line))

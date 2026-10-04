@@ -66,6 +66,7 @@ pub enum DependencyState {
 
 impl Default for DependencyState {
     fn default() -> Self {
+        // Missing dependency evidence defaults to unconfirmed so selected changes raise broader-verification and manual-judgment signals.
         Self::Unconfirmed {
             detail: "dependency state was not confirmed".to_owned(),
         }

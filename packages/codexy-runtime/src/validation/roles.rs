@@ -21,6 +21,7 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
 }
 
 fn check_specialists(plugin_root: &Path) -> Result<Vec<String>> {
+    // The catalog and agent files must agree in both directions, with one maintained file per specialist.
     let mut errors = Vec::new();
     let agents_root = plugin_root.join("agents");
     let catalog_path = agents_root.join("catalog.toml");

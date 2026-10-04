@@ -23,6 +23,7 @@ pub(super) fn check_selection_result(root: &std::path::Path, args: &Value) -> Re
 }
 
 fn selection_options(args: &Value) -> Result<SelectionOptions> {
+    // Missing dependency evidence defaults to unconfirmed so selection remains conservative.
     let state = args
         .get("dependencyState")
         .map(|value| value.as_str().context("dependencyState must be a string"))
@@ -111,6 +112,7 @@ fn array_field<'a>(value: &'a Value, name: &str) -> Result<&'a [Value]> {
 }
 
 fn array_field_alias<'a>(value: &'a Value, name: &str, alias: &str) -> Result<&'a [Value]> {
+    // Accept the camelCase wire name and Rust-style snake_case for compatibility with callers.
     value
         .get(name)
         .or_else(|| value.get(alias))

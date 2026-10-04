@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use toml::Value as TomlValue;
 
 pub(super) fn cargo_manifest_paths(root: &Path) -> Vec<PathBuf> {
+    // Traverse nested packages and workspace roots, pruning ordinary workspace members already represented by root metadata.
     let mut manifests = Vec::new();
     let mut pending = VecDeque::from([(root.to_owned(), false)]);
     while let Some((directory, inside_workspace)) = pending.pop_front() {

@@ -15,6 +15,7 @@ pub(super) struct MappingValidation {
 }
 
 pub(super) fn validate(mappings: &CheckMappings) -> MappingValidation {
+    // Conflicting records are retained as explicit contradictions so later selection cannot depend on input order.
     let mut definitions = BTreeMap::<String, CheckDefinition>::new();
     let mut contradictory_checks = BTreeSet::new();
     let mut gaps = BTreeSet::new();

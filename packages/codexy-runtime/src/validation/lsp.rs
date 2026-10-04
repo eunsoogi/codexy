@@ -171,6 +171,7 @@ pub(super) fn check_rust_readiness(plugin_root: &Path) -> Vec<String> {
 }
 
 fn check_inner(plugin_root: &Path) -> Result<()> {
+    // The TOML catalog is authoritative; the packaged JSON must be its exact deterministic projection.
     let catalog = catalog(plugin_root)?;
     if catalog.len() != 39 {
         bail!(

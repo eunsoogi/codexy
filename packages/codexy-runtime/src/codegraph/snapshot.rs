@@ -12,6 +12,7 @@ pub(super) struct FileSnapshot {
     pub(super) environment_digest: [u8; 32],
 }
 
+/// Hashes discovery-affecting ignore, module, and Git-exclude files for parse-cache invalidation.
 pub(super) fn environment_digest(root: &Path) -> [u8; 32] {
     let mut paths = WalkBuilder::new(root)
         .hidden(false)
@@ -33,6 +34,7 @@ pub(super) fn environment_digest(root: &Path) -> [u8; 32] {
     paths.sort();
 
     let mut hasher = Sha256::new();
+    // Include each normalized path as well as its bytes so renamed configuration also changes the digest.
     for path in paths {
         let relative = path
             .strip_prefix(root)

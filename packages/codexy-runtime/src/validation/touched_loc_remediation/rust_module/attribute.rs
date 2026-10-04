@@ -8,6 +8,7 @@ pub(super) fn path_attribute(line: &str) -> Option<String> {
     (is_attribute_trivia(suffix, &mut comment_depth) && comment_depth == 0).then_some(value)
 }
 
+// On malformed or unsupported cfg_attr syntax, assume it may redirect a module and let the caller fail conservatively.
 pub(super) fn has_cfg_attr_path(line: &str) -> bool {
     let Some(arguments) = named_attribute_content(line, "cfg_attr") else {
         return false;

@@ -37,6 +37,7 @@ pub(super) fn check_pr_labels(pr_state: &str) -> Vec<String> {
 }
 
 pub(super) fn check_completion_handoff(handoff: &str, pr_state: &str) -> Vec<String> {
+    // Label evidence matters only when the handoff claims readiness or completion for an open Codexy PR.
     if !(claims_pr_readiness(handoff) || claims_completion(handoff)) {
         return Vec::new();
     }

@@ -42,6 +42,7 @@ pub(super) struct SearchTruncation {
     content_bytes: bool,
 }
 
+/// Searches source lines by regex while reporting separate per-line, result-count, and payload limits.
 pub(super) fn search(root: &Path, query: &str, limit: Option<usize>) -> Result<SearchOutput> {
     begin_operation();
     let pattern = Regex::new(query).with_context(|| format!("invalid search regex: {query}"))?;
@@ -97,6 +98,7 @@ fn bound_content(output: &mut SearchOutput) {
     if serialized_size(output) <= SEARCH_CONTENT_LIMIT_BYTES {
         return;
     }
+    // Preserve as many diagnostics as fit first, then matches; clear both if fixed metadata still exceeds the cap.
     output.truncation.content_bytes = true;
     let error_count = largest_fitting_error_prefix(output);
     output.errors.truncate(error_count);
@@ -133,6 +135,7 @@ fn largest_fitting_prefix<F>(length: usize, size: F) -> usize
 where
     F: Fn(usize) -> usize,
 {
+    // Serialized prefix size is monotonic, so binary search finds the largest prefix under the byte budget.
     let mut low = 0;
     let mut high = length;
     while low < high {
@@ -182,6 +185,7 @@ fn truncate_utf8_around(value: &str, matched: Range<usize>, limit: usize) -> (St
         start += 1;
     }
     let mut end = start + limit;
+    // Adjust both ends to character boundaries before slicing a potentially multi-byte UTF-8 line.
     while !value.is_char_boundary(end) {
         end -= 1;
     }

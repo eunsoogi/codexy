@@ -114,6 +114,7 @@ pub(super) fn mcp_config_path(plugin_root: &Path, manifest: &Value) -> Result<Pa
                 },
             )
         })?;
+    // Resolve the configured file and its parent separately so a not-yet-created filename stays plugin-relative.
     let plugin_root_resolved = plugin_root.canonicalize()?;
     if !resolved.starts_with(&plugin_root_resolved) {
         bail!(

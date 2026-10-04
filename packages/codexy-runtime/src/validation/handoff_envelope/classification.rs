@@ -59,6 +59,7 @@ pub(super) fn route(classification: &StableClassification) -> Result<Route> {
     }
     let known_surfaces = surfaces.iter().map(String::as_str).all(known_surface);
     let known_risks = risks.iter().map(String::as_str).all(known_risk);
+    // Structured classifications fail closed for unknown labels, missing surfaces, any risk, or a sensitive class.
     let fail_closed = if structured {
         !known_workflow
             || !known_surfaces

@@ -7,6 +7,7 @@ use tempfile::TempDir;
 
 use super::super::super::change_input::{ChangeScope, ChangeSet, collect};
 
+// A throwaway Git repository gives each scenario real revision and working-tree semantics without touching the caller's checkout.
 pub(super) struct Fixture {
     pub(super) directory: TempDir,
 }

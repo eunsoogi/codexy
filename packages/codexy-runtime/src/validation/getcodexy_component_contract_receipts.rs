@@ -85,6 +85,7 @@ pub(super) fn pending_hook_activation(
     )
 }
 
+// Read receipts bind inventory presence, selection, and consistency instead of checking each field in isolation.
 pub(super) fn statuses(cases: &[Value]) -> Result<(), String> {
     for (id, state, components, consistency, error) in [
         (

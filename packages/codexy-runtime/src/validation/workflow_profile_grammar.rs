@@ -16,6 +16,7 @@ struct Token {
 }
 
 pub(super) fn value_has_strict_signal(value: &str) -> bool {
+    // Strict terms count only inside their clause and when local negation does not make the signal explicitly false.
     category_clauses(value).iter().any(|tokens| {
         tokens
             .iter()

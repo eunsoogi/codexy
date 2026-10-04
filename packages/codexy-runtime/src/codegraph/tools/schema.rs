@@ -4,6 +4,7 @@ pub(super) fn change_impact_schema() -> Value {
     analysis_schema(false)
 }
 
+/// Extends impact inputs with dependency evidence and the required explicit check mappings.
 pub(super) fn check_selection_schema() -> Value {
     let mut schema = analysis_schema(true);
     schema["properties"]["dependencyState"] = json!({

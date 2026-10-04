@@ -16,6 +16,7 @@ pub(super) fn status_fields(pr_state: &Value) -> impl Iterator<Item = String> + 
         .flatten()
 }
 
+/// Returns the captured status when any non-header line indicates an unclean worktree.
 pub(super) fn dirty_status(lines: &[String]) -> Option<String> {
     lines
         .iter()
@@ -23,6 +24,7 @@ pub(super) fn dirty_status(lines: &[String]) -> Option<String> {
         .then(|| lines.join("; "))
 }
 
+/// Finds Git's upstream markers showing the local branch is not synchronized with its upstream.
 pub(super) fn branch_status_not_pushed(lines: &[String]) -> Option<&str> {
     lines
         .iter()
@@ -58,6 +60,7 @@ pub(super) fn pr_branch_statuses(pr_state: &Value) -> Vec<String> {
         return Vec::new();
     };
     let prefix = format!("## {head}...");
+    // Keep only status records naming the PR branch and an upstream; a missing upstream has no sync proof.
     status_fields(pr_state)
         .filter(|line| {
             line.strip_prefix(&prefix)
@@ -68,6 +71,7 @@ pub(super) fn pr_branch_statuses(pr_state: &Value) -> Vec<String> {
 }
 
 fn status_lines(value: &Value) -> Option<Vec<String>> {
+    // Runtime evidence may capture status as one multiline string or an array of lines.
     if let Some(text) = value.as_str() {
         let lines: Vec<_> = text
             .lines()

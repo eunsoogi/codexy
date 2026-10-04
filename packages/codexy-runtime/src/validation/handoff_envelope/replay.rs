@@ -14,6 +14,7 @@ pub(super) fn validate_batch(
     texts: &[&str],
     authority: &HandoffAuthority,
 ) -> Result<Vec<HandoffEnvelope>> {
+    // Validate against a private candidate set so one bad item leaves authority unchanged.
     let mut candidate = authority.seen_event_ids.borrow().clone();
     let mut envelopes = Vec::with_capacity(texts.len());
     for text in texts {

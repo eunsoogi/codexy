@@ -22,6 +22,7 @@ pub(super) fn is_launcher(path: &Path) -> bool {
     )
 }
 
+// Pin shipped launchers and the full transitive import closure so packaged policy code cannot diverge from validator-checked sources.
 pub(super) fn check(plugin_root: &Path) -> Result<()> {
     let hooks = plugin_root.join("hooks");
     let sources = source_map();

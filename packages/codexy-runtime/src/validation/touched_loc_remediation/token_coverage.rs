@@ -1,4 +1,5 @@
 pub(super) fn moved_line_coverage(removed: &str, extracted: &str) -> usize {
+    // Return whole quarters (0 through 4) of unique nonblank removed lines found in the extracted sources.
     let mut extracted_lines = std::collections::HashMap::<&str, usize>::new();
     for line in extracted.lines().filter(|line| !line.trim().is_empty()) {
         *extracted_lines.entry(line).or_default() += 1;

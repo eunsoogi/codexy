@@ -11,6 +11,7 @@ pub(super) fn check(_plugin_root: &Path) -> Vec<String> {
 }
 
 pub(super) fn check_evidence(_plugin_root: &Path, evidence: &str) -> Vec<String> {
+    // Strict evidence can upgrade an implicit profile, but an explicit weaker choice is reported as a contract error.
     let active = current_active_lines(&evidence.to_ascii_lowercase());
     let lines = active.iter().map(String::as_str).collect::<Vec<_>>();
     let (mut profile, explicit, selection_error) = profile(&lines);

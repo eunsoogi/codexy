@@ -89,6 +89,7 @@ fn project(
     snapshot: &Map<String, Value>,
     label: &str,
 ) -> Result<Map<String, Value>, String> {
+    // Rebuild PR identity and commit fields from the authenticated connector result, cross-checking supplied values.
     let source = capture
         .get("source")
         .and_then(Value::as_object)

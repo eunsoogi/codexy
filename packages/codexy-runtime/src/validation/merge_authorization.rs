@@ -53,6 +53,7 @@ fn check_kind(authorization: &Value, pr_state: &Value, errors: &mut Vec<String>)
 }
 
 fn check_intent(authorization: &Value, pr_state: &Value, errors: &mut Vec<String>) {
+    // Authorization must be read back from one authoritative OWNER/MEMBER comment on this exact PR.
     if ["actor", "recordIssuer", "sourceReference"]
         .iter()
         .any(|field| authorization.get(field).is_some())

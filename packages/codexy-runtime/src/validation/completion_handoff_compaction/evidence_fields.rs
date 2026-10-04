@@ -10,6 +10,7 @@ use phrases::{
 };
 use serde_json::Value;
 
+/// Requires active, non-negated workflow evidence in a labeled handoff field.
 pub(super) fn has_codexy_orchestration_contract(text: &str) -> bool {
     text.lines().any(|line| {
         codexy_contract_value(line.trim()).is_some_and(|contract| {
@@ -21,6 +22,7 @@ pub(super) fn has_codexy_orchestration_contract(text: &str) -> bool {
     })
 }
 
+/// Requires concrete issue/PR checks whose referenced numbers match current remote state.
 pub(super) fn has_duplicate_or_no_active_work_state(text: &str, pr_state: &Value) -> bool {
     text.lines().any(|line| {
         duplicate_state_value(line.trim()).is_some_and(|state| {
@@ -34,6 +36,7 @@ pub(super) fn has_duplicate_or_no_active_work_state(text: &str, pr_state: &Value
     })
 }
 
+/// Requires a present parent/child edit-ownership boundary, excluding planned or denied wording.
 pub(super) fn has_parent_child_ownership_boundary(text: &str) -> bool {
     text.lines().any(|line| {
         ownership_boundary_value(line.trim()).is_some_and(|boundary| {
@@ -45,6 +48,7 @@ pub(super) fn has_parent_child_ownership_boundary(text: &str) -> bool {
     })
 }
 
+/// Accepts a concrete current stop-condition field only when it is neither absent nor prospective.
 pub(super) fn has_authoritative_stop_condition(text: &str) -> bool {
     text.lines().any(|line| {
         ["stop condition", "authoritative stop condition"]
@@ -179,6 +183,7 @@ fn has_planned_stop_condition_evidence(text: &str) -> bool {
 }
 
 fn has_real_value(value: &str) -> bool {
+    // Labels such as `none`, `missing`, or `not captured` do not count as evidence values.
     if value.is_empty() || is_bare_no_value(value) {
         return false;
     }

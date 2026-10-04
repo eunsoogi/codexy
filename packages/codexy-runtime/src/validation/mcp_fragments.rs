@@ -3,6 +3,7 @@ use serde_json::Value;
 use super::mcp::DISALLOWED_FRAGMENTS;
 
 pub(super) fn disallowed_value_fragments(value: &Value) -> Vec<&'static str> {
+    // Search every nested string, then sort and deduplicate matches for stable diagnostics.
     let mut matches = Vec::new();
     collect_fragments(value, &mut matches);
     matches.sort_unstable();

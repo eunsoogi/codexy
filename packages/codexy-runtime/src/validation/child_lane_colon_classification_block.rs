@@ -3,6 +3,7 @@ use super::child_lane_classification_fields::ClassificationFields;
 use super::child_lane_ownership_phrases::{metadata_key, trimmed_value};
 
 #[derive(Default)]
+/// Tracks whether the current colon-form classification is active, complete, or terminated by unrelated text.
 pub(super) struct ColonClassificationBlock {
     state: ColonClassificationBlockState,
 }
@@ -22,6 +23,7 @@ impl ColonClassificationBlock {
     }
 
     pub(super) fn invalidate(&mut self, fields: &mut ClassificationFields) {
+        // Invalidating also clears accumulated fields so a later fragment cannot complete the old record.
         *fields = ClassificationFields::default();
         self.state = ColonClassificationBlockState::Terminated;
     }
@@ -42,6 +44,7 @@ impl ColonClassificationBlock {
         line: &str,
         authority: Option<LaneAuthority>,
     ) {
+        // Only consecutive schema fields belong to this block; unrelated text ends it.
         if !matches!(self.state, ColonClassificationBlockState::Active) {
             return;
         }

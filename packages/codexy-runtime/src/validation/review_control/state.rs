@@ -33,6 +33,7 @@ pub(super) fn check_pr_state(
     state: &Value,
     require_pass: bool,
 ) -> Result<(), String> {
+    // The state facade enforces the current input boundary before validating the captured PR snapshot and control.
     request::reject_retired_inputs(state)?;
     simple::check_pr_state(plugin_root, state, require_pass)
 }

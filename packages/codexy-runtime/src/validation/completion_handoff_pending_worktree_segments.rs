@@ -11,6 +11,7 @@ pub(super) fn colon_starts_lifecycle_entry(text: &str, colon: usize) -> bool {
 }
 
 pub(super) fn bounded_search_evidence_text(text: &str) -> &str {
+    // Ignore trailing metadata that lacks its own search evidence so it cannot complete an incomplete record.
     match text.split_once("metadata:") {
         Some((before, after)) if !contains_search_evidence(after) => before,
         _ => text,
@@ -62,6 +63,7 @@ pub(super) fn pending_label_value_after_separator(suffix: &str) -> Option<&str> 
 }
 
 pub(super) fn has_non_review_thread_id_evidence(text: &str) -> bool {
+    // Review-thread identifiers do not prove that a pending worktree resolved to a surfaced task thread.
     let phrase = "thread id";
     let mut rest = text;
     let mut offset = 0;

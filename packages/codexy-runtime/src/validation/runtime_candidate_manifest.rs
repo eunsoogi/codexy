@@ -39,6 +39,7 @@ pub(super) fn check(
     let candidate: Value = serde_json::from_str(&text)
         .with_context(|| format!("invalid JSON in {}", display_relative(&path)))?;
     let candidate = object(&candidate, "candidate receipt", &path)?;
+    // The embedded staging receipt must repeat the release identities without depending on the outer archive digest.
     let core_aware = release.contains_key("classes") || candidate.contains_key("classes");
     let fields = if core_aware {
         &[

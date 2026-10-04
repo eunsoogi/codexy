@@ -23,6 +23,7 @@ pub(super) const DOMAIN_ERRORS: &[&str] = &[
     "unknown-installed-component",
 ];
 
+// Component selections are canonicalized against the contract order, which also rejects duplicates.
 pub(super) fn component_selection(
     value: Option<&Value>,
     field: &str,
@@ -51,6 +52,7 @@ pub(super) fn component_selection(
 }
 
 pub(super) fn check_dependencies(selection: &[String]) -> Result<(), String> {
+    // A successful dependent component selection is valid only when core is present too.
     if (selection.iter().any(|component| component == "github")
         || selection.iter().any(|component| component == "devtools"))
         && !selection.iter().any(|component| component == "core")

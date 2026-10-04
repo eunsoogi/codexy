@@ -14,6 +14,7 @@ pub(super) fn resolve(_plugin_root: &Path, text: &str) -> Result<Value> {
     }
 }
 
+// Legacy output stays compact; V2 emits an obligation record for each boundary so mixed requests retain their individual proof duties.
 fn resolve_v1(request: super::model::LegacyRequest) -> Result<Value> {
     let engineering = request
         .boundaries

@@ -68,6 +68,7 @@ struct CompactEnvelope {
 impl HandoffEnvelope {
     pub fn new(mut stable: StableHandoff, volatile: HandoffVolatile) -> Self {
         stable.policy_digest = stable_policy_digest();
+        // Separate digests let compact handoffs refer to the stable body while carrying fresh evidence.
         let stable_identity = schema::digest_value(&stable, STABLE_PREFIX);
         let volatile_identity = schema::digest_value(&volatile, VOLATILE_PREFIX);
         Self {
@@ -98,6 +99,7 @@ pub fn canonicalize_handoff(text: &str) -> Result<String> {
     );
     let value = super::routing_json::parse(text).map_err(anyhow::Error::msg)?;
     let compact: CompactEnvelope = serde_json::from_value(value).map_err(anyhow::Error::from)?;
+    // Canonicalization can verify the carried volatile body, but the stable body is supplied later by authority.
     ensure!(
         compact.schema == "codexy.handoff-envelope.v1"
             && compact.volatile_identity

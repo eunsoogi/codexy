@@ -55,6 +55,7 @@ pub(super) fn select(_plugin_root: &Path, input: Input) -> Result<String> {
         .iter()
         .map(ToString::to_string)
         .collect::<BTreeSet<_>>();
+    // Every closed trigger must be decided; any applicable trigger overrides the eligible lower-risk route.
     if decisions.keys().cloned().collect::<BTreeSet<_>>() != expected {
         bail!("workflow classification must decide every closed strict trigger");
     }

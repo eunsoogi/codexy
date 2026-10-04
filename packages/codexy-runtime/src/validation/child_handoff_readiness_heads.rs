@@ -1,5 +1,6 @@
 use serde_json::Value;
 
+/// Extracts SHA-like values only from sentences that discuss pushed or synchronized heads.
 pub(super) fn claimed_pushed_heads(text: &str) -> Vec<String> {
     text.split(['\n', ';'])
         .flat_map(|line| line.split(". "))
@@ -14,6 +15,7 @@ pub(super) fn claimed_pushed_heads(text: &str) -> Vec<String> {
         .collect()
 }
 
+/// Requires current local and remote-tracking heads to match the PR head for readiness claims.
 pub(super) fn captured_head_mismatch(pr_state: &Value) -> Option<String> {
     let Some(pr_head) = non_empty_string_field(pr_state, "headRefOid") else {
         return Some(
@@ -75,6 +77,7 @@ fn non_empty_string_field<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
 }
 
 fn head_refs_after_markers(text: &str) -> Vec<String> {
+    // Accept abbreviated hashes only after explicit head/commit/pushed markers, not arbitrary numbers.
     let mut refs = Vec::new();
     let (mut before_previous, mut previous) = (String::new(), String::new());
     for token in text.split_whitespace() {
@@ -108,6 +111,7 @@ fn head_refs_after_markers(text: &str) -> Vec<String> {
             && matches!(before_previous.as_str(), "match" | "match:");
         let is_pr_head = matches!(before_previous.as_str(), "pr" | "request")
             && matches!(previous.as_str(), "head" | "head:");
+        // A claimed PR head is the comparison target, not evidence that the local or remote head was pushed.
         if (follows_named_marker
             || has_inline_marker
             || follows_compact_pushed_marker

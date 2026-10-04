@@ -40,6 +40,7 @@ pub(super) fn diagnostics_at(root: &Path, base_ref: &str) -> Result<Vec<String>>
             "{EXCEPTIONS_PATH} is not supported; every governed file must stay at or below {LOC_LIMIT} lines"
         ));
     }
+    // Changed paths get anti-compression checks; the full governed tree still enforces the hard cap.
     let changed = changes::scoped(root, base_ref)?;
     let changed_paths = changed
         .iter()

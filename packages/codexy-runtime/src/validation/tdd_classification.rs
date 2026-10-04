@@ -10,6 +10,7 @@ pub(super) fn check(_plugin_root: &Path) -> Vec<String> {
     Vec::new()
 }
 
+// Classification is request-scoped; the plugin tree itself has no static TDD boundary to scan.
 pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
     resolve::resolve(plugin_root, request)
 }

@@ -1,3 +1,4 @@
+/// Facade that combines lane-control and branch/worktree setup ownership checks.
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let normalized = evidence.to_ascii_lowercase();
     let mut errors = super::child_lane_classification_control::check(&normalized);

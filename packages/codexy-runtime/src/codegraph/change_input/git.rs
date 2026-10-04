@@ -64,6 +64,7 @@ pub(super) fn collect_working_tree_with_hook<F>(
 where
     F: FnMut(),
 {
+    // Compare two status-and-content fingerprints around parsing to reject a worktree that changed during collection.
     let baseline_revision = resolve_revision(root, "HEAD")?;
     let first = status_snapshot(root, include_untracked)?;
     let changes = parse_status(&first.output, include_untracked)?;

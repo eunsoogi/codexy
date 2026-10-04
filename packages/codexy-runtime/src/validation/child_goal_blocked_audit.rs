@@ -8,6 +8,7 @@ use parser::{
 };
 use wait_taxonomy::{WaitDisposition, classify_producer};
 
+/// Audits active evidence for wait-handoff integrity and typed gates before blocked goal calls.
 pub(super) fn check(plugin_root: &std::path::Path, evidence: &str) -> Vec<String> {
     let events = active_events(plugin_root, evidence);
     let mut errors = check_wait_handoffs(&events);
@@ -29,6 +30,7 @@ fn check_blocked_call(events: &[ActiveEvent], call_index: usize) -> Vec<String> 
             "blocked goal call requires a typed unanswered user-decision gate before its pre-delivery receipt".into(),
         ];
     };
+    // The gate must precede the delivery receipt; the latest matching gate supplies the decision identity.
     let gate_index = events[..pre_delivery_index]
         .iter()
         .rposition(|event| event.line.starts_with("blocked goal user-decision gate:"));
@@ -94,6 +96,7 @@ fn valid_pre_mutation(
     gate_id: Option<&str>,
     delivered_version: Option<&str>,
 ) -> bool {
+    // Revalidate the same gate and parent-direction version immediately before mutation; any newer version cancels.
     let Some(line) = line else {
         return false;
     };
@@ -108,6 +111,7 @@ fn valid_pre_mutation(
 }
 
 fn check_wait_handoffs(events: &[ActiveEvent]) -> Vec<String> {
+    // Terminal goal mutations cannot follow a nonterminal wait until typed review-terminal evidence appears.
     events
         .iter()
         .enumerate()

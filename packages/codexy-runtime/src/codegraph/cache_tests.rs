@@ -7,6 +7,7 @@ use super::cache::{MAX_CACHE_BYTES, invalidate};
 use super::parse::{parse_call_count, reset_parse_call_count};
 use super::tools::call_tool;
 
+// These repository snapshots exercise cache reuse across content, file-set, ignore-rule, and resource-limit changes.
 #[test]
 fn repeated_graph_builds_reuse_each_parsed_file() -> Result<(), Box<dyn std::error::Error>> {
     let repository = tempfile::tempdir()?;

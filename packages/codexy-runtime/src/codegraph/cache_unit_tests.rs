@@ -3,6 +3,7 @@ use std::path::Path;
 
 use super::*;
 
+// Direct cache-state checks isolate byte-budget cleanup from filesystem discovery and parsing.
 #[test]
 fn reset_releases_oversized_file_index_capacity() {
     let mut cache = ParseCache::default();
