@@ -69,9 +69,12 @@ fn touched_loc_does_not_credit_outline_path_against_stem_directory() -> TestResu
     let rustc = compile(repo.path())?;
     assert!(!rustc.status.success());
     let rustc_stderr = stderr(&rustc);
+    let rustc_stderr_with_forward_slashes = rustc_stderr.replace('\\', "/");
     assert!(
-        rustc_stderr.contains("couldn't read"),
-        "expected a missing-path diagnostic from rustc; stderr:\n{rustc_stderr}"
+        (rustc_stderr_with_forward_slashes.contains("couldn't read")
+            || rustc_stderr_with_forward_slashes.contains("couldn't find file"))
+            && rustc_stderr_with_forward_slashes.contains("src/../generated/bar.rs"),
+        "expected rustc to report missing outline path src/../generated/bar.rs; stderr:\n{rustc_stderr}"
     );
 
     let output = validate(repo.path())?;
