@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # pyright: reportImplicitRelativeImport=false
-"""Child-thread creation native pair admission hook."""
+"""Child-thread creation native route and environment admission hook."""
 
 import argparse
 import os

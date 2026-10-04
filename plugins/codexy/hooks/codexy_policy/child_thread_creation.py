@@ -1,4 +1,4 @@
-"""Enforce the assigned Worker route for native thread creation."""
+"""Enforce the assigned Worker route and app-worktree creation environment."""
 
 from __future__ import annotations
 
@@ -23,6 +23,8 @@ def forbidden(request: Request) -> bool | Diagnostic:
     if not isinstance(tool_input, dict):
         return Diagnostic("MISSING_ROUTE_FIELDS", _MISSING_FIELDS)
     data = cast(dict[str, object], tool_input)
+    if not _is_app_worktree_target(data.get("target")):
+        return Diagnostic("APP_WORKTREE_REQUIRED", _APP_WORKTREE_REQUIRED)
     missing = [field for field in FIELDS if not _non_empty_string(data.get(field))]
     if missing:
         return _missing_field_diagnostic(missing)
@@ -31,6 +33,21 @@ def forbidden(request: Request) -> bool | Diagnostic:
     if data["thinking"] != WORKER_THINKING:
         return Diagnostic("UNSUPPORTED_THINKING", _UNSUPPORTED_THINKING)
     return False
+
+
+def _is_app_worktree_target(target: object) -> bool:
+    if not isinstance(target, dict):
+        return False
+    target_data = cast(dict[str, object], target)
+    if target_data.get("type") != "project" or not _non_empty_string(
+        target_data.get("projectId")
+    ):
+        return False
+    environment = target_data.get("environment")
+    if not isinstance(environment, dict):
+        return False
+    environment_data = cast(dict[str, object], environment)
+    return environment_data.get("type") == "worktree"
 
 
 def _parent_checkout_diagnostic(cwd: object) -> Diagnostic | None:
@@ -111,6 +128,13 @@ def _missing_field_diagnostic(fields: list[str]) -> Diagnostic:
 
 
 _REQUIRED_ROUTE = "Worker creation requires model='gpt-6-luna' and thinking='max'"
+_APP_WORKTREE_REQUIRED = (
+    "Worker creation requires the Codex app-managed project worktree in the original "
+    "create_thread call: target.type='project', a non-empty projectId, and "
+    "target.environment.type='worktree'. MUST correct the target and retry once. "
+    "MUST NOT create a local or projectless task and try to retrofit it with "
+    "create_worktree, fork_thread, shell git worktree add, or another detached directory."
+)
 _MISSING_FIELDS = (
     f"Missing model and thinking; {_REQUIRED_ROUTE}. "
     "MUST correct the fields and MUST retry once."

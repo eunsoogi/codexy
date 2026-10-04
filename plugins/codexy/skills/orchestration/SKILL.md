@@ -88,9 +88,13 @@ For selected child-owned issue lanes, the Orchestrator MUST assign one Worker
 before implementation; that Worker owns implementation and review-response
 patches. Existing usable Workers retain ownership, and the Orchestrator MUST NOT
 patch the lane or create a duplicate. The Orchestrator MUST coordinate and
-verify; merge and publication remain separately authorized. Model and effort
-MUST be selected automatically from recipient role without asking the user to
-choose or reconfirm, subject to the actual tool contract.
+verify; merge and publication remain separately authorized. Each implementation
+Worker MUST start in an app-managed project worktree requested in its initial
+`create_thread` call. A local or projectless task MUST NOT be retrofitted with a
+different worktree route. The parent MUST verify actual task state and exposed
+permissions before the Worker begins implementation. Model and effort MUST be
+selected automatically from recipient role without asking the user to choose or
+reconfirm, subject to the actual tool contract.
 
 ### Planning and execution boundary
 

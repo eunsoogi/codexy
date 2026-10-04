@@ -33,7 +33,15 @@ fn verified_primary_checkout_admits_the_assigned_worker_pair() -> TestResult {
         for event in ["PreToolUse", "PermissionRequest"] {
             let mut input = pre_tool_input_at(
                 tool,
-                json!({"model":"gpt-6-luna","thinking":"max"}),
+                json!({
+                    "model":"gpt-6-luna",
+                    "thinking":"max",
+                    "target":{
+                        "type":"project",
+                        "projectId":"local-test-project",
+                        "environment":{"type":"worktree"}
+                    }
+                }),
                 &primary,
             );
             input["hook_event_name"] = json!(event);
@@ -58,7 +66,15 @@ fn primary_subdirectories_allow_but_nested_worktrees_are_rejected() -> TestResul
         for event in ["PreToolUse", "PermissionRequest"] {
             let mut primary_input = pre_tool_input_at(
                 tool,
-                json!({"model":"gpt-6-luna","thinking":"max"}),
+                json!({
+                    "model":"gpt-6-luna",
+                    "thinking":"max",
+                    "target":{
+                        "type":"project",
+                        "projectId":"local-test-project",
+                        "environment":{"type":"worktree"}
+                    }
+                }),
                 &ordinary_subdirectory,
             );
             primary_input["hook_event_name"] = json!(event);

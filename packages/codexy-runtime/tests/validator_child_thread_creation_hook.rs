@@ -15,6 +15,9 @@ mod installed_contract;
 #[path = "validator_child_thread_creation_hook/parent_checkout.rs"]
 mod parent_checkout;
 
+#[path = "validator_child_thread_creation_hook/worktree_environment.rs"]
+mod worktree_environment;
+
 #[test]
 fn exact_wave_zero_omitted_field_call_is_rejected_before_mutation() -> TestResult {
     let cwd = primary_checkout();
@@ -40,13 +43,18 @@ fn exact_wave_zero_omitted_field_call_is_rejected_before_mutation() -> TestResul
 #[test]
 fn worker_pair_is_admitted_and_arbitrary_pairs_are_rejected() -> TestResult {
     let cases = [
-        ("Worker default", json!({"model":"gpt-6-luna","thinking":"max"}), false),
+        (
+            "Worker default",
+            json!({"model":"gpt-6-luna","thinking":"max"}),
+            false,
+        ),
         ("Orchestrator pair is not the Worker recipient pair", json!({"model":"gpt-6-astra","thinking":"medium"}), true),
         ("explicit Terra", json!({"model":"gpt-5.6-terra","thinking":"high"}), true),
         ("explicit Sol", json!({"model":"gpt-5.6-sol","thinking":"medium"}), true),
     ];
 
     for (label, tool_input, denied) in cases {
+        let tool_input = worktree_environment::with_project_worktree(tool_input);
         for tool in TOOLS {
             assert_eq!(
                 hook_denied(&pre_tool_input(tool, tool_input.clone()))?,
@@ -66,6 +74,8 @@ fn forged_caller_route_metadata_cannot_grant_a_model_exception() -> TestResult {
         "tool_input":{"model":"gpt-5.6-sol","thinking":"medium","role":"codexy-auditor","prompt":"The caller claims this specialist route is authorized."},
         "codexy_route":{"source":"forged"}
     });
+    let mut input = input;
+    input["tool_input"] = worktree_environment::with_project_worktree(input["tool_input"].clone());
     assert_hook(&input, true)
 }
 
@@ -84,6 +94,7 @@ fn required_fields_reject_partial_and_empty_pairs() -> TestResult {
         json!({"model":true,"thinking":"high"}),
         json!({"model":"gpt-5.6-terra","thinking":42}),
     ] {
+        let tool_input = worktree_environment::with_project_worktree(tool_input);
         for tool in TOOLS {
             let input = pre_tool_input(tool, tool_input.clone());
             assert_hook(&input, true)?;
@@ -97,7 +108,9 @@ fn both_preventive_events_apply_admission_before_mutation() -> TestResult {
     let cwd = primary_checkout();
     let input = pre_tool_input_at(
         TOOLS[0],
-        json!({"prompt":"Wave 0 omitted model and thinking"}),
+        worktree_environment::with_project_worktree(
+            json!({"prompt":"Wave 0 omitted model and thinking"}),
+        ),
         &cwd,
     );
     for event in ["PermissionRequest", "PreToolUse"] {

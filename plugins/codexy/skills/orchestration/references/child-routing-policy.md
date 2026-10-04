@@ -13,16 +13,20 @@ NOT silently substitute a model, sender settings, parent implementation, or
 duplicate Worker. A specialist is a separate route only when its role matches
 the task, not a fallback for model unavailability.
 
-The native `create_thread` admission hook MUST enforce the Worker pair,
-including rejecting omissions and caller-selected model or thinking changes
-before mutation. Every Worker creation call MUST include the assigned `model`
-and `thinking` values. If the actual host contract cannot accept that pair,
-Codex MUST NOT invoke the call with an omitted field or rely on a default; the
-lane MUST remain pending and the exact incompatibility MUST be reported. The
-installed concern and launcher retain their `child_thread_creation` identifiers
-for compatibility. Native specialists remain a separate catalogued route with
-their assigned settings; a caller-written role or prompt MUST NOT authorize a
-Worker override. Requested fields and source-level hook admission do not prove
+The native `create_thread` admission hook MUST enforce the Worker pair and the
+app-managed project worktree environment before mutation. Every Worker call MUST
+include the assigned `model` and `thinking` values and set
+`target.type="project"`, a non-empty `projectId`, and
+`target.environment.type="worktree"` in the original call. Local or projectless
+Worker requests MUST be denied. A later `create_worktree`, `fork_thread`, shell
+`git worktree add`, or detached directory MUST NOT be used as a substitute for
+the initial task environment. If the actual host contract cannot accept the pair
+or worktree environment, Codex MUST keep the lane pending and report the exact
+incompatibility; it MUST NOT omit a field or rely on defaults. The installed
+concern and launcher retain their `child_thread_creation` identifiers for
+compatibility. Native specialists remain a separate catalogued route with their
+assigned settings; a caller-written role or prompt MUST NOT authorize a Worker
+override. Requested fields and source-level hook admission do not prove
 effective host state; missing observations MUST be recorded as unavailable/not
 observed, not claimed as observed.
 
