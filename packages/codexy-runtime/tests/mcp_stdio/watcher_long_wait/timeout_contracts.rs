@@ -20,6 +20,7 @@ fn long_wait_bound_rejects_only_values_above_one_hour() -> TestResult {
     Ok(())
 }
 
+// The default stays below the observed transport deadline while callers can request the full cap.
 #[test]
 fn wait_schema_documents_the_long_poll_bounds() -> TestResult {
     let state = tempfile::tempdir()?;

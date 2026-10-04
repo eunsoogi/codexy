@@ -38,6 +38,7 @@ pub(crate) struct Store {
 }
 
 impl Store {
+    // Recover interrupted cleanup before this store begins serving session operations.
     pub(crate) fn new() -> Result<Self> {
         let root = state_root()?;
         ensure_dir(&root)?;
@@ -79,6 +80,7 @@ impl Store {
             if session.status == "active" && now < session.expires_at_ms {
                 continue;
             }
+            // Skip cleanup while an active long-poll request still holds wait.lock.
             let Some(wait_lock) = LockGuard::try_acquire(&directory.join("wait.lock"))? else {
                 continue;
             };
@@ -173,6 +175,8 @@ impl Store {
     ) -> Result<Vec<Event>> {
         let events = events::read(&self.root, &session.session_id)?;
         let last_sequence = events.last().map_or(0, |event| event.sequence);
+        // A complete log write can outlive a crash before its session counter update; repair only
+        // that lag and reject counters that claim events absent from the durable log.
         if last_sequence > session.next_sequence {
             session.next_sequence = last_sequence;
             self.write_session(session)?;
