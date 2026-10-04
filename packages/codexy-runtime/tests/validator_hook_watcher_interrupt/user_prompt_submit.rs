@@ -28,16 +28,6 @@ fn user_prompt_submit_cancels_only_a_unique_wait_for_its_host_session() -> TestR
         "turn-1",
         "tool-1",
     )?;
-    let (mut second, second_binding) = begin_wait(
-        &plugin,
-        &cache,
-        &state,
-        &second_session,
-        &second_parent,
-        "turn-2",
-        "tool-2",
-    )?;
-
     let other_session = run_hook(
         &plugin,
         &cache,
@@ -49,6 +39,18 @@ fn user_prompt_submit_cancels_only_a_unique_wait_for_its_host_session() -> TestR
             "turn_id":"turn-3","prompt":"next input"}),
     )?;
     assert!(other_session.status.success() && other_session.stdout.is_empty());
+    assert!(!binding_cancelled(&state, &first_binding));
+    assert!(wait_is_active(&state, &first_session, &first_parent)?);
+
+    let (mut second, second_binding) = begin_wait(
+        &plugin,
+        &cache,
+        &state,
+        &second_session,
+        &second_parent,
+        "turn-2",
+        "tool-2",
+    )?;
 
     let ambiguous = run_hook(
         &plugin,

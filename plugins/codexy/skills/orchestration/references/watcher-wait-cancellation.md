@@ -12,11 +12,11 @@ request matches, it fails closed. The hook forwards only `session_id`; prompt
 text does not reach the Watcher runtime. Direct Watcher callers remain
 binding-free.
 
-The host must deliver a matching hook for plugin cancellation to take effect.
-A delegated task message or outer wait termination may leave the native request
+The host must deliver a matching hook for plugin cancellation to take effect. A
+delegated task message or outer wait termination may leave the native request
 active. The recorded candidate probe used a real native Watcher wait and a
-delivered task-to-task follow-up; that wait timed out instead of cancelling.
-The read-thread tool record omitted `requestBinding`, which does not establish
+delivered task-to-task follow-up; that wait timed out instead of cancelling. The
+read-thread tool record omitted `requestBinding`, which does not establish
 whether the host ran or applied `PreToolUse` injection. This probe therefore
 does not verify a genuine human `UserPromptSubmit` path. Parent-owned candidate
 installation and actual human-input propagation remain separate acceptance

@@ -28,7 +28,15 @@ class CoreHookStartupTests(unittest.TestCase):
     ):
         for entrypoint in ENTRYPOINTS:
             source = (HOOKS / entrypoint).read_text(encoding="utf-8")
-            gate = source.index("UNSUPPORTED_INTERPRETER_EXIT = 125")
+            if entrypoint == "codexy_watcher_interrupt.py":
+                support = (HOOKS / "codexy_watcher_interrupt_events.py").read_text(
+                    encoding="utf-8"
+                )
+                self.assertIn("UNSUPPORTED_INTERPRETER_EXIT = 125", support)
+                self.assertIn("raise SystemExit(UNSUPPORTED_INTERPRETER_EXIT)", source)
+                gate = source.index("if sys.version_info < (3, 10):")
+            else:
+                gate = source.index("UNSUPPORTED_INTERPRETER_EXIT = 125")
             anchors = [source.index("def main")]
             if "from codexy_policy" in source:
                 anchors.append(source.index("from codexy_policy"))

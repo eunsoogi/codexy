@@ -127,7 +127,7 @@ pub fn cancel_request_binding_for_user_prompt(payload: &Value) -> Result<bool> {
 }
 
 fn cancel_unique_binding(root: &Path, matches: impl Fn(&Binding) -> bool) -> Result<bool> {
-    let directory = bindings_dir(&root)?;
+    let directory = bindings_dir(root)?;
     let _lock = LockGuard::acquire(&root.join(LOCK), 500)?;
     let bindings = live_bindings(root, &directory, now_ms())?
         .into_iter()

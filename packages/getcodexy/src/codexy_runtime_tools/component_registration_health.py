@@ -138,6 +138,10 @@ def _core_hooks() -> dict[str, object]:
             "Interrupt": [
                 _lifecycle_hook(stem, "Interrupt") for _, stem in _CORE_LIFECYCLE_HOOKS
             ],
+            "UserPromptSubmit": [
+                _lifecycle_hook(stem, "UserPromptSubmit")
+                for _, stem in _CORE_LIFECYCLE_HOOKS
+            ],
         }
     }
 
