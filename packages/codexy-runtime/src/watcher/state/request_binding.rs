@@ -20,7 +20,7 @@ use support::{
     validate,
 };
 
-const DIRECTORY: &str = ".request-bindings";
+pub(super) const DIRECTORY: &str = ".request-bindings";
 const LOCK: &str = ".request-bindings.lock";
 const MAX_BINDINGS: usize = 128;
 const ARMED_TTL_MS: u64 = 60_000;

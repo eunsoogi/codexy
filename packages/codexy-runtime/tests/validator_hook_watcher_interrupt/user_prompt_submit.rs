@@ -2,6 +2,12 @@ use super::*;
 use std::thread;
 use std::time::{Duration, Instant};
 
+// A finite bound keeps failed cancellation cleanup from holding the test process open.
+const TEST_WAIT_MS: u64 = 30_000;
+
+#[path = "user_prompt_submit/session_binding_open.rs"]
+mod session_binding_open;
+
 #[test]
 fn user_prompt_submit_cancels_only_a_unique_wait_for_its_host_session() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
@@ -15,9 +21,6 @@ fn user_prompt_submit_cancels_only_a_unique_wait_for_its_host_session() -> TestR
     let mut setup = watcher_state::watcher_client(&state)?;
     watcher_state::initialize(&mut setup)?;
     let (first_session, first_parent, _) = watcher_state::open_session(&mut setup, "first", 2)?;
-    // Both opens share one MCP client, so each request needs its own JSON-RPC ID.
-    let (second_session, second_parent, second_watcher) =
-        watcher_state::open_session(&mut setup, "second", 3)?;
     drop(setup);
 
     let (mut first, first_binding) = begin_wait(
@@ -29,6 +32,17 @@ fn user_prompt_submit_cancels_only_a_unique_wait_for_its_host_session() -> TestR
         "turn-1",
         "tool-1",
     )?;
+    let (second_session, second_parent, second_watcher) =
+        session_binding_open::open_after_live_binding(
+            &plugin,
+            &cache,
+            &state,
+            &mut first,
+            &first_binding,
+            &first_session,
+            &first_parent,
+        )?;
+
     let other_session = run_hook(
         &plugin,
         &cache,
@@ -79,7 +93,10 @@ fn user_prompt_submit_cancels_only_a_unique_wait_for_its_host_session() -> TestR
         json!({"hook_event_name":"Interrupt","session_id":"main-session","turn_id":"turn-1"}),
     )?;
     assert!(interrupted.status.success() && interrupted.stdout.is_empty());
-    assert_eq!(watcher_state::tool_payload(&first.read_frame()?)?["status"], "cancelled");
+    assert_eq!(
+        watcher_state::tool_payload(&first.read_frame()?)?["status"],
+        "cancelled"
+    );
 
     let started = Instant::now();
     let submitted = run_hook(
@@ -118,7 +135,10 @@ fn user_prompt_submit_cancels_only_a_unique_wait_for_its_host_session() -> TestR
         }
     };
     assert!(started.elapsed() < Duration::from_secs(2));
-    assert_eq!(watcher_state::tool_payload(&response)?["status"], "cancelled");
+    assert_eq!(
+        watcher_state::tool_payload(&response)?["status"],
+        "cancelled"
+    );
 
     let mut observer = watcher_state::watcher_client(&state)?;
     watcher_state::initialize(&mut observer)?;
@@ -161,7 +181,8 @@ fn begin_wait(
         "PreToolUse",
         json!({"hook_event_name":"PreToolUse","tool_name":"mcp__codexy-watcher__watcher_wait",
             "session_id":"main-session","turn_id":turn_id,"tool_use_id":tool_use_id,
-            "tool_input":{"sessionId":watcher_session,"parentToken":parent_token}}),
+            "tool_input":{"sessionId":watcher_session,"parentToken":parent_token,
+            "timeoutMs":TEST_WAIT_MS}}),
     )?;
     let binding: Value = serde_json::from_slice(&output.stdout)?;
     let binding = binding["hookSpecificOutput"]["updatedInput"]["requestBinding"]
@@ -172,14 +193,16 @@ fn begin_wait(
     watcher_state::initialize(&mut reader)?;
     reader.send_without_read(&json!({"jsonrpc":"2.0","id":4,"method":"tools/call",
         "params":{"name":"watcher_wait","arguments":{"sessionId":watcher_session,
-        "parentToken":parent_token,"requestBinding":binding}}}))?;
+        "parentToken":parent_token,"requestBinding":binding,"timeoutMs":TEST_WAIT_MS}}}))?;
 
     let mut observer = watcher_state::watcher_client(state)?;
     watcher_state::initialize(&mut observer)?;
     for request_id in 10..110 {
-        let health = observer.send(&json!({"jsonrpc":"2.0","id":request_id,"method":"tools/call",
+        let health = observer.send(
+            &json!({"jsonrpc":"2.0","id":request_id,"method":"tools/call",
             "params":{"name":"watcher_health","arguments":{"sessionId":watcher_session,
-            "token":parent_token}}}))?;
+            "token":parent_token}}}),
+        )?;
         if watcher_state::tool_payload(&health)?["waiting"] == true {
             return Ok((reader, binding));
         }

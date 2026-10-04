@@ -4,6 +4,7 @@ mod operations;
 mod recovery;
 #[allow(unreachable_pub)]
 pub mod request_binding;
+mod session_directories;
 mod validation;
 mod wait;
 
@@ -58,24 +59,7 @@ impl Store {
     }
 
     fn session_dirs(&self) -> Result<Vec<PathBuf>> {
-        let mut directories = Vec::new();
-        for entry in fs::read_dir(&self.root)? {
-            let entry = entry?;
-            let path = entry.path();
-            let file_type = entry.file_type()?;
-            if file_type.is_symlink() {
-                reject_link(&path)?;
-            }
-            if file_type.is_dir() {
-                let name = entry
-                    .file_name()
-                    .into_string()
-                    .map_err(|_| anyhow::anyhow!("watcher session id is not UTF-8"))?;
-                safe_id(&name, "sessionId")?;
-                directories.push(path);
-            }
-        }
-        Ok(directories)
+        session_directories::list(&self.root)
     }
 
     pub(super) fn reclaim_sessions(&self, now: u64) -> Result<()> {
