@@ -163,6 +163,81 @@ class GithubNativeHooksTests(
                 output = self._run_process([str(hook), event], payload, environment)
                 self.assertIn('"deny"', output, command)
 
+    def test_destructive_hook_treats_quoted_python_heredoc_as_data(self) -> None:
+        hook = PLUGIN / "hooks/codexy-destructive-command.sh"
+        environment = {**os.environ, "PLUGIN_ROOT": str(PLUGIN)}
+
+        def assert_allowed(command: str) -> None:
+            payload = json.dumps(
+                {
+                    "hook_event_name": "PreToolUse",
+                    "tool_name": "Bash",
+                    "tool_input": {"command": command},
+                    "cwd": str(PLUGIN.parents[1]),
+                }
+            )
+            self.assertEqual(
+                self._run_process([str(hook), "PreToolUse"], payload, environment),
+                "",
+                command,
+            )
+
+        metadata_command = """git diff --check && python3 - <<'PY'
+from pathlib import Path
+
+for path in (
+    "plugins/codexy/.codex-plugin/plugin.json",
+    ".agents/plugins/marketplace.json",
+    ".agents/plugins/release-publish-contract.json",
+    "packages/getcodexy/pyproject.toml",
+    "packages/getcodexy/uv.lock",
+):
+    target = Path(path)
+    assert target.is_file()
+    target.read_text(encoding="utf-8")
+assert Path("README.md").is_file()
+PY"""
+        assert_allowed(metadata_command)
+
+        read_only_command = """git diff --check && python3 - <<'PY'
+import json
+import struct
+
+with open("fixture/app.asar", "rb") as archive:
+    header_size = struct.unpack(">I", archive.read(4))[0]
+    header = json.loads(archive.read(header_size))
+    offset = int(header["files"]["app.js"]["offset"])
+    archive.seek(8 + header_size + offset); s = archive.read(4096).decode("utf-8", errors="replace"); i = s.index("function kf("); print(s[i:])
+PY"""
+        assert_allowed(read_only_command)
+
+        def assert_denied(command: str, expected_code: str) -> None:
+            credential_payload = json.dumps(
+                {
+                    "hook_event_name": "PreToolUse",
+                    "tool_name": "Bash",
+                    "tool_input": {"command": command},
+                    "cwd": str(PLUGIN.parents[1]),
+                }
+            )
+            output = self._run_process(
+                [str(hook), "PreToolUse"], credential_payload, environment
+            )
+            self.assertIn('"permissionDecision":"deny"', output, command)
+            self.assertIn(expected_code, output, command)
+
+        for command in (
+            "gh auth token",
+            "python3 - <<EOF\n$(gh auth token)\nEOF",
+        ):
+            with self.subTest(command=command):
+                assert_denied(command, "CODEXY_DESTRUCTIVE_COMMAND_CREDENTIAL_EXPOSURE")
+
+        assert_denied(
+            "(( 8 << 'EOF' ))\nrm -rf /\nEOF",
+            "CODEXY_DESTRUCTIVE_COMMAND_DESTRUCTIVE_EFFECT",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
