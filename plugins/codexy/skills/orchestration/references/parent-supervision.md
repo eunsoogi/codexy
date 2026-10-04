@@ -10,28 +10,28 @@ replace goal-lifecycle, or choose a repository's GitHub policy.
 
 When this arrangement is authorized, Codex MUST keep these roles distinct:
 
-- The Orchestrator owns the overall task goal, judgement, correction, and
-  acceptance. It MUST create or continue the exact assigned goal and keep its
-  authoritative `get_goal` readback active while executable work remains.
-- The Watcher is the packaged `codexy-watcher` specialist, summoned by the
-  Orchestrator as a native subagent with a bounded observation assignment held
-  in one long-running turn. It reports read-only and MUST NOT own, recreate, or
-  transfer the overall task or release goal. Any finite goal exposed to that
-  subagent MUST describe only its bounded observation assignment.
-- The Worker is a separate app task that owns the implementation branch, files,
-  verification, and its finite execution goal.
+- The Orchestrator owns goal, coordination, verification, correction, and
+  acceptance; it MUST keep its exact goal active via `get_goal`. For child-owned
+  lanes it MUST assign one Worker or retain an existing usable owner; it MUST
+  NOT implement, patch, or duplicate the lane, or merge/publish without separate
+  authority.
+- The bounded, read-only native `codexy-watcher` MUST NOT own, recreate, or
+  transfer task/release goals; finite goals MUST stay in scope.
+- A Worker app task MUST own implementation files, branch, verification, review
+  patches, and its finite goal. Its idle-wait and blocked recovery MUST stay
+  separate from the Orchestrator's lifecycle; the Watcher MUST remain distinct.
 
-The Watcher and Worker share model and reasoning effort but are not the same
-task or owner. The goal prohibition applies only to the Orchestrator in this
-arrangement; the Worker's finite idle-wait and actually observed `blocked`
-recovery remain governed by the existing lifecycle.
+Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
 
-Configuration metadata MUST remain separate from role identity: Orchestrator and
-Worker-to-Orchestrator delivery use `gpt-6-astra`/`medium`; Worker creation,
-Orchestrator-to-Worker delivery and Watcher use `gpt-6-luna`/`max`; inspector
-uses `gpt-6.1-sol`/`medium`. Host/runtime direction identifiers remain
-serialized compatibility values; every app delivery MUST name its model and
-thinking effort.
+- Orchestrator and Worker-to-Orchestrator: `gpt-6-astra` / `medium`.
+- Worker creation, Orchestrator-to-Worker, Watcher: `gpt-6-luna` / `max`.
+- Inspector: `gpt-6.1-sol` / `medium`.
+
+Codex MUST use a pair only when the actual tool contract permits and MUST obey
+higher-priority omission and authorization rules. If child creation cannot use
+the pair, Codex MUST report the limitation and keep the lane pending; Codex MUST
+NOT substitute a model, sender setting, owner, or task. Model metadata MUST stay
+separate from role identity; host/runtime IDs remain compatibility values.
 
 ## Message visibility and style
 
