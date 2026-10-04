@@ -20,7 +20,7 @@ pub(super) fn target_diagnostics(
         .iter()
         .filter(|message| {
             message.get("method").and_then(Value::as_str) == Some("textDocument/publishDiagnostics")
-                // Pull diagnostics are scoped to the requested URI; other requests retain related-file diagnostics.
+                // Diagnostics requests are scoped to the requested URI; other methods retain related-file diagnostics.
                 && (!matches!(method, LspMethod::Diagnostics)
                     || message.pointer("/params/uri").and_then(Value::as_str) == Some(uri))
         })
