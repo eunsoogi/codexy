@@ -1,3 +1,6 @@
+//! Ensures terminal receipts use the Codex task/thread route rather than local
+//! agent messaging or helper routes.
+
 use std::process::Output;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

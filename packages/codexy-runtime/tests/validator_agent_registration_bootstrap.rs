@@ -1,3 +1,6 @@
+//! Verifies install-time bootstrap transitions, idempotency and strict package
+//! roots without moving registration work into lifecycle hooks.
+
 use std::path::Path;
 use crate::support::FixtureCommand as Command;
 

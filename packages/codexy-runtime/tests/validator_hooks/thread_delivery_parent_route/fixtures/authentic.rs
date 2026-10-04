@@ -1,3 +1,6 @@
+//! Emits the paired transcript records used to establish real child-creation
+//! provenance for the parent-route fixtures.
+
 use serde_json::{Value, json};
 
 use super::delegation;

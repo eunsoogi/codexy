@@ -1,3 +1,6 @@
+//! Requires reported clean, synced, or pushed state to match branch status and
+//! the captured local, remote, and PR heads.
+
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

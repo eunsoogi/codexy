@@ -1,3 +1,6 @@
+//! Requires the original Worker creation request to name a project worktree;
+//! local and incomplete targets cannot be retrofitted later.
+
 use super::*;
 
 #[test]

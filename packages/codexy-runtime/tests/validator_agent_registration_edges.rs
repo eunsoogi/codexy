@@ -1,3 +1,6 @@
+//! Covers TOML conflict spellings, supported role tables, Python 3.10 backup
+//! compatibility and catalog-independent uninstall behavior.
+
 use crate::support::FixtureCommand as Command;
 
 use crate::support;

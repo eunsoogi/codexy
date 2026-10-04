@@ -1,3 +1,6 @@
+//! Requires enough source content to move with an extraction; an unrelated
+//! helper module or leftover collapse cannot satisfy the coverage threshold.
+
 use super::*;
 
 #[test]

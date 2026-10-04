@@ -1,3 +1,6 @@
+//! Checks disabled Cargo auto-targets against metadata so an unbuilt bin,
+//! example, test, or bench cannot prove module-extraction remediation.
+
 use crate::support;
 
 use std::process::{Command, Output};

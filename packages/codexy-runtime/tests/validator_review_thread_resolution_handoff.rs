@@ -1,3 +1,6 @@
+//! Requires each unresolved review thread to have its own accepted rationale,
+//! while leaving clean review verification independent of thread-list evidence.
+
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

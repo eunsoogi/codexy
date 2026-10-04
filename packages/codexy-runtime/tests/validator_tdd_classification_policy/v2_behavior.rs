@@ -6,7 +6,7 @@ use crate::support::TestResult;
 
 #[test]
 fn resolver_v2_separates_behavioral_tests_from_test_first_sequencing() -> TestResult {
-    let cases = [
+    let cases = [ // Behavioral verification and test-first sequencing are separate duties.
         case(
             policy::boundary("feature", "production_code", "feature", &[], false, None),
             "engineering",

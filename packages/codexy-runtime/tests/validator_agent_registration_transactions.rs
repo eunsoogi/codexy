@@ -19,7 +19,7 @@ const ROLES: [&str; 8] = [
 ];
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
-type Tree = BTreeMap<PathBuf, Option<Vec<u8>>>;
+type Tree = BTreeMap<PathBuf, Option<Vec<u8>>>; // None is a directory; Some stores file bytes.
 
 #[derive(Clone, Copy, Debug)]
 enum Operation {

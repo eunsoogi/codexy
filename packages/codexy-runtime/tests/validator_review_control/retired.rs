@@ -1,3 +1,6 @@
+//! Keeps retired review-control modes and fields explicitly unsupported while
+//! preserving ordinary GitHub review snapshot data and existing output bytes.
+
 use std::{fs, process::Command};
 
 use crate::support::TestResult;

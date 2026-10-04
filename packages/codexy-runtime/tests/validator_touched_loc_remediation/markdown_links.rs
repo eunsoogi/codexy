@@ -1,3 +1,6 @@
+//! Counts local CommonMark reference destinations while excluding malformed,
+//! remote, or unsafe links as proof of structural extraction.
+
 use super::{TestResult, fixture, regular_lines, regular_lines_from, stderr, validate, write};
 
 const SKILL_PATH: &str = "plugins/codexy/skills/example/SKILL.md";

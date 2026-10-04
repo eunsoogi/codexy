@@ -1,3 +1,6 @@
+//! Covers the generic hook manifest boundary and wires focused admission,
+//! runtime-policy, and thread-delivery contract suites.
+
 use std::process::Command;
 
 #[allow(unused)]

@@ -1,3 +1,6 @@
+//! Distinguishes negative blocker/status headings from affirmative readiness,
+//! and keeps subsequent wait events from disappearing under a neutral label.
+
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

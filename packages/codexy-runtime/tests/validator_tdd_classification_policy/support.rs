@@ -1,3 +1,6 @@
+//! Builds shared v1/v2 request helpers for direct resolver and CLI checks;
+//! CLI invocations use an empty temporary plugin root.
+
 use std::{path::Path, process::Command};
 
 use serde_json::{Value, json};

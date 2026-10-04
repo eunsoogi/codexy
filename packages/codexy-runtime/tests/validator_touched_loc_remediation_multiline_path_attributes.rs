@@ -1,3 +1,6 @@
+//! Checks multiline `#[path]` parsing, including comment trivia, malformed
+//! forms, and clearing the path when another item intervenes.
+
 use crate::support;
 
 use std::path::Path;

@@ -1,3 +1,6 @@
+//! Distinguishes independently discoverable nested packages from targets that
+//! belong to excluded nested-workspace packages.
+
 use crate::support;
 
 use std::path::Path;

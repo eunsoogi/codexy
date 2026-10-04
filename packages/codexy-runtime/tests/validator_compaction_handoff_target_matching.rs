@@ -1,4 +1,7 @@
 
+//! Binds duplicate/no-active-work claims to the current PR or linked issues,
+//! including GraphQL nodes and missing-versus-empty issue metadata.
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type Output = std::process::Output;
 type OutputResult = Result<Output, Box<dyn std::error::Error>>;

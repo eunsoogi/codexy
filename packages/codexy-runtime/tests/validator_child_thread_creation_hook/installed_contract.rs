@@ -1,3 +1,5 @@
+//! Checks that installed hook matchers stay exact and the Windows denial fallback remains valid JSON.
+
 use super::*;
 
 #[test]

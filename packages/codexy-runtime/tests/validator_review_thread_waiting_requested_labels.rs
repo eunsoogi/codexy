@@ -1,3 +1,6 @@
+//! Accepts contracted negative requested-readiness labels as waiting context
+//! but rejects affirmative requested labels while a thread remains unresolved.
+
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

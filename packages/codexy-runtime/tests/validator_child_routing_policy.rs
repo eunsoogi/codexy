@@ -1,3 +1,6 @@
+//! Covers named-specialist and Worker routing, including recipient model/effort
+//! pairs and fail-closed handling of unsupported operations.
+
 use std::{
     path::{Path, PathBuf},
     process::Command,

@@ -1,3 +1,6 @@
+//! Checks discovery-file registration, legacy migration, dry-run and uninstall
+//! behavior while preserving unrelated Codex configuration.
+
 use crate::support::FixtureCommand as Command;
 
 use crate::support;

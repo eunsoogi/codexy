@@ -1,3 +1,6 @@
+//! Keeps semicolon-linked unresolved and waiting evidence thread-local, and
+//! distinguishes incomplete-until-merge verification from affirmative completion.
+
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

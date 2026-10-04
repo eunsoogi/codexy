@@ -1,3 +1,6 @@
+//! Accepts valid Rust restricted visibility on modules and fails closed on
+//! malformed visibility syntax.
+
 use crate::support;
 
 use std::path::Path;

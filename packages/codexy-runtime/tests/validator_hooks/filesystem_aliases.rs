@@ -1,3 +1,6 @@
+//! Exercises filesystem alias creation, copying, and retargeting so changing
+//! executable identity cannot disguise destructive Git effects.
+
 #[cfg(unix)]
 use std::os::unix::fs::symlink;
 

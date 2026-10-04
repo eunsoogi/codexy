@@ -1,3 +1,6 @@
+//! Exercises fail-closed recipient binding, authentic provenance and settings
+//! across authoritative and installed hook copies, including invalid contexts.
+
 use std::process::Command;
 
 use serde_json::{Value, json};

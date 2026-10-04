@@ -1,3 +1,5 @@
+//! Confirms deleted governed files do not produce touched-LOC diagnostics.
+
 use super::{TestResult, regular_lines};
 use crate::support::touched_loc::fixture;
 

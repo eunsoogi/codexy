@@ -1,4 +1,7 @@
 
+//! Accepts executed Git transcripts but rejects negated, planned, or template-
+//! only command lists as compaction preflight evidence.
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 

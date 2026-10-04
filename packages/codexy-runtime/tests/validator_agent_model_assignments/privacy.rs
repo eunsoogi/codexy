@@ -1,3 +1,6 @@
+//! Ensures the specialist contract stays private and that only its own
+//! diagnostic, not an unrelated Cargo failure, proves the boundary.
+
 use std::process::Command;
 
 use crate::support;

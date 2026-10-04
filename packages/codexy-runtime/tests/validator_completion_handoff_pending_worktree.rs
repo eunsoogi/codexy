@@ -1,3 +1,6 @@
+//! Keeps pending setup unresolved until an owner surfaces, setup fails with an
+//! actionable error, or bounded searches establish the retry-safe timeout case.
+
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

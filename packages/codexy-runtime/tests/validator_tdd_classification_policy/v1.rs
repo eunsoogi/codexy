@@ -1,3 +1,6 @@
+//! Pins v1 engineering, non-engineering and mixed boundary results, then
+//! rejects incomplete, duplicate or unknown request facts.
+
 use serde_json::json;
 
 use super::policy_support as policy;

@@ -1,3 +1,6 @@
+//! Verifies custom workspace targets remain discoverable through Cargo metadata
+//! without creating or requiring a `Cargo.lock` file.
+
 use crate::support;
 
 use std::process::{Command, Output};

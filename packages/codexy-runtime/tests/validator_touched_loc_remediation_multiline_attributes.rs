@@ -1,3 +1,6 @@
+//! Preserves path attributes across stacked multiline attributes but clears
+//! them at an intervening item boundary.
+
 use crate::support;
 
 use std::path::Path;

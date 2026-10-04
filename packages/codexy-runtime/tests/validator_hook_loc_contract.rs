@@ -1,3 +1,6 @@
+//! Keeps `hooks.rs` and its immediate hook-module files within the 250-line
+//! implementation target.
+
 #[test]
 fn hook_validator_implementation_files_stay_under_loc_target()
 -> Result<(), Box<dyn std::error::Error>> {

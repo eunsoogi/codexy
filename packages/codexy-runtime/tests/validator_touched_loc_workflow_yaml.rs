@@ -1,3 +1,6 @@
+// Recognizes genuine GitHub workflow step `run` scalars across YAML styles and
+// rejects malformed, non-scalar, or unsafe command values.
+
 use crate::support;
 
 use support::touched_loc::{fixture, regular_lines, stderr, validate, write};

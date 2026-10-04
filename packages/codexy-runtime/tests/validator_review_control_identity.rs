@@ -1,3 +1,6 @@
+//! Keeps authenticated owning-issue identity distinct from PR identity across
+//! current-head transitions and rejects missing or tampered capture evidence.
+
 use std::fs;
 
 use crate::support::{FixtureCommand, TestResult};

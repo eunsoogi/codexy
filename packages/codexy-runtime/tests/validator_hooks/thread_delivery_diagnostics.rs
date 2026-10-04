@@ -1,3 +1,6 @@
+//! Checks actionable, non-leaking routing denials while preserving valid legacy
+//! and authenticated admissions across both hook events.
+
 use serde_json::json;
 
 use super::thread_delivery_support::{

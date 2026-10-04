@@ -1,3 +1,6 @@
+//! Rejects retired finding-disposition inputs before source access or output
+//! creation so caller-supplied legacy claims cannot be trusted.
+
 use std::{fs, process::Command};
 
 use crate::support::TestResult;

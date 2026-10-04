@@ -1,3 +1,6 @@
+//! Confirms current explicit lane ownership wins over quoted, historical, or
+//! unrelated prose that only resembles an ownership control.
+
 #[test]
 fn prose_controls_do_not_block_a_child_lane() -> Result<(), Box<dyn std::error::Error>> {
     let direct_state = "Lane ownership: child-owned\n\

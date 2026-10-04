@@ -1,3 +1,6 @@
+//! Builds the minimal admitted event for each topology concern, using the
+//! primary checkout as the child-thread creation CWD.
+
 use super::{Concern, TestResult};
 use serde_json::{Value, json};
 

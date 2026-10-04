@@ -1,4 +1,7 @@
 
+//! Requires substantive, captured continuation fields and rejects placeholder,
+//! planned, negated, or section-boundary text as evidence.
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
 const OPEN_PR_STATE: &str =

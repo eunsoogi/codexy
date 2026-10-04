@@ -1,3 +1,6 @@
+//! Accepts semantic module and Markdown-reference splits, including meaningful
+//! names with digits, while rejecting numbered or versioned shard names.
+
 use super::{
     TestResult, fixture, multiline_source, regular_lines, regular_lines_from, stderr, validate,
     write,

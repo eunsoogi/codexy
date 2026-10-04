@@ -1,3 +1,6 @@
+//! Validates required native runtime binaries, Windows dispatch/delegate shape
+//! and per-platform uniqueness using small format-marked fixture payloads.
+
 use super::*;
 
 #[test]

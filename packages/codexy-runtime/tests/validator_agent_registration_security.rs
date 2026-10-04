@@ -1,3 +1,6 @@
+//! Verifies marker ownership, symlink refusal, literal-string migration and
+//! semantic discovery failures in the registered agent projection.
+
 #[path = "validator_agent_registration_security/support.rs"]
 mod registration_security_support;
 use registration_security_support::{

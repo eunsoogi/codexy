@@ -1,3 +1,5 @@
+//! Rejects visibility syntax when it is not attached to a real module item.
+
 use super::*;
 
 #[test]

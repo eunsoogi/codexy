@@ -1,3 +1,6 @@
+//! Accepts valid Rust `#[path]` extraction only when it is attached to a module
+//! declaration, and uses `rustc` to validate representative fixtures.
+
 use super::*;
 
 #[test]

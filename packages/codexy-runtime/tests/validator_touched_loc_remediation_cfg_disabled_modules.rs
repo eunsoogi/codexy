@@ -1,3 +1,6 @@
+//! Requires Rust-compilable but `cfg`-disabled modules to provide no extraction
+//! credit for reducing a governed file's line count.
+
 use crate::support;
 
 use std::path::Path;

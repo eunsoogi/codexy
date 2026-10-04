@@ -1,3 +1,6 @@
+//! Accepts only exact terminal PASS/BLOCK control, leaves RUNNING pending and
+//! rejects retired review-count or native-history shortcuts in audit evidence.
+
 use crate::support::TestResult;
 use serde_json::json;
 

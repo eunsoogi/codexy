@@ -1,3 +1,6 @@
+//! Rejects readiness claims even with maintainer override when accepted threads
+//! remain unresolved or review-thread evidence is missing or paginated.
+
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

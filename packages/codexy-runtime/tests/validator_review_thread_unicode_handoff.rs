@@ -1,3 +1,6 @@
+//! Keeps review-action parsing safe with a non-ASCII prefix and still blocks
+//! an unresolved thread when the response claims current-head work.
+
 use std::path::Path;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

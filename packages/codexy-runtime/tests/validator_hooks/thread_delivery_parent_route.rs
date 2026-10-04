@@ -1,3 +1,6 @@
+//! Binds delivery authority to authenticated routing metadata, not prompt text
+//! or transcript contents, while checking both valid and rejected routes.
+
 use serde_json::json;
 
 use super::thread_delivery_support::{

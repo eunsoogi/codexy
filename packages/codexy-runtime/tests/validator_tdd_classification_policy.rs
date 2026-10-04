@@ -1,3 +1,6 @@
+//! Splits classification coverage into v1 compatibility, v2 behavior,
+//! non-engineering duties and invalid policy-fact rejection suites.
+
 #[path = "validator_tdd_classification_policy/support.rs"]
 mod policy_support;
 #[path = "validator_tdd_classification_policy/v1.rs"]

@@ -1,3 +1,6 @@
+//! Resolves an outline module's explicit path from its owning source directory,
+//! not from the default stem directory or a disabled alias.
+
 use crate::support;
 
 use std::path::Path;

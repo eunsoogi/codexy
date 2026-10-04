@@ -1,3 +1,6 @@
+// Checks workflow-only LOC governance and safe single-script extraction while
+// rejecting shell forms that make the invoked command ambiguous.
+
 use crate::support;
 
 use support::touched_loc::{fixture, regular_lines, stderr, validate, write};

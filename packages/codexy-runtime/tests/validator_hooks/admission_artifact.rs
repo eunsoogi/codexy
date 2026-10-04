@@ -1,3 +1,6 @@
+//! Exercises materialized plugin launchers and requires fail-closed denials for
+//! unavailable runtimes, interpreter failures, and malformed envelopes.
+
 use super::{copy_github as copy, text, validate};
 use crate::support::{FixtureCommand as Command, fixture_native_launcher};
 use serde_json::json;

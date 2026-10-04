@@ -1,3 +1,6 @@
+//! Builds controlled plugin-package fixtures for the platform, release-state
+//! and generated native-runtime contract suites.
+
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
 use std::process::Command;
