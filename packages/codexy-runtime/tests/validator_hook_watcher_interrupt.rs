@@ -12,10 +12,12 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 #[cfg(unix)]
 use std::process::{Child, Command, Stdio};
-
 #[cfg(unix)]
 #[path = "mcp_stdio/client.rs"]
 mod mcp_client;
+#[cfg(unix)]
+#[path = "validator_hook_watcher_interrupt/active_wait.rs"]
+mod active_wait;
 #[cfg(unix)]
 use mcp_client::McpClient;
 #[cfg(unix)]
@@ -114,68 +116,6 @@ fn watcher_wait_interrupt_contract_is_a_lifecycle_concern() -> TestResult {
             "codexy_watcher_interrupt.py"
         ])
     );
-    Ok(())
-}
-
-#[cfg(unix)]
-#[test]
-fn watcher_hook_resolves_and_interrupts_the_standard_cached_runtime() -> TestResult {
-    let root = codexy_runtime::paths::repository_root();
-    let plugin = root.join("plugins/codexy");
-    let temp = tempfile::tempdir()?;
-    let cache = temp.path().join("runtime-cache");
-    let state = temp.path().join("state");
-    let source = Path::new(env!("CARGO_BIN_EXE_codexy-mcp-watcher"));
-    let runtime = install_cached(&plugin, &cache, "linux-x86_64", source)?;
-    let probe = temp.path().join("invalid-probe");
-    fake_runtime(&probe, "invalid-platform-binding")?;
-    install_cached(&plugin, &cache, "invalid-platform", &probe)?;
-
-    let mut setup = watcher_state::watcher_client(&state)?;
-    watcher_state::initialize(&mut setup)?;
-    let (session, parent_token, _) = watcher_state::open_session(&mut setup, "cached-hook", 2)?;
-    drop(setup);
-    let input = json!({
-        "hook_event_name":"PreToolUse","tool_name":"mcp__codexy-watcher__watcher_wait",
-        "session_id":"main-session","turn_id":"turn-1","tool_use_id":"tool-1",
-        "tool_input":{"sessionId":session,"parentToken":parent_token}
-    });
-    let output = run_hook(&plugin, &cache, &state, Path::new(""), "linux-x86_64", "PreToolUse", input.clone())?;
-    assert!(output.status.success());
-    let binding: Value = serde_json::from_slice(&output.stdout)?;
-    let binding = binding["hookSpecificOutput"]["updatedInput"]["requestBinding"]
-        .as_str().ok_or("request binding")?.to_owned();
-    for (main_session, turn) in [("other-session", "turn-1"), ("main-session", "other-turn")] {
-        let output = run_hook(&plugin, &cache, &state, Path::new(""), "linux-x86_64", "Interrupt",
-            json!({"hook_event_name":"Interrupt","session_id":main_session,"turn_id":turn}))?;
-        assert!(output.status.success() && output.stdout.is_empty());
-        assert!(!binding_cancelled(&state, &binding));
-    }
-    let output = run_hook(&plugin, &cache, &state, Path::new(""), "linux-x86_64", "Interrupt",
-        json!({"hook_event_name":"Interrupt","session_id":"main-session","turn_id":"turn-1"}))?;
-    assert!(output.status.success() && output.stdout.is_empty());
-    assert!(binding_cancelled(&state, &binding));
-    let mut reader = watcher_state::watcher_client(&state)?;
-    watcher_state::initialize(&mut reader)?;
-    let waited = reader.send(&json!({"jsonrpc":"2.0","id":4,"method":"tools/call",
-        "params":{"name":"watcher_wait","arguments":{"sessionId":session,"parentToken":parent_token,
-        "timeoutMs":0,"requestBinding":binding}}}))?;
-    assert_eq!(watcher_state::tool_payload(&waited)?["status"], "cancelled");
-    let unsupported = run_hook(&plugin, &cache, &state, Path::new(""), "invalid-platform", "PreToolUse",
-        json!({"hook_event_name":"PreToolUse","tool_name":"watcher_wait","tool_input":{}}))?;
-    assert!(unsupported.status.success() && unsupported.stdout.is_empty());
-    let cached_manifest = runtime.parent().and_then(Path::parent).ok_or("cache root")?.join("plugin.json");
-    std::fs::write(&cached_manifest, r#"{"name":"codexy","repository":"https://github.com/eunsoogi/codexy","version":"0.0.0"}"#)?;
-    let output = run_hook(&plugin, &cache, &state, Path::new(""), "linux-x86_64", "PreToolUse", input.clone())?;
-    assert!(output.status.success() && output.stdout.is_empty());
-    std::fs::copy(plugin.join(".codex-plugin/plugin.json"), &cached_manifest)?;
-    std::fs::set_permissions(&runtime, PermissionsExt::from_mode(0o644))?;
-    let output = run_hook(&plugin, &cache, &state, Path::new(""), "linux-x86_64", "PreToolUse", input.clone())?;
-    assert!(output.status.success() && output.stdout.is_empty());
-    std::fs::set_permissions(&runtime, PermissionsExt::from_mode(0o755))?;
-    std::fs::remove_file(&runtime)?;
-    let output = run_hook(&plugin, &cache, &state, Path::new(""), "linux-x86_64", "PreToolUse", input)?;
-    assert!(output.status.success() && output.stdout.is_empty());
     Ok(())
 }
 

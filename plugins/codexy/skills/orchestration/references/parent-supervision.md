@@ -122,17 +122,17 @@ alter protected technical text.
   elapsed time. A native reviewer's terminal delivery is a non-Watcher target;
   the Orchestrator MUST NOT observe Worker targets assigned to a native Watcher.
 - Native Watcher routes: only the assigned Watcher MAY call `wait_threads`; the
-  Orchestrator MUST await `watcher_wait`, omitting `timeoutMs` for the 300,000
-  ms default; explicit `timeoutMs=300000` is equivalent; `MAX_WAIT_MS` stays
+  Orchestrator MUST await `watcher_wait`, omitting `timeoutMs` for the 295,000
+  ms default; explicit `timeoutMs=295000` is equivalent; `MAX_WAIT_MS` stays
   3,600,000 ms. The host limit MUST be read and reported: if it supports 300,000
   ms, the Watcher MUST use `wait_threads(timeoutMs=300000)` as the semantic
   event wait; otherwise, it MUST use the confirmed actual maximum. Output-yield
-  cadence is separate; MUST NOT shorten or replace the semantic wait. With a
-  confirmed 300-second MCP transport, `timeoutMs=295000` is the empty-wait
-  margin. Shorter waits MUST have a reason and MUST NOT become repeated polls.
-  While pending, the Orchestrator MUST stay in one quiet tool await and MUST NOT
-  emit reasoning, progress, short polls, unrelated work, retry, or poll merely
-  because no event has arrived. Fallbacks MUST report and recover.
+  cadence is separate; MUST NOT shorten or replace the semantic wait. The
+  295,000 ms default leaves a five-second margin under a confirmed 300-second
+  MCP transport. Shorter waits MUST have a reason and MUST NOT become repeated
+  polls. While pending, the Orchestrator MUST stay in one quiet tool await and
+  MUST NOT emit reasoning, progress, short polls, unrelated work, retry, or poll
+  merely because no event has arrived. Fallbacks MUST report and recover.
 - Implementation Workers MUST NOT use Orchestrator-owned Watcher session/token.
   One bounded readback after an actionable report is judgement-only.
 - The native Watcher loop is defined in "Watcher MCP flow"; its report, Worker

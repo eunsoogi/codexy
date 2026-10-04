@@ -234,12 +234,12 @@ fn wait_schema_documents_the_long_poll_bounds() -> TestResult {
         .and_then(|tools| tools.iter().find(|tool| tool["name"] == "watcher_wait"))
         .ok_or("watcher_wait schema is missing")?;
     let timeout = &wait["inputSchema"]["properties"]["timeoutMs"];
-    assert_eq!(timeout["default"], 300_000);
-    assert_eq!(timeout["maximum"], LONG_WAIT_MS);
+    assert!(timeout["default"] == 295_000 && timeout["maximum"] == LONG_WAIT_MS);
     assert_ne!(timeout["default"], timeout["maximum"]);
     let description = wait["description"]
         .as_str()
         .ok_or("watcher_wait description is missing")?;
+    assert!(description.contains("295000 ms"));
     assert!(description.contains("status=expired"));
     assert!(description.contains("empty events"));
     assert!(description.contains("unchanged nextCursor"));
