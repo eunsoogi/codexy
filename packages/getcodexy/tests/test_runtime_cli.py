@@ -1,3 +1,5 @@
+"""CLI tests preserve server arguments and gate authenticated package downloads."""
+
 import hashlib
 import io
 import json

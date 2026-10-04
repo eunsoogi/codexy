@@ -48,6 +48,7 @@ def plan_transition(
     before: tuple[str, ...],
     recorded: tuple[str, ...] | None,
 ) -> TransitionPlan:
+    """Plan safe removals and keep updates within the recorded component selection."""
     if command == "remove":
         if not requested:
             raise ComponentResolutionError("missing-removal-target")

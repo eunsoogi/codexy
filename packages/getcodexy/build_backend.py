@@ -14,6 +14,7 @@ _PACKAGED_LOCK = _ROOT / "src/codexy_runtime_tools/_version_data/uv.lock"
 
 
 def _materialize_version_lock() -> None:
+    """Copy the canonical project lock into the package payload before builds."""
     contents = _CANONICAL_LOCK.read_bytes()
     if not contents:
         raise ValueError("packages/getcodexy/uv.lock must not be empty")

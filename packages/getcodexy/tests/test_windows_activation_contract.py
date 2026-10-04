@@ -1,3 +1,5 @@
+"""Keep native Windows activation workflow commands fail-fast and scoped."""
+
 import re
 import unittest
 from pathlib import Path

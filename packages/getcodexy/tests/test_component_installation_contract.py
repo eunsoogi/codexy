@@ -1,3 +1,5 @@
+"""Executable checks for the documented component installation contract."""
+
 from __future__ import annotations
 
 import json

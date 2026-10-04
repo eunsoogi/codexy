@@ -18,11 +18,13 @@ def migration_rejection(
     requested: tuple[str, ...],
     lock_held: bool,
 ) -> dict[str, object] | None:
+    """Block component operations while a monolith migration may still be pending."""
     if lock_held:
         return None
     try:
         pending = read_migration_journal(home) is not None
     except (OSError, ValueError):
+        # An unreadable journal cannot prove that the cross-transaction lock is clear.
         pending = True
     if not pending:
         return None

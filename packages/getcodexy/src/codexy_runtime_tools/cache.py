@@ -1,3 +1,5 @@
+"""Validate plugin release identities and derive runtime cache keys."""
+
 from __future__ import annotations
 
 import hashlib
@@ -15,6 +17,7 @@ SEMVER = re.compile(
 
 
 def plugin_release(manifest_path: Path, package_override: bool = False) -> str:
+    """Return a valid manifest version or the explicit package-override identity."""
     if not manifest_path.is_file():
         if package_override:
             return "package-override"
@@ -29,6 +32,7 @@ def plugin_release(manifest_path: Path, package_override: bool = False) -> str:
 def releases_match(
     expected_manifest: Path, observed_manifest: Path
 ) -> tuple[bool, str]:
+    """Compare release versions while retaining safe mismatch text."""
     try:
         expected = plugin_release(expected_manifest)
     except (OSError, ValueError, json.JSONDecodeError):
@@ -54,7 +58,9 @@ def releases_match(
 def runtime_cache_key(
     *, manifest: Path, package_override: bool, identity: list[str]
 ) -> str:
+    """Bind cache identity to package release so an upgrade cannot reuse old state."""
     release = plugin_release(manifest, package_override)
+    # NUL delimiters prevent adjacent identity components from becoming ambiguous.
     digest_input = "\0".join(
         ("codexy.runtime-cache/v2", *identity[:-1], release, identity[-1])
     )

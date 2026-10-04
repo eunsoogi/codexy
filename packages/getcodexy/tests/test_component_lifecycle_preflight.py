@@ -157,6 +157,8 @@ class LifecyclePreflightTests(unittest.TestCase):
             ("malformed", "conflicting-installed-state", "conflicting-installed-state"),
             ("duplicate", "conflicting-installed-state", "conflicting-installed-state"),
         )
+        # Marketplace presence changes which identity errors are expected, but
+        # any rejected host record must still fail before the first mutation.
         for marketplace_present in (False, True):
             for case, unregistered_error, registered_error in cases:
                 with (

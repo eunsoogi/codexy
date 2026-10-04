@@ -1,3 +1,5 @@
+"""Repinning verifies the new registration and restores prior config on failure."""
+
 from __future__ import annotations
 
 import json

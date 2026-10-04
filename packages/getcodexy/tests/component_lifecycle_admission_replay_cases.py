@@ -1,4 +1,4 @@
-"""Receipt replay admission cases."""
+"""Receipt replay returns the original result and rejects conflicts before mutation."""
 
 import json
 from unittest.mock import patch

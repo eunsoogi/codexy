@@ -1,3 +1,5 @@
+"""Migration gates host changes on a ready target and durable recovery state."""
+
 from __future__ import annotations
 
 import unittest

@@ -73,6 +73,7 @@ def platforms(
     value: Any, *, require_path: bool
 ) -> dict[str, dict[str, dict[str, str]]]:
     value = object(value, "platforms")
+    # Candidate artifacts carry paths; public release identities expose hashes only.
     expected_platforms = CANDIDATE_PLATFORMS if require_path else PUBLIC_PLATFORMS
     if set(value) != expected_platforms:
         raise ValueError("runtime release has unknown or missing platform")

@@ -51,6 +51,8 @@ class GithubNativeHooksTests(
 
     def test_workflow_context_preserves_prompt_parity(self) -> None:
         if os.name == "nt":
+            # Keep the Windows keyword matcher and the POSIX phrase matcher on
+            # the same positive and negative prompt contract.
             matching_prompts = WINDOWS_KEYWORDS
             hook = str(PLUGIN / "hooks/codexy-github-workflow-context.cmd")
             command, environment = ["cmd.exe", "/d", "/c", hook], None

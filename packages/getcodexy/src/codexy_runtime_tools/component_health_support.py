@@ -36,6 +36,7 @@ def _legacy_state(
     host_error,
     codex_home=None,
 ):
+    """Preserve the coarse state contract while checking installed package integrity."""
     record = records.get(component)
     if admission_error or host_error:
         return "incompatible"
@@ -94,6 +95,7 @@ def _observed(record):
 
 
 def _authority_valid(record):
+    """Accept explicit attestation or recognized local marketplace forms."""
     if not record:
         return False
     key = next((key for key in AUTHORITY_KEYS if key in record), None)
@@ -128,6 +130,7 @@ def _authority_valid(record):
 
 
 def version_relation(manifest, record):
+    """Treat unparseable installed versions as incompatible, never as a match."""
     try:
         return compare_versions(record_version(record), manifest.version)
     except ComponentResolutionError:

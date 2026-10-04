@@ -1,3 +1,5 @@
+"""Baseline admission includes modes and empty directories, and rejects unsafe links."""
+
 from __future__ import annotations
 
 import json

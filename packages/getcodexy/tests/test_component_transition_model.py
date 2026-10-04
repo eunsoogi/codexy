@@ -28,6 +28,8 @@ from component_receipt_identity_cases import ComponentReceiptIdentityCases
 class TransitionModelTests(ComponentReceiptIdentityCases, unittest.TestCase):
     def test_every_reachable_terminal_transition_round_trips(self) -> None:
         manifest = load_component_manifest()
+        # Exercise every compatible installed state with and without a recorded
+        # inventory before checking both terminal outcomes.
         for before in manifest.compatible_combinations:
             for command, requested in _requests():
                 for recorded in (None, before):

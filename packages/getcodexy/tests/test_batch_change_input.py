@@ -1,3 +1,5 @@
+"""CLI-level validation of batch-change manifests without executing commands."""
+
 from __future__ import annotations
 
 import hashlib

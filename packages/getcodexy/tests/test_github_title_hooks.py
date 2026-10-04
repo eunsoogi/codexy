@@ -117,6 +117,7 @@ class GithubTitleHooksTests(unittest.TestCase):
                 )
                 self.assertEqual(bool(output), denied, output)
 
+    # Quoted or commented examples stay inert while executable API calls are checked.
     def test_title_parser_ignores_data_literals_and_checks_graphql(self) -> None:
         hook = str(PLUGIN / "hooks/codexy-title-check.sh")
         environment = {**os.environ, "PLUGIN_ROOT": str(PLUGIN)}

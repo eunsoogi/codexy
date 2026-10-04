@@ -22,6 +22,7 @@ def admitted_selection(
     marketplace_root: MarketplaceBinding | None,
     command: str,
 ) -> tuple[str, ...]:
+    """Resolve the operation selection before any lifecycle mutation begins."""
     return admit_operation_inventory(manifest, inventory, marketplace_root, command)
 
 
@@ -53,6 +54,7 @@ def replay_receipt(
     command: str,
     requested: tuple[str, ...],
 ) -> dict[str, object] | None:
+    """Replay an exact request receipt and reject reusing its id for other inputs."""
     receipt = read_receipt(home, identifier)
     if receipt is None:
         return None
@@ -71,6 +73,7 @@ def replay_receipt(
 def admit_pending_receipt(
     home: Path, manifest: ComponentManifest, journal: Journal
 ) -> dict[str, object] | None:
+    """Accept a pending receipt only when its phase and selection match the journal."""
     receipt = read_receipt(home, journal.identifier)
     if receipt is None:
         return None
@@ -105,6 +108,7 @@ def admit_pending_receipt(
 def matching_receipt(
     home: Path, manifest: ComponentManifest, receipt: dict[str, object]
 ) -> bool:
+    """Compare a proposed receipt with its validated durable record, if present."""
     identifier = receipt["operation_id"]
     existing = read_receipt(home, identifier) if isinstance(identifier, str) else None
     if existing is not None:

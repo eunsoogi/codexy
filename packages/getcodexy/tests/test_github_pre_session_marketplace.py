@@ -1,3 +1,5 @@
+"""Fresh-home setup re-reads the official marketplace before syncing its cache."""
+
 from __future__ import annotations
 
 import json

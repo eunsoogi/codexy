@@ -1,3 +1,5 @@
+"""Activation verifies complete bundles and rolls back manifest or path failures."""
+
 from __future__ import annotations
 
 import json

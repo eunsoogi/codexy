@@ -1,3 +1,5 @@
+"""Package version comes from the unique getcodexy record in bundled uv.lock."""
+
 from __future__ import annotations
 
 import unittest

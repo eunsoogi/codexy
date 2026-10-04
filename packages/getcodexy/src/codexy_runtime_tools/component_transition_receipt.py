@@ -57,6 +57,7 @@ class OperationReceipt:
         after: tuple[str, ...],
         errors: tuple[str, ...] = (),
     ) -> OperationReceipt:
+        """Derive terminal evidence from the journal's before and target states."""
         if outcome not in {"completed", "pending-action", "rolled-back"}:
             raise ValueError("a journal cannot produce a rejected receipt")
         if outcome in {"completed", "pending-action"} and after != journal.target:

@@ -17,6 +17,7 @@ MARKETPLACE = "codexy"
 COMPONENT_IDS = ("core", "github", "devtools")
 SEMVER = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z")
 MAX_SEMVER_COMPONENT = 2_147_483_647
+# Reject numeric components beyond the package's signed 32-bit version contract.
 DOMAIN_ERRORS = frozenset(
     {
         "component-version-mismatch",

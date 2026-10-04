@@ -1,4 +1,4 @@
-"""Rollback cases for GitHub pre-session activation."""
+"""GitHub activation failure restores the config and removes the split plugins."""
 
 import json
 import subprocess

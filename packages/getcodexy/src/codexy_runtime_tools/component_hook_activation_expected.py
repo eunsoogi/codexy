@@ -32,6 +32,8 @@ _EVENT_KEYS = {
 
 @dataclass(frozen=True)
 class ExpectedHook:
+    """Installed hook identity and settings used to verify the host's active row."""
+
     component: str
     plugin_id: str
     version: str
@@ -48,6 +50,7 @@ class ExpectedHook:
 
     @property
     def key(self) -> str:
+        """Keep duplicate registrations distinct by their declared array positions."""
         return (
             f"{self.plugin_id}:hooks/hooks.json:{self.event_key}:"
             f"{self.group_index}:{self.hook_index}"
@@ -59,6 +62,7 @@ def expected_hooks(
     components: tuple[str, ...],
     records: dict[str, dict[str, object]],
 ) -> dict[str, tuple[ExpectedHook, ...]]:
+    """Parse installed manifests into exact, platform-specific hook expectations."""
     expected: dict[str, tuple[ExpectedHook, ...]] = {}
     for component in components:
         record = records.get(component)
@@ -81,6 +85,7 @@ def expected_hooks(
             raise HookStateError("installed hook registration has an invalid shape")
         hooks_map = cast(dict[str, object], hooks)
         entries: list[ExpectedHook] = []
+        # Event, positions, and command variant bind each host row to its source.
         for event, groups_value in hooks_map.items():
             if event not in _EVENT_LABELS or event not in _EVENT_KEYS:
                 raise HookStateError("installed hook registration has an unknown event")

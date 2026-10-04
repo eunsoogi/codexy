@@ -43,6 +43,7 @@ def run_pre_session(
     synchronize: Callable[[Path, Path, str], SyncResult] = sync_agents,
     package_version: str | None = None,
 ) -> PreSessionResult:
+    """Pin and verify the core release before synchronizing its host projections."""
     home = _absolute(codex_home)
     executable = codex or _find_codex()
     invoke = runner or (lambda command: _run(command, home))
@@ -73,6 +74,7 @@ def run_pre_session(
         )
         _preflight(before, marketplace_root)
 
+    # Upgrade can change the checkout; verify its exact tag before installing from it.
     _json(
         invoke(
             [str(executable), "plugin", "marketplace", "upgrade", "codexy", "--json"]

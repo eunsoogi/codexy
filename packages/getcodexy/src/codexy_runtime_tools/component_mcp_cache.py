@@ -12,6 +12,7 @@ from .updater import _absolute, _validate_real_path
 
 
 def _needs_executable(path: Path) -> bool:
+    """Require execute permission on launchers, but not the sourced platform helper."""
     return path.name != "runtime-platform.sh" and path.suffix in {"", ".sh"}
 
 
@@ -34,6 +35,7 @@ def _require_directory(path: Path, label: str) -> None:
 
 
 def _sync_surface(source: Path, target: Path, paths: Iterable[Path]) -> None:
+    """Copy only declared regular files after validating both plugin roots."""
     _require_directory(source, "MCP source plugin")
     _require_directory(target, "MCP cache plugin")
     for relative in paths:
@@ -55,6 +57,7 @@ def _sync_surface(source: Path, target: Path, paths: Iterable[Path]) -> None:
 
 
 def _same_file(source: Path, target: Path) -> bool:
+    """Reuse a cache file only when content and mode match the packaged source."""
     try:
         target_metadata = target.lstat()
         return (
@@ -69,6 +72,7 @@ def _same_file(source: Path, target: Path) -> bool:
 
 
 def _atomic_copy(source: Path, target: Path) -> None:
+    """Write and sync beside the destination before atomically replacing it."""
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{target.name}.", suffix=".tmp", dir=target.parent
     )

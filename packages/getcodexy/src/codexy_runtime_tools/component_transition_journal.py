@@ -68,6 +68,7 @@ class Journal:
             "inventory",
             "phase",
         }
+        # Earlier journals have no managed projection and remain readable as-is.
         if (
             not isinstance(value, dict)
             or set(value) not in (fields, fields | {"managed"})
@@ -209,6 +210,7 @@ class Journal:
         )
 
     def _require_snapshot(self) -> None:
+        # Update recovery must have the pre-operation inventory it will restore.
         if (
             self.command == "update"
             and self.pre_state_source is PreStateSource.NO_SNAPSHOT

@@ -20,6 +20,7 @@ def request(method: str, identifier: int | None = None, params=None) -> dict[str
 
 
 def pointer_get(value: Any, pointer: str) -> Any:
+    """Resolve a non-root JSON Pointer, including its escaped slash and tilde keys."""
     current = value
     for raw in pointer[1:].split("/"):
         key = raw.replace("~1", "/").replace("~0", "~")
@@ -71,6 +72,7 @@ def parse_line(line: bytes, responses: dict[int, dict[str, Any]], malformed) -> 
     except (UnicodeDecodeError, ValueError, json.JSONDecodeError):
         malformed.set()
         return
+    # This handshake assigns only three response ids and rejects notifications.
     if (
         not isinstance(value, dict)
         or value.get("jsonrpc") != "2.0"

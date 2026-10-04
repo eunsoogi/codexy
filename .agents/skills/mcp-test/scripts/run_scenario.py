@@ -17,7 +17,7 @@ _SCENARIO_ROOT = Path(__file__).resolve().parent
 _PRODUCER_DIRS = ("scenario_core", "scenario_flow", "scenario_compare")
 if any(not (_SCENARIO_ROOT / name).is_dir() for name in _PRODUCER_DIRS):
     raise SystemExit("mcp-test is missing the repository scenario producers")
-sys.path.insert(0, str(_SCENARIO_ROOT))
+sys.path.insert(0, str(_SCENARIO_ROOT))  # Use this checkout's scenario producers.
 
 import scenario_core as _scenario_core  # noqa: E402
 import scenario_flow as _scenario_flow  # noqa: E402
@@ -53,7 +53,7 @@ def _load_spec(path: Path) -> dict[str, Any]:
     steps = data.get("steps")
     if not isinstance(steps, list) or not steps:
         raise ValueError("scenario steps must be a non-empty array")
-    target_names: set[str] | None = None
+    target_names: set[str] | None = None  # Require the same targets across steps.
     for raw_step in steps:
         step = _mapping(raw_step, "step")
         targets = _mapping(step.get("targets"), "step targets")
@@ -120,7 +120,7 @@ def _normalizers(spec: dict[str, Any]):
     values = spec.get("normalizers", [])
     if not isinstance(values, list):
         raise ValueError("normalizers must be an array")
-    declared = {
+    declared = {  # Restrict normalizers to outputs declared by the steps.
         (step["name"], field)
         for step in spec["steps"]
         for field in step["stored_fields"]

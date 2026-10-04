@@ -1,3 +1,5 @@
+"""Verify copied Watcher hooks preserve explicit state-path precedence."""
+
 from __future__ import annotations
 
 import json

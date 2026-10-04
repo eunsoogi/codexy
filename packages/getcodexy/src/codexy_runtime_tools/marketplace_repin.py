@@ -49,6 +49,7 @@ def reconcile_official_marketplace_root(
             require_pinned_registration(home, root, expected_ref)
             return root
         except Exception:
+            # Only an explicit version pin is safe to restore after failed repinning.
             if previous_ref is None or previous_ref == "main":
                 reason = (
                     "unsafe-default-ref" if previous_ref is None else "unsafe-main-ref"

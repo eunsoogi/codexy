@@ -1,4 +1,4 @@
-"""Lifecycle preflight and storage-boundary cases."""
+"""Preflight rejects stale inventory, unsafe storage or IDs, and concurrent calls."""
 
 import errno
 import json

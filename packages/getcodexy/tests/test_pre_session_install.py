@@ -1,3 +1,5 @@
+"""First-run setup pins the packaged version before syncing the installed projection."""
+
 from __future__ import annotations
 
 import contextlib

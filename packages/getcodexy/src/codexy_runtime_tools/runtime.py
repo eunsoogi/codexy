@@ -134,6 +134,7 @@ def run(config: Configuration) -> NoReturn:
             f"codexy-mcp-{config.server} bundled runtime supports: {' '.join(SUPPORTED_PLATFORMS)}; set CODEXY_RUNTIME_DIR for {config.platform}"
         )
     bundled = config.plugin_root / "runtime" / config.runtime_name
+    # Prefer the plugin-bundled server before resolving an external runtime source.
     if executable(bundled):
         _execute(config, bundled)
     source_identity = config.source_identity or RuntimeSourceIdentity.create(

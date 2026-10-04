@@ -1,3 +1,5 @@
+"""Idempotent component bootstrap and durable recovery cases."""
+
 from __future__ import annotations
 
 import unittest

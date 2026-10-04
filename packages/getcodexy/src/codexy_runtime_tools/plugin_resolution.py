@@ -33,6 +33,7 @@ def named_marketplace(payload: object) -> bool:
 
 
 def marketplace_identity(payload: object) -> MarketplaceIdentity:
+    """Bind the host's registered marketplace name to its source and real root."""
     named = [
         item
         for item in _items(payload, "marketplaces")
@@ -114,6 +115,7 @@ def preflight_install(
 def preflight_named_install(
     payload: object, marketplace_root: MarketplaceBinding, name: str
 ) -> None:
+    """Reject duplicate or foreign enabled installs before mutating the host."""
     root = (
         marketplace_root.root
         if isinstance(marketplace_root, MarketplaceIdentity)
@@ -153,6 +155,7 @@ def named_install(
     distribution_version: str,
     name: str,
 ) -> tuple[Path, str]:
+    """Resolve one enabled plugin and bind its source, version, and manifest."""
     root = (
         marketplace_root.root
         if isinstance(marketplace_root, MarketplaceIdentity)

@@ -44,6 +44,7 @@ def _reader(
         if not chunk:
             break
         count[0] += len(chunk)
+        # Both stream readers share this counter and lock, enforcing one output cap.
         with count_lock:
             total_count[0] += len(chunk)
             over_limit = total_count[0] > limit
@@ -55,6 +56,7 @@ def _reader(
             line, _, remainder = buffer.partition(b"\n")
             buffer = bytearray(remainder)
             if callback is not None:
+                # Only stdout has a callback; stderr is captured for the same byte cap.
                 callback(bytes(line).rstrip(b"\r"), send_input)
     if buffer and callback is not None and not exceeded.is_set():
         callback(bytes(buffer).rstrip(b"\r"), send_input)
@@ -83,6 +85,7 @@ def run_bounded(
         "shell": False,
         "text": False,
     }
+    # A separate session gives cleanup a process group containing only this call.
     options["start_new_session"] = True
     options["close_fds"] = True
     try:
@@ -103,6 +106,7 @@ def run_bounded(
     count_lock = threading.Lock()
     exceeded = threading.Event()
     writer_stop = threading.Event()
+    # Protocol callbacks enqueue replies so the stdout reader never writes to stdin.
     input_queue: queue.Queue[bytes | None] = queue.Queue()
     input_queue.put(input_bytes)
 

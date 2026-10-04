@@ -41,8 +41,8 @@ def _verify_component(
 def _read_component(
     root: Path, verified: dict[Path, bytes], modes: dict[Path, int]
 ) -> None:
-    size = sum(map(len, verified.values()))
-    pending = [Path()]
+    size = sum(map(len, verified.values()))  # The manifest shares the same cap.
+    pending = [Path()]  # Traverse from the component root.
     while pending:
         relative_directory = pending.pop()
         directory = root / relative_directory
@@ -94,7 +94,7 @@ def frozen_component(
             )
             with os.fdopen(descriptor, "wb") as output:
                 output.write(data)
-            os.chmod(destination, 0o600 | (modes.get(relative, 0) & 0o111))
+            os.chmod(destination, 0o600 | (modes.get(relative, 0) & 0o111))  # keep exec
         yield target
 
 
@@ -177,7 +177,7 @@ def _read_regular_windows(
         opened = os.fstat(descriptor)
         if not stat.S_ISREG(opened.st_mode):
             raise ValueError(f"component integrity requires regular files: {target}")
-        _, final = _windows_safe_path(root, relative)
+        _, final = _windows_safe_path(root, relative)  # Recheck path after opening it.
         if (opened.st_dev, opened.st_ino) != (final.st_dev, final.st_ino):
             raise ValueError(
                 f"component integrity path changed while reading: {target}"
@@ -231,7 +231,7 @@ def _has_windows_reparse_point(metadata: os.stat_result) -> bool:
 def valid_agent_toml(text: str, path: Path) -> bool:
     try:
         import tomllib
-    except ModuleNotFoundError:
+    except ModuleNotFoundError:  # Keep validation dependency-free on older runtimes.
         import ast
 
         tree = ast.parse(text, filename=str(path))

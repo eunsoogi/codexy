@@ -18,6 +18,7 @@ def materialize_mcp_sources(
     manifest: ComponentManifest,
     components: tuple[str, ...],
 ) -> None:
+    """Write packaged MCP declarations into selected marketplace plugin sources."""
     marketplace = marketplace_path(root)
     for component in manifest.component_ids:
         if component not in components or component not in MCP_COMPONENTS:
@@ -32,6 +33,7 @@ def materialize_mcp_caches(
     manifest: ComponentManifest,
     components: tuple[str, ...],
 ) -> None:
+    """Refresh installed-cache MCP declarations for selected MCP components only."""
     marketplace = marketplace_path(root)
     for component in manifest.component_ids:
         if component not in components or component not in MCP_COMPONENTS:

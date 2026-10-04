@@ -1,3 +1,5 @@
+"""CLI JSON output and exit-status contracts for component operations."""
+
 from __future__ import annotations
 
 import errno

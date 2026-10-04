@@ -1,3 +1,5 @@
+"""Public activation tests freeze entrypoints, CI coverage, and package inputs."""
+
 import json
 import re
 import shutil

@@ -141,7 +141,7 @@ class ComponentInspectionTests(
             (state.marketplace / "plugins/codexy/hooks/hooks.json").write_text(
                 "not json", encoding="utf-8"
             )
-            before = tuple(state.mutations)
+            before = tuple(state.mutations)  # Doctor must not repair this corruption.
             result = doctor(state.home, codex=state.codex, runner=state.run)
             self.assertEqual(tuple(state.mutations), before)
         self.assertEqual(result["component_health"][0]["state"], "incompatible")

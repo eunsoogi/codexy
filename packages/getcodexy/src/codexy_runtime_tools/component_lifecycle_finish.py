@@ -41,6 +41,7 @@ InstalledLister = Callable[[Path, Runner], object]
 
 
 def capture_managed_files(home: Path) -> tuple[ManagedFileSnapshot, ...]:
+    """Capture only marker-owned roles, managed config, and Codexy backups."""
     if not os.path.lexists(home):
         return ()
     _validate_real_path(home, require_exists=True)
@@ -100,6 +101,7 @@ def capture_managed_files(home: Path) -> tuple[ManagedFileSnapshot, ...]:
 def restore_managed_files(
     home: Path, snapshots: tuple[ManagedFileSnapshot, ...]
 ) -> None:
+    """Restore the captured managed surface while leaving user-owned files alone."""
     expected = {entry.relative: entry for entry in snapshots}
     agents_root = home / "agents" / "codexy"
     if os.path.lexists(agents_root):
@@ -136,6 +138,7 @@ def restore_managed_files(
 
 
 def _restore_managed_entry(home: Path, entry: ManagedFileSnapshot) -> None:
+    """Restore one managed file, refusing to replace an unmarked agent file."""
     path = home / entry.relative
     current = _read_regular(path)
     if current == entry.data:
@@ -149,6 +152,7 @@ def _restore_managed_entry(home: Path, entry: ManagedFileSnapshot) -> None:
 
 
 def _restore_managed_config(home: Path, entry: ManagedFileSnapshot) -> None:
+    """Restore config only if remaining content matches the managed edit."""
     path = home / entry.relative
     current = _read_regular(path)
     if current == entry.data:
@@ -207,6 +211,7 @@ def finish_committed(
     list_installed: InstalledLister,
     clear: Callable[[Path], None] = _clear_journal,
 ) -> dict[str, object]:
+    """Read back committed host state and persist the final inventory and receipt."""
     stored = admit_pending_receipt(home, manifest, journal)
     if stored is not None:
         clear(home)

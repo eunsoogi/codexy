@@ -106,7 +106,7 @@ def _absolute(path: str | os.PathLike[str]) -> Path:
         return absolute
     top = Path(absolute.anchor) / absolute.parts[1]
     info = os.lstat(top)
-    if stat.S_ISLNK(info.st_mode):
+    if stat.S_ISLNK(info.st_mode):  # Allow only root-owned top-level links.
         if info.st_uid != 0:
             raise ValueError(f"trusted path boundary cannot be a symlink: {top}")
         return top.resolve(strict=True).joinpath(*absolute.parts[2:])

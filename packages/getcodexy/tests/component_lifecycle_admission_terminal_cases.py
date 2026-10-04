@@ -1,4 +1,4 @@
-"""Terminal receipt admission cases."""
+"""Terminal recovery replays exact rollback receipts and rejects mixed-version state."""
 
 import json
 from unittest.mock import patch

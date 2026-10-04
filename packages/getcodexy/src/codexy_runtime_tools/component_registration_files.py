@@ -35,6 +35,7 @@ def _launcher(path: Path, root: Path) -> bool:
 def _skill(plugin: Path, component: str) -> bool:
     required = load_component_manifest().component(component).asset.required_paths
     if component == "core":
+        # Core hook files are runtime dependencies beyond the plugin asset list.
         required += CORE_HOOK_DEPENDENCIES
     name = "wiki" if component == "core" else "git-workflow"
     contents = _text(plugin / f"skills/{name}/SKILL.md", plugin)

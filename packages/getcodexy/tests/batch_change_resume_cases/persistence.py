@@ -15,6 +15,7 @@ class BatchChangeResumePersistenceTests(BatchChangeResumeCase):
     def test_interruption_before_state_replace_leaves_prior_checkpoint_and_reruns(
         self,
     ) -> None:
+        """Kill at the hook so the next run must trust only the prior checkpoint."""
         manifest = self._manifest()
         count_file = Path(self.temporary.name) / "persist-count.txt"
         ready_file = Path(self.temporary.name) / "persist-ready"

@@ -19,6 +19,7 @@ from .component_transition_model import (
 def terminal(
     home: Path, manifest: ComponentManifest, receipt: OperationReceipt
 ) -> dict[str, object]:
+    """Validate and durably store a terminal receipt before returning its encoding."""
     receipt.validate(manifest)
     encoded = receipt.encode()
     write_receipt(home, manifest, receipt)
@@ -35,6 +36,7 @@ def reject(
     stage: RejectionStage,
     failure: ComponentResolutionError | StateFailure,
 ) -> dict[str, object]:
+    """Encode a stage-specific failure through the same validated terminal path."""
     rejection = Rejection.from_failure(stage, failure)
     rejection.validate(manifest, command, requested, before, plan_transition)
     return terminal(

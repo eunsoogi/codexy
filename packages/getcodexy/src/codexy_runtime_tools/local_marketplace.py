@@ -44,6 +44,7 @@ def validate_local_archive(
         )
     ):
         raise ValueError("local Codexy marketplace provenance is incomplete")
+    # Each registration must resolve to a matching plugin in this frozen checkout.
     for entry in entries:
         name = entry["name"]
         if version is not None and entry.get("version") != version:

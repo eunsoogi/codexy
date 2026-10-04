@@ -1,3 +1,5 @@
+"""Read-only inspection of hook registration and host trust state."""
+
 from __future__ import annotations
 
 import json

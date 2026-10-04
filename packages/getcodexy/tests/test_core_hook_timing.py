@@ -117,7 +117,7 @@ class CoreHookTimingTests(unittest.TestCase):
 
             def swap_after_open(path: Path) -> int:
                 descriptor = original(path)
-                parent.rename(held)
+                parent.rename(held)  # Keep the write on the opened directory inode.
                 parent.symlink_to(replacement, target_is_directory=True)
                 return descriptor
 

@@ -68,7 +68,7 @@ def run_operation(
     lock_held: bool = False,
     hook_lister: HookLister | None = None,
 ) -> dict[str, object]:
-    """Run a serialized operation, recovering any preceding interrupted operation first."""
+    """Serialize transitions and recover any interrupted predecessor first."""
     if command not in {"install", "update", "remove", "bootstrap"}:
         raise ValueError(f"unsupported component operation: {command}")
     try:
@@ -225,7 +225,7 @@ def run_operation(
             )
 
         journal = plan.journal(identifier, InventorySnapshot.capture(home))
-        write_journal(home, journal)
+        write_journal(home, journal)  # Save the before-state before package changes.
         try:
             root = root or official_marketplace_root(executable, invoke)
             forward = partial(_apply_forward, home=home)

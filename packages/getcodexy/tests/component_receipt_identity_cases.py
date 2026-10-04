@@ -1,4 +1,4 @@
-"""Operation receipt identity and persistence cases."""
+"""Receipts accept only bounded safe IDs across encoding and durable storage."""
 
 import json
 from pathlib import Path

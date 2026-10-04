@@ -14,6 +14,7 @@ class ComponentLike(Protocol):
 def compatible_combinations(
     components: tuple[ComponentLike, ...],
 ) -> set[tuple[str, ...]]:
+    """Return component subsets that include every selected component's dependencies."""
     ids, dependencies = (
         tuple(component.id for component in components),
         {component.id: set(component.dependencies) for component in components},
@@ -27,6 +28,7 @@ def compatible_combinations(
 
 
 def has_cycle(components: tuple[ComponentLike, ...]) -> bool:
+    """Detect back-edges with separate active and fully visited DFS sets."""
     dependencies = {component.id: component.dependencies for component in components}
     visiting, visited = set(), set()
 

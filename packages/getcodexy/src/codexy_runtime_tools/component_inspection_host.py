@@ -23,6 +23,7 @@ class ProbeStage(str, Enum):
 def host(
     home: Path, codex: Path | None, runner: Runner | None
 ) -> tuple[Path, Runner, None] | tuple[None, None, ProbeStage]:
+    """Resolve Codex and return a stage-specific setup failure."""
     try:
         return (
             trusted_codex(codex or _find_codex()),

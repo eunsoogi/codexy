@@ -23,6 +23,7 @@ class MigrationPlan:
 def plan_migration(
     root: Path, target_version: str, requested: tuple[str, ...]
 ) -> MigrationPlan:
+    """Admit only an unchanged known source and a distinct compatible split target."""
     classification = classify_monolith(root)
     if classification.state != "supported-unmodified":
         return MigrationPlan(

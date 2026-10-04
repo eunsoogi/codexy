@@ -1,4 +1,4 @@
-"""Basic status and bootstrap CLI scenarios."""
+"""CLI status is live, while bootstrap refresh requires a fresh Codex task."""
 
 from __future__ import annotations
 
