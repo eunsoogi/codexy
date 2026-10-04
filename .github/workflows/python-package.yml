@@ -125,14 +125,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'push' && github.event.before || '' }}
           PRIOR_PUBLIC_VERSION: ${{ inputs.prior_public_version || '' }}
-        run: |
+        run: | # The hook tests use the verified public runtime binary.
           $ErrorActionPreference = "Stop"
           $bundleRoot = Join-Path $env:RUNNER_TEMP "codexy-public-marketplace-bundle"
           $verified = python scripts/verify_public_marketplace_bundle.py --output-dir $bundleRoot
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $release = $verified | ConvertFrom-Json
           Write-Host (@{ prior_public_release = $release.release_tag; baseline_source = $release.baseline_source; baseline_commit = $release.baseline_commit; bundle_sha256 = $release.bundle_sha256 } | ConvertTo-Json -Compress)
-          $binary = $release.watcher_binary # Use the verified public runtime binary as the hook target for this package.
+          $binary = $release.watcher_binary
           $env:CODEXY_TEST_WATCHER_BINARY = $binary
           "CODEXY_TEST_WATCHER_BINARY=$binary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           $env:PYTHONPATH = "packages/getcodexy/src;packages/getcodexy/tests"

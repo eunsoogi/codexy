@@ -35,6 +35,7 @@ fi
 
 bundled_runtime="$plugin_root/runtime/$runtime_name"
 # Prefer the installed binary before falling back to uvx and a pinned package version.
+# The Windows counterpart keeps the bundled, checkout-source, then pinned-release order in an exact validated template.
 if [ -x "$bundled_runtime" ]; then
 	exec "$bundled_runtime" "$@"
 fi
