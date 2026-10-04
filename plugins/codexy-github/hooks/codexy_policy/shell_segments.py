@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from .execution_context import SINGLE_QUOTED_DOLLAR, assignment
 from .shell_reflog import protect as protect_reflog, restore as restore_reflog
-from .shell_heredoc import without_quoted_heredoc_bodies
+from .shell_heredoc import without_python_script_heredoc_bodies
 
 QUOTED_REDIRECTIONS = {"<": "\ue001", ">": "\ue002"}
 REDIRECTION_FD, UNSAFE_REDIRECTION = "\ue003", "\ue004"
@@ -19,7 +19,7 @@ OPERATORS = frozenset({";", "&&", "||", "|", "&", "(", ")", "{", "}"})
 
 
 def tokenize(command: str) -> list[str] | None:
-    command = without_quoted_heredoc_bodies(command)
+    command = without_python_script_heredoc_bodies(command)
     try:
         lexer = shlex.shlex(
             protect_reflog(separate_lines(command)),
@@ -154,7 +154,7 @@ def command_tokens(tokens: tuple[str, ...]) -> tuple[str, ...]:
 
 def opaque_syntax(command: str) -> OpaqueSyntax:
     """Expose only executable substitutions and controls, never quoted data."""
-    command = without_quoted_heredoc_bodies(command)
+    command = without_python_script_heredoc_bodies(command)
     result, code, substitutions = [], [], []
     quote, escaped, index = None, False, 0
     while index < len(command):

@@ -229,9 +229,15 @@ PY"""
         for command in (
             "gh auth token",
             "python3 - <<EOF\n$(gh auth token)\nEOF",
+            "sh -c 'sh -s' <<'EOF'\ngh auth token\nEOF",
         ):
             with self.subTest(command=command):
                 assert_denied(command, "CODEXY_DESTRUCTIVE_COMMAND_CREDENTIAL_EXPOSURE")
+
+        assert_denied(
+            "sh -c 'sh -s' <<'EOF'\nrm -rf /\nEOF",
+            "CODEXY_DESTRUCTIVE_COMMAND_DESTRUCTIVE_EFFECT",
+        )
 
         assert_denied(
             "(( 8 << 'EOF' ))\nrm -rf /\nEOF",

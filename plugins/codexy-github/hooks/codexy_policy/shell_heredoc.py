@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+import re
+import shlex
 
-def without_quoted_heredoc_bodies(command: str) -> str:
-    """Keep quoted here-document bodies out of the shell command grammar."""
+
+_SHELL_OPERATORS = frozenset({";", "&&", "||", "|", "&", "(", ")", "{", "}"})
+_CONTROL_WORDS = frozenset("if then elif else fi for while until do done".split())
+_PYTHON_EXECUTABLE = re.compile(r"(?:python(?:\d+(?:\.\d+)?)?|pypy\d*)\Z")
+
+
+def without_python_script_heredoc_bodies(command: str) -> str:
+    """Keep Python stdin scripts out of the shell command grammar."""
     lines = command.splitlines(keepends=True)
     output: list[str] = []
     quote: str | None = None
@@ -29,9 +37,11 @@ def without_quoted_heredoc_bodies(command: str) -> str:
             or not line.endswith(("\n", "\r"))
         ):
             return command
+        if any(not python_script for _, _, python_script in heredocs):
+            return command
 
         body_end = index
-        for delimiter, strip_tabs in heredocs:
+        for delimiter, strip_tabs, _ in heredocs:
             while body_end < len(lines):
                 terminator = lines[body_end].rstrip("\r\n")
                 if strip_tabs:
@@ -41,9 +51,9 @@ def without_quoted_heredoc_bodies(command: str) -> str:
                 body_end += 1
             if body_end == len(lines):
                 return command
+            changed = True
             body_end += 1
 
-        changed = True
         index = body_end
         quote, arithmetic_depth = None, 0
     return "".join(output) if changed else command
@@ -51,8 +61,8 @@ def without_quoted_heredoc_bodies(command: str) -> str:
 
 def _heredoc_headers(
     line: str, quote: str | None, arithmetic_depth: int
-) -> tuple[list[tuple[str, bool]] | None, str | None, int]:
-    heredocs: list[tuple[str, bool]] = []
+) -> tuple[list[tuple[str, bool, bool]] | None, str | None, int]:
+    heredocs: list[tuple[str, bool, bool]] = []
     index = 0
     while index < len(line):
         char = line[index]
@@ -93,11 +103,12 @@ def _heredoc_headers(
             if line[index + 2 : index + 3] == "<":
                 index += 3
                 continue
+            header_start = index
             parsed = _quoted_heredoc_delimiter(line, index)
             if parsed is None:
                 return None, quote, arithmetic_depth
             heredoc, index = parsed
-            heredocs.append(heredoc)
+            heredocs.append((*heredoc, _python_script_receiver(line[:header_start])))
             continue
         index += 1
     return heredocs, quote, arithmetic_depth
@@ -133,6 +144,40 @@ def _quoted_heredoc_delimiter(
     if index < len(line) and not (line[index].isspace() or line[index] in ";|&(){}<>"):
         return None
     return (delimiter, strip_tabs), index
+
+
+def _python_script_receiver(prefix: str) -> bool:
+    """Recognize a direct Python command that reads its script from stdin."""
+    try:
+        lexer = shlex.shlex(prefix, posix=True, punctuation_chars=";&|(){}<>")
+        lexer.whitespace_split, lexer.commenters = True, ""
+        tokens = list(lexer)
+    except ValueError:
+        return False
+
+    current: list[str] = []
+    for token in tokens:
+        if token in _SHELL_OPERATORS:
+            current = []
+        else:
+            current.append(token)
+    while current and (
+        current[0].casefold() in _CONTROL_WORDS
+        or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", current[0])
+    ):
+        del current[0]
+    if not current:
+        return False
+
+    executable = current[0].rsplit("/", 1)[-1]
+    if _PYTHON_EXECUTABLE.fullmatch(executable) is None:
+        return False
+    arguments = current[1:]
+    if any(option in {"-c", "-m"} for option in arguments):
+        return False
+    return "-" in arguments or not any(
+        not argument.startswith("-") for argument in arguments
+    )
 
 
 def _shell_line_continues(line: str, quote: str | None) -> bool:
