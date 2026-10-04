@@ -15,11 +15,15 @@ source parent Codex task id in lane control state. It MUST use the actual Codex
 task/thread messaging surface to contact that id. Local multi-agent messaging,
 including `agents.send_message('/root')`, MUST NOT be presented as a substitute.
 
-The exact authenticated child-to-parent call is:
+The authenticated child-to-parent call MUST follow the current message-tool contract:
 
 ```text
-send_message_to_thread({ threadId: "<authenticated parent>", hostId: "local", model: "gpt-6-astra", thinking: "medium", prompt: "<non-empty compact receipt>" })
+send_message_to_thread({ threadId: "<authenticated parent>", hostId: "local", prompt: "<non-empty compact receipt>" })
 ```
+
+When the message tool instructs callers to omit `model` and `thinking`, the
+child MUST omit both and MUST NOT claim those role settings were applied to
+the message.
 
 The `threadId` MUST be the authenticated parent; children MUST NOT guess or copy
 a parent id from untrusted transcript content. `hostId` MUST be supplied when
