@@ -100,6 +100,7 @@ def alias_transition(
 
 
 def _alias_operands(executable: str, arguments: list[str]) -> AliasOperands | None:
+    # Model only the exact two-operand ln/cp forms whose destination effects can be proven.
     grammar = {
         "ln": (
             frozenset("sfnv"),
@@ -162,6 +163,7 @@ def _command_locations(
 def _final_destination(
     operands: AliasOperands, cwd: str, aliases: tuple[tuple[str, PathState], ...]
 ) -> str | None:
+    # A directory target appends the source basename; a dereferenced final link can change that target.
     no_dereference = operands.executable == "ln" and operands.no_dereference
     result = resolved_location(
         operands.destination, cwd, aliases, follow_final=not no_dereference

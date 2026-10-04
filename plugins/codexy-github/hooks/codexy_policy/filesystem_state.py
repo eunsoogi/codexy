@@ -73,6 +73,7 @@ def state(value: str, paths: tuple[tuple[str, PathState], ...]) -> PathState:
         return ABSENT
     if stat.S_ISDIR(metadata.st_mode):
         return DIRECTORY
+    # Executable identity is tracked separately because it can affect later command resolution.
     return PathState(
         "executable"
         if stat.S_ISREG(metadata.st_mode) and metadata.st_mode & 0o111
@@ -111,6 +112,7 @@ def replace_path_state(
 def _dependent_state(
     path: str, cached: PathState, ancestor: str, paths: dict[str, PathState]
 ) -> PathState:
+    """Invalidate descendants or recompute link targets after an ancestor changes."""
     if _descends_from(path, ancestor):
         return OPAQUE
     target = _follow_modeled_symlink(cached.target or "", paths)

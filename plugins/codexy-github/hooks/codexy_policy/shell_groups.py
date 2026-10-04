@@ -59,6 +59,7 @@ def parse(tokens: list[str]) -> Sequence:
 
 
 def _expand_punctuation(tokens: list[str]) -> list[str]:
+    # Split shell control punctuation without breaking find's literal {} replacement operand.
     expanded: list[str] = []
     for token in tokens:
         if token == "{}":
@@ -162,6 +163,7 @@ class _Parser:
         )
 
     def _control_chunk(self, delimiters: set[str]) -> tuple[list[str], str]:
+        # Nested if/fi pairs belong to the inner branch and cannot close the current conditional.
         chunk: list[str] = []
         nested = 0
         while self.index < len(self.tokens):

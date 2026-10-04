@@ -95,6 +95,7 @@ def parse_body_closing_references(
     body: str, repository: str
 ) -> tuple[CanonicalIssueIdentity, ...]:
     """Parse only the final closing directive; prose is not governing state."""
+    # Resolve shorthand against the current repository, while qualified references carry their own owner.
     default_owner, default_repository = parse_repository(repository)
     lines = [line for line in body.splitlines() if line.strip()]
     if not lines:
@@ -141,6 +142,7 @@ def authorize_governing_identity(
     parse_repository(repository)
     requested = CanonicalIssueIdentity.from_issue(requested_issue)
     requested.require_repository(repository, "requested issue")
+    # New PR creation is authorized by the fetched requested issue; only updates need an observed PR identity.
     if action in ("first-run", "pushed-no-pr"):
         if observed_pr is not None:
             raise ValueError("new PR transition must not include observed PR identity")

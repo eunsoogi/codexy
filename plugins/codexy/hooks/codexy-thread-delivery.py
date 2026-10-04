@@ -30,10 +30,12 @@ def main() -> int:
         "--event", required=True, choices=("PreToolUse", "PermissionRequest")
     )
     event = parser.parse_args().event
+    # The extra byte lets the envelope reject oversized requests without reading them unboundedly.
     payload = sys.stdin.buffer.read(1024 * 1024 + 1)
     timing = None
     started_ns = None
     if os.environ.get(TIMING_FILE_ENV):
+        # Timing is optional diagnostics; policy evaluation still runs if instrumentation is unavailable.
         try:
             from codexy_policy import timing as timing_module
 

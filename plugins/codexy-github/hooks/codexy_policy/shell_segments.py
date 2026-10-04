@@ -16,6 +16,7 @@ CONTROL_WORDS = frozenset(
     "if then elif else fi for in while until do done case esac".split()
 )
 OPERATORS = frozenset({";", "&&", "||", "|", "&", "(", ")", "{", "}"})
+# Private markers keep quoted redirection and reflog data distinct from active shell operators.
 
 
 def tokenize(command: str) -> list[str] | None:

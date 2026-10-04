@@ -26,6 +26,7 @@ def fail(message: str) -> None:
 
 
 def run(*arguments: str) -> str:
+    # Surface a bounded command prefix with the tool diagnostic instead of treating failed Git/gh data as empty.
     result = subprocess.run(
         arguments,
         check=False,
@@ -94,6 +95,7 @@ def base_contract(root: Path, sha: str) -> dict:
 
 
 def safe_extract(archive_path: Path, destination: Path) -> None:
+    # Validate every path and member type before extracting any archive entry.
     if destination.exists():
         fail(f"refusing to reuse extraction directory: {destination}")
     destination.mkdir(parents=True)
@@ -139,6 +141,7 @@ def safe_extract(archive_path: Path, destination: Path) -> None:
 def verify_bundle(
     bundle: Path, receipt: dict, release_tag: str, expected_digest: str
 ) -> str:
+    # Require GitHub's digest, the receipt digest, and downloaded bytes to agree independently.
     release = receipt.get("release")
     receipt_tag = release.get("tag") if isinstance(release, dict) else None
     if receipt.get("schema") != "codexy-runtime-release-receipt/v2":
@@ -160,6 +163,7 @@ def verify_bundle(
 
 
 def verify_contents(root: Path, receipt: dict, version: str) -> Path:
+    # Bind each package manifest and marketplace entry to the same receipt version and component root.
     records = receipt.get("components")
     if not isinstance(records, list):
         fail("public release receipt components must be an array")

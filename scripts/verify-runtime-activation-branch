@@ -26,6 +26,7 @@ verify_case() {
   index_root="$(mktemp -d)"
   expected_index="$index_root/index"
   trap 'rm -rf "$expected_root" "$index_root"' EXIT HUP INT TERM
+  # Recreate the expected activation result from the verified base, not from the mutable candidate tree.
   git archive "$base" | tar -x -C "$expected_root"
   if test -n "${CODEXY_TEST_ACTIVATE_RUNTIME:-}"; then
     test "${CODEXY_TEST_MODE:-}" = 1 || {
@@ -68,6 +69,7 @@ verify_case() {
   GIT_INDEX_FILE="$expected_index" git read-tree "$base"
   GIT_INDEX_FILE="$expected_index" GIT_WORK_TREE="$expected_root" git add -A -- .
   expected_tree="$(GIT_INDEX_FILE="$expected_index" git write-tree)"
+  # Apply mode may restore only the exact tree already verified by the earlier admission step.
   if test -n "$apply_from"; then
     test "$(git rev-parse "$apply_from^{tree}")" = "$apply_from"
     if test "$(git write-tree)" != "$apply_from" || ! git diff --quiet; then
@@ -81,6 +83,7 @@ verify_case() {
   else
     actual_tree="$(git write-tree)"
   fi
+  # The activation branch must match the computed full tree, including paths outside the preserved set.
   if test "$actual_tree" != "$expected_tree"; then
     expected="$(git diff --name-status "$base" "$expected_tree" | LC_ALL=C sort)"
     actual="$(git diff --name-status "$base" "$actual_tree" | LC_ALL=C sort)"
@@ -120,6 +123,7 @@ verify_batch() {
   mkdir -p "$results"
   tab="$(printf '\t')"
   count=0
+  # Persist stdout, stderr, and status per case so one failing branch does not hide later results.
   while IFS="$tab" read -r id branch base bootstrap receipt repo expected_root state_file test_mode extra; do
     test -z "$extra" && test -n "$id" && test -n "$branch" && test -n "$base" && \
       test -n "$bootstrap" && test -n "$receipt" && test -n "$repo" && \

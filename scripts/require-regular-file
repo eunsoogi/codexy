@@ -9,6 +9,7 @@ if [ ! -e "$path" ]; then
   exit 1
 fi
 
+# Reject symlinks and non-regular entries even when the requested path exists.
 if [ -L "$path" ] || [ ! -f "$path" ]; then
   echo "$label must be a regular file" >&2
   exit 1

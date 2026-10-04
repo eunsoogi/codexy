@@ -28,6 +28,7 @@ def forbidden(tokens: list[Token], index: int, cwd: object) -> bool:
     workdir = fields.get("workdir", cwd)
     if workdir is None:
         workdir = cwd
+    # Resolve a literal relative workdir against the outer command cwd before checking nested shell text.
     if isinstance(workdir, str) and not Path(workdir).is_absolute():
         workdir = str(Path(cwd) / workdir) if isinstance(cwd, str) else None
     return shell_forbidden(fields["cmd"], workdir)

@@ -33,6 +33,7 @@ EVENTS = {
 def hook_rows() -> list[dict[str, object]]:
     rows = []
     for name, component in plugins.items():
+        # This smoke host models selected core/GitHub hooks; devtools is outside the public proof.
         if component not in state["selection"] or component == "devtools":
             continue
         plugin = (root / "plugins" / name).resolve()
@@ -70,6 +71,7 @@ def hook_rows() -> list[dict[str, object]]:
 
 
 def app_server() -> None:
+    # Expose only the two app-server methods exercised by the release smoke harness.
     for line in sys.stdin:
         request = json.loads(line)
         identifier = request.get("id")
@@ -137,6 +139,7 @@ if command == ["plugin", "marketplace", "list", "--json"]:
     )
     result = {"marketplaces": marketplaces}
 elif command[:3] == ["plugin", "marketplace", "add"]:
+    # Persist just enough local state for the smoke test to observe marketplace selection.
     home.mkdir(parents=True, exist_ok=True)
     (home / "config.toml").write_text(
         f'[marketplaces.codexy]\nref = "v{target}"\n', encoding="utf-8"

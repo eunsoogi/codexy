@@ -114,6 +114,7 @@ def run_batch(
     artifact_root = run_root / "artifacts"
     artifact_root.mkdir()
     item_results: list[dict[str, Any]] = []
+    # Refuse to start any command if the batch no longer matches its original input snapshot.
     if not all_originals_unchanged(workspace, items):
         item_results.append(_item_result(items[0], "failed", "original-changed"))
         item_results.extend(
@@ -128,6 +129,7 @@ def run_batch(
         )
 
     status = "completed"
+    # Execute sequentially so each outcome and cancellation boundary has an unambiguous item order.
     for index, item in enumerate(items):
         if cancellation_event is not None and cancellation_event.is_set():
             status = "cancelled"

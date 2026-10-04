@@ -4,6 +4,7 @@ set -eu
 self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 plugin_root=$(CDPATH= cd -- "$self_dir/.." && pwd)
 server=${1:?codexy-mcp-devtools requires lsp or codegraph}
+# The first argument selects the server; preserve the host's remaining arguments for the chosen runtime.
 shift
 
 case "$server" in
@@ -13,6 +14,7 @@ esac
 
 . "$self_dir/runtime-platform.sh"
 export CODEXY_PLUGIN_ROOT="$plugin_root"
+# The POSIX launcher bundles native binaries on macOS and Linux; Windows uses the paired .exe dispatcher.
 bundled_platforms="darwin-arm64 linux-x86_64"
 platform=$(codexy_runtime_platform)
 case "$platform" in
@@ -21,6 +23,7 @@ case "$platform" in
 esac
 runtime_name="codexy-mcp-$server-$platform.$runtime_extension"
 if [ -n "${CODEXY_RUNTIME_DIR:-}" ]; then
+  # An explicit runtime directory is strict: a missing pinned binary must not fall through to another source.
   case "$CODEXY_RUNTIME_DIR" in
     /*) ;;
     *) echo "codexy-mcp-devtools runtime dir must be absolute: $CODEXY_RUNTIME_DIR" >&2; exit 127 ;;

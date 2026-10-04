@@ -1,5 +1,6 @@
 $ErrorActionPreference = "Stop"
 
+# Prefer a native ripgrep binary, then fall back to grep for the Windows archive scan.
 $scanner = Get-Command rg -CommandType Application -ErrorAction SilentlyContinue
 if ($null -eq $scanner) {
     $scanner = Get-Command grep -CommandType Application -ErrorAction SilentlyContinue
@@ -13,12 +14,14 @@ if ($null -eq $scanner) {
     if ($env:SystemDrive) {
         $searchDirectories += Join-Path $env:SystemDrive "msys64\usr\bin"
     }
+    # Git for Windows and MSYS2 provide grep in predictable locations on hosted runners.
     foreach ($directory in $searchDirectories) {
         $candidate = Join-Path $directory "grep.exe"
         if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
             continue
         }
         $env:Path = "$directory$([IO.Path]::PathSeparator)$env:Path"
+        # Persist the discovered directory for later workflow steps as well as this process.
         if ($env:GITHUB_PATH) {
             Add-Content -LiteralPath $env:GITHUB_PATH -Value $directory
         }

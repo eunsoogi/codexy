@@ -112,6 +112,7 @@ def timeout_command(args: list[str]) -> list[str] | None:
             args = args[1:]
         else:
             return None
+    # The first remaining positional value is the timeout duration, followed by the launched command.
     return args[1:] if len(args) >= 2 else None
 
 

@@ -7,6 +7,7 @@ fail() {
 }
 
 validate_open_prs() {
+	# Validate the complete snapshot shape before jq predicates rely on nested repository fields.
 	printf '%s\n' "$1" | jq -e '
 		type == "array" and all(.[];
 			(.number | type) == "number" and
@@ -88,6 +89,7 @@ test "$staging_run_attempt" = "$provenance_run_attempt" || fail "candidate recei
 test "$(jq -er '.provenance.workflowPath' "$receipt")" = .github/workflows/runtime-candidate.yml || fail "candidate receipt workflow is not canonical"
 
 legacy_branch="codexy/runtime-activation-v${version}"
+# Scope every activation attempt to its selected staging run and run attempt.
 branch="${legacy_branch}-staging-${staging_run_id}-${staging_run_attempt}"
 git check-ref-format --branch "$branch" >/dev/null 2>&1 || fail "derived activation branch is invalid"
 
@@ -104,6 +106,7 @@ test "$inventory_count" -lt 101 || fail "open activation pull-request inventory 
 matching="$(printf '%s\n' "$open_prs" | jq -er --arg repository "$repository" --arg repository_owner "$repository_owner" --arg branch "$branch" '[.[] | select(.isCrossRepository == false and .headRepository.nameWithOwner == $repository and .headRepositoryOwner.login == $repository_owner and .headRefName == $branch and .baseRefName == "main")] | length')"
 test "$matching" -le 1 || fail "duplicate activation pull requests: branch=$branch count=$matching"
 competing="$(printf '%s\n' "$open_prs" | jq -er --arg repository "$repository" --arg repository_owner "$repository_owner" --arg legacy "$legacy_branch" --arg generation_prefix "$legacy_branch-staging-" --arg branch "$branch" '[.[] | select(.isCrossRepository == false and .headRepository.nameWithOwner == $repository and .headRepositoryOwner.login == $repository_owner and .baseRefName == "main" and (.headRefName == $legacy or (.headRefName | startswith($generation_prefix)))) | select(.headRefName != $branch) | .headRefName] | unique | join(",")')"
+# Do not allow another generation of the same version to compete for main at the same time.
 test -z "$competing" || fail "competing runtime activation pull request: $competing"
 open_pr_snapshot "$branch" >/dev/null
 

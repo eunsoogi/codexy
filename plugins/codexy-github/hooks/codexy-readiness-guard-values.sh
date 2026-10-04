@@ -1,4 +1,5 @@
 # shellcheck shell=sh
+# Read quoted scalar fields used by readiness checks and normalize case and slash escapes for comparison.
 json_string_field_value() {
 	value=$(top_level_json_field_value "$1" "$2")
 	case "$value" in

@@ -60,6 +60,7 @@ class RegistrationStore:
                 None,
                 contents.encode("utf-8"),
             ) and not state.data.startswith(MANAGED):
+                # Preserve same-named files unless their marker proves Codexy owns them.
                 raise ValueError(
                     f"{self.agents_root / name} is not owned by Codexy; "
                     "move or remove it before registration"
@@ -78,6 +79,7 @@ class RegistrationStore:
                 states = self._agent_states()
                 transaction = Transaction()
                 try:
+                    # Keep stale-agent removal, projection updates, and config migration in one rollback journal.
                     for name in sorted(states):
                         state = states[name]
                         if (
@@ -141,6 +143,7 @@ class RegistrationStore:
         if current.data != original.encode("utf-8"):
             raise RuntimeError("config changed during registration; retry")
         backup = self.home / self._backup_name()
+        # Save the prior config under a unique name before publishing its managed-block update.
         transaction.write(
             backup, original.encode("utf-8"), FileState(None), current.mode
         )
@@ -192,6 +195,7 @@ class RegistrationStore:
         finally:
             os.close(descriptor)
             try:
+                # Remove only the lock file created by this invocation, not a replacement at the same path.
                 current = os.lstat(path)
                 if (current.st_dev, current.st_ino) == (
                     identity.st_dev,

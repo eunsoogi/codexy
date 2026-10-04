@@ -56,6 +56,7 @@ jobs:
         run: scripts/admit-pypi-environment
       - name: Verify selected protected-main source
         run: |
+          # Publication requires staging first, then activation, with both revisions already present on protected main.
           for commit in "$STAGING_SOURCE_COMMIT" "$ACTIVATION_COMMIT"; do
             case "$commit" in *[!0-9a-f]*|'') exit 1 ;; esac
             test "${#commit}" -eq 40
@@ -79,6 +80,7 @@ jobs:
         run: scripts/download-runtime-staging-artifact staging
       - name: Verify selected archive identity
         run: |
+          # Cross-check the receipt, run metadata, immutable archive bytes, and activated version before packaging.
           receipt=staging/runtime-staging-receipt.json
           test "$(git rev-parse HEAD)" = "$ACTIVATION_COMMIT"
           test "$(jq -r .candidate.source.commit "$receipt")" = "$STAGING_SOURCE_COMMIT"
@@ -123,6 +125,7 @@ jobs:
         env:
           TARGET_VERSION: ${{ inputs.target_version }}
         run: |
+          # Build from the frozen activation commit rather than from the mutable publisher checkout.
           package_root="$RUNNER_TEMP/final-package"
           git worktree add --detach "$package_root" "$ACTIVATION_COMMIT"
           test "$(git -C "$package_root" rev-parse HEAD)" = "$ACTIVATION_COMMIT"
@@ -139,6 +142,7 @@ jobs:
       - name: Resolve previous package version from full history
         id: resolve_previous_package_version
         run: |
+          # The public upgrade smoke requires the latest earlier package version from repository history.
           previous_version=
           while read -r revision; do
             candidate="$(git show "$revision:packages/getcodexy/pyproject.toml" | sed -nE 's/^version = "([0-9]+\.[0-9]+\.[0-9]+)"$/\1/p' | head -n 1)"

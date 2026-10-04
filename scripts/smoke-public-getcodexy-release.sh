@@ -29,6 +29,7 @@ esac
 test "$previous_version" != "$TARGET_VERSION"
 
 python -m venv public-bootstrap
+# Install the released bootstrap in isolation before exercising install/update commands.
 public-bootstrap/bin/python -m pip install --no-cache-dir uv
 export PATH="$PWD/public-bootstrap/bin:$PATH"
 export UV_CACHE_DIR="$RUNNER_TEMP/public-smoke-uv-cache"
@@ -48,6 +49,7 @@ public_bundle_archive=${PUBLIC_BUNDLE_ARCHIVE:-public-bundle.tar.gz}
 CODEXY_RUNTIME_PLATFORM=linux-x86_64 public-bootstrap/bin/codexy-mcp-runtime lsp --plugin-root "$PWD/plugins/codexy-devtools" -- --help
 CODEXY_RUNTIME_PLATFORM=linux-x86_64 public-bootstrap/bin/codexy-mcp-runtime lsp --plugin-root "$PWD/$public_inspect_root/plugins/codexy-devtools" -- --help
 mkdir -p public-marketplace
+# Create a fresh local marketplace repository to exercise public bundle discovery end to end.
 tar --no-same-owner --no-same-permissions -xzf "$public_bundle_archive" -C public-marketplace
 git -C public-marketplace init -q
 git -C public-marketplace config user.name "Codexy public proof"
@@ -58,6 +60,7 @@ git -C public-marketplace tag "v${TARGET_VERSION}"
 cp scripts/fake_public_codex_host.py "$RUNNER_TEMP/codex"
 chmod 755 "$RUNNER_TEMP/codex"
 public_code_home="$RUNNER_TEMP/empty-codex-home"
+# The first install must observe a genuinely empty Codex home.
 mkdir "$public_code_home"
 test -z "$(find "$public_code_home" -mindepth 1 -print -quit)"
 proof_env=(env PATH="$RUNNER_TEMP:$PATH" CODEX_HOME="$public_code_home" CODEXY_RUNTIME_PLATFORM=linux-x86_64 CODEXY_MARKETPLACE_ROOT="$PWD/public-marketplace")
@@ -74,6 +77,7 @@ jq -e '.schema == "getcodexy.status.v1" and .outcome == "completed" and .invento
 jq -e --arg version "$TARGET_VERSION" '.schema == "getcodexy.doctor.v1" and .outcome == "completed" and .inventory_consistency == "consistent" and .host_readiness.state == "ready" and .errors == [] and ([.component_health[]] | length == 3) and ([.component_health[] | select(.healthy == true and .state == "healthy" and .observed.plugin.version == $version and .observed.runtime.version == $version)] | length == 3)' public-doctor.json >/dev/null
 
 upgrade_code_home="$RUNNER_TEMP/upgrade-codex-home"
+# Seed only the previous-version marketplace and selection state for the upgrade path.
 mkdir -p "$upgrade_code_home/getcodexy"
 printf '[marketplaces.codexy]\nref = "v%s"\n' "$previous_version" >"$upgrade_code_home/config.toml"
 touch "$upgrade_code_home/.codexy-public-marketplace-present"

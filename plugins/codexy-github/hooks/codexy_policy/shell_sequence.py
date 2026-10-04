@@ -50,6 +50,7 @@ def _list(
     if denied:
         return True, [], []
     for connector, node in zip(connectors, nodes[1:]):
+        # && runs from prior successes and || from prior failures; retain the skipped branch unchanged.
         carried, active = (
             (failure, success) if connector == "&&" else (success, failure)
         )
@@ -104,6 +105,7 @@ def _node(
     if denied:
         return True, CommandEffect(None)
     if node.kind == "subshell":
+        # A subshell exports only its exit status, so its internal context changes stay local.
         return False, CommandEffect(
             context if nested.success is not None else None,
             context if nested.failure is not None else None,

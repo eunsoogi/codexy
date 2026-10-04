@@ -30,6 +30,7 @@ def _mapping(value: Any, label: str) -> Mapping[str, Any]:
 
 
 def _closed(value: Any, keys: set[str], label: str) -> Mapping[str, Any]:
+    # Reject unreviewed fields instead of silently accepting misspellings or future semantics.
     object_value = _mapping(value, label)
     if set(object_value) != keys:
         missing = sorted(keys - set(object_value))
@@ -95,6 +96,7 @@ def _items(root: Path, value: Any) -> list[dict[str, Any]]:
     seen_originals: dict[tuple[Any, ...], str] = {}
     seen_outputs: dict[tuple[Any, ...], str] = {}
     parsed: list[dict[str, Any]] = []
+    # Track aliases by identity and spelling before accepting any command list.
     for index, raw_item in enumerate(items):
         item = _closed(
             raw_item,
@@ -119,6 +121,7 @@ def _items(root: Path, value: Any) -> list[dict[str, Any]]:
             raise InputError(f"duplicate original: {original}")
         if output_key in seen_outputs:
             raise InputError(f"duplicate output: {output}")
+        # Outputs cannot be ancestors of one another because writing either would affect both items.
         for previous in parsed:
             if _nested_path(previous["_output_relative"], output):
                 raise InputError(
@@ -154,6 +157,7 @@ def _items(root: Path, value: Any) -> list[dict[str, Any]]:
             }
         )
     originals = {entry["_original_path"] for entry in parsed}
+    # No output may replace another item's original input later in the same batch.
     for entry in parsed:
         if entry["_output_path"] in originals:
             raise InputError(f"item {entry['id']} output depends on another original")

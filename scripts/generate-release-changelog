@@ -6,12 +6,14 @@ previous_tag="${2:-}"
 display_tag="$release_tag"
 release_commit="${ACTIVATION_COMMIT-$release_tag}"
 
+# Never generate release notes from an unresolved tag or commit name.
 if ! git rev-parse --verify "${release_commit}^{commit}" > /dev/null 2>&1; then
   printf 'release commit is not a commit: %s\n' "$release_commit" >&2
   exit 1
 fi
 
 if [ -z "$previous_tag" ]; then
+  # Select the nearest earlier merged tag, excluding the tag currently being published.
   release_tag="$release_commit"
   release_tags="$(git tag --merged "$release_tag" --sort=-creatordate || true)"
   release_tag="$display_tag"

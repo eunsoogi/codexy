@@ -44,6 +44,7 @@ def stable_batch_id(
     if explicit is not None:
         return validate_batch_id(explicit)
     source = preview.get("input")
+    # File-backed input stays stable by path; stdin uses the declared item identities instead.
     if isinstance(source, Mapping) and isinstance(source.get("path"), str):
         stable = {"workspace": str(workspace), "input_path": source["path"]}
     else:
@@ -67,6 +68,7 @@ def stable_batch_id(
 
 
 def dependency_fingerprint(token: str, workspace: Path) -> dict[str, Any]:
+    # Resolve static executables and direct scripts so changed command code invalidates reuse.
     candidate: Path | None = None
     if os.path.isabs(token):
         candidate = Path(token)
@@ -109,6 +111,7 @@ def command_dependencies(
             argv = command.get("argv")
             if not isinstance(argv, list):
                 continue
+            # Fingerprint the executable and any statically named direct interpreter script.
             script_position = direct_script_position(argv)
             for position, token in enumerate(argv):
                 if not isinstance(token, str):
@@ -143,6 +146,7 @@ def environment_identity(item_list: list[Mapping[str, Any]], workspace: Path) ->
                 argv = command.get("argv")
                 if isinstance(argv, list) and argv and isinstance(argv[0], str):
                     executable_tokens.append(argv[0])
+    # Saved results are reusable only under the same platform, interpreter, environment, and executables.
     payload = {
         "environment": sorted(os.environ.items()),
         "os": os.name,
@@ -163,6 +167,7 @@ def item_identity(
     environment_identity_value: str,
     output_limit_bytes: int,
 ) -> str:
+    # Bind reuse to the workspace, dependencies, environment, and output cap as well as the item spec.
     spec = {
         "id": item["id"],
         "workspace": str(workspace),

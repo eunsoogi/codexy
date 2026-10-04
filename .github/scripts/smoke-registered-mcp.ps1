@@ -3,6 +3,7 @@ $ErrorActionPreference = "Stop"
 $temporaryRoot = if ([string]::IsNullOrWhiteSpace($env:RUNNER_TEMP)) { [System.IO.Path]::GetTempPath() } else { $env:RUNNER_TEMP }
 $cacheRoot = Join-Path $temporaryRoot "codexy-mcp-registration-cache"
 New-Item -ItemType Directory -Force -Path $cacheRoot | Out-Null
+# When a selected wheel is supplied, force registration to resolve from prepared local artifacts only.
 $selectedWheelDir = $env:CODEXY_SELECTED_MCP_WHEEL_DIR
 if (-not [string]::IsNullOrWhiteSpace($selectedWheelDir)) {
   $env:UV_NO_INDEX = "1"
@@ -10,6 +11,7 @@ if (-not [string]::IsNullOrWhiteSpace($selectedWheelDir)) {
   $env:UV_CACHE_DIR = Join-Path $temporaryRoot "codexy-registered-uv-cache"
 }
 
+# Resolve the host platform once so each manifest's advertised support is checked against the actual runner.
 $os = if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
   "windows"
 } elseif ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::OSX)) {

@@ -11,6 +11,7 @@ from .shell_opaque import (
 
 
 def owns(command: str, context: ExecutionContext) -> bool:
+    # Keep unresolved protected effects, alias transitions, and Git policy executables within this rule.
     return (
         unresolved_protected_effect(command, context)
         or unresolved_alias_transition(command, context)
@@ -22,6 +23,7 @@ def owns_invocation(invocation: Invocation) -> bool:
     """Classify an already parsed opaque invocation without reparsing its data."""
     if invocation.executable != "git":
         return unresolved_invocation(invocation)
+    # Preserve the deliberate verb allowlist instead of classifying every Git command as destructive.
     operation = next(
         (arg for arg in invocation.arguments if not arg.startswith("-")), None
     )

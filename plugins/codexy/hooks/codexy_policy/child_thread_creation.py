@@ -36,6 +36,7 @@ def forbidden(request: Request) -> bool | Diagnostic:
 
 
 def _is_app_worktree_target(target: object) -> bool:
+    # Require the managed worktree at creation time; a later directory change is not equivalent.
     if not isinstance(target, dict):
         return False
     target_data = cast(dict[str, object], target)
@@ -106,6 +107,7 @@ def _parent_checkout_diagnostic(cwd: object) -> Diagnostic | None:
     if not worktrees:
         return Diagnostic("PARENT_CHECKOUT_UNVERIFIED", _UNVERIFIED_PARENT)
 
+    # Git lists the primary checkout first; linked worktree CWDs are blocked before child creation.
     primary, *linked = worktrees
     if checkout_root == primary:
         return None

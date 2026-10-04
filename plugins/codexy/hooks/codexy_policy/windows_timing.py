@@ -22,6 +22,7 @@ class _SecurityAttributes(ctypes.Structure):
 
 
 def open_parents(path: Path) -> list[int]:
+    # Keep handles to each real parent and reject reparse points before opening the timing target.
     handles, current = [], Path(path.anchor)
     try:
         for part in path.parts[1:-1]:
@@ -71,6 +72,7 @@ def _create_file(path: Path, *, directory: bool, create: bool) -> int:
     security = None
     attributes = None
     if create and not directory:
+        # New timing files are owner-only from creation, not widened and repaired afterward.
         advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
         security = ctypes.c_void_p()
         if not advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(
@@ -119,6 +121,7 @@ def private_writable(details: os.stat_result, descriptor: int | None = None) -> 
 
 
 def _private_acl(descriptor: int) -> bool:
+    # Require a one-entry allow DACL scoped to OWNER RIGHTS with no other ACEs.
     import msvcrt
 
     advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)

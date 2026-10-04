@@ -17,6 +17,7 @@ MANAGED = "# CODEXY MANAGED AGENT\n"
 def find_conflicts(text: str, names: set[str]) -> set[str]:
     text = normalize_config_keys(text, names)
     found = set()
+    # TOML can define an agent through table headers, dotted keys, or a root agents table.
     pattern = r"^\s*(?:\[\s*(?:agents|\"agents\"|'agents')\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))(?:\s*\.[^\]]+)?\s*\]\s*(?:#[^\n]*)?$|(?:agents|\"agents\"|'agents')\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([A-Za-z0-9_-]+))\s*(?:\.|=))"
     for match in re.finditer(pattern, text, re.MULTILINE):
         found_name = next(group for group in match.groups() if group)
@@ -85,6 +86,7 @@ def multi_agent_v2_values(config: str) -> dict[str, str] | None:
     values: dict[str, str] = {}
     in_target = found = False
     multiline: str | None = None
+    # Only recognize the target table at the document level, not inside arrays or inline tables.
     container_depth = 0
     for line in config.splitlines():
         before = multiline
@@ -133,6 +135,7 @@ def _table_header(line: str) -> tuple[bool, str] | None:
         return None
     array_table = line.startswith("[[")
     opening, closing = (2 if array_table else 1, "]]" if array_table else "]")
+    # Quoted key components may contain closing brackets, so find the delimiter outside quotes.
     index = opening
     while index < len(line):
         if line[index] in ('"', "'"):
@@ -188,6 +191,7 @@ def _quoted_end(text: str, index: int) -> int | None:
 
 
 def _container_delta(line: str) -> int:
+    # Brackets inside strings and comments are values, not TOML container nesting.
     delta = index = 0
     while index < len(line):
         if line[index] == "#":

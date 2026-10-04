@@ -22,6 +22,7 @@ while IFS= read -r component; do
 done < <(sed -n 's/^components = \[\(.*\)\]$/\1/p' "$config" | tr ',' '\n' | sed 's/[[:space:]\"]//g;/^$/d')
 
 if [[ "$condition" == cold ]]; then
+	# Cold samples install the configured toolchain; warm samples reuse the restored cache.
 	rustup toolchain install "$toolchain" --profile "$profile" "${component_args[@]}"
 fi
 
@@ -31,5 +32,6 @@ test -f "$measurement_file"
 rustc_version="$(rustc --version)"
 cargo_version="$(cargo --version)"
 rust_host="$(rustc -vV | sed -n 's/^host: //p')"
+# Keep compiler and host versions beside the measurement condition for later comparison.
 printf 'toolchain=%s\nrustc=%s\ncargo=%s\nhost=%s\n' \
 	"$toolchain" "$rustc_version" "$cargo_version" "$rust_host" >>"$measurement_file"

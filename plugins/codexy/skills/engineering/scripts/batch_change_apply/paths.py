@@ -32,6 +32,7 @@ def directory(value: str | Path, label: str, *, create: bool = True) -> Path:
 
 
 def child_directory(root: Path, value: str | Path, label: str) -> Path:
+    # Resolve containment and inspect each lexical component so a symlink cannot redirect state outside root.
     candidate = Path(value).expanduser().absolute()
     canonical_root = root.resolve(strict=True)
     canonical_candidate = candidate.resolve(strict=False)
@@ -96,6 +97,7 @@ def absolute_under(root: Path, value: Any, label: str) -> Path:
 
 
 def _read_descriptor(path: Path, label: str) -> tuple[bytes, dict[str, int | str]]:
+    # Hash through one no-follow descriptor and compare metadata before/after to detect concurrent edits.
     try:
         descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     except OSError as error:
@@ -153,6 +155,7 @@ def content_matches(actual: Mapping[str, Any], expected: Mapping[str, Any]) -> b
 
 
 def regular_parent(path: Path, label: str) -> Path:
+    # Create missing parents one component at a time and refuse symlinks before placing output beneath them.
     parent = path.parent
     current = Path(parent.anchor)
     for component in parent.parts[len(Path(parent.anchor).parts) :]:

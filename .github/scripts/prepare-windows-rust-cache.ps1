@@ -17,6 +17,7 @@ function Get-CompilerIdentity {
 }
 
 if ($ExpectedIdentity) {
+    # A restored cache needs identity verification and inventory, not another toolchain install.
     $actual = Get-CompilerIdentity
     if ($actual -ne $ExpectedIdentity) { throw "restored compiler $actual does not match cache identity $ExpectedIdentity" }
     Write-Output "normal-cache-compiler-verified identity=$actual"

@@ -18,6 +18,7 @@ function Add-IsolatedCacheState {
     Add-Content -LiteralPath $measurementFile "cache_state=$State"
 }
 
+# Normal measurements prove cache-hit state; isolated measurements record it in the run evidence.
 switch ("${mode}:${condition}") {
     "normal:cold" {
         if ($cacheHit -eq "true") {
@@ -42,6 +43,7 @@ switch ("${mode}:${condition}") {
         if ($cacheHit -eq "true") {
             Add-IsolatedCacheState "warm-hit"
         } else {
+            # Record the observed miss before failing so an invalid warm sample remains diagnosable.
             Add-IsolatedCacheState "warm-miss"
             throw "isolated warm measurement requires an exact cache hit"
         }

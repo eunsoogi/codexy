@@ -1,4 +1,4 @@
-"""Shared constants for the local batch-change resume workflow."""
+"""Schema names, storage defaults, and status values shared by batch resume."""
 
 RESUME_SCHEMA = "codexy.batch-change-resume.v1"
 DEFAULT_STATE_DIRECTORY = ".codexy-batch-state"

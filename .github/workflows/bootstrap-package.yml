@@ -1,3 +1,4 @@
+# Keep this retired bootstrap-first entrypoint as an explicit rejection; final release publication owns PyPI.
 name: Reject retired getcodexy bootstrap publication
 
 on:

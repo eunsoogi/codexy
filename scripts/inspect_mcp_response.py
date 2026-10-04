@@ -30,6 +30,7 @@ def check_text(text: str, server: str) -> str | None:
             return f"{server}: non-JSON MCP stdout"
         if not isinstance(message, dict):
             return f"{server}: non-object MCP stdout"
+        # Allow protocol notifications, but reject id-less messages that masquerade as responses.
         if "id" not in message:
             if (
                 message.get("jsonrpc") != "2.0"
@@ -50,6 +51,7 @@ def check_text(text: str, server: str) -> str | None:
             return f"{server}: MCP response id {identifier} is not a successful result"
         responses[identifier] = message
     if set(responses) != {1, 2}:
+        # The smoke request has one initialize and one tools/list call; extras or omissions are failures.
         return f"{server}: MCP response ids were not correlated exactly once"
 
     expected_server, expected_tool = expected_identity

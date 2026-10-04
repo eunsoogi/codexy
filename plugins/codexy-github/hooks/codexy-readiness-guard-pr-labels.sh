@@ -22,6 +22,7 @@ json_has_pr_identity() {
 	return 1
 }
 
+# Connector captures may expose labels as REST arrays or as a GraphQL connection's nodes.
 json_value_has_label_name() {
 	field_value="$1"
 	graph_key=$(printf '%s%s' "no" "des")
@@ -54,6 +55,7 @@ json_value_has_label_name() {
 	return 1
 }
 
+# A proven empty taxonomy differs from missing taxonomy evidence and must not block label checks.
 json_value_is_label_taxonomy_capture() {
 	case "$1" in
 	\[*)
@@ -68,6 +70,7 @@ json_value_is_label_taxonomy_capture() {
 	esac
 }
 
+# Accept either supported repository field shape, preserving the distinct status for empty captures.
 json_has_repository_label_taxonomy() {
 	json_text="$1"
 	found_empty_taxonomy=0

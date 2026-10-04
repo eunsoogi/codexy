@@ -67,6 +67,7 @@ _REGEX_WORDS = frozenset(
 
 def tokenize(source: str, *, strict: bool = True) -> list[Token]:
     """Tokenize executable expressions while discarding data-only literals."""
+    # Template substitutions are retained recursively; comments and ordinary strings remain inert data.
     result: list[Token] = []
     index = 0
     while index < len(source):
@@ -212,6 +213,7 @@ def _regex_start(tokens: list[Token], source: str, index: int) -> bool:
         return False
     if not tokens:
         return True
+    # A slash after expression-opening tokens starts a regex literal, not a division operator.
     previous = tokens[-1]
     return previous.value in _REGEX_AFTER or (
         previous.kind == "identifier" and previous.value in _REGEX_WORDS

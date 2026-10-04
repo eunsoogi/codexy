@@ -20,6 +20,7 @@ def main() -> int:
     args = parser.parse_args()
     output = evaluate(
         args.event,
+        # The sentinel byte lets the envelope reject oversized input without consuming it unboundedly.
         sys.stdin.buffer.read(1024 * 1024 + 1),
         TOOLS[args.kind],
         "CODEXY_TITLE_CHECK_",

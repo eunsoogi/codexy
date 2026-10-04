@@ -13,6 +13,7 @@ evidence_root=${CODEXY_ARCHIVE_EVIDENCE_ROOT:-$checkout_root}
 canonical_admission_suite="$checkout_root/packages/codexy-runtime/tests/suites/all.rs"
 admission_suite="$evidence_root/packages/codexy-runtime/tests/suites/all.rs"
 receipt_marker_file=
+# Test-only receipts record which verifier stages ran; production invocations never create them.
 if [ "${CODEXY_TEST_MODE:-}" = 1 ] &&
   [ -n "${CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_DIR:-}" ] &&
   [ -n "${CODEXY_TEST_ARCHIVE_INSPECT_RECEIPT_ID:-}" ] &&
@@ -49,9 +50,11 @@ fi
 
 extract_root="$tmp_dir/extracted"
 mkdir "$extract_root"
+# Entry validation rejects unsafe member types and paths before tar writes into the temporary root.
 tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$extract_root"
 release_contract="$extract_root/plugins/codexy-devtools/runtime-release.json"
 if [ "$archive_mode" = public-release ]; then
+  # Public-release mode has a separate contract because published packages omit staging metadata.
   python3 "$contract_checker" public-release "$extract_root/plugins/codexy-devtools" >"$tmp_dir/expected-runtime"
 else
 [ -f "$release_contract" ] || { echo "packaged runtime-release.json missing" >&2; exit 1; }
@@ -186,6 +189,7 @@ printf 'archive_sha256 '
 digest_file "$archive"
 
 platform=$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/aarch64/arm64/;s/amd64/x86_64/')
+# Native protocol smoke is target-specific; unsupported host platforms are reported as skipped.
 for server in lsp codegraph; do
   runtime="$extract_root/plugins/codexy-devtools/runtime/codexy-mcp-$server-$platform.bin"
   if [ -x "$runtime" ]; then

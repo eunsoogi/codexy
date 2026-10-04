@@ -20,6 +20,7 @@ CANDIDATE_WRAPPER = 'bundled_platforms="darwin-arm64 linux-x86_64 windows-x86_64
 
 
 def wrapper_declarations(lines: list[str], allowed: tuple[str, ...]) -> list[int]:
+    # Parse logical shell lines and heredocs conservatively; ambiguity makes projection fail closed.
     declarations, heredocs, index = [], [], 0
     while index < len(lines):
         source = lines[index].rstrip("\r\n")
@@ -107,6 +108,7 @@ def rewritten_wrapper(text: str, allowed: tuple[str, ...], replacement: str) -> 
 
 
 def source_projection(root: Path) -> None:
+    # Build the public-source view by removing candidate-only contracts from the isolated extracted tree.
     contracts = [root / n for n in ("runtime-release.json", "runtime-candidate.json")]
     if not all(path.is_file() for path in contracts):
         raise SystemExit("candidate source projection requires runtime contracts")

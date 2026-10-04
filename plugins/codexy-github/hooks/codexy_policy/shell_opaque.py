@@ -138,6 +138,7 @@ def unresolved_alias_transition(command: str, context: ExecutionContext) -> bool
         return True
     if any(_forced_opaque_alias(segment) for segment in walked):
         return True
+    # A modeled copy/link can create an opaque alias, but it matters only if a later segment invokes it.
     destinations = {
         destination
         for segment in walked

@@ -21,6 +21,7 @@ for packaged in "$plugin_root"/agents/codexy-*.toml; do
   expected=$((expected + 1))
   projected="$agents_root/${packaged##*/}"
   if [ ! -L "$projected" ] && [ -f "$projected" ]; then
+    # Ignore the managed marker and compare the projected body byte-for-byte with its packaged source.
     IFS= read -r first_line < "$projected" || true
     if [ "$first_line" = "# CODEXY MANAGED AGENT" ] && \
       /usr/bin/tail -n +2 "$projected" | /usr/bin/cmp -s - "$packaged"; then
@@ -30,6 +31,7 @@ for packaged in "$plugin_root"/agents/codexy-*.toml; do
 done
 
 if [ -d "$agents_root" ]; then
+  # Count managed projections independently so obsolete packaged agents also make the check fail.
   for projected in "$agents_root"/codexy-*.toml; do
     [ -f "$projected" ] || continue
     IFS= read -r first_line < "$projected" || true

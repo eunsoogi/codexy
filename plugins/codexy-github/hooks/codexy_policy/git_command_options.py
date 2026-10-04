@@ -43,6 +43,7 @@ def url_rewrite(value: str) -> tuple[bool, UrlRewrite | None]:
     if not separator or not prefix or any(char in value for char in "\0\r\n"):
         return True, None
     if canonical.endswith(".pushinsteadof"):
+        # pushInsteadOf applies only to pushes; the other rewrite rule applies to all URL lookups.
         replacement = variable[4 : -len(".pushinsteadof")]
         push_only = True
     elif canonical.endswith(".insteadof"):

@@ -13,6 +13,7 @@ def safe_output_path(results_root: Path, path_value: Any) -> Path | None:
     if not isinstance(path_value, str) or not path_value:
         return None
     path = Path(path_value).expanduser().absolute()
+    # Reuse requires a result path under the results root with no symlink component.
     try:
         relative = path.relative_to(results_root)
     except ValueError:
@@ -26,6 +27,7 @@ def safe_output_path(results_root: Path, path_value: Any) -> Path | None:
 
 
 def runner_success(result: Mapping[str, Any], item: Mapping[str, Any]) -> bool:
+    # A reusable runner record must match the item and show successful transform and validation exits.
     if result.get("status") != "succeeded" or result.get("id") != item.get("id"):
         return False
     original = result.get("original")
@@ -102,6 +104,7 @@ def saved_result_is_reusable(
         return False, "original-changed"
     if not runner_success(runner_result, item):
         return False, "result-not-successful"
+    # Recheck the current original and both saved identities before trusting the output artifact.
     original_path = _relative_path(workspace, item["original"]["path"], "original")
     try:
         current_original = file_state(workspace / original_path, "original")

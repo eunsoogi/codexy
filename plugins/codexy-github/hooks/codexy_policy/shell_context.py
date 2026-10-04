@@ -24,6 +24,7 @@ def changed_directory(tokens: list[str], cwd: str) -> DirectoryChange:
         return DirectoryChange(cwd)
     command = name(tokens[0])
     if command in {"popd", "pushd"}:
+        # Directory-stack state is not modeled, so only a literal single-argument pushd is resolvable.
         args = _without_redirections(tokens[1:])
         if (
             command == "popd"

@@ -6,6 +6,7 @@ from typing import Literal
 
 ValueMode = Literal["none", "required", "optional-equals"]
 
+# Keep option spellings and value cardinality explicit so ambiguous abbreviations can fail closed.
 SCHEMAS: dict[str, dict[str, ValueMode]] = {
     "reset": {
         "hard": "none",

@@ -21,6 +21,7 @@ foreach ($component in $components) {
 }
 
 if ($condition -eq "cold") {
+    # Only cold samples install from scratch; warm samples reuse the prepared cache.
     & rustup @rustupArgs
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
@@ -37,5 +38,6 @@ $cargoVersion = (& cargo --version).Trim()
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $rustHost = ((& rustc -vV | Select-String '^host: ').Line -replace '^host: ', '').Trim()
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+# Append the active toolchain and host versions to the sample's shared evidence file.
 @("toolchain=$toolchain", "rustc=$rustcVersion", "cargo=$cargoVersion", "host=$rustHost") |
     Add-Content -LiteralPath $measurementFile

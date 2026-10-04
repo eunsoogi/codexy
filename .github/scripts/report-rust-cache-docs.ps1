@@ -2,6 +2,7 @@ param(
     [string]$Suite,
     [ValidateSet("runner", "prepared", "built")][string]$Phase = "prepared"
 )
+# Emit cache composition as workflow-log evidence; this helper diagnoses growth but never prunes runner state.
 if ($Suite -ne "library and binaries") { return }
 $ErrorActionPreference = "Stop"
 $started = [System.Diagnostics.Stopwatch]::StartNew()
@@ -27,6 +28,7 @@ foreach ($entry in $roots.GetEnumerator()) {
         $relative = [System.IO.Path]::GetRelativePath($root, $file.FullName).Replace('\', '/')
         $parts = $relative.Split('/')
         $category = if ($parts.Count -eq 1) { "root-files" } else { $parts[0] }
+        # Split Rust target triples and build profiles so cache changes remain comparable between runs.
         if ($entry.Key -eq "toolchain" -and $relative.StartsWith("lib/rustlib/")) {
             $category = if ($parts.Count -gt 3) { "lib/rustlib/$($parts[2])" } else { "lib/rustlib/manifests" }
         } elseif ($entry.Key -eq "toolchain" -and $parts[0] -eq "share" -and $parts.Count -gt 2) {
@@ -44,6 +46,7 @@ foreach ($entry in $roots.GetEnumerator()) {
     }
 }
 if ($Phase -eq "built" -and (Test-Path -LiteralPath "$target/debug/deps")) {
+    # Report duplicate executable bytes only; the cache remains untouched for later jobs.
     foreach ($binary in Get-ChildItem -LiteralPath "$target/debug" -File -Filter "*.exe") {
         $copies = @(Get-ChildItem -LiteralPath "$target/debug/deps" -File -Filter "$($binary.BaseName)-*.exe" |
             Where-Object { $_.Length -eq $binary.Length })

@@ -35,6 +35,7 @@ devices = {
     *(f"lpt{i}" for i in range(1, 10)),
 }
 if inventory != [
+    # The release train is intentionally closed to these three packaged components.
     ("core", "codexy", "plugins/codexy"),
     ("github", "codexy-github", "plugins/codexy-github"),
     ("devtools", "codexy-devtools", "plugins/codexy-devtools"),
@@ -56,6 +57,7 @@ def reject(message: str) -> None:
 
 
 def materialized_source_bytes(plugin: str, relative: str, source_bytes: bytes) -> bytes:
+    # Compare staged files after applying only the activation-derived release substitutions.
     if plugin != "codexy-devtools":
         return source_bytes
     if relative == ".codex-plugin/plugin.json":
@@ -89,6 +91,7 @@ with tarfile.open(ARCHIVE, "r:gz") as archive:
             reject("archive contains too many entries")
         pieces = tuple(part for part in name.split("/") if part != ".")
         if (
+            # Accept only canonical inert members; aliases and links cannot enter the comparison set.
             not (member.isfile() or member.isdir())
             or not pieces
             or name != "/".join(pieces)
@@ -183,6 +186,7 @@ for _, plugin, package_root in inventory:
                 reject(f"runtime contract leaked: {relative}")
             continue
         expected_entries.add(f"{prefix}{relative}")
+        # Runtime binaries are verified against activation identities below rather than source files.
         source_bytes = materialized_source_bytes(plugin, relative, path.read_bytes())
         if entries.get(f"{prefix}{relative}") != source_bytes:
             reject(f"component source mismatch: {plugin}/{relative}")
@@ -228,6 +232,7 @@ for _, plugin, package_root in inventory:
         expected_entries.add(f"{prefix}mcp/codexy-mcp-devtools.exe")
         expected_directories.add(f"{package_root}/runtime")
 if set(entries) != expected_entries:
+    # Exact file and directory sets catch stale or injected archive content.
     missing = sorted(expected_entries - set(entries))
     extra = sorted(set(entries) - expected_entries)
     reject(

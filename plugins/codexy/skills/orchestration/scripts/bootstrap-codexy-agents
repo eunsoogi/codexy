@@ -59,6 +59,7 @@ if [ "${1:-}" = "--check" ]; then
 fi
 validate_arguments "$@"
 
+# Diagnose before acting so --check can report drift without changing registration files.
 before=$("$registrar" "$@" --diagnose)
 printf '%s\n' "$before"
 case "$before" in
@@ -73,6 +74,7 @@ if [ "$check_only" -eq 1 ]; then
   exit 1
 fi
 
+# Re-run diagnosis after installation; specialist discovery still requires a fresh Codex task.
 "$registrar" "$@"
 after=$("$registrar" "$@" --diagnose)
 printf '%s\n' "$after"
