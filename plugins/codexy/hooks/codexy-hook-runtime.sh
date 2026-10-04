@@ -1,6 +1,7 @@
 #!/bin/sh
 entrypoint=${1-}
 event=${2-}
+# Admit only packaged hook adapters and lifecycle events before building the child environment.
 case "$entrypoint" in
 codexy-child-thread-creation.py | codexy-subagent-ownership.py | codexy-thread-delivery.py | codexy_watcher_interrupt.py) ;;
 *) exit 1 ;;
@@ -25,11 +26,13 @@ runtime_package_sha256=${CODEXY_RUNTIME_PACKAGE_SHA256-}
 runtime_git_repository=${CODEXY_RUNTIME_GIT_REPOSITORY-}
 runtime_git_ref=${CODEXY_RUNTIME_GIT_REF-}
 runtime_source_override=
+# Preserve override presence, including an empty value, so package-default cache fallback stays disabled.
 if [ "${CODEXY_RUNTIME_PACKAGE_PATH+x}" = x ] ||
 	[ "${CODEXY_RUNTIME_PACKAGE_URL+x}" = x ] ||
 	[ "${CODEXY_RUNTIME_ARTIFACTS_API_URL+x}" = x ]; then
 	runtime_source_override=1
 fi
+# Rebuild the subprocess environment from this allowlist instead of inheriting ambient credentials.
 set -- \
 	"PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" \
 	"HOME=$runtime_home" \
@@ -53,6 +56,7 @@ for candidate in /opt/homebrew/bin/python3 /usr/local/bin/python3 /usr/bin/pytho
 		"$candidate" -I -B "${plugin_root}/hooks/${entrypoint}" --event "$event" \
 		2>/dev/null
 	status=$?
+	# Retry only when the Python version is unsupported; preserve every real runtime failure.
 	case "$status" in
 	0) exit 0 ;;
 	125) ;;
