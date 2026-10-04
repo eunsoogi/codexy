@@ -64,13 +64,18 @@ unverified destination MUST keep the lane pending.
 For a selected child-owned lane, the Orchestrator MUST select the assigned
 recipient model and effort automatically and MUST NOT ask the user to choose or
 reconfirm them. Every Worker `create_thread` call MUST include the assigned
-`model` and `thinking` pair. If the actual host contract cannot accept that
-pair, the Orchestrator MUST NOT call with an omitted field or rely on a default;
-it MUST report the exact incompatibility and keep the lane pending. It MUST NOT
-switch models, implement in the parent, or create a duplicate Worker. A separate
-Orchestrator task is distinct from Worker-only admission and MUST use its own
-assigned pair when explicitly requested. Model routing does not grant authority
-to create a separate task.
+`model` and `thinking` pair and request `target.type="project"` with a non-empty
+`projectId` and `target.environment.type="worktree"` in that same call. Local or
+projectless Worker tasks MUST be denied before mutation; a later
+`create_worktree`, `fork_thread`, shell `git worktree add`, or detached
+directory MUST NOT substitute for the initial app-managed task environment.
+Read-only Git inspection and supported app-managed worktree cleanup remain
+valid. If the host cannot accept the worktree environment or assigned pair, the
+lane MUST remain pending and the exact incompatibility MUST be reported. The
+Orchestrator MUST NOT switch models, implement in the parent, or create a
+duplicate Worker. A separate Orchestrator task is distinct from Worker-only
+admission and MUST use its own assigned pair when explicitly requested. Model
+routing does not grant authority to create a separate task.
 
 When no separate task was requested and the current task is already explicitly
 assigned as the implementation owner for that lane, the current-task route MUST
@@ -90,11 +95,14 @@ assignee, issue, branch, PR, or delegated prompt MUST NOT substitute for an
 active-owner readback.
 
 When a separate task was explicitly requested and no existing owner conflict
-remains, the Orchestrator MUST use the actual `create_thread` tool and MUST
-verify its returned task identity, owner, project, worktree, and native goal
-before execution. The call is non-blocking: a ready `threadId`/`hostId` is an
-actual task identity, while a setup `clientThreadId` is only a pending setup
-identity and MUST NOT be passed to tools that require `threadId`.
+remains, the Orchestrator MUST use the actual `create_thread` tool and read back
+the returned task identity, owner, project, actual CWD, starting HEAD, app
+worktree environment, exposed permissions and model settings, and native goal
+before execution. The requested target, checkout path, or attached artifact
+alone does not prove the task environment. The call is non-blocking: a ready
+`threadId`/`hostId` is an actual task identity, while a setup `clientThreadId`
+is only a pending setup identity and MUST NOT be passed to tools that require
+`threadId`.
 
 Both routes MUST NOT replace the native goal or the designated Watcher with
 text, an app-server/CLI path, a fake task, or a silent fallback. Source tests,

@@ -9,8 +9,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from core_hook_test_support import hook_payload as _payload
-from core_hook_test_support import temporary_primary_checkout
+from core_hook_test_support import (
+    hook_payload as _payload,
+    temporary_primary_checkout,
+    worker_creation_input,
+)
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -62,7 +65,7 @@ class CoreHookStartupTests(unittest.TestCase):
             (
                 "codexy-child-thread-creation.sh",
                 "mcp__codex_app__create_thread",
-                {"model": "gpt-6-luna", "thinking": "max"},
+                worker_creation_input(),
             ),
             (
                 "codexy-subagent-ownership.sh",

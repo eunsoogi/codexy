@@ -3,9 +3,16 @@ use serde_json::{Value, json};
 
 pub(super) fn admitted_payload(concern: &Concern, event: &str) -> TestResult<Value> {
     let tool_input = match concern.id {
-        "thread-delivery" | "child-thread-creation" => {
-            json!({"model":"gpt-6-luna","thinking":"max"})
-        }
+        "thread-delivery" => json!({"model":"gpt-6-luna","thinking":"max"}),
+        "child-thread-creation" => json!({
+            "model":"gpt-6-luna",
+            "thinking":"max",
+            "target":{
+                "type":"project",
+                "projectId":"local-test-project",
+                "environment":{"type":"worktree"}
+            }
+        }),
         "subagent-ownership" => json!({"agent_type":"explorer","message":"Bounded read-only inspection."}),
         _ => unreachable!(),
     };
