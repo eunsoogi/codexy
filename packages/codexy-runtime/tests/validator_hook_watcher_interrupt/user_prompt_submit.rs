@@ -16,7 +16,7 @@ fn user_prompt_submit_cancels_only_a_unique_wait_for_its_host_session() -> TestR
     watcher_state::initialize(&mut setup)?;
     let (first_session, first_parent, _) = watcher_state::open_session(&mut setup, "first", 2)?;
     let (second_session, second_parent, second_watcher) =
-        watcher_state::open_session(&mut setup, "second", 2)?;
+        watcher_state::open_session(&mut setup, "second", 3)?;
     drop(setup);
 
     let (mut first, first_binding) = begin_wait(
