@@ -47,7 +47,7 @@ class WatcherHookStartupTests(unittest.TestCase):
             runtime = root / "hooks/codexy-hook-runtime.sh"
             runtime.write_text(
                 runtime.read_text(encoding="utf-8").replace(
-                    "for candidate in /usr/local/bin/python3 /usr/bin/python3; do",
+                    "for candidate in /opt/homebrew/bin/python3 /usr/local/bin/python3 /usr/bin/python3; do",
                     f"for candidate in {shlex.quote(sys.executable)}; do",
                 ),
                 encoding="utf-8",

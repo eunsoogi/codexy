@@ -14,13 +14,24 @@ binding-free.
 
 The host must deliver a matching hook for plugin cancellation to take effect. A
 delegated task message or outer wait termination may leave the native request
-active. The recorded candidate probe used a real native Watcher wait and a
-delivered task-to-task follow-up; that wait timed out instead of cancelling. The
-read-thread tool record omitted `requestBinding`, which does not establish
-whether the host ran or applied `PreToolUse` injection. This probe therefore
-does not verify a genuine human `UserPromptSubmit` path. Parent-owned candidate
-installation and actual human-input propagation remain separate acceptance
-evidence.
+active. Keep host observations tied to the exact candidate and distinguish these
+results:
+
+- An earlier candidate exposed `UserPromptSubmit` as untrusted. A delegated
+  task-to-task follow-up timed out, and its read-thread record omitted
+  `requestBinding`. That observation does not establish trusted `PreToolUse`
+  injection or host prompt delivery, and it is not a cancellation pass.
+- On trusted candidate `32d205c`, a real native wait acquired no
+  `requestBinding`. The macOS launcher selected Python running as x86_64 under
+  Rosetta; the hook exited successfully without finding the installed
+  darwin-arm64 runtime. A subsequent app-delivered input left the wait pending
+  after five seconds. This is a reproduced host failure.
+- After a repaired exact candidate is installed, repeat the test by submitting
+  input through a supported host/app path and verify prompt release, durable
+  session continuity, and isolation. The parent may drive this path
+  automatically; the input need not be physically typed. Bind the result to the
+  exact source and runtime identities. A launcher regression test alone does not
+  establish host delivery.
 
 `watcher_cancel` is a different operation: it durably ends the session and
 requires a new assignment. A cancelled queue or cursor is not continuity, and
