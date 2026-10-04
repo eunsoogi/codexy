@@ -37,6 +37,7 @@ REGISTRATION_REPAIR = "repair the Codexy registration, then rerun getcodexy doct
 def synchronize_core_registration(
     home: Path, root: MarketplaceBinding, journal: Journal
 ) -> None:
+    """Reconcile core roles after install-like operations; failures trigger rollback."""
     if (
         journal.command not in {"install", "update", "bootstrap"}
         or "core" not in journal.target
@@ -51,6 +52,7 @@ def synchronize_core_registration(
 
 
 def _quoted_end(text: str, index: int) -> int | None:
+    """Find the quoted value's end while honoring escapes in basic strings."""
     quote, index = text[index], index + 1
     while index < len(text):
         if quote == '"' and text[index] == "\\":
@@ -97,6 +99,7 @@ def valid_registration(plugin: Path, component: str) -> bool:
 def registration_role(
     name: str, state: str, cause: str | None = None, conflict: bool = False
 ) -> dict[str, object]:
+    """Prioritize unmanaged-file conflicts when selecting role recovery guidance."""
     recovery = (
         "move or remove the unmanaged role file, then rerun getcodexy doctor"
         if conflict
@@ -117,6 +120,7 @@ def registration_report(
     state: str,
     error: str | None = None,
 ) -> dict[str, object]:
+    """Prefer role defects, then unmanaged extras, over component errors."""
     problem = next((item for item in roles if item["state"] != "exact"), None)
     cause = problem["cause"] if problem else error
     recovery = (

@@ -1,3 +1,4 @@
+# Exercise core hook startup, bounded-input, fallback, and platform wrapper contracts.
 from __future__ import annotations
 
 import json

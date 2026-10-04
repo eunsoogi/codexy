@@ -1,3 +1,5 @@
+"""Test Watcher version gating and native-before-Rosetta interpreter fallback."""
+
 from __future__ import annotations
 
 import json
@@ -74,7 +76,7 @@ class WatcherInterpreterStartupTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            # Mirror Apple Silicon Homebrew, Rosetta Python, and the older system Python.
+            # Mirror Homebrew, Rosetta, and older system Python candidates.
             native = self._interpreter(temp / "homebrew-python3", interpreter, "arm64")
             rosetta = self._interpreter(temp / "rosetta-python3", interpreter, "x86_64")
             too_old = temp / "system-python3"
