@@ -1,3 +1,4 @@
+//! Builds workflow tables from Markdown events and accepts only the literal contract shape.
 use std::collections::BTreeMap;
 
 pub(in crate::support) struct Table {
@@ -52,6 +53,7 @@ impl TableBuilder {
 
     pub(super) fn code(&mut self, code: &str) {
         if let Some(cell) = &mut self.cell {
+            // A cell with multiple code spans cannot represent one canonical workflow name.
             if cell.code.replace(code.into()).is_some() {
                 cell.literal = false;
             }

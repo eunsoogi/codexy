@@ -1,3 +1,4 @@
+// Workflow validators cover handoff readiness, PR/review evidence, and fixture isolation.
 #[path = "../validator_cli.rs"]
 mod validator_cli;
 

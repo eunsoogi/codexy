@@ -1,3 +1,4 @@
+//! Provides mutable agent fixtures and exact-artifact privacy checks for role-contract validation.
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 

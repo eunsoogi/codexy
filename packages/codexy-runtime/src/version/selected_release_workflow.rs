@@ -1,3 +1,5 @@
+//! Verifies release lifecycle tests use artifacts and identity derived from trusted evidence.
+
 use std::{fs, path::Path};
 
 use anyhow::{Context as _, Result, bail};
@@ -42,6 +44,7 @@ fn lifecycle_run<'a>(workflow: &'a Value, path: &Path) -> Result<&'a str> {
 }
 
 fn check_lifecycle(run: &str, path: &Path) -> Result<()> {
+    // The workflow must stop on verifier failure before trusting its emitted binary path.
     require_ordered(
         run,
         &[

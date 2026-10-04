@@ -1,3 +1,6 @@
+//! Filesystem helpers for cross-request wait bindings. Expired or abandoned
+//! records are removed only when they are no longer tied to an active waiter.
+
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -63,6 +66,7 @@ fn active_wait(root: &Path, binding: &Binding) -> Result<bool> {
     if !session_dir.is_dir() {
         return Ok(false);
     }
+    // A held wait lock is the cross-process signal that this binding still owns a live wait.
     Ok(LockGuard::try_acquire(&session_dir.join("wait.lock"))?.is_none())
 }
 

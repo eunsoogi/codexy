@@ -10,6 +10,7 @@ struct InterpreterCacheKey {
     pathext: OsString,
 }
 
+// Include PATH and PATHEXT so tests with a changed lookup environment cannot reuse another tool.
 static INTERPRETER_CACHE: OnceLock<Mutex<HashMap<InterpreterCacheKey, PathBuf>>> = OnceLock::new();
 
 pub(crate) fn fixture_script_launcher(

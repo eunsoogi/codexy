@@ -1,3 +1,4 @@
+//! Typed accessors for workflow YAML that report missing structure at the contract boundary.
 use serde_yaml::{Mapping, Value};
 
 pub(crate) fn mapping_field<'a>(

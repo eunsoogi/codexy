@@ -1,3 +1,6 @@
+//! In-process validator adapters for child ownership and completion-handoff
+//! fixtures, preserving the CLI's output and exit-status shape.
+
 use std::process::{ExitStatus, Output};
 
 use codexy_runtime::paths;

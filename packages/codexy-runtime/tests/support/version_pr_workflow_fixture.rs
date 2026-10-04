@@ -2,7 +2,7 @@ use crate::support::FixtureCommand as Command;
 use std::{fs, path::{Path, PathBuf}, process::Output};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
-pub(super) const BRANCH: &str = "codexy/version-1.3.1";
+pub(super) const BRANCH: &str = "codexy/version-1.3.1"; // Isolated head shared by the fixture's PR scenarios.
 const COMPONENT_MANIFEST: &str =
     "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
 #[derive(Clone, Copy, Debug)]
@@ -73,7 +73,7 @@ impl WorkflowFixture {
     pub(super) fn prepare(&self, scenario: Scenario) -> Result<(), Box<dyn std::error::Error>> {
         git(&self.repo, &["switch", "-q", "main"])?;
         git(&self.repo, &["reset", "--hard", &self.baseline])?;
-        git(&self.repo, &["clean", "-fdx"])?;
+        git(&self.repo, &["clean", "-fdx"])?; // Rebuild each case from the same disposable baseline.
         git(&self.repo, &["update-ref", "-d", "refs/heads/codexy/version-1.3.1"])?;
         git(&self.origin, &["update-ref", "-d", "refs/heads/codexy/version-1.3.1"])?;
         reset_directory(&self.state)?;

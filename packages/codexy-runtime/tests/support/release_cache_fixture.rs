@@ -1,3 +1,4 @@
+// Change only the top-level release field in a copied plugin manifest.
 pub(super) fn set_plugin_release(
     plugin_root: &std::path::Path,
     current: &str,

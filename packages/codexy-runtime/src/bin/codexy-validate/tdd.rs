@@ -1,3 +1,5 @@
+//! Emits the validator's TDD classification result when that CLI mode is selected.
+
 use std::path::Path;
 
 use anyhow::Result;

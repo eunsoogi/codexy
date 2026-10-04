@@ -1,3 +1,4 @@
+//! Converts Markdown events into ranged elements and marks nested or raw content for contract validation.
 use pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag, TagEnd};
 
 use super::{CodeBlock, Document, Heading, InlineCode, Link, Text, table::TableBuilder};
@@ -81,6 +82,7 @@ pub(super) fn parse(source: &str) -> Result<Document, String> {
             }
             Event::Start(Tag::HtmlBlock) => html = Some(String::new()),
             Event::End(TagEnd::HtmlBlock) => {
+                // HTML comments may annotate a contract, but raw HTML cannot provide its content.
                 if !html
                     .take()
                     .ok_or("unbalanced HTML block")?
@@ -195,6 +197,7 @@ fn mark(
 }
 
 fn mark_inline(heading: &mut Option<HeadingBuilder>, link: &mut Option<LinkBuilder>) {
+    // Formatting or nested markup makes captured heading/link text unsuitable as a literal contract value.
     if let Some(heading) = heading {
         heading.literal = false;
     }

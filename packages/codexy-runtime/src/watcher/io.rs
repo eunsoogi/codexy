@@ -1,3 +1,7 @@
+//! Shared file and value helpers for Watcher state. State paths stay private,
+//! links are rejected, and replacements are written through same-directory
+//! temporary files so readers do not observe partially serialized JSON.
+
 use std::collections::BTreeMap;
 use std::env;
 use std::fs::{self, OpenOptions};
@@ -128,6 +132,7 @@ pub(super) fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
         .and_then(|name| name.to_str())
         .unwrap_or("state");
     let temporary = parent.join(format!(".{name}.tmp-{}", random_hex(12)?));
+    // Create a unique sibling so the final rename installs one complete value.
     let mut file = OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -151,6 +156,7 @@ pub(super) fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
 
 pub(super) fn canonical(value: &Value) -> Value {
     match value {
+        // Stable object-key order makes identity and event fingerprints independent of input order.
         Value::Object(object) => Value::Object(
             object
                 .iter()

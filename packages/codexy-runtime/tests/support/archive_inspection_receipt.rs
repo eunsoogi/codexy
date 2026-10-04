@@ -1,3 +1,6 @@
+//! Records opt-in measurements for release-archive inspector subprocesses.
+//! Receipts are unique per invocation and never change the wrapped command's result.
+
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -18,6 +21,7 @@ pub(crate) struct ArchiveInspectorReceipt {
 
 impl ArchiveInspectorReceipt {
     pub(crate) fn new(program: &OsStr) -> Option<Self> {
+        // Leave unrelated commands untouched; only the archive-inspector fixture opts in.
         let file_name = Path::new(program).file_name()?.to_str()?;
         if file_name != "inspect-release-archive"
             && !file_name.starts_with("inspect-release-archive-")

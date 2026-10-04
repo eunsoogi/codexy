@@ -1,3 +1,6 @@
+//! Verifies a failed package fetch falls back to Cargo once and reuses the
+//! resulting runtime under the default cache identity.
+
 use crate::support::FixtureCommand as Command;
 
 use super::{WrapperCommandExt, WrapperFixture, make_executable};
@@ -64,6 +67,7 @@ fn run_failed_package_with_cargo(
         .env("CODEXY_RUNTIME_CACHE_DIR", cache)
         .env("CODEXY_RUNTIME_PLATFORM", "darwin-arm64")
         .env("FAKE_RUNTIME_VERSION", version)
+        // Ensure fallback behavior is independent of ambient authenticated artifact access.
         .env_remove("GH_TOKEN")
         .env_remove("GITHUB_TOKEN");
     let output = command.output_with_timeout()?;

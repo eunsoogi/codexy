@@ -1,3 +1,5 @@
+//! Collects asynchronous publishDiagnostics notifications from an LSP session.
+
 use serde_json::Value;
 
 use crate::lsp::protocol::LspMethod;
@@ -18,6 +20,7 @@ pub(super) fn target_diagnostics(
         .iter()
         .filter(|message| {
             message.get("method").and_then(Value::as_str) == Some("textDocument/publishDiagnostics")
+                // Diagnostics requests are scoped to the requested URI; other methods retain related-file diagnostics.
                 && (!matches!(method, LspMethod::Diagnostics)
                     || message.pointer("/params/uri").and_then(Value::as_str) == Some(uri))
         })

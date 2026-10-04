@@ -1,3 +1,5 @@
+//! Windows launcher that forwards LSP or Codegraph requests to the packaged runtime.
+
 use std::{
     env,
     path::PathBuf,
@@ -30,6 +32,7 @@ fn main() -> Result<()> {
 }
 
 fn runtime_path(executable: PathBuf, server: &str) -> Result<PathBuf> {
+    // Resolve from the installed plugin layout, independent of the caller's working directory.
     let mcp = executable
         .parent()
         .context("codexy-mcp-devtools executable has no parent directory")?;

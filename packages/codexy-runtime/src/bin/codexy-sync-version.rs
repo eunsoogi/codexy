@@ -1,3 +1,5 @@
+//! Dispatches version admission, candidate preparation, metadata checks, and updates.
+
 use anyhow::Result;
 use clap::Parser;
 

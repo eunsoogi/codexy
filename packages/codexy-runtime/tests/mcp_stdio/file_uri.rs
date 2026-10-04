@@ -1,3 +1,6 @@
+//! Decodes local file URIs for LSP fixtures, including percent escapes and
+//! Windows drive paths, while returning malformed UTF-8 and escapes as errors.
+
 use std::path::PathBuf;
 
 pub(super) fn decode_local_file_uri(uri: &str) -> Result<PathBuf, String> {

@@ -1,3 +1,6 @@
+//! Shared Watcher process helpers plus end-to-end checks for event persistence,
+//! concurrent report/health access, and bounded session capacity.
+
 use super::*;
 use std::sync::{Arc, Barrier};
 use std::thread;

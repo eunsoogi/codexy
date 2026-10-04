@@ -1,3 +1,5 @@
+//! Runs LSP initialization, document operations, and push or pull diagnostics.
+
 use std::fs;
 use std::sync::mpsc::RecvTimeoutError;
 use std::time::{Duration, Instant};
@@ -37,6 +39,7 @@ impl LspSession {
     }
 
     pub(super) fn run_batch(&mut self, requests: &[LspRequest], deadline: Instant) -> Vec<Value> {
+        // Initialize once and reuse the peer; a session error prevents later requests from running.
         let initialize = match self.initialize(&requests[0], deadline) {
             Ok(value) => value,
             Err(error) => {
@@ -141,6 +144,7 @@ impl LspSession {
         self.open_document(request, &uri, &text)
             .map_err(RunRequestError::Session)?;
         let mut result = Value::Null;
+        // Servers without pull support return diagnostics asynchronously after didOpen/didChange.
         if matches!(request.method, LspMethod::Diagnostics)
             && !supports_pull_diagnostics(initialize)
         {

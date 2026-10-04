@@ -1,3 +1,6 @@
+//! Creates compressed Devtools archives with bounded subprocess waits; the
+//! Windows path rewrites governed wrapper modes before compression.
+
 use std::{
     fs::File,
     process::{Child, Command, ExitStatus, Stdio},
@@ -60,6 +63,7 @@ pub(crate) fn create_archive_with_commands(
     let gzip_status = match wait_for_archive_process(&mut gzip, "gzip", timeout) {
         Ok(status) => status,
         Err(error) => {
+            // gzip owns tar's stdout pipe; stop tar too before returning the downstream failure.
             reap_archive_process(&mut tar);
             return Err(error);
         }

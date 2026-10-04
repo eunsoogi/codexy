@@ -1,3 +1,4 @@
+// Loads both child-lane shards with the shared fixture definitions in scope.
 #[path = "../support/mod.rs"]
 mod support;
 

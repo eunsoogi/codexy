@@ -1,3 +1,6 @@
+//! Serde shapes for Watcher session snapshots, health summaries, and the
+//! append-only event records consumed by waiters.
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

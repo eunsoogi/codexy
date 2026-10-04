@@ -1,3 +1,5 @@
+//! Shared implementation used by Codexy's runtime binaries and transport tools.
+
 pub mod codegraph;
 pub mod lsp;
 pub mod mcp;

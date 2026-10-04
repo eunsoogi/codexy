@@ -1,3 +1,5 @@
+//! Projects the candidate platform set into package and marketplace metadata.
+
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context as _, Result, bail};
@@ -41,6 +43,7 @@ fn set_platforms(path: PathBuf, object_path: &[&str]) -> Result<Update> {
     let object = current
         .as_object_mut()
         .with_context(|| format!("activation metadata must be an object: {}", path.display()))?;
+    // Keep each file's established key while applying the same verified platform set.
     let field = if object.contains_key("supportedPlatforms") {
         "supportedPlatforms"
     } else {

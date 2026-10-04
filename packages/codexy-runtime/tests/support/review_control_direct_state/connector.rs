@@ -1,3 +1,4 @@
+//! Connector-shaped PR snapshots used to verify source and issue-association provenance.
 use serde_json::{Value, json};
 
 use super::pr_snapshot;

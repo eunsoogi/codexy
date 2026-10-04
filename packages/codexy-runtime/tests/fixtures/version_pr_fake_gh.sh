@@ -1,4 +1,5 @@
 #!/bin/sh
+# Deterministic gh fixture for version-PR tests; every simulated write is recorded in state.
 set -eu
 
 state=${FIXTURE_STATE:?}

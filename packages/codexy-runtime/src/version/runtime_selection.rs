@@ -1,3 +1,5 @@
+//! Reads the currently selected public runtime tag and its wrapper version.
+
 use std::{fs, path::Path};
 
 use anyhow::{Context as _, Result};

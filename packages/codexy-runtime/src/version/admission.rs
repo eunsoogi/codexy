@@ -1,3 +1,5 @@
+//! Admits a selected version only when public release and activation identities agree.
+
 use std::path::Path;
 
 use anyhow::{Context as _, Result, bail};
@@ -15,6 +17,7 @@ pub fn admit(target: &str) -> Result<VersionAdvanceAdmission> {
     let manifest = super::load_json(&root.join(super::PLUGIN_MANIFEST))?;
     let current = super::string_field(&manifest, "version", "plugin manifest")?;
     super::require_semver(current)?;
+    // An already-selected target is a no-op; only an advance needs fresh release evidence.
     match semantic(target).cmp(&semantic(current)) {
         std::cmp::Ordering::Less => bail!(
             "version advance target {target} must not precede current plugin version {current}"

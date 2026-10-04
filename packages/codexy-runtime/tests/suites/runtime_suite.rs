@@ -1,3 +1,4 @@
+// Runtime suite combines package admission, release publication, and platform recovery contracts.
 #[path = "../structured_contract_artifacts.rs"]
 mod runtime_structured_contract_artifacts;
 #[path = "../support/mod.rs"]

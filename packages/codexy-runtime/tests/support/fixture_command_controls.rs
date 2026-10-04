@@ -1,3 +1,6 @@
+//! Exercises the dispatch boundary that keeps fixture commands bound to the
+//! paired test payload instead of falling through to host executables.
+
 use crate::support::{FixtureCommand, windows_fixture_companion, windows_static_python_fixture};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

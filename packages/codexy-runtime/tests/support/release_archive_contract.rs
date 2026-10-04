@@ -1,3 +1,6 @@
+//! Shared text-level assertions for archive scanners and release workflow
+//! contracts, with CRLF normalized only for literal matching.
+
 pub(crate) fn assert_structured_literals(text: &str, rule_id: &str, required: &[&str]) {
     let normalized = text.replace("\r\n", "\n");
     let missing: Vec<_> = required

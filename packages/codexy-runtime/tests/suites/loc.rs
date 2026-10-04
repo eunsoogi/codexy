@@ -1,3 +1,4 @@
+// Touched-LOC tests cover Rust module discovery, file provenance, and structural limits.
 #[path = "../validator_touched_loc_reconciliation_invariants.rs"]
 mod validator_touched_loc_reconciliation_invariants;
 

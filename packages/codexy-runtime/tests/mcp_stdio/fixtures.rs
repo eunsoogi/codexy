@@ -1,3 +1,6 @@
+//! Builds copied plugin/runtime layouts for MCP integration tests, including
+//! legacy public platform names and the separate Windows candidate path.
+
 use super::*;
 
 const LEGACY_PUBLIC_PLATFORMS: &[&str] = &["darwin-arm64", "linux-x86_64"];

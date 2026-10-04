@@ -25,6 +25,7 @@ pub fn activate(
 pub(super) fn canonical(value: Value) -> Value {
     match value {
         Value::Object(map) => {
+            // Stable key order makes receipt digests independent of JSON map insertion order.
             let mut entries = map.into_iter().collect::<Vec<_>>();
             entries.sort_by(|left, right| left.0.cmp(&right.0));
             Value::Object(

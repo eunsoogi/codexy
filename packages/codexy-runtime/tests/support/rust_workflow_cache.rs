@@ -1,3 +1,4 @@
+//! Checks the Rust workflow's cache boundaries, including isolated measurement restores and saves.
 use std::fs;
 
 use serde_yaml::Value;
@@ -188,6 +189,7 @@ fn measurement_topology(workflow: &str) -> Result<(), String> {
             return Err(format!("{job_id} changed the validation condition"));
         }
         if validate != checkout + 1 || validate >= clear || validate >= restore {
+            // Validation must run before any cache setup can affect the requested measurement.
             return Err(format!("{job_id} validates after checkout/cache setup"));
         }
     }

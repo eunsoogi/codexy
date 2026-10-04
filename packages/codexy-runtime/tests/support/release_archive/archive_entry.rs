@@ -1,3 +1,6 @@
+//! Reads governed wrapper metadata directly from 512-byte tar headers so tests
+//! can verify archive modes and checksums without extracting the archive.
+
 pub(crate) const BLOCK_SIZE: usize = 512;
 pub(crate) const MODE: std::ops::Range<usize> = 100..108;
 pub(crate) const SIZE: std::ops::Range<usize> = 124..136;
@@ -41,6 +44,7 @@ pub(crate) fn governed_wrapper_header_evidence(
             .ok_or_else(|| std::io::Error::other("tar entry size overflow"))?
             / BLOCK_SIZE
             * BLOCK_SIZE;
+        // Tar advances by a header plus payload rounded up to the next full block.
         offset = offset
             .checked_add(BLOCK_SIZE + padded)
             .ok_or_else(|| std::io::Error::other("tar archive offset overflow"))?;

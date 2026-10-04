@@ -1,3 +1,6 @@
+//! Exercises public LSP MCP tools against a fake server, including diagnostics,
+//! workspace path identity, file URI conversion, and shutdown-time errors.
+
 use super::*;
 use super::file_uri::decode_local_file_uri;
 use super::fixture_gate::StderrPublicationGate;
@@ -225,6 +228,7 @@ fn same_path_identity(left: &Path, right: &Path) -> bool {
 fn canonical_path_text(path: &Path) -> String {
     let path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     let normalized = path.to_string_lossy().replace('\\', "/");
+    // Windows extended-length paths identify the same location; case folding is Windows-only.
     let normalized = normalized.strip_prefix("//?/").unwrap_or(&normalized);
     let is_windows_path = normalized.as_bytes().get(1) == Some(&b':');
     if is_windows_path {

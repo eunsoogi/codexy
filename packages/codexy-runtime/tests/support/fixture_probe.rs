@@ -1,3 +1,6 @@
+//! Creates a configurable probe executable for checking exact argument,
+//! stderr, and exit-status forwarding through command wrappers.
+
 use std::path::{Path, PathBuf};
 
 use super::{fixture_command::FixtureCommand, make_executable};
@@ -35,6 +38,7 @@ pub(crate) fn install_fixture_probe(
     let configuration = match probe {
         FixtureProbe::Arguments => "argv\n".to_owned(),
     };
+    // Windows tests use the real compiled probe when given an executable path; other paths are scripts.
     #[cfg(windows)]
     if path
         .extension()

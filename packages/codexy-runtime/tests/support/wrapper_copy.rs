@@ -1,3 +1,4 @@
+//! Copies only wrapper fixture surfaces while avoiding transient Git locks and generated caches.
 pub(crate) fn copy_dir(
     source: impl AsRef<std::path::Path>,
     target: &std::path::Path,

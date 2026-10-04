@@ -1,3 +1,4 @@
+// Exercises release activation from a real Git checkout with autocrlf enabled.
 #[path = "../support/mod.rs"]
 mod support;
 

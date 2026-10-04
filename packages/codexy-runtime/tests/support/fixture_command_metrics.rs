@@ -1,3 +1,6 @@
+//! Tracks spawn, status, and output duration by command family while keeping
+//! archive-inspector receipts attached only to captured-output calls.
+
 use std::ffi::OsStr;
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus, Output, Stdio};

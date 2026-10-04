@@ -1,3 +1,5 @@
+//! Exposes LSP discovery and document operations through the Codexy MCP server.
+
 use anyhow::{Context as _, Result, bail};
 use serde_json::{Value, json};
 
@@ -226,6 +228,7 @@ pub(super) fn numeric_integer(value: Option<&Value>, name: &str) -> Result<Optio
     let Some(number) = value.as_f64() else {
         bail!("{name} must be a finite non-negative integer");
     };
+    // Accept integral JSON floats, but reject fractions, negatives, infinities, and overflow.
     if !number.is_finite() || number < 0.0 || number.fract() != 0.0 {
         bail!("{name} must be a finite non-negative integer");
     }

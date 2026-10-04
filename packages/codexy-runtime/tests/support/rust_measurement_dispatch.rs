@@ -1,3 +1,4 @@
+//! Runs the platform-specific measurement preparer against isolated inputs and checks its emitted state.
 use std::{io, path::Path, process::{Command, Output}};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

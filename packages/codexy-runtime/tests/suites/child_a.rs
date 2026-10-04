@@ -1,3 +1,4 @@
+// First child-lane shard: setup classification, active-thread evidence, and ownership boundaries.
 #[path = "../validator_child_goal_blocked_audit.rs"]
 mod validator_child_goal_blocked_audit;
 

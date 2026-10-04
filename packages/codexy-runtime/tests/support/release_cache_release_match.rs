@@ -1,3 +1,6 @@
+//! Exercises default cache/package release matching and recovery from poisoned
+//! runtimes or mismatched cache markers.
+
 use crate::support::FixtureCommand as Command;
 
 use super::release_cache::{
@@ -52,6 +55,7 @@ pub(crate) fn assert_wrapper_rejects_stale_default_release_then_accepts_matching
 pub(crate) fn assert_wrapper_allows_explicit_package_release_mismatch(
     server: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // Explicit package selection is an opt-in override, so default release matching does not apply.
     let temp = tempfile::tempdir()?;
     let fixture = WrapperFixture::new(temp.path())?;
     let cache = temp.path().join("runtime-cache");

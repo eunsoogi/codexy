@@ -14,6 +14,7 @@ pub(crate) fn write_posix_fixture_command(path: &Path, source: &str) -> io::Resu
     write_executable_fixture(path, source)
 }
 
+/// Models tag-creation races and records release-write attempts for the admission tests.
 pub(crate) fn release_tag_admission_gh_fixture() -> &'static str {
     r#"#!/bin/sh
 if test -n "${GH_CONFIG_DIR+x}${GH_HOST+x}${GH_ENTERPRISE_TOKEN+x}${GITHUB_TOKEN+x}"; then printf '%s\n' 'inherited GitHub state reached fixture' >&2; exit 92; fi

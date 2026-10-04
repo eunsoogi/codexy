@@ -152,7 +152,7 @@ pub(super) fn create_runtime_package(
 ) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     create_runtime_package_with_release(root, server, version, version)
 }
-
+// Runtime binary version and enclosing plugin release can differ in mismatch tests.
 pub(super) fn create_runtime_package_with_release(
     root: &std::path::Path,
     server: &str,

@@ -1,3 +1,4 @@
+// Compact aggregate for shared, hook, workflow, handoff, and read-batch contracts.
 #[path = "../support/mod.rs"]
 mod support;
 

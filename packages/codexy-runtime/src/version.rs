@@ -1,3 +1,5 @@
+//! Coordinates version checks across plugin metadata, package locks, and release inputs.
+
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -88,6 +90,7 @@ pub(super) fn marketplace_plugin_mut_named<'a>(
         .filter(|(_, plugin)| plugin.get("name").and_then(Value::as_str) == Some(name))
         .map(|(index, _)| index)
         .collect::<Vec<_>>();
+    // An ambiguous marketplace entry would make a version check target-dependent.
     if matches.len() != 1 {
         bail!(
             "expected exactly one marketplace plugin named {name:?}, found {}",

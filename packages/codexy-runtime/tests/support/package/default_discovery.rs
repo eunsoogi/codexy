@@ -1,3 +1,6 @@
+//! Covers default durable-package lookup and authenticated artifact fallback
+//! when wrappers have neither Cargo nor a usable runtime cache.
+
 use super::*;
 
 pub(crate) fn assert_wrapper_discovers_default_artifact_without_cargo(

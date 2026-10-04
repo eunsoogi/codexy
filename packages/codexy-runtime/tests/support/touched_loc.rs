@@ -1,3 +1,4 @@
+//! Builds temporary Git repositories for checking touched-LOC behavior without mutating the checkout.
 use std::collections::HashMap;
 use std::path::Path;
 use std::process::{Command, Output};

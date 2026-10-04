@@ -1,3 +1,5 @@
+//! Loads LSP registrations, enriches them from the server catalog, and selects a match.
+
 use std::cmp::Reverse;
 use std::collections::BTreeMap;
 use std::fs;
@@ -69,6 +71,7 @@ pub(super) fn matching_servers(file_path: &str, root: Option<&str>) -> Result<Ve
             Ok((priority, server))
         })
         .collect::<Result<Vec<_>>>()?;
+    // Keep the highest-priority registration first; BTreeMap order breaks priority ties by id.
     matches.sort_by_key(|item| Reverse(item.0));
     Ok(matches.into_iter().map(|(_, server)| server).collect())
 }
@@ -126,6 +129,7 @@ fn server_from_override(value: &Value, root: Option<&str>) -> Result<Server> {
         .as_deref()
         == Some("1");
     if command_override.is_some() && !overrides_allowed {
+        // Running caller-supplied executables crosses the configured server trust boundary.
         return Ok(unavailable_override(
             id,
             command_override,

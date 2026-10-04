@@ -1,3 +1,5 @@
+//! Builds LSP requests and normalizes their results for the MCP-facing tools.
+
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -33,6 +35,7 @@ impl LspRequest {
         let mut session = LspSession::spawn(self)?;
         let output = session.run(self);
         let shutdown = session.shutdown();
+        // A successful LSP result remains usable if best-effort peer shutdown fails.
         match (output, shutdown) {
             (Ok(mut value), Ok(())) => {
                 if value.get("status").and_then(Value::as_str) == Some("ok") {

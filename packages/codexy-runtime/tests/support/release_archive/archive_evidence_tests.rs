@@ -1,3 +1,6 @@
+//! Verifies opt-in receipts preserve the complete raw header for each
+//! requested governed wrapper.
+
 use super::*;
 
 #[test]

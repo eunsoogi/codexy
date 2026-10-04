@@ -1,3 +1,6 @@
+//! Verifies Watcher locks release on process death and recovery reclaims only
+//! recognized stale state, with bounded scans across unknown quarantine data.
+
 use super::*;
 use std::fs;
 use std::sync::{Arc, Barrier};

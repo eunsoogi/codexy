@@ -1,3 +1,6 @@
+//! Validates shared Watcher tool arguments and preserves the legacy identity
+//! aliases and flattened event fields accepted by the public MCP surface.
+
 use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
 
@@ -64,6 +67,7 @@ pub(super) fn event_field<'a>(
     event: Option<&'a serde_json::Map<String, Value>>,
     key: &str,
 ) -> Option<&'a Value> {
+    // Nested event values take precedence while old callers may still send them at the top level.
     event
         .and_then(|object| object.get(key))
         .or_else(|| args.get(key))

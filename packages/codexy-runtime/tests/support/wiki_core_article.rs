@@ -1,3 +1,4 @@
+//! Assesses article freshness and source provenance before a wiki migration can add metadata.
 use std::path::{Component, Path, PathBuf};
 
 use serde_yaml::{Mapping, Value};
@@ -67,6 +68,8 @@ pub(crate) struct ArticleAssessment {
 
 impl ArticleAssessment {
     pub(crate) fn blocks_migration(&self) -> bool {
+        // Missing/malformed freshness and incomplete provenance or raw ingestion block migration.
+        // Future freshness is reported separately.
         matches!(
             self.freshness,
             FreshnessState::Missing | FreshnessState::Malformed
@@ -157,6 +160,7 @@ fn provenance(
             return (ProvenanceState::Malformed, Vec::new(), Vec::new());
         };
         let path = Path::new(source);
+        // Reject absolute and parent components so source references stay topic-relative.
         if source.is_empty()
             || path.is_absolute()
             || path.components().any(|component| {

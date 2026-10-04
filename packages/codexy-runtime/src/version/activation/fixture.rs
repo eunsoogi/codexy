@@ -1,3 +1,5 @@
+//! Builds isolated repositories and candidate receipts for activation boundary tests.
+
 use std::{
     collections::BTreeMap,
     fs,
@@ -53,6 +55,7 @@ pub(super) fn assert_activation_rejected_without_mutation(
     fixture: &Fixture,
     version: &str,
 ) -> Result<()> {
+    // Rejected receipts must leave every activation-managed projection byte-for-byte unchanged.
     let before = fixture.tracked()?;
     assert!(super::super::activate(&fixture.root, version, &fixture.receipt).is_err());
     assert_eq!(fixture.tracked()?, before);
@@ -172,6 +175,7 @@ impl Fixture {
     }
 
     pub(super) fn tracked(&self) -> Result<BTreeMap<PathBuf, Option<Vec<u8>>>> {
+        // Snapshot only the files the activation path is allowed to replace.
         self.wrappers()
             .chain(
                 [

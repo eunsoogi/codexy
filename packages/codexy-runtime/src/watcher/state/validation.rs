@@ -1,3 +1,6 @@
+//! Centralizes capability checks, session liveness, identity matching, and
+//! size-limited validation shared by Watcher state operations.
+
 use anyhow::{Context as _, Result, bail};
 use serde_json::Value;
 
@@ -14,6 +17,7 @@ pub(super) fn authorize(
     token: &str,
     watcher_only: bool,
 ) -> Result<&'static str> {
+    // The persisted hashes let callers prove a capability without storing its secret.
     if token.is_empty() || token.len() > 128 {
         bail!("watcher capability is invalid");
     }

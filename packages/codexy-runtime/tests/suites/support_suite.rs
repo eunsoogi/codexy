@@ -1,3 +1,4 @@
+// Tests deterministic fixture commands, shared paths, and telemetry helpers.
 #[path = "../support/mod.rs"]
 mod support;
 

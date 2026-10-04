@@ -1,3 +1,6 @@
+//! Process-level MCP client helpers for installed runtime tests. The parser
+//! accepts both supported framings and retains unread bytes between replies.
+
 use super::*;
 use std::time::Instant;
 

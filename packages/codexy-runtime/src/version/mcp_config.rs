@@ -1,3 +1,5 @@
+//! Verifies that the two plugin MCP configs consistently use the shared bootstrap.
+
 use std::path::Path;
 
 use anyhow::{Context as _, Result, bail};
@@ -11,6 +13,7 @@ const CONFIGS: [(&str, &[&str]); 2] = [
     ("plugins/codexy-devtools/.mcp.json", &["lsp", "codegraph"]),
 ];
 pub(super) fn check_at(root: &Path) -> Result<()> {
+    // A checkout may omit both configs, but a partially packaged pair is invalid.
     let present = CONFIGS
         .iter()
         .filter(|(relative, _)| root.join(relative).is_file())

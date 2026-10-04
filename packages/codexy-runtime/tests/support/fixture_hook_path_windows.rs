@@ -1,3 +1,6 @@
+//! Translates modeled Git-Bash paths back to native Windows paths and caches
+//! the conversions shared by one test process.
+
 #[cfg(windows)]
 pub(super) fn native_shell_fixture_path(value: &str, native_cwd: &str) -> Result<String, String> {
     use std::collections::BTreeMap;
@@ -64,6 +67,7 @@ pub(crate) fn native_shell_fixture_path_with(
     discover: impl Fn(&str) -> Result<String, String>,
     convert: impl Fn(&str) -> Result<String, String>,
 ) -> Result<String, String> {
+    // These fixture commands have explicit native equivalents; other paths use cygpath.
     match value {
         "/usr/bin/git" => discover("git"),
         "/usr/bin/printf" => discover("sh"),
@@ -73,6 +77,7 @@ pub(crate) fn native_shell_fixture_path_with(
 }
 
 pub(crate) fn fixture_path_cache_key(value: &str, fixture_root: &str) -> (String, Option<String>) {
+    // /var/tmp is fixture-relative, so its cache entry must include the fixture root.
     (
         value.to_owned(),
         (value == "/var/tmp").then(|| fixture_root.to_owned()),

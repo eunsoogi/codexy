@@ -1,3 +1,4 @@
+//! Bounds wrapper-child execution; Unix and Windows timeout paths also clean up descendants.
 use std::io;
 use std::process::{Child, ChildStdin, Command, Output};
 use std::time::{Duration, Instant};

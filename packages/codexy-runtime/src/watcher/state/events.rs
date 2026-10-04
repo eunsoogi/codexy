@@ -1,3 +1,6 @@
+//! Persists each material Watcher report as one sequenced JSONL record. A torn
+//! final record may be repaired after a crash; corruption before it is rejected.
+
 use std::fs::{self, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
 use std::path::Path;
@@ -42,6 +45,7 @@ fn recover_trailing_partial(root: &Path, session_id: &str, file: &mut std::fs::F
         return Ok(());
     }
     let last_newline = bytes.iter().rposition(|byte| *byte == b'\n');
+    // Validate all complete records before considering recovery of the trailing bytes.
     read(root, session_id)?;
     let trailing = last_newline.map_or(bytes.as_slice(), |index| &bytes[index + 1..]);
     if serde_json::from_slice::<Event>(trailing).is_ok() {

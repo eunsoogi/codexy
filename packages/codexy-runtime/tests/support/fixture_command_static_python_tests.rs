@@ -1,3 +1,4 @@
+//! Checks Windows fallback recognition stays limited to the retained static-Python policy fixtures.
 use crate::support::{fixture_native_launcher, windows_static_python_fixture};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

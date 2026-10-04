@@ -1,3 +1,5 @@
+//! Creates shell and command-file fixtures for the core Watcher bootstrap wrappers.
+
 use std::path::Path;
 
 use anyhow::Result;

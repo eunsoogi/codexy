@@ -1,3 +1,5 @@
+//! Checks the selected runtime version pins in packaged MCP wrapper scripts.
+
 use std::{fs, ops::Range, path::Path};
 
 use anyhow::{Context as _, Result, bail};
@@ -19,6 +21,7 @@ pub(super) fn check_version(expected: &str) -> Result<()> {
 pub(super) fn check_version_at(root: &Path, expected: &str) -> Result<()> {
     super::mcp_config::check_at(root)?;
     let path = root.join(WRAPPER);
+    // Keep validating the prior launcher while repositories migrate from the legacy filename.
     let path = if path.exists() {
         path
     } else {

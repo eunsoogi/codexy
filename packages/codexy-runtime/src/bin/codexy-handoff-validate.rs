@@ -1,3 +1,5 @@
+//! Validates handoff capsules against trusted lane authority and replay history.
+
 use std::{
     fs::{self, File, OpenOptions},
     path::{Path, PathBuf},
@@ -97,6 +99,8 @@ fn run() -> Result<()> {
         &trusted.base,
     )
     .with_stable(trusted.stable);
+    // Keep the lock across read, validation, and replacement so concurrent runs
+    // cannot both validate against the same replay history.
     let _lock = lock_replay(&capsule.replay_path)?;
     let mut replay = read_replay(&capsule.replay_path)?;
     replay.push(capsule.envelope.clone());
