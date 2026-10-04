@@ -200,7 +200,7 @@ pub(super) fn check_topology(path: &Path, events: &Map<String, Value>) -> Result
 }
 
 fn entrypoints(launcher: &str) -> Vec<String> {
-    // Its packaged Python name uses underscores while the shell and CMD launchers use hyphens.
+    // Only the watcher maps to an underscore-named Python file; others use `<launcher>.py`.
     let python = if launcher == "codexy-watcher-interrupt" {
         "codexy_watcher_interrupt.py".to_owned()
     } else {
