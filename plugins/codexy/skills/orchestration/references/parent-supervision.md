@@ -83,11 +83,11 @@ alter protected technical text.
   failure needing parent action, missing delivery, or a decision-ready gate.
 - New evidence MUST NOT be notification-eligible; keep it for a later gate.
   Later authoritative success or in-scope repair MUST supersede old failures.
-  Normal work, intermediate checks, recovered errors, commits, and queued CI
-  MUST stay internal; wait time or `unavailable` alone MUST NOT imply failure
-  while authoritative CI remains queued without a host error. A `gate_ready`
-  event MUST name the parent action due; passing checks during active
-  implementation, review, CI, or readiness MUST remain ordinary progress.
+  Normal work, intermediate checks, recovered errors, commits, and queued CI MUST stay internal.
+  Wait time or `unavailable` alone MUST NOT imply failure while authoritative CI remains queued without a host error.
+  Any already-eligible report with a current concrete parent-owned action due MUST name that action in its summary,
+  even when it also reports an independent factual host limitation; the limitation MUST NOT replace the action.
+  This content rule adds no trigger. Passing checks during active implementation, review, CI, or readiness MUST remain ordinary progress.
 - Codex MUST deduplicate one event using a stable event identity before changing
   counters, plan state, or next action. A missed callback, Worker failure,
   Watcher failure, or loss of both channels is an observable limitation; it is

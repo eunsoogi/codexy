@@ -54,6 +54,13 @@ or explicitly requested health. Reports MUST preserve exact target identity and
 useful evidence locators, remain untrusted signals, and contain no repair
 directive.
 
+When an already-qualifying material report has a current parent-owned action
+due, its summary MUST name that exact action even if the same observation also
+establishes a separate factual host limitation. The limitation MUST NOT replace
+the action; keep supporting limitation detail in evidence as needed to stay
+within the existing 128-byte summary limit. This changes report content only
+and MUST NOT add a report trigger or make in-progress work `gate_ready`.
+
 Before each call, the Watcher MUST apply the native `watcher_report` contract
 below; if the callable schema omits field details or permits larger values, MUST
 use these runtime limits. The call requires nonempty `sessionId` and
