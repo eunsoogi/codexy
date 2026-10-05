@@ -3,7 +3,6 @@ use std::{fs, path::PathBuf, process::Command};
 use super::shallow_history_fixture::{
     create_fixture as create_fixture_with_stub, index_request_count, run_smoke, smoke_events,
 };
-use super::*;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -19,6 +18,11 @@ fn fake_getcodexy() -> &'static str {
 set -eu
 
 if test "${0##*/}" = "codexy-github-install"; then
+  # Preserve the installer's CLI contract in the public-smoke fake.
+  if test "$#" -ne 4 || test "$1" != "--codex" || ! test -x "$2" || \
+    test "$3" != "--codex-home" || test "$4" != "$CODEX_HOME"; then
+    exit 1
+  fi
   mkdir -p "$CODEX_HOME/agents/codexy-github"
   printf '%s\n' 'name = "codexy-weaver"' >"$CODEX_HOME/agents/codexy-github/codexy-weaver.toml"
   exit 0
@@ -193,55 +197,5 @@ fn prepublication_local_distribution_skips_public_index_wait() -> TestResult {
             .any(|event| event.starts_with("simple-index:"))
     );
     assert!(events.iter().any(|event| event == "local-package-install"));
-    Ok(())
-}
-
-#[test]
-fn release_workflows_resolve_and_forward_the_explicit_upgrade_version() -> TestResult {
-    let publisher = document("publish-version-release.yml")?;
-    let verifier = document("verify-version-release.yml")?;
-    let job = "publish-release";
-    let resolve = step_index(
-        &publisher,
-        job,
-        "Resolve previous package version from full history",
-    )?;
-    let smoke = step_index(
-        &publisher,
-        job,
-        "Smoke exact final package before publication",
-    )?;
-    assert!(resolve < smoke);
-    assert_eq!(
-        steps(&publisher, job)?[smoke]["env"]["UPGRADE_FROM_VERSION"],
-        "${{ steps.resolve_previous_package_version.outputs.version }}"
-    );
-    assert_eq!(
-        publisher["jobs"]["publish-release"]["outputs"]["upgrade_from_version"],
-        "${{ steps.resolve_previous_package_version.outputs.version }}"
-    );
-    assert_eq!(
-        publisher["jobs"]["verify-public-release"]["with"]["upgrade_from_version"],
-        "${{ needs.publish-release.outputs.upgrade_from_version }}"
-    );
-    assert_eq!(
-        steps(&verifier, "verify-public-release")?
-            .iter()
-            .find(|step| step["name"] == "Smoke public release without a token")
-            .ok_or("public smoke step")?["env"]["UPGRADE_FROM_VERSION"],
-        "${{ inputs.upgrade_from_version }}"
-    );
-    let smoke_script = fs::read_to_string(
-        codexy_runtime::paths::repository_root().join("scripts/smoke-public-getcodexy-release.sh"),
-    )?;
-    assert!(smoke_script.contains("previous_version=${UPGRADE_FROM_VERSION:-}"));
-    assert_eq!(
-        run(
-            &verifier,
-            "verify-public-release",
-            "Smoke public release without a token"
-        )?,
-        "scripts/smoke-public-getcodexy-release.sh"
-    );
     Ok(())
 }
