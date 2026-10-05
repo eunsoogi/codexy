@@ -96,6 +96,32 @@ class ShellOutputRedirectionTests(unittest.TestCase):
                     with self.subTest(event=event, link=link, command=command):
                         self._assert_denied(command, event)
 
+    def test_nested_shell_inherits_substitution_and_prior_link_restrictions(
+        self,
+    ) -> None:
+        directory = Path("/private") / "tmp"
+        if not directory.is_dir():
+            self.skipTest("private temp redirection requires a Unix host")
+        source = shlex.quote(str(PLUGIN.parents[1] / "README.md"))
+        for link in ("ln -s", "ln"):
+            target = f"/private/tmp/codexy-issue-1248-{uuid4().hex}.log"
+            if not safe_output_redirection(">", target):
+                self.skipTest("private temp output is not valid on this host")
+            script = shlex.quote(
+                f"gh run view 1 --repo eunsoogi/codexy --log > {target}"
+            )
+            commands = (
+                f"sh -c {script}",
+                f'sh -c {script} "$({link} {source} {target})"',
+                f"{link} {source} {target} && sh -c {script}",
+            )
+            for event in ("PermissionRequest", "PreToolUse"):
+                with self.subTest(event=event, link=link, command=commands[0]):
+                    self.assertEqual(self._classify(commands[0], event), "")
+                for command in commands[1:]:
+                    with self.subTest(event=event, link=link, command=command):
+                        self._assert_denied(command, event)
+
     def test_quoted_dollar_path_marker_is_never_checked_as_a_different_file(
         self,
     ) -> None:

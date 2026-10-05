@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from .execution_context_types import CommandEffect, ExecutionContext
 from .shell_context import flag
 
 CACHE_DIRECTORIES = frozenset(
@@ -16,6 +17,17 @@ def hash_path_alias(args: list[str]) -> bool:
     return any(
         arg.startswith("-") and not arg.startswith("--") and "p" in arg[1:]
         for arg in args
+    )
+
+
+def test_effect(arguments: list[str], context: ExecutionContext) -> CommandEffect:
+    """Model only the exit-state effect of the supported ``test -e`` grammar."""
+    if len(arguments) != 2 or arguments[0] != "-e":
+        return CommandEffect(context, context)
+    path = Path(arguments[1])
+    candidate = path if path.is_absolute() else Path(context.cwd) / path
+    return (
+        CommandEffect(context) if candidate.exists() else CommandEffect(None, context)
     )
 
 

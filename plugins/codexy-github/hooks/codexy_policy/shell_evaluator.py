@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from pathlib import Path
+from dataclasses import replace
+from itertools import count
 from typing import Protocol
 
-from .execution_context import (
-    CommandEffect,
-    ExecutionContext,
-    after_external_command,
-    assignment,
-    at as context_at,
-)
+from .execution_context import at as context_at
+from .execution_context_types import CommandEffect, ExecutionContext
+from .execution_filesystem import after_external_command
 from .invocation import Invocation, resolve
+from .shell_builtins import test_effect
 from .shell_context import changed_directory
+from .shell_credentials import CredentialPolicy, credential_assignment
 from .shell_groups import GroupSyntaxError, parse
 from .shell_opaque import DYNAMIC_NAME
 from .shell_redirections import UNSAFE_REDIRECTION
@@ -42,13 +40,19 @@ def evaluate(
 ) -> bool:
     lexical_command = command
     syntax = opaque_syntax(command)
+    restrict_nested_temp_output = context.restrict_private_temp_output or bool(
+        syntax.substitutions
+    )
     # Inspect substitutions before simplifying syntax and retain their state for redirect checks.
     if syntax.substitutions or syntax.control:
+        nested_context = replace(
+            context, restrict_private_temp_output=restrict_nested_temp_output
+        )
         for nested in syntax.substitutions:
-            if evaluate(nested, context, depth + 1, policy):
+            if evaluate(nested, nested_context, depth + 1, policy):
                 return True
         lexical_command = syntax.command
-    tokens = tokenize(lexical_command, bool(syntax.substitutions))
+    tokens = tokenize(lexical_command, restrict_nested_temp_output)
     if tokens is None:
         return context.cwd_owned is not False and policy.owns_opaque(command, context)
     try:
@@ -62,100 +66,29 @@ def evaluate(
                 command_tokens(segment)
                 and DYNAMIC_NAME.fullmatch(command_tokens(segment)[0])
                 for segment in parsed
-            ) or _control_segments(parsed, context, depth, policy)
+            ) or _control_segments(
+                parsed, context, depth, policy, restrict_nested_temp_output
+            )
         return context.cwd_owned is not False and policy.owns_opaque(command, context)
+    segments_seen = count()
     return evaluate_sequence(
         sequence,
         context,
         depth,
         lambda tokens, current, current_depth: _segment(
-            tokens, current, current_depth, policy
+            tokens,
+            current,
+            current_depth,
+            policy,
+            restrict_nested_temp_output or next(segments_seen) > 0,
         ),
     )[0]
-
-
-class _CredentialPolicy:
-    """Detect a credential operation through the ordinary stateful effect walk."""
-
-    detect_leading_credentials: bool = True
-    redirection_executables: frozenset[str] = frozenset()
-
-    @staticmethod
-    def owns_opaque(command: str, context: ExecutionContext) -> bool:
-        return False
-
-    @staticmethod
-    def opaque_invocation(invocation: Invocation) -> bool:
-        return False
-
-    @staticmethod
-    def command(
-        invocation: Invocation, outer: ExecutionContext, depth: int
-    ) -> tuple[bool, CommandEffect] | None:
-        if _credential_environment(invocation.context):
-            return True, CommandEffect(None)
-        if invocation.executable != "gh":
-            return None
-        return (
-            invocation.arguments[:2] == ["auth", "token"]
-            or _auth_status_exposes_token(invocation.arguments)
-            or _credential_header(invocation.arguments),
-            CommandEffect(outer, outer),
-        )
 
 
 def credential_exposure(
     command: str, context: ExecutionContext, depth: int = 0
 ) -> bool:
-    return evaluate(command, context, depth, _CredentialPolicy())
-
-
-def _credential_assignment(tokens: Sequence[str]) -> bool:
-    return any(
-        assignment(token)
-        and token.split("=", 1)[0]
-        in {
-            "GH_TOKEN",
-            "GITHUB_TOKEN",
-            "GH_ENTERPRISE_TOKEN",
-            "GITHUB_ENTERPRISE_TOKEN",
-        }
-        and bool(token.split("=", 1)[1])
-        for token in tokens
-    )
-
-
-def _credential_environment(context: ExecutionContext) -> bool:
-    return _credential_assignment(
-        tuple(f"{key}={value}" for key, value in context.environment)
-    )
-
-
-def _credential_header(arguments: list[str]) -> bool:
-    for index, argument in enumerate(arguments):
-        header = (
-            arguments[index + 1]
-            if argument in {"-H", "--header"} and index + 1 < len(arguments)
-            else argument.split("=", 1)[1]
-            if argument.startswith(("-H=", "--header="))
-            else None
-        )
-        if header is None:
-            continue
-        name, separator, value = header.partition(":")
-        if (
-            separator
-            and name.casefold() in {"authorization", "x-github-token"}
-            and value.strip()
-        ):
-            return True
-    return False
-
-
-def _auth_status_exposes_token(arguments: list[str]) -> bool:
-    return arguments[:2] == ["auth", "status"] and any(
-        option in {"-t", "--show-token", "--with-token"} for option in arguments[2:]
-    )
+    return evaluate(command, context, depth, CredentialPolicy())
 
 
 def _segment(
@@ -163,17 +96,26 @@ def _segment(
     context: ExecutionContext,
     depth: int,
     policy: Policy,
+    restrict_private_temp_output: bool,
 ) -> tuple[bool, CommandEffect]:
     # Each segment returns explicit success/failure contexts so later shell operators see prior effects.
     if getattr(policy, "detect_leading_credentials", False):
         command_start = command_tokens(tuple(tokens))
-        if _credential_assignment(tokens[: len(tokens) - len(command_start)]):
+        if credential_assignment(tokens[: len(tokens) - len(command_start)]):
             return True, CommandEffect(None)
     invocation = resolve(
         [token for token in tokens if token != UNSAFE_REDIRECTION], context, depth
     )
     if invocation is None:
         return True, CommandEffect(None)
+    if (
+        restrict_private_temp_output
+        and not invocation.context.restrict_private_temp_output
+    ):
+        invocation = replace(
+            invocation,
+            context=replace(invocation.context, restrict_private_temp_output=True),
+        )
     if (
         UNSAFE_REDIRECTION in tokens
         and invocation.executable in policy.redirection_executables
@@ -201,7 +143,7 @@ def _segment(
     if invocation.executable == "true":
         return False, CommandEffect(context)
     if invocation.executable == "test":
-        return False, _test_effect(invocation.arguments, context)
+        return False, test_effect(invocation.arguments, context)
     if invocation.executable in {"cd", "pushd", "popd"}:
         directory = changed_directory(
             [invocation.executable, *invocation.arguments], invocation.context.cwd
@@ -229,22 +171,19 @@ def _control_segments(
     context: ExecutionContext,
     depth: int,
     policy: Policy,
+    restrict_nested_temp_output: bool,
 ) -> bool:
     """Walk parsed control bodies through the same typed invocation classifier."""
-    current = context
+    current, segments_seen = context, count()
     for tokens in parsed:
-        denied, effect = _segment(list(tokens), current, depth + 1, policy)
+        denied, effect = _segment(
+            list(tokens),
+            current,
+            depth + 1,
+            policy,
+            restrict_nested_temp_output or next(segments_seen) > 0,
+        )
         if denied:
             return True
         current = effect.success or effect.failure or current
     return False
-
-
-def _test_effect(arguments: list[str], context: ExecutionContext) -> CommandEffect:
-    if len(arguments) != 2 or arguments[0] != "-e":
-        return CommandEffect(context, context)
-    path = Path(arguments[1])
-    candidate = path if path.is_absolute() else Path(context.cwd) / path
-    return (
-        CommandEffect(context) if candidate.exists() else CommandEffect(None, context)
-    )
