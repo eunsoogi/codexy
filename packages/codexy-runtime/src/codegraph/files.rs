@@ -27,15 +27,15 @@ pub(super) fn result_limit(input: Option<usize>) -> usize {
 }
 
 pub(super) fn repo_root(input_root: Option<&str>) -> Result<PathBuf, CodegraphError> {
-    let current_dir = std::env::current_dir().map_err(|error| {
-        CodegraphError::new(
-            CodegraphErrorKind::RootUnreadable,
-            ".",
-            format!("unable to determine current directory: {error}"),
-        )
-    })?;
     let Some(input_root) = input_root else {
-        return Ok(current_dir);
+        return runtime_current_dir();
+    };
+    let candidate = PathBuf::from(input_root);
+    // An absolute root remains usable after a long-running host loses its launch directory.
+    let rooted = if candidate.is_absolute() {
+        candidate
+    } else {
+        runtime_current_dir()?.join(candidate)
     };
     if input_root.is_empty() {
         return Err(CodegraphError::new(
@@ -44,13 +44,6 @@ pub(super) fn repo_root(input_root: Option<&str>) -> Result<PathBuf, CodegraphEr
             "repository root must not be empty",
         ));
     }
-    let candidate = PathBuf::from(input_root);
-    // Resolve relative roots from the runtime CWD, then canonicalize only after directory/read checks pass.
-    let rooted = if candidate.is_absolute() {
-        candidate
-    } else {
-        current_dir.join(candidate)
-    };
     let metadata = fs::metadata(&rooted).map_err(|error| root_error(&rooted, error))?;
     if !metadata.is_dir() {
         return Err(CodegraphError::new(
@@ -63,6 +56,16 @@ pub(super) fn repo_root(input_root: Option<&str>) -> Result<PathBuf, CodegraphEr
     rooted
         .canonicalize()
         .map_err(|error| root_error(&rooted, error))
+}
+
+fn runtime_current_dir() -> Result<PathBuf, CodegraphError> {
+    std::env::current_dir().map_err(|error| {
+        CodegraphError::new(
+            CodegraphErrorKind::RootUnreadable,
+            ".",
+            format!("unable to determine current directory: {error}"),
+        )
+    })
 }
 
 fn root_error(path: &Path, error: io::Error) -> CodegraphError {
