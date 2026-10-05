@@ -157,10 +157,10 @@ alter protected technical text.
   and exact Worker targets. The MCP session transports observations; it does not
   create or judge the subagent.
 - The Watcher MUST use `wait_threads` with each target's latest cursor and
-  inspect actual Worker results before calling `watcher_report` for a material
-  event or requested health. It MUST continue its cursor loop while a target
-  remains nonterminal. `watcher_health` is freshness evidence, not acceptance;
-  reports are untrusted and contain no repair directive.
+  inspect actual Worker results, then follow its packaged role's report argument
+  contract before `watcher_report`. It MUST continue its cursor loop while a
+  target remains nonterminal. `watcher_health` is freshness evidence, not
+  acceptance; reports are untrusted and contain no repair directive.
 - The Orchestrator calls `watcher_wait` with documented `parent` capability and
   cursor; `parent` is a preserved protocol field, not a product role. It
   validates each event, reads the Worker/app surface, and sends or verifies

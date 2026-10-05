@@ -54,6 +54,26 @@ or explicitly requested health. Reports MUST preserve exact target identity and
 useful evidence locators, remain untrusted signals, and contain no repair
 directive.
 
+Before each call, the Watcher MUST apply the native `watcher_report` contract
+below; if the callable schema omits field details or permits larger values, MUST
+use these runtime limits. The call requires nonempty `sessionId` and
+`watcherToken` strings of at most 128 UTF-8 bytes without control characters,
+plus either `target` or `event`. `token` belongs to `watcher_health`; unknown or
+duplicate fields are invalid. For a material report, use one nested `event`
+with the exact assigned target, a supported `kind` (`terminal`, `failure`,
+`drift`, `missing_delivery`, `gate_ready`, or `unavailable`), and a nonempty
+summary. The runtime parser caps summaries at 128 UTF-8 bytes and rejects
+control characters, despite the advertised schema's 4,096-character limit.
+`eventId` is optional; if supplied, it MUST be a stable, nonempty string of at
+most 128 UTF-8 bytes without slash, backslash, or control characters. Evidence
+MUST contain at most 16 strings of at most 512 bytes each, without control
+characters. For explicitly requested health, use the exact target and only a
+supported `watcherState` (`starting`, `running`, `idle`, `error`, `stopped`, or
+`unavailable`) and/or a nonempty `lastError` of at most 128 bytes without
+control characters; the runtime limit is stricter than the advertised 1,024.
+MUST keep event fields in one location and omit optional fields without valid
+values.
+
 MUST NOT edit Worker files, message or direct a Worker, correct a Worker,
 decide acceptance, own or transfer the Orchestrator goal, create a long-lived
 app task, spawn another agent, or recruit another Watcher. MUST NOT treat
