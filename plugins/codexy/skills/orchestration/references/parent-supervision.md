@@ -78,9 +78,9 @@ alter protected technical text.
   goal calls MUST stay local and unreported; reports are not acceptance.
 - A verified-unavailable route or emergency permits one marked direct-parent
   fallback. Worker MUST report one limitation and MUST NOT resume or duplicate
-  routine direct reports. Reads and liveness-only goal status MUST stay
-  internal. The Watcher MUST wake only for actionable lifecycle change, drift,
-  failure needing parent action, missing delivery, or a decision-ready gate.
+  routine direct reports. Reads and liveness-only goal state MUST stay internal.
+  The Watcher MUST wake only for actionable lifecycle changes, drift, actionable
+  failures, missing delivery, decision-ready gates, or explicit health requests.
 - New evidence and ordinary progress MUST stay internal until an actionable
   gate. Later authoritative success or in-scope repair MUST supersede old
   failures. A gate the latest parent disposition marks complete, accepted, or
@@ -124,15 +124,15 @@ alter protected technical text.
 - Native Watcher routes: only the assigned Watcher MAY call `wait_threads`; the
   Orchestrator MUST await `watcher_wait`, omitting `timeoutMs` for the 295,000
   ms default; explicit `timeoutMs=295000` is equivalent; `MAX_WAIT_MS` stays
-  3,600,000 ms. The host limit MUST be read and reported: if it supports 300,000
-  ms, the Watcher MUST use `wait_threads(timeoutMs=300000)` as the semantic
-  event wait; otherwise, it MUST use the confirmed actual maximum. Output-yield
-  cadence is separate; MUST NOT shorten or replace the semantic wait. The
-  295,000 ms default leaves a five-second margin under a confirmed 300-second
-  MCP transport. Shorter waits MUST have a reason and MUST NOT become repeated
-  polls. While pending, the Orchestrator MUST stay in one quiet tool await and
-  MUST NOT emit reasoning, progress, short polls, unrelated work, retry, or poll
-  merely because no event has arrived. Fallbacks MUST report and recover.
+  3,600,000 ms. Read and record actual host limit; use 300,000 ms if supported
+  or the confirmed actual maximum otherwise. A supported shorter wait or
+  resolved limitation alone MUST NOT alert. Report a host/fallback limit only
+  when no supported route permits continuation and parent action is required.
+  Output-yield cadence is separate; MUST NOT shorten semantic waits. Shorter
+  waits need a reason and MUST NOT become repeated polls. While pending, the
+  Orchestrator MUST stay in one quiet await and MUST NOT emit reasoning, status,
+  short polls, retries, or unrelated work merely because no event arrived; use
+  supported fallbacks without alerting on resolved limits.
 - Implementation Workers MUST NOT use Orchestrator-owned Watcher session/token.
   One bounded readback after an actionable report is judgement-only.
 - The native Watcher loop is defined in "Watcher MCP flow"; its report, Worker
