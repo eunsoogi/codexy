@@ -5,11 +5,10 @@ from __future__ import annotations
 import shlex
 from dataclasses import dataclass
 
-from .execution_context import SINGLE_QUOTED_DOLLAR, assignment
+from .execution_context import assignment
 from .shell_redirections import (
     OPERATORS,
-    QUOTED_REDIRECTIONS,
-    mark_redirection_fd,
+    separate_lines,
     strip_redirections,
 )
 from .shell_reflog import protect as protect_reflog, restore as restore_reflog
@@ -21,7 +20,8 @@ CONTROL_WORDS = frozenset(
 # Private markers keep quoted redirection and reflog data distinct from active shell operators.
 
 
-def tokenize(command: str) -> list[str] | None:
+def tokenize(command: str, has_substitutions: bool = False) -> list[str] | None:
+    """Keep parent substitution context after opaque syntax becomes a placeholder."""
     command = without_python_script_heredoc_bodies(command)
     try:
         lexer = shlex.shlex(
@@ -30,7 +30,10 @@ def tokenize(command: str) -> list[str] | None:
             punctuation_chars=";&|(){}<>",
         )
         lexer.whitespace_split, lexer.commenters = True, ""
-        return strip_redirections(restore_reflog(list(lexer)))
+        return strip_redirections(
+            restore_reflog(list(lexer)),
+            has_substitutions or bool(opaque_syntax(command).substitutions),
+        )
     except ValueError:
         return None
 
@@ -42,49 +45,6 @@ class OpaqueSyntax:
     command: str
     substitutions: tuple[str, ...]
     control: bool
-
-
-def separate_lines(command: str) -> str:
-    """Normalize supported continuations and comments before shell tokenization."""
-    result, quote, escaped, index = [], None, False, 0
-    while index < len(command):
-        char = command[index]
-        if char == "\\" and quote != "'" and command[index + 1 : index + 2] == "\n":
-            index += 2
-            continue
-        if escaped:
-            result.append(QUOTED_REDIRECTIONS[char] if char in "<>" else char)
-            escaped = False
-        elif char == "\\" and quote != "'":
-            result.append(char)
-            escaped = True
-        elif char in {"'", '"'}:
-            quote = None if quote == char else char if quote is None else quote
-            result.append(char)
-        elif quote is not None and char in "<>":
-            result.append(QUOTED_REDIRECTIONS[char])
-        elif quote == "'" and char == "$":
-            result.append(SINGLE_QUOTED_DOLLAR)
-        elif quote is None and char in "<>":
-            mark_redirection_fd(result)
-            result.append(char)
-        elif (
-            quote is None
-            and char == "#"
-            and (not result or result[-1].isspace() or result[-1] in ";&|(){}")
-        ):
-            while index < len(command) and command[index] != "\n":
-                index += 1
-            continue
-        elif char == "\n" and quote is None:
-            while result and result[-1].isspace():
-                result.pop()
-            if result and result[-1] != ";":
-                result.append(";")
-        else:
-            result.append(char)
-        index += 1
-    return "".join(result)
 
 
 def segments(command: str) -> tuple[tuple[str, ...], ...] | None:

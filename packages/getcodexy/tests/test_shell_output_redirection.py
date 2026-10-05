@@ -78,15 +78,23 @@ class ShellOutputRedirectionTests(unittest.TestCase):
 
     def test_prior_link_commands_cannot_prepare_a_temp_redirection(self) -> None:
         source = shlex.quote(str(PLUGIN.parents[1] / "README.md"))
+        private_temp = Path("/private") / "tmp"
         for link in ("ln -s", "ln"):
             target = f"/private/tmp/codexy-issue-1248-{uuid4().hex}.log"
-            command = (
-                f"{link} {source} {target} && "
-                f"gh run view 1 --repo eunsoogi/codexy --log > {target}"
-            )
+            substitution = f'"$({link} {source} {target})"'
+            commands = [
+                f"gh run view 1 --repo eunsoogi/codexy --log {substitution} > {target}"
+            ]
+            # Only model a planted link where this host admits and can open a temp target.
+            if private_temp.is_dir() and safe_output_redirection(">", target):
+                setup = f"{link} {source} {target}"
+                commands.append(
+                    f"{setup} && gh run view 1 --repo eunsoogi/codexy --log > {target}"
+                )
             for event in ("PermissionRequest", "PreToolUse"):
-                with self.subTest(event=event, link=link):
-                    self._assert_denied(command, event)
+                for command in commands:
+                    with self.subTest(event=event, link=link, command=command):
+                        self._assert_denied(command, event)
 
     def test_quoted_dollar_path_marker_is_never_checked_as_a_different_file(
         self,
@@ -96,6 +104,31 @@ class ShellOutputRedirectionTests(unittest.TestCase):
         for event in ("PermissionRequest", "PreToolUse"):
             with self.subTest(event=event):
                 self._assert_denied(command, event)
+
+    def test_quoted_angle_path_markers_cannot_hide_existing_symlinks(self) -> None:
+        directory = Path("/private") / "tmp"
+        if not directory.is_dir():
+            self.skipTest("private temp marker targets require a Unix host")
+        for marker in "<>":
+            target = directory / f"{marker}codexy-issue-1248-{uuid4().hex}.log"
+            _ = target.symlink_to(PLUGIN.parents[1] / "README.md")
+            try:
+                command = (
+                    "gh run view 1 --repo eunsoogi/codexy --log > "
+                    f"{shlex.quote(str(target))}"
+                )
+                for event in ("PermissionRequest", "PreToolUse"):
+                    with self.subTest(event=event, marker=marker):
+                        self._assert_denied(command, event)
+            finally:
+                target.unlink(missing_ok=True)
+
+    def test_dev_null_stays_safe_after_a_prior_shell_segment(self) -> None:
+        for event in ("PermissionRequest", "PreToolUse"):
+            with self.subTest(event=event):
+                self.assertEqual(
+                    self._classify("true && gh repo view > /dev/null", event), ""
+                )
 
     def test_existing_dollar_named_symlink_is_denied_for_both_events(self) -> None:
         directory = Path("/private") / "tmp"

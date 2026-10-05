@@ -42,13 +42,13 @@ def evaluate(
 ) -> bool:
     lexical_command = command
     syntax = opaque_syntax(command)
-    # Inspect substitutions as nested commands before simplifying shell control syntax.
+    # Inspect substitutions before simplifying syntax and retain their state for redirect checks.
     if syntax.substitutions or syntax.control:
         for nested in syntax.substitutions:
             if evaluate(nested, context, depth + 1, policy):
                 return True
         lexical_command = syntax.command
-    tokens = tokenize(lexical_command)
+    tokens = tokenize(lexical_command, bool(syntax.substitutions))
     if tokens is None:
         return context.cwd_owned is not False and policy.owns_opaque(command, context)
     try:
