@@ -30,8 +30,8 @@ resume, MUST re-enter `$orchestration` and classify the current assignment,
 task, surface, and risk. MUST read the context-retention contract and only its
 selected route references, plus applicable conditional guidance, before the
 first resumed implementation edit. A later read MUST NOT be treated as
-retroactive compliance. MUST NOT preload unrelated references or add an
-approval gate.
+retroactive compliance. MUST NOT preload unrelated references or add an approval
+gate.
 
 ## Active plan recovery
 
