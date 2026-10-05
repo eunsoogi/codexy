@@ -52,6 +52,21 @@ fn quoted_body_heredocs_do_not_weaken_title_checks() -> TestResult {
             "cat <<'BODY' | sh\ngh pr edit 1249 --title 'plain title'\nBODY\n".to_string(),
             true,
         ),
+        (
+            "sh -s ';' gh pr edit --body-file - <<'BODY'\ngh pr edit 1249 --title 'plain title'\nBODY\n"
+                .to_string(),
+            true,
+        ),
+        (
+            "sh -s \\; gh pr edit --body-file - <<'BODY'\ngh pr edit 1249 --title 'plain title'\nBODY\n"
+                .to_string(),
+            true,
+        ),
+        (
+            "sh -s '|' gh pr edit --body-file - <<'BODY'\ngh pr create --title 'plain title'\nBODY\n"
+                .to_string(),
+            true,
+        ),
     ];
     for event in ["PermissionRequest", "PreToolUse"] {
         for (command, denied) in &cases {

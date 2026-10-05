@@ -64,6 +64,24 @@ class GithubTitleHeredocTests(unittest.TestCase):
                 "cat <<'BODY' | sh\ngh pr edit 1249 --title 'plain title'\nBODY\n",
                 True,
             ),
+            (
+                "sh -s ';' gh pr edit --body-file - <<'BODY'\n"
+                "gh pr edit 1249 --title 'plain title'\n"
+                "BODY\n",
+                True,
+            ),
+            (
+                "sh -s \\; gh pr edit --body-file - <<'BODY'\n"
+                "gh pr edit 1249 --title 'plain title'\n"
+                "BODY\n",
+                True,
+            ),
+            (
+                "sh -s '|' gh pr edit --body-file - <<'BODY'\n"
+                "gh pr create --title 'plain title'\n"
+                "BODY\n",
+                True,
+            ),
         )
         for command, denied in cases:
             for event in ("PreToolUse", "PermissionRequest"):
@@ -90,6 +108,24 @@ class GithubTitleHeredocTests(unittest.TestCase):
             ),
             (
                 "cat <<'BODY' | sh\ngh pr edit 1249 --title 'plain title'\nBODY\n",
+                True,
+            ),
+            (
+                "sh -s ';' gh pr edit --body-file - <<'BODY'\n"
+                "gh pr edit 1249 --title 'plain title'\n"
+                "BODY\n",
+                True,
+            ),
+            (
+                "sh -s \\; gh pr edit --body-file - <<'BODY'\n"
+                "gh pr edit 1249 --title 'plain title'\n"
+                "BODY\n",
+                True,
+            ),
+            (
+                "sh -s '|' gh pr edit --body-file - <<'BODY'\n"
+                "gh pr create --title 'plain title'\n"
+                "BODY\n",
                 True,
             ),
         )
