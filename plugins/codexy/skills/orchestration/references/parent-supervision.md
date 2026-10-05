@@ -76,17 +76,18 @@ alter protected technical text.
   deduplicate identities, and relay action-required deltas through
   `watcher_report`; blocked/terminal receipts go to the Orchestrator. Initial
   goal calls MUST stay local and unreported; reports are not acceptance.
-- A verified-unavailable route or concrete emergency permits one marked
-  direct-Orchestrator fallback; Worker MUST report one limitation and MUST NOT
-  resume routine direct reporting or duplicate it. Routine reads and
-  liveness-only goal status MUST remain internal; the Watcher MUST NOT wake the
-  Orchestrator. Only actionable lifecycle/drift, failure, missing delivery, or a
-  ready gate may wake the Orchestrator.
-- New or changed evidence alone is not notification-eligible. Normal progressing
-  work, intermediate successful tests, resolved command mistakes, commits, and
-  queued CI MUST remain internal while the Workers are actively progressing. A
-  commit or new HEAD alone MUST NOT wake the Orchestrator; it may be retained as
-  evidence for a later actionable gate.
+- A verified-unavailable route or emergency permits one marked direct-parent
+  fallback. Worker MUST report one limitation and MUST NOT resume or duplicate
+  routine direct reports. Routine reads and liveness-only goal status MUST remain
+  internal. The Watcher MUST wake only for an actionable lifecycle change, drift,
+  failure needing parent action, missing delivery, or a decision-ready gate.
+- New evidence alone MUST NOT be notification-eligible. Keep it as evidence for
+  a later gate. Later authoritative success or in-scope repair MUST supersede
+  an older failure. Normal work, intermediate passing checks, resolved command
+  mistakes, commits, and queued CI MUST stay internal while a Worker progresses.
+  A `gate_ready` event MUST name the parent action now due; passing checks during
+  active implementation, review, CI, or readiness work MUST NOT be treated as
+  that gate.
 - Codex MUST deduplicate one event using a stable event identity before changing
   counters, plan state, or next action. A missed callback, Worker failure,
   Watcher failure, or loss of both channels is an observable limitation; it is
