@@ -41,6 +41,10 @@ def _inspect_segment(segment: tuple[str, ...], cwd: object) -> bool:
         ["pr", "create"],
         ["pr", "new"],
     ):
+        # Only standalone PR help is read-only; create calls with extra arguments
+        # still require the existing title policy.
+        if args[0] == "pr" and args[2:] in (["--help"], ["-h"]):
+            return False
         return _inspect_form(args[0], True, args[2:])
     if args[:2] in (["issue", "edit"], ["pr", "edit"]):
         return _inspect_form(args[0], False, args[2:])

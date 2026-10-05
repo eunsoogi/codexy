@@ -50,6 +50,12 @@ class GithubTitleHooksTests(unittest.TestCase):
                 True,
             ),
             (
+                "pr",
+                "github.update_pull_request",
+                {"title": "fix(hooks): valid title"},
+                False,
+            ),
+            (
                 "shell",
                 "Bash",
                 {"command": "gh pr create --title 'fix(hooks): free body' --body note"},
@@ -61,18 +67,9 @@ class GithubTitleHooksTests(unittest.TestCase):
                 {"command": "gh pr create --title 'plain title' --body note"},
                 True,
             ),
-            (
-                "shell",
-                "Bash",
-                {"command": "gh issue new --title 'fix: invalid issue' --body note"},
-                True,
-            ),
-            (
-                "shell",
-                "Bash",
-                {"command": "gh issue new --title 'Valid issue' --body note"},
-                False,
-            ),
+            ("shell", "Bash", {"command": "gh pr create"}, True),
+            ("shell", "Bash", {"command": "gh pr create --help"}, False),
+            ("shell", "Bash", {"command": "gh pr create -h"}, False),
             (
                 "shell",
                 "Bash",
