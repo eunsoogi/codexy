@@ -87,7 +87,7 @@ alter protected technical text.
   superseded MUST stay closed unless new authoritative evidence reopens it or
   confirms distinct current work under existing criteria. Queue time or
   `unavailable` alone MUST NOT imply failure while queued CI lacks a host error.
-  Reports MUST name the current parent action; host limits MUST NOT replace it.
+  If due, the summary MUST name the parent action; limits MUST NOT replace it.
 - Codex MUST deduplicate one event using a stable event identity before changing
   counters, plan state, or next action. A missed callback, Worker failure,
   Watcher failure, or loss of both channels is an observable limitation; it is
