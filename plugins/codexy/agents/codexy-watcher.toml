@@ -72,11 +72,18 @@ below; if the callable schema omits field details or permits larger values, MUST
 use these runtime limits. The call requires nonempty `sessionId` and
 `watcherToken` strings of at most 128 UTF-8 bytes without control characters,
 plus either `target` or `event`. `token` belongs to `watcher_health`; unknown or
-duplicate fields are invalid. For a material report, use one nested `event`
-with the exact assigned target, a supported `kind` (`terminal`, `failure`,
-`drift`, `missing_delivery`, `gate_ready`, or `unavailable`), and a nonempty
-summary. The runtime parser caps summaries at 128 UTF-8 bytes and rejects
-control characters, despite the advertised schema's 4,096-character limit.
+duplicate fields are invalid. A `target` or `event.target` MUST copy one exact
+entry from `watcher_open.targets`. An entry is either a nonempty string of at
+most 128 UTF-8 bytes without control characters, or an object using only `id`,
+`threadId`, `taskId`, `hostId`, `kind`, and `name`. An object MUST include `id`
+or `threadId`; every supplied value MUST be a string of at most 128 UTF-8 bytes
+without control characters. Other keys are rejected. Example:
+`{"threadId":"<assigned thread id>"}`. For a material report, use one nested
+`event` with the exact assigned target, a supported `kind` (`terminal`,
+`failure`, `drift`, `missing_delivery`, `gate_ready`, or `unavailable`), and a
+nonempty summary. The runtime parser caps summaries at 128 UTF-8 bytes and
+rejects control characters, despite the advertised schema's 4,096-character
+limit.
 `eventId` is optional; if supplied, it MUST be a stable, nonempty string of at
 most 128 UTF-8 bytes without slash, backslash, or control characters. Evidence
 MUST contain at most 16 strings of at most 512 bytes each, without control
