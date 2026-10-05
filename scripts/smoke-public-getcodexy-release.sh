@@ -16,6 +16,94 @@ report_smoke_failure() {
 }
 trap 'report_smoke_failure "$?" "$BASH_COMMAND"' ERR
 
+wait_for_public_getcodexy_simple_index() {
+	local attempt=0 content_type index_json="$RUNNER_TEMP/public-getcodexy-simple-index.json"
+	local package_type artifact_url digest filename
+	local wheel_filename='' wheel_sha256='' sdist_filename='' sdist_sha256=''
+	if [[ ! -f public-package-artifacts.tsv ]]; then
+		echo "verified public package artifact list is missing" >&2
+		return 1
+	fi
+	while IFS=$'\t' read -r package_type artifact_url digest filename; do
+		case "$package_type" in
+		bdist_wheel)
+			if [[ -n "$wheel_filename" || -z "$artifact_url" || ! "$digest" =~ ^[a-f0-9]{64}$ || "$filename" != "getcodexy-${TARGET_VERSION}-"*.whl ]]; then
+				echo "verified public wheel identity is malformed" >&2
+				return 1
+			fi
+			wheel_filename=$filename
+			wheel_sha256=$digest
+			;;
+		sdist)
+			if [[ -n "$sdist_filename" || -z "$artifact_url" || ! "$digest" =~ ^[a-f0-9]{64}$ || "$filename" != "getcodexy-${TARGET_VERSION}.tar.gz" ]]; then
+				echo "verified public sdist identity is malformed" >&2
+				return 1
+			fi
+			sdist_filename=$filename
+			sdist_sha256=$digest
+			;;
+		*)
+			echo "verified public package artifact list has an unknown distribution type" >&2
+			return 1
+			;;
+		esac
+	done <public-package-artifacts.tsv
+	if [[ -z "$wheel_filename" || -z "$sdist_filename" ]]; then
+		echo "verified public package artifact list must contain one wheel and one sdist" >&2
+		return 1
+	fi
+
+	# Eighteen five-second requests and seventeen ten-second sleeps cap readiness at 260 seconds.
+	while [[ "$attempt" -lt 18 ]]; do
+		attempt=$((attempt + 1))
+		if content_type=$(curl --fail --silent --show-error --location \
+			--connect-timeout 5 --max-time 5 \
+			--header 'Accept: application/vnd.pypi.simple.v1+json' \
+			--output "$index_json" --write-out '%{content_type}' \
+			https://pypi.org/simple/getcodexy/); then
+			content_type=$(printf '%s' "${content_type%%;*}" | tr '[:upper:]' '[:lower:]')
+			if [[ "$content_type" != 'application/vnd.pypi.simple.v1+json' ]]; then
+				echo "PyPI Simple Index returned an unexpected content type" >&2
+				return 1
+			fi
+			if ! jq -e '
+				if type == "object" and (.meta | type == "object") and .name == "getcodexy" and (.files | type == "array") then
+					(.meta["api-version"] | type == "string" and test("^1\\.[0-9]+$")) and
+					all(.files[]; type == "object" and (.filename | type == "string" and length > 0) and (.url | type == "string" and length > 0) and (.hashes | type == "object"))
+				else false end
+			' "$index_json" >/dev/null; then
+				echo "PyPI Simple Index returned malformed metadata" >&2
+				return 1
+			fi
+			if jq -e --arg wheel "$wheel_filename" --arg wheel_sha "$wheel_sha256" \
+				--arg sdist "$sdist_filename" --arg sdist_sha "$sdist_sha256" '
+				(
+					any(.files[]; .filename == $wheel) and
+					any(.files[]; .filename == $wheel and .hashes.sha256 != $wheel_sha)
+				) or (
+					any(.files[]; .filename == $sdist) and
+					any(.files[]; .filename == $sdist and .hashes.sha256 != $sdist_sha)
+				)
+			' "$index_json" >/dev/null; then
+				echo "PyPI Simple Index SHA-256 differs from verified PyPI JSON" >&2
+				return 1
+			fi
+			if jq -e --arg wheel "$wheel_filename" --arg wheel_sha "$wheel_sha256" \
+				--arg sdist "$sdist_filename" --arg sdist_sha "$sdist_sha256" '
+				any(.files[]; .filename == $wheel and .hashes.sha256 == $wheel_sha) and
+				any(.files[]; .filename == $sdist and .hashes.sha256 == $sdist_sha)
+			' "$index_json" >/dev/null; then
+				return 0
+			fi
+		fi
+		if [[ "$attempt" -lt 18 ]]; then
+			sleep 10
+		fi
+	done
+	echo "PyPI Simple Index did not expose both exact distributions after ${attempt} checks" >&2
+	return 1
+}
+
 : "${TARGET_VERSION:?}"
 : "${RUNNER_TEMP:?}"
 
@@ -41,6 +129,8 @@ if [[ -n "${GETCODEXY_DIST:-}" ]]; then
 	UV_FIND_LINKS="$(cd "$GETCODEXY_DIST" && pwd)"
 	export UV_FIND_LINKS
 else
+	# Wait for the already-verified wheel and sdist; the local pre-publication path must not use PyPI.
+	wait_for_public_getcodexy_simple_index
 	public-bootstrap/bin/python -m pip install --no-cache-dir \
 		--index-url https://pypi.org/simple "getcodexy==${TARGET_VERSION}"
 fi
