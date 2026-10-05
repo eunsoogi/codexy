@@ -21,17 +21,44 @@ results:
   task-to-task follow-up timed out, and its read-thread record omitted
   `requestBinding`. That observation does not establish trusted `PreToolUse`
   injection or host prompt delivery, and it is not a cancellation pass.
+- On the parent task's current Codexy `1.13.1` production session, a human
+  prompt arrived while the native `watcher_wait` used cursor `5`; the recorded
+  call included an injected `requestBinding`. Its tool
+  record completed after `141581` ms, and the parent task readback reported
+  `status=cancelled`, `events=[]`, and `nextCursor=5`. The same-session health
+  readback reported `active`, generation 1, `waiting=false`, cursor 5. The
+  parent later reused the session with waits starting at cursors 5, 6, and 7
+  and reports that the existing Watcher delivered events 6 and 7. This supports
+  same-task human-input cancellation and subsequent cursor/session continuity.
+  The task transcript does not expose the native result payloads, exact input
+  and return times, or the low-level cancellation event. Codex MUST NOT infer
+  `UserPromptSubmit`, `Interrupt`, or MCP cancellation from `status=cancelled`.
+- On Codexy `1.13.1` at source checkout `95b47dde`, with Codex CLI `0.160.0`,
+  a coordinator message sent through the Codex app reached a separate
+  diagnostic task while its native `watcher_wait` was pending. The task readback
+  reported an injected `requestBinding`, but the wait returned
+  `status=timeout`, `events=[]`, and `nextCursor=0` after `295037` ms. The
+  primary session and independent control session both read back `active` at
+  generation 1 with `waiting=false`; the primary cursor remained 0. The wait
+  arm marker was `2026-10-05 03:41:10 UTC`, and the app message was sent at
+  `03:41:56 UTC`; the return time is approximately `03:46:05 UTC`, derived from
+  the arm marker and measured call duration. This confirms only the cross-task
+  message route on this candidate. Codex MUST keep it distinct from the same-task human
+  prompt result above; it does not test physical UI input or identify a
+  cancellation hook.
 - On trusted candidate `32d205c`, a real native wait acquired no
   `requestBinding`. The macOS launcher selected Python running as x86_64 under
   Rosetta; the hook exited successfully without finding the installed
   darwin-arm64 runtime. A subsequent app-delivered input left the wait pending
   after five seconds. This is a reproduced host failure.
-- After a repaired exact candidate is installed, repeat the test by submitting
-  input through a supported host/app path and verify prompt release, durable
-  session continuity, and isolation. The parent may drive this path
-  automatically; the input need not be physically typed. Bind the result to the
-  exact source and runtime identities. A launcher regression test alone does not
-  establish host delivery.
+- Codex MUST keep same-task human prompts, cross-task messages, physical desktop
+  input, `Interrupt`, and MCP cancellation as distinct evidence. The
+  observations above do not identify which low-level event caused the
+  same-task result or whether physical desktop input follows it. Codex MUST
+  record event provenance and input-to-return timing when the host exposes them,
+  and MUST NOT infer either from an outer interruption or tool yield. A future
+  probe MUST have a changed candidate or a specific unresolved acceptance
+  criterion; a launcher regression test alone does not establish host delivery.
 
 `watcher_cancel` is a different operation: it durably ends the session and
 requires a new assignment. A cancelled queue or cursor is not continuity, and
