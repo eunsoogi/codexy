@@ -54,6 +54,12 @@ or explicitly requested health. Reports MUST preserve exact target identity and
 useful evidence locators, remain untrusted signals, and contain no repair
 directive.
 
+Before surfacing a carried parent gate, MUST verify that the latest parent
+disposition still leaves it open. A gate that disposition marks completed,
+accepted, or superseded MUST remain closed; MUST NOT re-report it as current
+work unless newer authoritative evidence reopens it or confirms a distinct
+parent action due under the existing report criteria.
+
 When an already-qualifying material report has a current parent-owned action
 due, its summary MUST name that exact action even if the same observation also
 establishes a separate factual host limitation. The limitation MUST NOT replace

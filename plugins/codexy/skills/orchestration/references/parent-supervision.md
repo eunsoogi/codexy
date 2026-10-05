@@ -81,13 +81,13 @@ alter protected technical text.
   routine direct reports. Reads and liveness-only goal status MUST stay
   internal. The Watcher MUST wake only for actionable lifecycle change, drift,
   failure needing parent action, missing delivery, or a decision-ready gate.
-- New evidence MUST NOT be notification-eligible; keep it for a later gate.
-  Later authoritative success or in-scope repair MUST supersede old failures.
-  Work, checks, recovered errors, commits, and queued CI MUST stay internal.
-  Wait time or `unavailable` alone MUST NOT imply failure while authoritative CI
-  remains queued without a host error. An eligible report MUST name any current
-  parent-owned action in its summary; a factual host limitation MUST NOT replace
-  it. Passing checks in active work MUST remain ordinary progress.
+- New evidence and ordinary progress MUST stay internal until an actionable
+  gate. Later authoritative success or in-scope repair MUST supersede old
+  failures. A gate the latest parent disposition marks complete, accepted, or
+  superseded MUST stay closed unless new authoritative evidence reopens it or
+  confirms distinct current work under existing criteria. Queue time or
+  `unavailable` alone MUST NOT imply failure while queued CI lacks a host error.
+  Reports MUST name the current parent action; host limits MUST NOT replace it.
 - Codex MUST deduplicate one event using a stable event identity before changing
   counters, plan state, or next action. A missed callback, Worker failure,
   Watcher failure, or loss of both channels is an observable limitation; it is
