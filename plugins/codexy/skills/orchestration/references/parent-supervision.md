@@ -79,15 +79,10 @@ alter protected technical text.
 - A verified-unavailable route or emergency permits one marked direct-parent
   fallback. Worker MUST report one limitation and MUST NOT resume or duplicate
   routine direct reports. Reads and liveness-only goal state MUST stay internal.
-  The Watcher MUST wake only for actionable lifecycle changes, drift, actionable
-  failures, missing delivery, decision-ready gates, or explicit health requests.
-- New evidence and ordinary progress MUST stay internal until an actionable
-  gate. Later authoritative success or in-scope repair MUST supersede old
-  failures. A gate the latest parent disposition marks complete, accepted, or
-  superseded MUST stay closed unless new authoritative evidence reopens it or
-  confirms distinct current work under existing criteria. Queue time or
-  `unavailable` alone MUST NOT imply failure while queued CI lacks a host error.
-  If due, the summary MUST name the parent action; limits MUST NOT replace it.
+- The bundled `codexy-watcher` role owns which lifecycle changes are actionable,
+  report eligibility, stale-gate suppression, current-action summaries, and the
+  `watcher_report` argument shape. Its ordered decision-and-emission contract
+  governs each report.
 - Codex MUST deduplicate one event using a stable event identity before changing
   counters, plan state, or next action. A missed callback, Worker failure,
   Watcher failure, or loss of both channels is an observable limitation; it is
@@ -106,12 +101,13 @@ alter protected technical text.
   from actual drift and report only the material distinction.
 - A credible drift report MUST identify the concrete source or call inspected,
   the conflicting current requirement, and the consequence or remaining
-  uncertainty in concise natural prose; it MUST NOT require a fixed packet
-  schema or contain a repair directive. The Watcher reports only; the
-  Orchestrator judges and instructs the Worker, the Worker repairs, and the
-  Orchestrator verifies the next relevant source, call, diff, or result. A later
-  Watcher observation may report a new mismatch but MUST remain read-only and
-  MUST NOT own that correction loop.
+  uncertainty in concise natural prose, without a fixed narrative template. This
+  does not waive the exact `watcher_report` argument contract in the bundled
+  Watcher role. The Watcher reports only; the Orchestrator judges and instructs
+  the Worker, the Worker repairs, and the Orchestrator verifies the next
+  relevant source, call, diff, or result. A later Watcher observation may report
+  a new mismatch but MUST remain read-only and MUST NOT own that correction
+  loop.
 
 ## Waiting and direct correction
 
