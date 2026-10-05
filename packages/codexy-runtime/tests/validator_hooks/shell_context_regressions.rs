@@ -42,6 +42,24 @@ fn issue_735_read_only_github_and_git_corpus_is_admitted_for_both_events() -> Te
 }
 
 #[test]
+fn issue_1248_temporary_output_is_scoped_for_both_events() -> TestResult {
+    let root = plugin_root();
+    let workspace = tempfile::tempdir()?;
+    let owned = repository(workspace.path(), "owned", "git@github.com:eunsoogi/codexy.git")?;
+    let log = shell_path(Path::new("/private/tmp/codexy-1248-run.log"))?;
+    for event in ["PermissionRequest", "PreToolUse"] {
+        // The adapter checks this request; it never runs gh or writes the temporary log.
+        for (command, denied) in [
+            (format!("gh run watch 37218256143 --repo eunsoogi/codexy --interval 30 --exit-status > {log} 2>&1"), false),
+            ("gh run view 111538535524 --repo eunsoogi/codexy --log > README.md".to_owned(), true),
+        ] {
+            assert_event_case(&root, event, &owned, &command, denied, &[])?;
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn issue_735_github_mutation_matrix_is_admitted_without_plugin_policy() -> TestResult {
     let root = plugin_root();
     let workspace = tempfile::tempdir()?;

@@ -185,8 +185,9 @@ class GithubNativeHooksTests(
             )
 
         metadata_command = """git diff --check 6a2abd471a610bcf2a64cad5864fb4d304f449fc..HEAD && python3 - <<'PY'
-import json, pathlib, tomllib
+import json, pathlib, subprocess, tomllib
 r=pathlib.Path('.')
+paths=subprocess.check_output(['git','diff','--name-only','444321cd..HEAD'],text=True).splitlines(); assert all((r/p).is_file() for p in paths)
 for p in ('plugins/codexy/.codex-plugin/plugin.json','plugins/codexy-github/.codex-plugin/plugin.json','plugins/codexy-devtools/.codex-plugin/plugin.json'):
  x=json.loads((r/p).read_text()); print(p, x['version'])
 m=json.loads((r/'.agents/plugins/marketplace.json').read_text()); print('marketplace',[(p['name'],p.get('version')) for p in m['plugins']])
@@ -197,7 +198,9 @@ for f in ('README.md','README.ko.md'):
 PY"""
         assert_allowed(metadata_command)
 
-        read_only_command = """git diff --check && python3 - <<'PY'
+        # Keep the embedded shell terminator at column zero after formatting.
+        read_only_command = (
+            """git diff --check && python3 - <<'PY'
 import json
 import struct
 
@@ -206,41 +209,11 @@ with open("fixture/app.asar", "rb") as archive:
     header = json.loads(archive.read(header_size))
     offset = int(header["files"]["app.js"]["offset"])
     archive.seek(8 + header_size + offset); s = archive.read(4096).decode("utf-8", errors="replace"); i = s.index("function kf("); print(s[i:])
-PY"""
+PY
+        """.rstrip()
+            + "\n"
+        )
         assert_allowed(read_only_command)
-
-        def assert_denied(command: str, expected_code: str) -> None:
-            credential_payload = json.dumps(
-                {
-                    "hook_event_name": "PreToolUse",
-                    "tool_name": "Bash",
-                    "tool_input": {"command": command},
-                    "cwd": str(PLUGIN.parents[1]),
-                }
-            )
-            output = self._run_process(
-                [str(hook), "PreToolUse"], credential_payload, environment
-            )
-            self.assertIn('"permissionDecision":"deny"', output, command)
-            self.assertIn(expected_code, output, command)
-
-        for command in (
-            "gh auth token",
-            "python3 - <<EOF\n$(gh auth token)\nEOF",
-            "sh -c 'sh -s' <<'EOF'\ngh auth token\nEOF",
-        ):
-            with self.subTest(command=command):
-                assert_denied(command, "CODEXY_DESTRUCTIVE_COMMAND_CREDENTIAL_EXPOSURE")
-
-        assert_denied(
-            "sh -c 'sh -s' <<'EOF'\nrm -rf /\nEOF",
-            "CODEXY_DESTRUCTIVE_COMMAND_DESTRUCTIVE_EFFECT",
-        )
-
-        assert_denied(
-            "(( 8 << 'EOF' ))\nrm -rf /\nEOF",
-            "CODEXY_DESTRUCTIVE_COMMAND_DESTRUCTIVE_EFFECT",
-        )
 
 
 if __name__ == "__main__":

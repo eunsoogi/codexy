@@ -2,12 +2,46 @@
 
 from __future__ import annotations
 
+import os
+import stat
 from dataclasses import replace
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from .executable_identity import alias_transition
 from .filesystem_state import FAILURE, mkdir, replace_path_state
 from .execution_context_types import CommandEffect, ExecutionContext
+
+
+def safe_output_redirection(operator: str, value: str) -> bool:
+    """Allow /dev/null or a direct, single-link file under macOS's private temp directory."""
+    if value == "/dev/null":
+        return True
+    if operator != ">":
+        return False
+    path = PurePosixPath(value)
+    if (
+        path.parent != PurePosixPath("/private/tmp")
+        or path.name in {"", ".", ".."}
+        or value != f"/private/tmp/{path.name}"
+        or any(char in value for char in "$`*?[]\0")
+    ):
+        return False
+    try:
+        if Path("/private/tmp").resolve().as_posix() != "/private/tmp":
+            return False
+        metadata = Path(value).lstat()
+    except FileNotFoundError:
+        return True
+    except (OSError, RuntimeError, ValueError):
+        return False
+    # /private/tmp is shared, so an existing target must belong to this caller too.
+    owner = getattr(os, "geteuid", None)
+    return (
+        owner is not None
+        and stat.S_ISREG(metadata.st_mode)
+        and metadata.st_nlink == 1
+        and metadata.st_uid == owner()
+    )
 
 
 def after_external_command(

@@ -5,7 +5,7 @@ from __future__ import annotations
 import shlex
 from dataclasses import dataclass
 
-from .execution_context import SINGLE_QUOTED_DOLLAR, assignment
+from .execution_context import SINGLE_QUOTED_DOLLAR, assignment, safe_output_redirection
 from .shell_reflog import protect as protect_reflog, restore as restore_reflog
 from .shell_heredoc import without_python_script_heredoc_bodies
 
@@ -135,7 +135,7 @@ def _strip_redirections(tokens: list[str]) -> list[str] | None:
                 token.startswith("<")
                 and ">" not in token
                 or token in {">", ">>", ">|", "&>", "&>>"}
-                and target == "/dev/null"
+                and safe_output_redirection(token, target)
                 or token in {">&", ">&-"}
                 and (target.isdigit() or target in {"-", "/dev/null"})
             ):
