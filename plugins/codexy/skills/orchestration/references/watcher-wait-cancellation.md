@@ -12,10 +12,10 @@ request matches, it fails closed. The hook forwards only `session_id`; prompt
 text does not reach the Watcher runtime. Direct Watcher callers remain
 binding-free.
 
-The host must deliver a matching hook for plugin cancellation to take effect. A
-delegated task message or outer wait termination may leave the native request
-active. Keep host observations tied to the exact candidate and distinguish these
-results:
+The host MUST deliver a matching hook for plugin cancellation to take effect.
+A delegated task message or outer wait termination may leave the native request
+active. Codex MUST keep host observations tied to the exact candidate and
+distinguish these results:
 
 - An earlier candidate exposed `UserPromptSubmit` as untrusted. A delegated
   task-to-task follow-up timed out, and its read-thread record omitted
@@ -39,13 +39,18 @@ results:
   reported an injected `requestBinding`, but the wait returned
   `status=timeout`, `events=[]`, and `nextCursor=0` after `295037` ms. The
   primary session and independent control session both read back `active` at
-  generation 1 with `waiting=false`; the primary cursor remained 0. The wait
-  arm marker was `2026-10-05 03:41:10 UTC`, and the app message was sent at
-  `03:41:56 UTC`; the return time is approximately `03:46:05 UTC`, derived from
-  the arm marker and measured call duration. This confirms only the cross-task
-  message route on this candidate. Codex MUST keep it distinct from the same-task human
-  prompt result above; it does not test physical UI input or identify a
-  cancellation hook.
+  generation 1 with `waiting=false`; the primary cursor remained 0. The
+  diagnostic task's final readback reports call start `2026-10-05
+  03:41:33.722 UTC` and return `03:46:28.858 UTC`; its MCP tool record reports
+  `295037` ms. Those reported timestamps and duration differ by about 99 ms,
+  and the parent read-thread record does not expose raw tool timestamps, so
+  retain each value with its source rather than deriving one from the other.
+  The `03:41:10 UTC` arm announcement preceded the call; the `03:41:56 UTC`
+  message-send marker does not expose delivery time, so message-to-return
+  latency is unavailable. This confirms only the cross-task message route on
+  this candidate. Codex MUST keep it distinct from the same-task human prompt
+  result above; it does not test physical UI input or identify a cancellation
+  hook.
 - On trusted candidate `32d205c`, a real native wait acquired no
   `requestBinding`. The macOS launcher selected Python running as x86_64 under
   Rosetta; the hook exited successfully without finding the installed
@@ -62,4 +67,4 @@ results:
 
 `watcher_cancel` is a different operation: it durably ends the session and
 requires a new assignment. A cancelled queue or cursor is not continuity, and
-the old assignment must not resume.
+Codex MUST NOT resume the old assignment.
