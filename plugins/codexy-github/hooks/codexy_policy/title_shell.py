@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+from .shell_heredoc import without_github_body_heredoc_bodies
 from .shell_segments import segments
 from .title_api import forbidden as api_forbidden
 from .title_merge import forbidden as merge_forbidden
@@ -17,7 +18,8 @@ _DYNAMIC = re.compile(r"[$`]|__codexy_(?:command|process)_substitution__")
 def forbidden(command: object, cwd: object = None) -> bool:
     if not isinstance(command, str):
         return False
-    parsed = segments(command)
+    # PR-body stdin is literal content; executable and unknown heredoc readers stay visible.
+    parsed = segments(without_github_body_heredoc_bodies(command))
     # When shell syntax is unsupported, block only an unmistakable protected GitHub title command.
     if parsed is None:
         return bool(

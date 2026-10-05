@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import re
+import shlex
+
 from .execution_context import SINGLE_QUOTED_DOLLAR, safe_output_redirection
 
 QUOTED_REDIRECTIONS = {"<": "\ue001", ">": "\ue002"}
@@ -15,6 +18,84 @@ PARSER_MARKERS = frozenset(
     }
 )
 OPERATORS = frozenset({";", "&&", "||", "|", "&", "(", ")", "{", "}"})
+_CONTROL_WORDS = frozenset("if then elif else fi for while until do done".split())
+_QUOTED_OPERATOR_MARKERS = {
+    char: chr(0xE005 + index) for index, char in enumerate(";&|(){}")
+}
+_MARKER_QUOTED_OPERATORS = {
+    marker: char for char, marker in _QUOTED_OPERATOR_MARKERS.items()
+}
+
+
+def command_prefix(prefix: str) -> list[str] | None:
+    """Return the active simple command before a here-document operator."""
+    try:
+        # Remove comments and join continuations before quote tracking begins.
+        normalized = separate_lines(prefix)
+        lexer = shlex.shlex(
+            _protect_quoted_operators(normalized),
+            posix=True,
+            punctuation_chars=";&|(){}<>",
+        )
+        lexer.whitespace_split, lexer.commenters = True, ""
+        # Keep markers through operator classification so quoted data cannot split commands.
+        tokens = list(lexer)
+    except ValueError:
+        return None
+
+    without_redirections: list[str] = []
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token.startswith(REDIRECTION_FD) and token[1:].isdigit():
+            index += 1
+            if index == len(tokens):
+                return None
+            token = tokens[index]
+        if _is_redirection(token):
+            index += 2
+            if index > len(tokens):
+                return None
+            continue
+        without_redirections.append(token)
+        index += 1
+
+    current: list[str] = []
+    for token in without_redirections:
+        if token in OPERATORS:
+            current = []
+        else:
+            current.append(token)
+    while current and (
+        current[0].casefold() in _CONTROL_WORDS
+        or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", current[0])
+    ):
+        del current[0]
+    return [
+        token.translate(str.maketrans(_MARKER_QUOTED_OPERATORS)) for token in current
+    ]
+
+
+def _protect_quoted_operators(command: str) -> str:
+    """Keep quoted or escaped operator arguments distinct from shell syntax."""
+    result: list[str] = []
+    quote: str | None = None
+    escaped = False
+    for char in command:
+        if escaped:
+            result.append(_QUOTED_OPERATOR_MARKERS.get(char, char))
+            escaped = False
+        elif char == "\\" and quote != "'":
+            result.append(char)
+            escaped = True
+        elif char in {"'", '"'}:
+            quote = None if quote == char else char if quote is None else quote
+            result.append(char)
+        elif quote is not None:
+            result.append(_QUOTED_OPERATOR_MARKERS.get(char, char))
+        else:
+            result.append(char)
+    return "".join(result)
 
 
 def mark_redirection_fd(result: list[str]) -> None:
