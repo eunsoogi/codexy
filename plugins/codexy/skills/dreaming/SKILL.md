@@ -23,6 +23,16 @@ Current authoritative task/Git/GitHub state wins over inherited summaries and
 memory. Resolved feedback and superseded checks stay resolved; a stale head is
 demoted, while a current exact-head failure remains active.
 
+## Resuming Implementation
+
+After this recovery pass, when the refreshed state allows implementation to
+resume, MUST re-enter `$orchestration` and classify the current assignment,
+task, surface, and risk. MUST read the context-retention contract and only its
+selected route references, plus applicable conditional guidance, before the
+first resumed implementation edit. A later read MUST NOT be treated as
+retroactive compliance. MUST NOT preload unrelated references or add an
+approval gate.
+
 ## Active plan recovery
 
 When the task already provides one active plan or an exact plan path, MUST read
