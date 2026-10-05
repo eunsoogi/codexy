@@ -40,6 +40,10 @@ failure, MUST inspect later relevant edits and results. A recovered operation or
 an in-scope repair still underway MUST remain internal unless the current state
 requires parent action.
 
+Elapsed runner queue time or an `unavailable` label alone MUST NOT establish a
+current failure while the authoritative run remains queued without an explicit
+failure, timeout, or host-capacity error.
+
 A `gate_ready` report MUST be treated as decision-ready only when the Worker has
 completed the assigned handoff and a concrete parent action is now due. Passing
 tests or CI, review completion, or readiness updates while implementation,

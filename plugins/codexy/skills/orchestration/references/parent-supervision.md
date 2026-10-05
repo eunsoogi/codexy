@@ -78,16 +78,16 @@ alter protected technical text.
   goal calls MUST stay local and unreported; reports are not acceptance.
 - A verified-unavailable route or emergency permits one marked direct-parent
   fallback. Worker MUST report one limitation and MUST NOT resume or duplicate
-  routine direct reports. Routine reads and liveness-only goal status MUST remain
-  internal. The Watcher MUST wake only for an actionable lifecycle change, drift,
+  routine direct reports. Reads and liveness-only goal status MUST stay
+  internal. The Watcher MUST wake only for actionable lifecycle change, drift,
   failure needing parent action, missing delivery, or a decision-ready gate.
-- New evidence alone MUST NOT be notification-eligible. Keep it as evidence for
-  a later gate. Later authoritative success or in-scope repair MUST supersede
-  an older failure. Normal work, intermediate passing checks, resolved command
-  mistakes, commits, and queued CI MUST stay internal while a Worker progresses.
-  A `gate_ready` event MUST name the parent action now due; passing checks during
-  active implementation, review, CI, or readiness work MUST NOT be treated as
-  that gate.
+- New evidence MUST NOT be notification-eligible; keep it for a later gate.
+  Later authoritative success or in-scope repair MUST supersede old failures.
+  Normal work, intermediate checks, recovered errors, commits, and queued CI
+  MUST stay internal; wait time or `unavailable` alone MUST NOT imply failure
+  while authoritative CI remains queued without a host error. A `gate_ready`
+  event MUST name the parent action due; passing checks during active
+  implementation, review, CI, or readiness MUST remain ordinary progress.
 - Codex MUST deduplicate one event using a stable event identity before changing
   counters, plan state, or next action. A missed callback, Worker failure,
   Watcher failure, or loss of both channels is an observable limitation; it is
