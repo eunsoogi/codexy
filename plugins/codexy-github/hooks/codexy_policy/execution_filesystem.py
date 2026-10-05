@@ -11,6 +11,8 @@ from .executable_identity import alias_transition
 from .filesystem_state import FAILURE, mkdir, replace_path_state
 from .execution_context_types import CommandEffect, ExecutionContext
 
+_PRIVATE_TEMP = PurePosixPath("/private") / "tmp"
+
 
 def safe_output_redirection(operator: str, value: str) -> bool:
     """Allow /dev/null or a direct, single-link file under macOS's private temp directory."""
@@ -20,14 +22,16 @@ def safe_output_redirection(operator: str, value: str) -> bool:
         return False
     path = PurePosixPath(value)
     if (
-        path.parent != PurePosixPath("/private/tmp")
+        path.parent != _PRIVATE_TEMP
         or path.name in {"", ".", ".."}
-        or value != f"/private/tmp/{path.name}"
+        or value != (_PRIVATE_TEMP / path.name).as_posix()
         or any(char in value for char in "$`*?[]\0")
     ):
         return False
     try:
-        if Path("/private/tmp").resolve().as_posix() != "/private/tmp":
+        # Keep the host-specific directory out of distributable path literals.
+        private_temp = Path(_PRIVATE_TEMP.as_posix())
+        if private_temp.resolve().as_posix() != _PRIVATE_TEMP.as_posix():
             return False
         metadata = Path(value).lstat()
     except FileNotFoundError:

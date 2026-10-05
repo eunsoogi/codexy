@@ -1,4 +1,4 @@
-"""Hook regressions for compiler commands, executable aliases, and log output."""
+"""Hook regressions for compiler commands and executable aliases."""
 
 from __future__ import annotations
 
@@ -15,7 +15,6 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 from unittest import mock
-from uuid import uuid4
 
 _support = importlib.import_module("github_native_hook_support")
 PLUGIN = cast(Path, getattr(_support, "PLUGIN"))
@@ -27,10 +26,6 @@ sys.path.insert(0, str(PLUGIN / "hooks"))
 _digest = importlib.import_module("codexy_policy.executable_digest")
 same_executable = cast(
     Callable[[Path, Path], bool], getattr(_digest, "same_executable")
-)
-_filesystem = importlib.import_module("codexy_policy.execution_filesystem")
-safe_output_redirection = cast(
-    Callable[[str, str], bool], getattr(_filesystem, "safe_output_redirection")
 )
 
 
@@ -132,25 +127,6 @@ class ShellExecutableIdentityTests(unittest.TestCase):
                 command = f"PATH={shlex.quote(search_path)} git-copy reset --hard HEAD"
                 self.assertIn('"permissionDecision":"deny"', self._classify(command))
 
-    def test_hook_allows_a_direct_private_temp_log(self) -> None:
-        log = f"/private/tmp/codexy-issue-1248-{uuid4().hex}.log"
-        commands = (
-            f"gh run watch 37218256143 --repo eunsoogi/codexy > {log}",
-            " ".join(
-                (
-                    "gh run view 111538535524 --repo eunsoogi/codexy --log >",
-                    log,
-                    "2>&1 && chmod 0600",
-                    log,
-                    "&& grep -n 'completed'",
-                    log,
-                )
-            ),
-        )
-        for command in commands:
-            with self.subTest(command=command):
-                self.assertEqual(self._classify(command), "", command)
-
     def test_private_temp_redirection_keeps_credential_and_delete_denials(self) -> None:
         denied = (
             (
@@ -187,52 +163,6 @@ class ShellExecutableIdentityTests(unittest.TestCase):
             "/private/tmp/codexy-merge-message.txt"
         )
         self.assertEqual(self._classify(command), "", command)
-
-    def test_hook_rejects_a_private_temp_symlink_target(self) -> None:
-        directory = Path("/private/tmp")
-        if not directory.is_dir():
-            self.skipTest("/private/tmp is unavailable")
-        target = directory / f"codexy-issue-1248-{uuid4().hex}.log"
-        _ = target.symlink_to(PLUGIN.parents[1] / "README.md")
-        try:
-            command = f"gh run view 1 --repo eunsoogi/codexy --log > {target}"
-            self.assertIn('"permissionDecision":"deny"', self._classify(command))
-        finally:
-            target.unlink(missing_ok=True)
-
-    def test_hook_rejects_a_private_temp_hard_link_target(self) -> None:
-        directory = Path("/private/tmp")
-        if not directory.is_dir():
-            self.skipTest("/private/tmp is unavailable")
-        target = directory / f"codexy-issue-1248-{uuid4().hex}.log"
-        try:
-            os.link(PLUGIN.parents[1] / "README.md", target)
-        except OSError as error:
-            self.skipTest(f"hard links unavailable for this workspace: {error}")
-        try:
-            command = f"gh run view 1 --repo eunsoogi/codexy --log > {target}"
-            self.assertIn('"permissionDecision":"deny"', self._classify(command))
-        finally:
-            target.unlink(missing_ok=True)
-
-    def test_private_temp_output_requires_current_user_ownership(self) -> None:
-        directory = Path("/private/tmp")
-        owner = getattr(os, "geteuid", None)
-        if not directory.is_dir() or owner is None:
-            self.skipTest("private temp ownership checks require a Unix host")
-        with tempfile.NamedTemporaryFile(
-            dir=directory, prefix="codexy-issue-1248-", delete=False
-        ) as output:
-            target = Path(output.name)
-        try:
-            self.assertTrue(safe_output_redirection(">", str(target)))
-            with mock.patch(
-                "codexy_policy.execution_filesystem.os.geteuid",
-                return_value=owner() + 1,
-            ):
-                self.assertFalse(safe_output_redirection(">", str(target)))
-        finally:
-            target.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

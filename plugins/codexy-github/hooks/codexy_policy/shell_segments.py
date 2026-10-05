@@ -5,17 +5,19 @@ from __future__ import annotations
 import shlex
 from dataclasses import dataclass
 
-from .execution_context import SINGLE_QUOTED_DOLLAR, assignment, safe_output_redirection
+from .execution_context import SINGLE_QUOTED_DOLLAR, assignment
+from .shell_redirections import (
+    OPERATORS,
+    QUOTED_REDIRECTIONS,
+    mark_redirection_fd,
+    strip_redirections,
+)
 from .shell_reflog import protect as protect_reflog, restore as restore_reflog
 from .shell_heredoc import without_python_script_heredoc_bodies
-
-QUOTED_REDIRECTIONS = {"<": "\ue001", ">": "\ue002"}
-REDIRECTION_FD, UNSAFE_REDIRECTION = "\ue003", "\ue004"
 
 CONTROL_WORDS = frozenset(
     "if then elif else fi for in while until do done case esac".split()
 )
-OPERATORS = frozenset({";", "&&", "||", "|", "&", "(", ")", "{", "}"})
 # Private markers keep quoted redirection and reflog data distinct from active shell operators.
 
 
@@ -28,7 +30,7 @@ def tokenize(command: str) -> list[str] | None:
             punctuation_chars=";&|(){}<>",
         )
         lexer.whitespace_split, lexer.commenters = True, ""
-        return _strip_redirections(restore_reflog(list(lexer)))
+        return strip_redirections(restore_reflog(list(lexer)))
     except ValueError:
         return None
 
@@ -64,7 +66,7 @@ def separate_lines(command: str) -> str:
         elif quote == "'" and char == "$":
             result.append(SINGLE_QUOTED_DOLLAR)
         elif quote is None and char in "<>":
-            _mark_redirection_fd(result)
+            mark_redirection_fd(result)
             result.append(char)
         elif (
             quote is None
@@ -105,44 +107,6 @@ def segments(command: str) -> tuple[tuple[str, ...], ...] | None:
             if command_start and token != "!" and not assignment(token):
                 command_start = False
     return tuple(result)
-
-
-def _mark_redirection_fd(result: list[str]) -> None:
-    start = len(result)
-    while start and result[start - 1].isdigit():
-        start -= 1
-    if start < len(result) and (start == 0 or result[start - 1].isspace()):
-        result.insert(start, REDIRECTION_FD)
-
-
-def _is_redirection(token: str) -> bool:
-    return any(char in "<>" for char in token) and set(token) <= set("<>&|-")
-
-
-def _strip_redirections(tokens: list[str]) -> list[str] | None:
-    result: list[str] = []
-    iterator = iter(tokens)
-    for token in iterator:
-        if token.startswith(REDIRECTION_FD) and token[1:].isdigit():
-            token = next(iterator, None)
-            if token is None:
-                return None
-        if _is_redirection(token):
-            target = next(iterator, None)
-            if target is None or target in OPERATORS:
-                return None
-            if not (
-                token.startswith("<")
-                and ">" not in token
-                or token in {">", ">>", ">|", "&>", "&>>"}
-                and safe_output_redirection(token, target)
-                or token in {">&", ">&-"}
-                and (target.isdigit() or target in {"-", "/dev/null"})
-            ):
-                result.append(UNSAFE_REDIRECTION)
-        else:
-            result.append(token.replace("\ue001", "<").replace("\ue002", ">"))
-    return result
 
 
 def command_tokens(tokens: tuple[str, ...]) -> tuple[str, ...]:

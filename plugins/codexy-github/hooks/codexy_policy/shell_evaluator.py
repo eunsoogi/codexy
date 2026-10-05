@@ -17,8 +17,8 @@ from .invocation import Invocation, resolve
 from .shell_context import changed_directory
 from .shell_groups import GroupSyntaxError, parse
 from .shell_opaque import DYNAMIC_NAME
+from .shell_redirections import UNSAFE_REDIRECTION
 from .shell_segments import (
-    UNSAFE_REDIRECTION,
     command_tokens,
     opaque_syntax,
     segments,
