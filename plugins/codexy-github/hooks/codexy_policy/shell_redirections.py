@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import re
+import shlex
+
 from .execution_context import SINGLE_QUOTED_DOLLAR, safe_output_redirection
 
 QUOTED_REDIRECTIONS = {"<": "\ue001", ">": "\ue002"}
@@ -15,6 +18,49 @@ PARSER_MARKERS = frozenset(
     }
 )
 OPERATORS = frozenset({";", "&&", "||", "|", "&", "(", ")", "{", "}"})
+_CONTROL_WORDS = frozenset("if then elif else fi for while until do done".split())
+
+
+def command_prefix(prefix: str) -> list[str] | None:
+    """Return the active simple command before a here-document operator."""
+    try:
+        lexer = shlex.shlex(
+            separate_lines(prefix), posix=True, punctuation_chars=";&|(){}<>"
+        )
+        lexer.whitespace_split, lexer.commenters = True, ""
+        tokens = list(lexer)
+    except ValueError:
+        return None
+
+    without_redirections: list[str] = []
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token.startswith(REDIRECTION_FD) and token[1:].isdigit():
+            index += 1
+            if index == len(tokens):
+                return None
+            token = tokens[index]
+        if _is_redirection(token):
+            index += 2
+            if index > len(tokens):
+                return None
+            continue
+        without_redirections.append(token)
+        index += 1
+
+    current: list[str] = []
+    for token in without_redirections:
+        if token in OPERATORS:
+            current = []
+        else:
+            current.append(token)
+    while current and (
+        current[0].casefold() in _CONTROL_WORDS
+        or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", current[0])
+    ):
+        del current[0]
+    return current
 
 
 def mark_redirection_fd(result: list[str]) -> None:
