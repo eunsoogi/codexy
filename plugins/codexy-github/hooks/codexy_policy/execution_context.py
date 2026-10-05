@@ -6,7 +6,10 @@ import re
 from dataclasses import replace
 
 from .execution_context_types import CommandEffect, ExecutionContext
-from .execution_filesystem import after_external_command
+from .execution_filesystem import (
+    after_external_command,
+    safe_output_redirection as safe_output_redirection,
+)
 from .repository import git_directory_owned, repository_owned
 
 VARIABLE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")

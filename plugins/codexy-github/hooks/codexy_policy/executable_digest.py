@@ -14,9 +14,26 @@ MAX_EXECUTABLE_BYTES = 64 * 1024 * 1024
 def same_executable(candidate: Path, target: Path) -> bool:
     try:
         if os.path.samefile(candidate, target):
+            if _distinct_system_launchers(candidate, target):
+                return False
             return True
+        # Content matching still recognizes copied Git binaries outside the shared launcher case.
         return digest(candidate) == digest(target)
-    except OSError:
+    except (OSError, RuntimeError):
+        return False
+
+
+def _distinct_system_launchers(candidate: Path, target: Path) -> bool:
+    """Keep different /usr/bin command names distinct while preserving symlink aliases."""
+    if (
+        candidate.parent.as_posix() != "/usr/bin"
+        or target.parent.as_posix() != "/usr/bin"
+        or candidate.name == target.name
+    ):
+        return False
+    try:
+        return candidate.resolve() != target.resolve()
+    except (OSError, RuntimeError):
         return False
 
 
