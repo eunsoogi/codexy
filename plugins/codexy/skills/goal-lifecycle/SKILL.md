@@ -1,6 +1,6 @@
 ---
 name: goal-lifecycle
-description: Use before any explicitly authorized Orchestrator or implementation Worker task, including read-only diagnosis, and when using goal tools or resuming a task controlled by a goal. The native read-only Watcher exception remains separate. MUST NOT infer execution or goal authority from ordinary questions, ambiguous discussion, or unassigned suggestions.
+description: Use before any explicitly authorized Orchestrator or implementation Worker task, including read-only diagnosis, when using goal tools or resuming a task controlled by a goal, or for same-directory fork recovery of a blocked task. The native read-only Watcher exception remains separate. MUST NOT infer execution or goal authority from ordinary questions, ambiguous discussion, or unassigned suggestions.
 ---
 
 # Goal Lifecycle
@@ -13,9 +13,10 @@ goal-tool operation or resume of a task controlled by a goal. Codex MUST load it
 before task-specific work, not only after choosing a goal-tool operation. The
 native read-only Watcher exception below remains separate and MUST NOT create a
 separate goal. Codex MUST treat the host goal tools as authoritative. The
-lifecycle governs fresh goal startup, active continuation, and stale
-blocked-goal recovery. It MUST NOT implement goal state or replace the owner
-thread, branch, or worktree.
+lifecycle governs fresh goal startup, active continuation, and authorized
+recovery from blocked goals. It MUST NOT change host goal state, issue
+ownership, branch, or worktree to simulate completion. Recovery changes only the
+active task thread through a same-directory fork and archive.
 
 ## Delegated assignment authorization
 
@@ -89,9 +90,11 @@ task work, the task MUST call `get_goal` and MUST use its current result:
    requested work. The task MUST continue only when it is the exact active
    objective. Otherwise the task MUST stop and MUST obtain an explicit lifecycle
    disposition; the task MUST NOT overwrite the active goal.
-3. If the result is `blocked`, the task MUST NOT work under that goal. The task
-   MUST preserve the existing owner, branch, worktree, and task context while
-   performing only the recovery transition below.
+3. If the result is `blocked`, the task MUST NOT work under that goal. The
+   blocked state alone does not authorize a resume. After explicit authorization
+   to continue the same objective, the task MUST preserve the lane owner,
+   branch, worktree, and task context while performing only the recovery
+   transition below.
 4. For an error, `unknown`, `missing`, malformed result, or any other unexpected
    state, the task MUST preserve the exact readback and MUST stop before task
    work.
@@ -103,108 +106,114 @@ pre-delivery or post-result parent reports for those calls. Existing
 blocked-goal recovery and terminal-handoff reporting rules continue to apply to
 their respective transitions.
 
-For a `blocked` result, the task MUST perform this exact sequence:
+## Authorized blocked-goal recovery
 
-1. The task MUST call `update_goal(status="complete")` only to terminate the
-   stale blocked execution record.
-2. The task MUST state that this is an administrative control-plane unblock. The
-   task MUST NOT treat it as evidence that the issue, PR, implementation, proof,
-   merge, release, or external gate is complete.
-3. The task MUST read back the cleared goal state. The task MUST continue only
-   when the authoritative readback is exactly `goal=null` or exactly
-   `status=complete`. If it is `active`, `blocked`, an error, `unknown`,
-   `missing`, malformed, or any other unexpected state, the task MUST preserve
-   the exact readback and MUST stop.
-4. The task MUST create a new finite goal for the same authorized work, MUST
-   read back that the new goal is `active`, and MUST create or refresh the
-   current plan.
-5. The task MUST resume work only after the new goal is confirmed `active`.
+The task MUST NOT call `update_goal` to mark an unfinished blocked objective
+complete or otherwise clear it for recovery. The task MUST NOT resume from a
+blocked state without explicit authorization for the same objective. Until the
+fork's goal is active, the task MUST NOT perform issue implementation or
+verification, edit the repository, change the branch or worktree, or mutate
+GitHub. It MAY perform only the read-only preflight and recovery operations
+listed below.
 
-If administrative completion or fresh-goal creation fails, the task MUST NOT
-perform task work unless a newly confirmed `active` goal exists. The task MUST
-preserve the exact tool result, MUST retain the owner lane, and MUST stop. After
-either failure, the task MUST NOT edit, command, verify, delegate, or mutate
-GitHub. A blocked-goal recovery MUST NOT authorize abandoning or duplicating the
-owner task.
+For an authorized resume, the owner MUST preserve the exact blocked-goal
+readback, source task id and parent, objective, current directory, branch,
+worktree, HEAD, dirty/index state, and source model and reasoning effort. The
+owner MUST record requested settings from the source task assignment or creation
+record separately from any effective settings the host exposes. For each
+setting, the owner MUST use the effective source value when observable and
+otherwise its exact requested value. If either continuation value is unavailable
+from both sources, the task MUST stop before forking and report the limitation;
+it MUST NOT use sender or role defaults.
 
-## Refusal-only fallback
+1. The task MUST call `fork_thread` for the blocked task in the same directory.
+   It MUST NOT create a competing branch, worktree, or task. If the call fails
+   or does not return exactly one new task owner, it MUST preserve the exact
+   result and stop without retrying.
+2. When an authenticated source parent and terminal handoff receipt are bound to
+   this task, the task MUST send exactly one receipt before source archival. The
+   receipt MUST identify the fork, preserved lane state, and requested and
+   effective model/effort evidence. If no source parent or receipt route is
+   bound, the task MUST NOT invent a recipient, notification, or approval gate.
+   If a required receipt cannot be delivered, the task MUST preserve the failure
+   evidence, keep the blocked source as owner, and MUST NOT archive or continue
+   the fork.
+3. The task MUST archive the original blocked task with
+   `set_thread_archived(archived=true)`. If this fails, it MUST NOT send a
+   continuation to the fork or allow either task to work; it MUST preserve the
+   original owner reservation and exact error, then stop for parent disposition.
+4. The task MUST read back that the original is archived and the fork is the
+   sole active owner in the same directory before continuing. If this cannot be
+   confirmed, it MUST preserve the exact readback and stop without authorizing
+   task work.
+5. Only after that readback, the continuation owner MUST send the fork a
+   `send_message_to_thread` prompt with the source `model` and `thinking` values
+   selected above. The continuation owner is the authenticated source parent
+   when one exists, otherwise the current authorized task owner. The prompt MUST
+   carry the same objective and require native `get_goal` before task work. If
+   the tool cannot accept both values, it MUST stop without omitting either or
+   relying on defaults. If delivery fails or is ambiguous, the owner MUST
+   preserve the exact result, keep the fork reserved without task work, and stop
+   without retrying or forking again.
 
-The task MUST treat the administrative `update_goal(status="complete")` route as
-the default. The task MUST use this bounded control-plane fallback if and only
-if the host explicitly refuses that route because the unfinished blocked
-objective cannot be marked `complete`:
+In the fork, the first task action MUST be `get_goal`. An exact `null`, a
+response envelope whose top-level `goal` is exactly `null`, or exact
+`status=complete` permits creation of a fresh finite goal for the same
+authorized objective; the fork MUST create it and read back `active`. An
+`active` result permits continuation only when its objective exactly matches;
+the fork MUST NOT replace it. If goal creation or its active readback fails or
+differs, the fork MUST preserve the exact result and stop without task work.
+Plan handling remains governed by `$orchestration` and `$planning`; this
+recovery MUST NOT introduce a plan-file requirement by itself. A `blocked`
+result, different active objective, error, `unknown`, `missing`, malformed
+result, or other unexpected state MUST be preserved exactly and MUST stop. The
+task MUST NOT fork again or retry the recovery sequence.
 
-1. The task MUST preserve the exact refusal and MUST send the required parent
-   transition receipt. The task MUST NOT retry the refused call. A timeout,
-   permission failure, transport failure, or ambiguous error MUST NOT be treated
-   as this fallback; the task MUST preserve it and MUST stop.
-2. The task MUST fork the blocked task with `fork_thread` in the same directory.
-   The task MUST NOT create a competing worktree or branch. If the fork does not
-   return one new task owner, the task MUST preserve the exact result and MUST
-   stop.
-3. After the fork succeeds, the task MUST archive the original blocked task with
-   `set_thread_archived(archived=true)`. If archiving fails, the task MUST NOT
-   allow either task to perform work; the task MUST preserve the original owner
-   reservation and MUST stop for an explicit lifecycle disposition.
-4. In the forked task, the task MUST call `get_goal` before any work and MUST
-   confirm the exact result is `null`. If it is `blocked`, `active`, `complete`,
-   or an error, the task MUST preserve the exact result and MUST stop; the task
-   MUST NOT fork or retry again.
-5. Only after the original task is archived and the fork's `null` result is
-   confirmed, the task MUST create the fresh finite goal, MUST read back
-   `active`, and MUST create or refresh the current plan. The task MUST resume
-   work only then.
-
-This fallback MUST preserve singular ownership of the existing branch, worktree,
-and task context. The task MUST NOT treat it as issue, PR, implementation,
-proof, merge, release, or external-gate completion. Required parent-delivery
-receipts for the fork and archive MUST remain control-plane evidence; they MUST
-NOT authorize task work before the fork's native `get_goal`/`create_goal` calls
-and active readback confirm the new goal.
+Requested model/effort fields prove only what the continuation requested. If the
+host does not expose effective settings, the task MUST record them as
+unavailable and MUST NOT claim effective model preservation was observed.
+Fork/archive and goal readbacks are control-plane evidence; none proves issue,
+PR, implementation, verification, review, CI, merge, release, publication, or
+external-gate completion.
 
 ## Completion boundary
 
-The task MUST treat the `complete` transition in the blocked recovery sequence
-as administrative control-plane state only. The task MUST use
-`$proof-driven-completion` for every ordinary completion claim. In particular,
-the task MUST NOT use the recovery transition to prove or substitute for issue,
-PR, implementation, verification, review, CI, merge, release, publication, or
-external-gate evidence. A normal finite-goal completion MUST remain subject to
-the ordinary proof and handoff rules.
+The task MUST NOT use a `complete` transition to recover a blocked goal. The
+task MUST use `$proof-driven-completion` for every ordinary completion claim. A
+normal finite goal MUST NOT become complete until its objective is achieved and
+ordinary proof and handoff rules are satisfied.
 
-Between observing `blocked` and confirming the new goal is `active`, the task
-MUST NOT perform repository or external mutation. The task MUST use the existing
-`$orchestration` receipts required for blocked-recovery delivery and terminal
-handoff. Native goal calls and their readbacks MUST remain in the owning task
-without separate registration reports. The task MUST NOT add a parser,
-validator, hook, workflow, schema, runtime service, or compatibility wrapper for
-this behavior.
+Between observing `blocked` and confirming the fork's goal is `active`, only the
+fork/archive, required parent handoff, and native goal readback steps above are
+allowed. The task MUST use the existing `$orchestration` receipt contracts.
+Initial `get_goal`, `create_goal`, and active readback stay in the owning fork
+without separate registration reports. This instruction-only behavior MUST NOT
+add a parser, validator, hook, workflow, schema, runtime service, or
+compatibility wrapper.
 
 ## Verification
 
 This is an instruction-only skill. The task MUST NOT manufacture prose
-RED/GREEN. Where isolated host tasks are available, the task MUST exercise the
-real goal surface for:
+RED/GREEN. Reuse authorized real recovery readbacks when they cover the
+behavior; the task MUST NOT create a redundant fork or competing owner solely to
+manufacture evidence. An explicitly authorized verification scenario MAY use a
+fork when needed. If no authorized real recovery exists, the task MUST report
+the live app behavior as unavailable/unverified. When an authorized real host
+recovery is available, the task MUST verify:
 
-- The task MUST verify `null`, a `goal=null` response envelope, and exact
-  `status=complete` results creating a fresh active goal;
-- The task MUST verify that an exact `active` objective continues; the task MUST
-  NOT replace it, and a different objective MUST stop for lifecycle disposition;
-- The task MUST verify `blocked` administrative completion followed by
-  cleared-state readback and a fresh active goal;
-- The task MUST verify an explicit completion refusal followed by the
-  same-directory fork, original task archival, forked `goal=null` readback, and
-  a fresh active goal;
-- The task MUST verify fork or archival failure preserving the exact error and
-  doing no work;
-- The task MUST verify administrative completion failure preserving the exact
-  error and doing no work;
-- The task MUST verify fresh-goal creation failure preserving the exact error
-  and doing no work.
+- Exact `null`, a `goal=null` response envelope, and exact `status=complete`
+  results creating a fresh active goal;
+- An exact active objective continuing without replacement, and a different
+  active objective stopping for lifecycle disposition;
+- One same-directory fork for an authorized blocked resume, source archival
+  before continuation, exactly one active owner, explicit source model/effort in
+  the continuation request, and a fresh active goal before work. Effective
+  model/effort MUST be reported separately and as unavailable when the host does
+  not expose them;
+- Fork, archive, owner-readback, continuation, and fresh-goal creation failures
+  preserving the exact result and stopping task work without another fork.
 
-The task MUST treat the #712 refusal shape as corrected only when the host
-either accepts the administrative control-plane transition and the task MUST NOT
-treat it as an issue or product-completion claim, or completes the refusal-only
-fork fallback with the same-directory and ownership readbacks above. Real
-goal-tool readback MUST be the evidence; the task MUST NOT use local fixtures,
-parser logic, or mock-only assertions as substitutes.
+Real app task, archive, and goal readbacks MUST be the evidence for recovery;
+the task MUST NOT use local fixtures, parser logic, or mock-only assertions as
+substitutes. Recovery evidence MUST show the source remained blocked through
+archival; it MUST NOT depend on an `update_goal(complete)` attempt or result.

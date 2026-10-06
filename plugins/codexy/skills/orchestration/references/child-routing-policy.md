@@ -53,6 +53,21 @@ leave the lane pending with the exact limitation. Missing observations MUST be
 reported as unavailable/not observed. Codex MUST NOT fall back to the sender
 route.
 
+### Blocked-goal fork recovery
+
+An authorized same-directory fork continues the source task lane and role; it is
+not a new Worker or role assignment. For that same task, this recovery exception
+MUST preserve the source model and reasoning effort even when they differ from
+ordinary role defaults. Codex MUST read requested values from the source
+assignment or creation record and keep host-exposed effective values separate.
+For each field, Codex MUST use the effective source value when observable and
+otherwise the exact requested value. If either is unavailable from both sources,
+Codex MUST keep the lane pending. The continuation MUST use
+`send_message_to_thread` with explicit `model` and `thinking` fields; it MUST
+NOT inherit sender or role defaults or reselect the task role. A requested pair
+proves only what was requested. If effective settings are not exposed, Codex
+MUST report them as unavailable/not observed, not as preserved.
+
 Worker selection owns recipient and model routing, not verification policy. The
 closed route in [context tiers](context-tiers.md) selects profile, sequencing,
 finite-work, review, and final-proof references only when applicable.
