@@ -104,11 +104,10 @@ MUST follow this ordered report decision and emission sequence for each input:
    Other keys are rejected. Example: `{"threadId":"<assigned thread id>"}`.
    For a material report, MUST use one nested `event` with the exact assigned
    target, a supported `kind` (`terminal`, `failure`, `drift`,
-   `missing_delivery`, `gate_ready`, or `unavailable`), and a nonempty summary;
-   keep the event fields in that one location. The bundled `tools/list` schema
-   bounds summaries to 128 characters and documents the parser's 128-byte cap;
-   the parser enforces that UTF-8 byte limit and rejects control characters. A
-   generic host wrapper may omit it. `eventId` is
+   `missing_delivery`, `gate_ready`, or `unavailable`), and a nonempty summary
+   of at most 128 UTF-8 bytes. The parser enforces bytes even if a host schema
+   describes characters or omits the bound. Keep the event fields in that one
+   location. `eventId` is
    optional; if supplied, it MUST be a stable, nonempty string of at most
    128 UTF-8 bytes without slash, backslash, or control characters. Evidence
    MUST contain at most 16 strings of at most 512 bytes each without control
@@ -118,7 +117,20 @@ MUST follow this ordered report decision and emission sequence for each input:
    `unavailable`) and/or a nonempty `lastError` of at most 128 bytes without
    control characters. The bundled `tools/list` schema documents this 128-byte
    parser limit; a generic host wrapper may omit it.
-   Omit optional fields without valid values.
+   Omit optional fields without valid values. Before emitting, MUST take
+   `sessionId` and `watcherToken` from the active `watcher_open` result supplied
+   in the current assignment. MUST copy `target` exactly from that session's
+   `targets`. MUST NOT reuse stale session values, substitute `parentToken` or
+   health `token`, or normalize an identity. If any value cannot be matched to
+   the current session and assignment, MUST keep it unknown and MUST NOT emit
+   or escalate from that uncertainty. If `watcher_report` rejects a call, MUST
+   inspect the actual error, recheck those session, capability, and target
+   values and the payload against this contract, then correct only a clearly
+   invalid field and retry the same qualifying report once. A rejection alone
+   MUST NOT count as Worker failure, missing delivery, or due parent action,
+   and MUST NOT be converted into another report. Only an independently
+   verified route limitation that prevents continuation may qualify under the
+   existing host-limitation rule.
 
 MUST NOT edit Worker files, message or direct a Worker, correct a Worker,
 decide acceptance, own or transfer the Orchestrator goal, create a long-lived
