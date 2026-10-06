@@ -101,3 +101,26 @@ fn parser_matches_report_enums_and_health_field_bounds() -> Result<(), Box<dyn s
     assert_error_contains(&negative_timestamp, "observedAtMs must be an integer");
     Ok(())
 }
+
+#[test]
+fn parser_rejects_path_separators_in_assignment_ids() -> Result<(), Box<dyn std::error::Error>> {
+    let state = tempfile::tempdir()?;
+    let mut client = super::super::watcher_client(state.path())?;
+    client.send(&json!({
+        "jsonrpc":"2.0","id":1,"method":"initialize","params":{}
+    }))?;
+
+    for (request_id, assignment_id) in ["unsafe/id", r"unsafe\id"].into_iter().enumerate() {
+        let response = client.send(&json!({
+            "jsonrpc":"2.0","id":request_id + 2,"method":"tools/call",
+            "params":{"name":"watcher_open","arguments":{
+                "assignmentId":assignment_id,
+                "parent":{"id":"parent-task"},
+                "watcher":{"id":"native-watcher"},
+                "targets":[{"threadId":"target-thread"}]
+            }}
+        }))?;
+        super::assert_error_contains(&response, "watcher assignmentId is invalid");
+    }
+    Ok(())
+}

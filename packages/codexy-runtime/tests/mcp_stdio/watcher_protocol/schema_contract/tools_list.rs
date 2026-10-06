@@ -145,6 +145,13 @@ fn tools_list_advertises_the_watcher_report_runtime_contract()
         .iter()
         .find(|tool| tool["name"] == "watcher_open")
         .ok_or("watcher_open is missing")?;
+    let assignment_id = &open["inputSchema"]["properties"]["assignmentId"];
+    assert_eq!(assignment_id["minLength"], 1);
+    assert_eq!(assignment_id["maxLength"], 128);
+    assert_eq!(
+        assignment_id["pattern"],
+        r"^(?![\s\S]*[/\\\u0000-\u001F\u007F-\u009F])[\s\S]+$"
+    );
     assert_identity_schema(&open["inputSchema"]["properties"]["parent"]);
     assert_identity_schema(&open["inputSchema"]["properties"]["watcher"]);
     let targets = &open["inputSchema"]["properties"]["targets"];

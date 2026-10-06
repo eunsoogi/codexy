@@ -8,7 +8,7 @@ const MAX_EVIDENCE_ITEMS: usize = 16;
 const MAX_EVIDENCE_BYTES: usize = 512;
 const CONTROL_FREE_TEXT_PATTERN: &str = r"^(?![\s\S]*[\u0000-\u001F\u007F-\u009F])[\s\S]+$";
 const CONTROL_FREE_VALUE_PATTERN: &str = r"^(?![\s\S]*[\u0000-\u001F\u007F-\u009F])[\s\S]*$";
-const EVENT_ID_PATTERN: &str = r"^(?![\s\S]*[/\\\u0000-\u001F\u007F-\u009F])[\s\S]+$";
+const SAFE_ID_PATTERN: &str = r"^(?![\s\S]*[/\\\u0000-\u001F\u007F-\u009F])[\s\S]+$";
 const EVENT_KINDS: &[&str] = &[
     "terminal",
     "failure",
@@ -35,6 +35,17 @@ fn input_string_schema(label: &str) -> Value {
         "maxLength":MAX_INPUT_STRING_BYTES,
         "pattern":CONTROL_FREE_TEXT_PATTERN,
         "description":format!("Nonempty {label}, at most {MAX_INPUT_STRING_BYTES} UTF-8 bytes without control characters."),
+    })
+}
+
+// Assignments and event keys use the runtime's path-free safe_id validation.
+fn safe_id_schema(label: &str) -> Value {
+    json!({
+        "type":"string",
+        "minLength":1,
+        "maxLength":MAX_INPUT_STRING_BYTES,
+        "pattern":SAFE_ID_PATTERN,
+        "description":format!("Nonempty {label}, at most {MAX_INPUT_STRING_BYTES} UTF-8 bytes without control characters, slash, or backslash."),
     })
 }
 
@@ -91,16 +102,7 @@ fn evidence_schema() -> Value {
 fn event_properties() -> serde_json::Map<String, Value> {
     let mut properties = serde_json::Map::new();
     properties.insert("target".to_owned(), identity_schema());
-    properties.insert(
-        "eventId".to_owned(),
-        json!({
-            "type":"string",
-            "minLength":1,
-            "maxLength":MAX_INPUT_STRING_BYTES,
-            "pattern":EVENT_ID_PATTERN,
-            "description":format!("Optional nonempty event key, at most {MAX_INPUT_STRING_BYTES} UTF-8 bytes without control characters, slash, or backslash."),
-        }),
-    );
+    properties.insert("eventId".to_owned(), safe_id_schema("event key"));
     properties.insert(
         "kind".to_owned(),
         json!({"type":"string","enum":EVENT_KINDS}),
@@ -155,10 +157,7 @@ pub fn tools() -> Vec<ToolDef> {
 
     let identity = identity_schema();
     let mut open_properties = serde_json::Map::new();
-    open_properties.insert(
-        "assignmentId".to_owned(),
-        input_string_schema("assignmentId"),
-    );
+    open_properties.insert("assignmentId".to_owned(), safe_id_schema("assignment ID"));
     open_properties.insert("parent".to_owned(), identity.clone());
     open_properties.insert("parentId".to_owned(), input_string_schema("parentId"));
     open_properties.insert("watcher".to_owned(), identity.clone());
