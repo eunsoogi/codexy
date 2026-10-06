@@ -27,3 +27,16 @@ Windows with a `.reclaim.lock` busy error. Moving it out of default correctness
 checks preserves that observed load limitation; it does not repair production
 contention or prove burst fairness. No production timeout or Store lifetime is
 changed. Default correctness success must not be reported as stress success.
+
+## Host wait-path observation status
+
+The 2026-10-07 host observation is incomplete. In the inspected Codex task,
+`wait_threads` was available as a nested MCP tool inside `functions.exec`; no
+top-level direct MCP call was exposed. The native wait path reported a
+two-minute input ceiling; acceptance at that ceiling has not been verified.
+No matched ten-minute no-change window followed by a material event was
+completed. A parent wait returned a timeout before the handoff, so it does not
+prove that the parent stayed suspended for the full window. Host interruption
+and resume are also unverified; the existing interrupt tests cover the local
+request-binding contract, not delivery by this host. No zero-idle-reentry or
+token/cost conclusion follows from this evidence.
