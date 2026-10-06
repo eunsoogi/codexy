@@ -7,7 +7,7 @@ use std::{env, fs};
 
 use crate::support::FixtureCommand as Command;
 
-type TestResult = Result<(), Box<dyn std::error::Error>>;
+pub(super) type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
 fn title_hook_preserves_only_the_three_title_contracts() -> TestResult {
@@ -128,7 +128,12 @@ fn nested_title_fallback_preserves_supported_calls_at_size_boundary() -> TestRes
     Ok(())
 }
 
-fn assert_title(event: &str, kind: &str, payload: Value, denied: bool) -> TestResult {
+pub(super) fn assert_title(
+    event: &str,
+    kind: &str,
+    payload: Value,
+    denied: bool,
+) -> TestResult {
     let plugin = codexy_runtime::paths::repository_root().join("plugins/codexy-github");
     let mut command = if cfg!(windows) {
         let mut command = Command::new("cmd.exe");

@@ -16,6 +16,8 @@ mod capability_contract;
 mod filesystem_aliases;
 #[path = "validator_hooks/shell_context_regressions.rs"]
 mod shell_context_regressions;
+#[path = "validator_hooks/shell_redirection_regressions.rs"]
+mod shell_redirection_regressions;
 #[path = "validator_hooks/shell_negation_regressions.rs"]
 mod shell_negation_regressions;
 #[path = "validator_hooks/thread_delivery_parent_route.rs"]

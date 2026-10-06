@@ -35,6 +35,9 @@ mod validator_github_hooks_topology;
 #[path = "../validator_github_title_hooks.rs"]
 mod validator_github_title_hooks;
 
+#[path = "../validator_github_title_heredoc.rs"]
+mod validator_github_title_heredoc;
+
 #[path = "../validator_child_thread_creation_hook.rs"]
 mod validator_child_thread_creation_hook;
 
