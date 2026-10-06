@@ -98,3 +98,48 @@ fn watcher_hook_resolves_and_interrupts_the_standard_cached_runtime() -> TestRes
     assert!(output.status.success() && output.stdout.is_empty());
     Ok(())
 }
+
+
+
+pub(super) struct TraceFixture {
+    pub(super) _temp: tempfile::TempDir,
+    pub(super) plugin: PathBuf,
+    pub(super) state: PathBuf,
+    pub(super) trace: PathBuf,
+    pub(super) runtime_dir: PathBuf,
+    pub(super) session: String,
+    pub(super) parent_token: String,
+}
+
+pub(super) fn trace_fixture() -> Result<TraceFixture, Box<dyn std::error::Error>> {
+    let root = codexy_runtime::paths::repository_root();
+    let temp = tempfile::tempdir()?;
+    let plugin = temp.path().join("plugin");
+    copy_plugin(&root.join("plugins/codexy"), &plugin)?;
+    let state = temp.path().join("state");
+    let trace = temp.path().join("trace");
+    std::fs::create_dir(&trace)?;
+    std::fs::set_permissions(&trace, PermissionsExt::from_mode(0o700))?;
+    let runtime_dir = temp.path().join("runtime");
+    std::fs::create_dir(&runtime_dir)?;
+    let runtime = runtime_dir.join("codexy-mcp-watcher-linux-x86_64.bin");
+    std::fs::copy(
+        Path::new(env!("CARGO_BIN_EXE_codexy-mcp-watcher")),
+        &runtime,
+    )?;
+    std::fs::set_permissions(&runtime, PermissionsExt::from_mode(0o755))?;
+
+    let mut setup = watcher_state::watcher_client(&state)?;
+    watcher_state::initialize(&mut setup)?;
+    let (session, parent_token, _) = watcher_state::open_session(&mut setup, "trace-boundary", 2)?;
+    drop(setup);
+    Ok(TraceFixture {
+        _temp: temp,
+        plugin,
+        state,
+        trace,
+        runtime_dir,
+        session,
+        parent_token,
+    })
+}
