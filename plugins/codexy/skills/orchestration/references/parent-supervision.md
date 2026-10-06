@@ -79,10 +79,10 @@ alter protected technical text.
 - A verified-unavailable route or emergency permits one marked direct-parent
   fallback. Worker MUST report one limitation and MUST NOT resume or duplicate
   routine direct reports. Reads and liveness-only goal state MUST stay internal.
-- The bundled `codexy-watcher` role owns which lifecycle changes are actionable,
-  report eligibility, stale-gate suppression, current-action summaries, and the
-  `watcher_report` argument shape. Its ordered decision-and-emission contract
-  governs each report.
+- Bundled `codexy-watcher` owns lifecycle criteria, stale-gate suppression,
+  current-action summaries, and `watcher_report` arguments. Its ordered emission
+  sequence governs reports; packaged `tools/list` bounds and descriptions MUST
+  reflect parser limits, even with a generic host schema.
 - Codex MUST deduplicate one event using a stable event identity before changing
   counters, plan state, or next action. A missed callback, Worker failure,
   Watcher failure, or loss of both channels is an observable limitation; it is

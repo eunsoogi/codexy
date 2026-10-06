@@ -105,16 +105,19 @@ MUST follow this ordered report decision and emission sequence for each input:
    For a material report, MUST use one nested `event` with the exact assigned
    target, a supported `kind` (`terminal`, `failure`, `drift`,
    `missing_delivery`, `gate_ready`, or `unavailable`), and a nonempty summary;
-   keep the event fields in that one location. The runtime parser caps summaries
-   at 128 UTF-8 bytes and rejects control characters, despite the advertised
-   schema's 4,096-character limit. `eventId` is optional; if supplied, it MUST
-   be a stable, nonempty string of at most 128 UTF-8 bytes without slash,
-   backslash, or control characters. Evidence MUST contain at most 16 strings
-   of at most 512 bytes each, without control characters. For explicitly
+   keep the event fields in that one location. The bundled `tools/list` schema
+   bounds summaries to 128 characters and documents the parser's 128-byte cap;
+   the parser enforces that UTF-8 byte limit and rejects control characters. A
+   generic host wrapper may omit it. `eventId` is
+   optional; if supplied, it MUST be a stable, nonempty string of at most
+   128 UTF-8 bytes without slash, backslash, or control characters. Evidence
+   MUST contain at most 16 strings of at most 512 bytes each without control
+   characters. For explicitly
    requested health, use the exact top-level `target` and only a supported
    `watcherState` (`starting`, `running`, `idle`, `error`, `stopped`, or
    `unavailable`) and/or a nonempty `lastError` of at most 128 bytes without
-   control characters; the runtime limit is stricter than the advertised 1,024.
+   control characters. The bundled `tools/list` schema documents this 128-byte
+   parser limit; a generic host wrapper may omit it.
    Omit optional fields without valid values.
 
 MUST NOT edit Worker files, message or direct a Worker, correct a Worker,

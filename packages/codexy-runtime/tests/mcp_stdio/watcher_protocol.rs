@@ -3,6 +3,10 @@ use std::thread;
 use std::time::Duration;
 use std::process::Stdio;
 
+// Keep the schema contract separate from the cancellation lifecycle test below.
+#[path = "watcher_protocol/schema_contract.rs"]
+mod schema_contract;
+
 fn watcher_client(
     state_dir: &std::path::Path,
 ) -> Result<McpClient, Box<dyn std::error::Error>> {
