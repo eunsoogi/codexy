@@ -77,7 +77,7 @@ impl WaitTrace {
             }
         }
         #[cfg(not(unix))]
-        let _ = record;
+        record.discard();
     }
 
     pub(super) const fn is_finished(&self) -> bool {

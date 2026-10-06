@@ -21,6 +21,30 @@ pub(super) enum WaitTraceRecord {
 }
 
 impl WaitTraceRecord {
+    #[cfg(not(unix))]
+    pub(super) fn discard(self) {
+        // Unsupported platforms keep tracing inert while consuming every field
+        // so their builds do not emit dead-code warnings into strict tool output.
+        match self {
+            Self::Received { binding_present } => {
+                let _ = binding_present;
+            }
+            Self::BindingClaim {
+                binding_present,
+                attempted,
+                succeeded,
+            } => {
+                let _ = (binding_present, attempted, succeeded);
+            }
+            Self::Ended { cause } => {
+                let _ = cause;
+            }
+            Self::Failed { failure_class } => {
+                let _ = failure_class;
+            }
+        }
+    }
+
     #[cfg(unix)]
     pub(super) fn to_value(self, timestamp_ms: u64) -> Option<Value> {
         match self {
