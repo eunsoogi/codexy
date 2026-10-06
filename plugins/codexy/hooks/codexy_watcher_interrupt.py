@@ -13,11 +13,13 @@ import sys
 from pathlib import Path
 
 HOOK_HELPERS = run_path(Path(__file__).with_name("codexy_watcher_interrupt_events.py"))
-MAX_INPUT_BYTES, EVENTS, UNSUPPORTED_INTERPRETER_EXIT, handle_input_event = HOOK_HELPERS[
-    "HOOK_API"
-]
+MAX_INPUT_BYTES, EVENTS, UNSUPPORTED_INTERPRETER_EXIT, handle_input_event = (
+    HOOK_HELPERS["HOOK_API"]
+)
 HookTrace = HOOK_HELPERS["HookTrace"]
-RUNTIME_HELPERS = run_path(Path(__file__).with_name("codexy_watcher_interrupt_runtime.py"))
+RUNTIME_HELPERS = run_path(
+    Path(__file__).with_name("codexy_watcher_interrupt_runtime.py")
+)
 handle_payload = RUNTIME_HELPERS["handle_payload"]
 REPOSITORY = "https://github.com/eunsoogi/codexy"
 PROTOCOL = "stdio-newline-v1"

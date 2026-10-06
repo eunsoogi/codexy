@@ -77,7 +77,10 @@ class HookTrace:
                 return
             record["failureClass"] = failure
         try:
-            line = json.dumps(record, separators=(",", ":"), sort_keys=True).encode() + b"\n"
+            line = (
+                json.dumps(record, separators=(",", ":"), sort_keys=True).encode()
+                + b"\n"
+            )
             if (
                 self._records >= TRACE_RECORD_LIMIT
                 or len(line) > TRACE_RECORD_BYTES

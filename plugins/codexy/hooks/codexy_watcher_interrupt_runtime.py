@@ -22,9 +22,15 @@ def handle_payload(event, payload, trace, input_event, runtime_lookup):
             "hook_received",
             eventKind=event,
             mainSessionIdPresent=_present(payload.get("session_id")),
-            turnIdPresent=_present(payload.get("turn_id")) if event == "Interrupt" else None,
+            turnIdPresent=_present(payload.get("turn_id"))
+            if event == "Interrupt"
+            else None,
         )
-        input_event(event, payload, lambda argument, body: _invoke(argument, body, trace, runtime_lookup))
+        input_event(
+            event,
+            payload,
+            lambda argument, body: _invoke(argument, body, trace, runtime_lookup),
+        )
         return 0
     tool_name = payload.get("tool_name")
     tool_input = payload.get("tool_input")
@@ -76,10 +82,16 @@ def _invoke(argument, payload, trace, runtime_lookup):
     try:
         runtime = runtime_lookup()
     except (OSError, TypeError, ValueError):
-        trace.record("runtime_result", runtimeAvailable=False, failureClass="runtime_lookup_error")
+        trace.record(
+            "runtime_result",
+            runtimeAvailable=False,
+            failureClass="runtime_lookup_error",
+        )
         raise
     if runtime is None:
-        trace.record("runtime_result", runtimeAvailable=False, failureClass="runtime_unavailable")
+        trace.record(
+            "runtime_result", runtimeAvailable=False, failureClass="runtime_unavailable"
+        )
         return {}
     try:
         result = subprocess.run(
@@ -95,15 +107,21 @@ def _invoke(argument, payload, trace, runtime_lookup):
         trace.record("runtime_result", runtimeAvailable=True, failureClass="timeout")
         return {}
     except (OSError, subprocess.SubprocessError):
-        trace.record("runtime_result", runtimeAvailable=True, failureClass="spawn_error")
+        trace.record(
+            "runtime_result", runtimeAvailable=True, failureClass="spawn_error"
+        )
         return {}
     if result.returncode != 0:
-        trace.record("runtime_result", runtimeAvailable=True, failureClass="nonzero_exit")
+        trace.record(
+            "runtime_result", runtimeAvailable=True, failureClass="nonzero_exit"
+        )
         return {}
     try:
         response = json.loads(result.stdout)
     except (TypeError, ValueError, json.JSONDecodeError):
-        trace.record("runtime_result", runtimeAvailable=True, failureClass="invalid_response")
+        trace.record(
+            "runtime_result", runtimeAvailable=True, failureClass="invalid_response"
+        )
         return {}
     binding = response.get("requestBinding") if isinstance(response, dict) else None
     cancelled = response.get("cancelled") if isinstance(response, dict) else None

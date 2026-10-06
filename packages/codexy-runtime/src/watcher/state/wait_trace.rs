@@ -9,16 +9,23 @@ use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
 #[cfg(unix)]
 use std::path::PathBuf;
 
+#[path = "wait_trace_record.rs"]
+mod wait_trace_record;
+
 use anyhow::Result;
 use serde_json::Value;
-#[cfg(unix)]
-use serde_json::json;
+use wait_trace_record::WaitTraceRecord;
 
 // Diagnostics remain opt-in and best-effort so file I/O cannot change wait behavior.
+#[cfg(unix)]
 const TRACE_ENV: &str = "CODEXY_WATCHER_TRACE_DIR";
+#[cfg(unix)]
 const TRACE_FILE_LIMIT: usize = 32;
+#[cfg(unix)]
 const TRACE_RECORD_LIMIT: usize = 4;
-const TRACE_FILE_BYTES: u64 = 4096;
+#[cfg(unix)]
+const TRACE_FILE_BYTES: usize = 4096;
+#[cfg(unix)]
 const TRACE_RECORD_BYTES: usize = 512;
 
 pub(super) struct WaitTrace {
@@ -48,71 +55,20 @@ impl WaitTrace {
         }
     }
 
-    pub(super) fn record(
-        &mut self,
-        event: &'static str,
-        binding_present: Option<bool>,
-        claim_attempted: Option<bool>,
-        claim_succeeded: Option<bool>,
-        end_cause: Option<&'static str>,
-        failure_class: Option<&'static str>,
-    ) {
-        if !matches!(
-            event,
-            "wait_received" | "binding_claim" | "wait_ended" | "wait_failed"
-        ) {
-            return;
-        }
-        if let Some(cause) = end_cause
-            && !matches!(
-                cause,
-                "transport_cancelled"
-                    | "session_cancelled"
-                    | "request_binding_cancelled"
-                    | "expired"
-                    | "event"
-                    | "timeout"
-            )
-        {
-            return;
-        }
-        if let Some(class) = failure_class
-            && !matches!(class, "binding_claim" | "binding_marker" | "wait_error")
-        {
-            return;
-        }
+    fn record(&mut self, record: WaitTraceRecord) {
         #[cfg(unix)]
         {
             if self.records >= TRACE_RECORD_LIMIT {
                 return;
             }
-            let mut value = json!({
-                "timestampMs": crate::watcher::io::now_ms(),
-                "component": "wait",
-                "event": event,
-            });
-            if let Some(value_present) = binding_present {
-                value["bindingPresent"] = json!(value_present);
-            }
-            if let Some(attempted) = claim_attempted {
-                value["claimAttempted"] = json!(attempted);
-            }
-            if let Some(succeeded) = claim_succeeded {
-                value["claimSucceeded"] = json!(succeeded);
-            }
-            if let Some(cause) = end_cause {
-                value["endCause"] = json!(cause);
-            }
-            if let Some(class) = failure_class {
-                value["failureClass"] = json!(class);
-            }
+            let Some(value) = record.to_value(crate::watcher::io::now_ms()) else {
+                return;
+            };
             let Ok(mut line) = serde_json::to_vec(&value) else {
                 return;
             };
             line.push(b'\n');
-            if line.len() > TRACE_RECORD_BYTES
-                || self.bytes + line.len() > TRACE_FILE_BYTES as usize
-            {
+            if line.len() > TRACE_RECORD_BYTES || self.bytes + line.len() > TRACE_FILE_BYTES {
                 return;
             }
             if self.file.write_all(&line).is_ok() {
@@ -121,20 +77,14 @@ impl WaitTrace {
             }
         }
         #[cfg(not(unix))]
-        let _ = (
-            binding_present,
-            claim_attempted,
-            claim_succeeded,
-            end_cause,
-            failure_class,
-        );
+        let _ = record;
     }
 
-    pub(super) fn is_finished(&self) -> bool {
+    pub(super) const fn is_finished(&self) -> bool {
         self.finished
     }
 
-    fn mark_finished(&mut self) {
+    const fn mark_finished(&mut self) {
         self.finished = true;
     }
 
@@ -144,9 +94,10 @@ impl WaitTrace {
         if !directory.is_absolute() {
             return None;
         }
+        let max_file_bytes = u64::try_from(TRACE_FILE_BYTES).ok()?;
         let metadata = fs::symlink_metadata(&directory).ok()?;
         if !metadata.file_type().is_dir()
-            || metadata.uid() != unsafe { libc::geteuid() }
+            || metadata.uid() != effective_uid()
             || metadata.permissions().mode() & 0o077 != 0
         {
             return None;
@@ -166,9 +117,9 @@ impl WaitTrace {
             }
             let observed = fs::symlink_metadata(entry.path()).ok()?;
             if !observed.file_type().is_file()
-                || observed.uid() != unsafe { libc::geteuid() }
+                || observed.uid() != effective_uid()
                 || observed.permissions().mode() & 0o077 != 0
-                || observed.len() > TRACE_FILE_BYTES
+                || observed.len() > max_file_bytes
             {
                 return None;
             }
@@ -180,7 +131,6 @@ impl WaitTrace {
             }
             let path = directory.join(format!("slot-{slot:02}.jsonl"));
             match OpenOptions::new()
-                .write(true)
                 .append(true)
                 .create_new(true)
                 .mode(0o600)
@@ -189,7 +139,7 @@ impl WaitTrace {
                 Ok(file) => {
                     let metadata = file.metadata().ok()?;
                     if !metadata.file_type().is_file()
-                        || metadata.uid() != unsafe { libc::geteuid() }
+                        || metadata.uid() != effective_uid()
                         || metadata.permissions().mode() & 0o077 != 0
                     {
                         drop(file);
@@ -198,11 +148,38 @@ impl WaitTrace {
                     }
                     return Some(file);
                 }
-                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
                 Err(_) => return None,
             }
         }
         None
+    }
+}
+
+#[cfg(unix)]
+fn effective_uid() -> libc::uid_t {
+    // SAFETY: `geteuid` takes no pointers and returns the process effective user ID.
+    unsafe { libc::geteuid() }
+}
+
+pub(super) fn record_wait_received(trace: &mut Option<WaitTrace>, binding_present: bool) {
+    if let Some(trace) = trace.as_mut() {
+        trace.record(WaitTraceRecord::Received { binding_present });
+    }
+}
+
+pub(super) fn record_binding_claim(
+    trace: &mut Option<WaitTrace>,
+    binding_present: bool,
+    attempted: bool,
+    succeeded: bool,
+) {
+    if let Some(trace) = trace.as_mut() {
+        trace.record(WaitTraceRecord::BindingClaim {
+            binding_present,
+            attempted,
+            succeeded,
+        });
     }
 }
 
@@ -213,9 +190,11 @@ pub(super) fn finish_wait(
 ) -> Result<Value> {
     if let Some(trace) = trace.as_mut() {
         if result.is_ok() || end_cause == "transport_cancelled" {
-            trace.record("wait_ended", None, None, None, Some(end_cause), None);
+            trace.record(WaitTraceRecord::Ended { cause: end_cause });
         } else {
-            trace.record("wait_failed", None, None, None, None, Some("wait_error"));
+            trace.record(WaitTraceRecord::Failed {
+                failure_class: "wait_error",
+            });
         }
         trace.mark_finished();
     }
@@ -224,7 +203,7 @@ pub(super) fn finish_wait(
 
 pub(super) fn record_wait_failure(trace: &mut Option<WaitTrace>, failure_class: &'static str) {
     if let Some(trace) = trace.as_mut() {
-        trace.record("wait_failed", None, None, None, None, Some(failure_class));
+        trace.record(WaitTraceRecord::Failed { failure_class });
         trace.mark_finished();
     }
 }

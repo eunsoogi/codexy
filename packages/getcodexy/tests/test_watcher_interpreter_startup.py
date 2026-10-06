@@ -33,9 +33,7 @@ class WatcherInterpreterStartupTests(unittest.TestCase):
         self.assertIn("read(1024 * 1024 + 1)", source)
 
     def test_runtime_lookup_error_is_recorded_without_changing_hook_failure(self):
-        helper = runpy.run_path(
-            str(HOOKS / "codexy_watcher_interrupt_runtime.py")
-        )
+        helper = runpy.run_path(str(HOOKS / "codexy_watcher_interrupt_runtime.py"))
         records = []
 
         class Trace:

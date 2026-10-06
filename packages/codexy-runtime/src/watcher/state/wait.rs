@@ -14,7 +14,9 @@ use crate::mcp::CancellationToken;
 
 use super::validation::{authorize, authorize_parent, check_cancelled};
 use super::{MAX_REPORTS, MAX_WAIT_MS, Store};
-use wait_trace::{WaitTrace, finish_wait, record_wait_failure};
+use wait_trace::{
+    WaitTrace, finish_wait, record_binding_claim, record_wait_failure, record_wait_received,
+};
 
 impl Store {
     fn consistent_snapshot_with_transition(
@@ -45,16 +47,7 @@ impl Store {
         request_binding: Option<&str>,
     ) -> Result<Value> {
         let mut trace = WaitTrace::new();
-        if let Some(trace) = trace.as_mut() {
-            trace.record(
-                "wait_received",
-                Some(request_binding.is_some()),
-                None,
-                None,
-                None,
-                None,
-            );
-        }
+        record_wait_received(&mut trace, request_binding.is_some());
         let result = (|| -> Result<Value> {
             if max_reports == 0 || max_reports > MAX_REPORTS {
                 bail!("watcher maxReports must be between 1 and {MAX_REPORTS}");
@@ -78,16 +71,7 @@ impl Store {
                 Some(nonce) => {
                     match super::request_binding::claim(&self.root, nonce, session_id, token) {
                         Ok(guard) => {
-                            if let Some(trace) = trace.as_mut() {
-                                trace.record(
-                                    "binding_claim",
-                                    Some(true),
-                                    Some(true),
-                                    Some(true),
-                                    None,
-                                    None,
-                                );
-                            }
+                            record_binding_claim(&mut trace, true, true, true);
                             Some(guard)
                         }
                         Err(error) => {
@@ -97,16 +81,7 @@ impl Store {
                     }
                 }
                 None => {
-                    if let Some(trace) = trace.as_mut() {
-                        trace.record(
-                            "binding_claim",
-                            Some(false),
-                            Some(false),
-                            Some(false),
-                            None,
-                            None,
-                        );
-                    }
+                    record_binding_claim(&mut trace, false, false, false);
                     None
                 }
             };
