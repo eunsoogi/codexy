@@ -27,10 +27,10 @@ Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
 - Worker creation, Orchestrator-to-Worker, Watcher: `gpt-6-luna` / `max`.
 - Inspector: `gpt-6.1-sol` / `medium`.
 
-Thread creation and recipient delivery MUST follow the
-[child-routing policy](child-routing-policy.md), including both assigned `model`
-and `thinking` values. Unsupported pairs MUST keep the lane pending; report the
-exact incompatibility and MUST NOT omit or default either value.
+New-role thread creation and delivery MUST use the explicit model/effort pair
+from the [child-routing policy](child-routing-policy.md). Authorized
+blocked-goal fork continuation MUST preserve the source settings under that
+policy; role defaults and sender settings MUST NOT override them.
 
 ## Message visibility and style
 
