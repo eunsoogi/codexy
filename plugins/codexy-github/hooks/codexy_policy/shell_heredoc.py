@@ -3,16 +3,26 @@
 from __future__ import annotations
 
 import re
-import shlex
+from typing import Literal
 
+from .shell_redirections import command_prefix
 
-_SHELL_OPERATORS = frozenset({";", "&&", "||", "|", "&", "(", ")", "{", "}"})
-_CONTROL_WORDS = frozenset("if then elif else fi for while until do done".split())
 _PYTHON_EXECUTABLE = re.compile(r"(?:python(?:\d+(?:\.\d+)?)?|pypy\d*)\Z")
 
 
 def without_python_script_heredoc_bodies(command: str) -> str:
     """Keep Python stdin scripts out of the shell command grammar."""
+    return _without_heredoc_bodies(command, receiver="python")
+
+
+def without_github_body_heredoc_bodies(command: str) -> str:
+    """Keep only literal PR-body input out of the title command grammar."""
+    return _without_heredoc_bodies(command, receiver="github-body")
+
+
+def _without_heredoc_bodies(
+    command: str, *, receiver: Literal["python", "github-body"]
+) -> str:
     lines = command.splitlines(keepends=True)
     output: list[str] = []
     quote: str | None = None
@@ -30,7 +40,7 @@ def without_python_script_heredoc_bodies(command: str) -> str:
         index += 1
         if not heredocs:
             continue
-        # Strip bodies only when every queued delimiter is quoted and the receiver is a direct Python reader.
+        # Leave scripts and unknown receivers in the grammar; strip only proven data input.
         if (
             quote is not None
             or arithmetic_depth
@@ -38,11 +48,17 @@ def without_python_script_heredoc_bodies(command: str) -> str:
             or not line.endswith(("\n", "\r"))
         ):
             return command
-        if any(not python_script for _, _, python_script in heredocs):
+        if receiver == "python" and any(
+            not is_python for _, _, is_python, _ in heredocs
+        ):
+            return command
+        if receiver == "github-body" and any(
+            not is_github_body for _, _, _, is_github_body in heredocs
+        ):
             return command
 
         body_end = index
-        for delimiter, strip_tabs, _ in heredocs:
+        for delimiter, strip_tabs, _, _ in heredocs:
             while body_end < len(lines):
                 terminator = lines[body_end].rstrip("\r\n")
                 if strip_tabs:
@@ -62,8 +78,8 @@ def without_python_script_heredoc_bodies(command: str) -> str:
 
 def _heredoc_headers(
     line: str, quote: str | None, arithmetic_depth: int
-) -> tuple[list[tuple[str, bool, bool]] | None, str | None, int]:
-    heredocs: list[tuple[str, bool, bool]] = []
+) -> tuple[list[tuple[str, bool, bool, bool]] | None, str | None, int]:
+    heredocs: list[tuple[str, bool, bool, bool]] = []
     index = 0
     while index < len(line):
         char = line[index]
@@ -109,7 +125,14 @@ def _heredoc_headers(
             if parsed is None:
                 return None, quote, arithmetic_depth
             heredoc, index = parsed
-            heredocs.append((*heredoc, _python_script_receiver(line[:header_start])))
+            prefix = line[:header_start]
+            heredocs.append(
+                (
+                    *heredoc,
+                    _python_script_receiver(prefix),
+                    _github_body_stdin_receiver(prefix),
+                )
+            )
             continue
         index += 1
     return heredocs, quote, arithmetic_depth
@@ -149,28 +172,9 @@ def _quoted_heredoc_delimiter(
 
 def _python_script_receiver(prefix: str) -> bool:
     """Recognize a direct Python command that reads its script from stdin."""
-    try:
-        lexer = shlex.shlex(prefix, posix=True, punctuation_chars=";&|(){}<>")
-        lexer.whitespace_split, lexer.commenters = True, ""
-        tokens = list(lexer)
-    except ValueError:
-        return False
-
-    # Keep only the command after the last shell operator; an earlier Python command cannot own this body.
-    current: list[str] = []
-    for token in tokens:
-        if token in _SHELL_OPERATORS:
-            current = []
-        else:
-            current.append(token)
-    while current and (
-        current[0].casefold() in _CONTROL_WORDS
-        or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", current[0])
-    ):
-        del current[0]
+    current = command_prefix(prefix)
     if not current:
         return False
-
     executable = current[0].rsplit("/", 1)[-1]
     if _PYTHON_EXECUTABLE.fullmatch(executable) is None:
         return False
@@ -180,6 +184,40 @@ def _python_script_receiver(prefix: str) -> bool:
     return "-" in arguments or not any(
         not argument.startswith("-") for argument in arguments
     )
+
+
+def _github_body_stdin_receiver(prefix: str) -> bool:
+    """Recognize PR edits that explicitly consume standard input as body text."""
+    current = command_prefix(prefix)
+    if (
+        current is None
+        or len(current) < 3
+        or current[0].rsplit("/", 1)[-1].casefold() != "gh"
+        or [part.casefold() for part in current[1:3]] != ["pr", "edit"]
+    ):
+        return False
+
+    reads_stdin = False
+    arguments = current[3:]
+    index = 0
+    while index < len(arguments):
+        token = arguments[index]
+        if token == "--":
+            break
+        if token in {"--body-file", "-F"}:
+            if index + 1 == len(arguments):
+                return False
+            reads_stdin = arguments[index + 1] == "-"
+            index += 2
+        elif token.startswith("--body-file="):
+            reads_stdin = token.partition("=")[2] == "-"
+            index += 1
+        elif token.startswith("-F") and token != "-F":
+            reads_stdin = token[2:] == "-"
+            index += 1
+        else:
+            index += 1
+    return reads_stdin
 
 
 def _shell_line_continues(line: str, quote: str | None) -> bool:

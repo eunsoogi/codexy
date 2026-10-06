@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .execution_context import ExecutionContext, assignment
+from .execution_context import ExecutionContext, assignment, expand
 from .invocation import Invocation, resolve as resolve_invocation
 from .shell_segments import command_tokens, segments, separate_lines
 
@@ -79,7 +79,7 @@ def unresolved_protected_effect(command: str, context: ExecutionContext) -> bool
                     for argument in invocation.arguments
                 )
             )
-        ) or _dynamic_path_target(segment.tokens):
+        ) or _dynamic_path_target(segment.tokens, context):
             return True
         if invocation.script and unresolved_protected_effect(
             invocation.script, invocation.context
@@ -189,15 +189,15 @@ def _target_path(value: str, cwd: str) -> str:
     return abspath(value if value.startswith("/") else join(cwd, value))
 
 
-def _dynamic_path_target(tokens: tuple[str, ...]) -> bool:
+def _dynamic_path_target(tokens: tuple[str, ...], context: ExecutionContext) -> bool:
     index = 0
     while index < len(tokens) and (tokens[index] == "!" or assignment(tokens[index])):
         index += 1
-    return (
-        index < len(tokens)
-        and not tokens[index].startswith("/")
-        and any(
-            token.startswith("PATH=") and DYNAMIC_NAME.search(token) is not None
-            for token in tokens[:index]
-        )
+    # Quoted PATH prefixes are safe to resolve when every referenced variable is known.
+    unresolved_path = any(
+        token.startswith("PATH=")
+        and DYNAMIC_NAME.search(token) is not None
+        and expand(token.split("=", 1)[1], context) is None
+        for token in tokens[:index]
     )
+    return index < len(tokens) and not tokens[index].startswith("/") and unresolved_path

@@ -61,10 +61,14 @@ pub(super) const POLICY_SOURCES: &[Source] = &[
     source!("codexy_policy/shell_destructive_policy.py"),
     source!("codexy_policy/shell_entry.py"),
     source!("codexy_policy/shell_evaluator.py"),
+    // Keep credential classification available inside the packaged shell evaluator.
+    source!("codexy_policy/shell_credentials.py"),
     source!("codexy_policy/shell_git.py"),
     source!("codexy_policy/shell_heredoc.py"),
     source!("codexy_policy/shell_opaque.py"),
     source!("codexy_policy/shell_reflog.py"),
+    // Keep the parser's split redirection implementation inside the packaged import closure.
+    source!("codexy_policy/shell_redirections.py"),
     source!("codexy_policy/shell_segments.py"),
     source!("codexy_policy/shell_builtins.py"),
     source!("codexy_policy/policy_diagnostics.py"),

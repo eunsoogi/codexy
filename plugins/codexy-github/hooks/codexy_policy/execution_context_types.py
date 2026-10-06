@@ -20,6 +20,8 @@ class ExecutionContext:
     opaque_repository_state: bool = False
     executable_aliases: tuple[tuple[str, PathState], ...] = ()
     opaque_filesystem_state: bool = False
+    # Preserve conservative private-temp output checks across nested shell evaluation.
+    restrict_private_temp_output: bool = False
 
 
 @dataclass(frozen=True)
