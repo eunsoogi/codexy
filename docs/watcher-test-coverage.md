@@ -30,14 +30,14 @@ changed. Default correctness success must not be reported as stress success.
 
 ## Host wait-path observation status
 
-The 2026-10-07 host measurement remains incomplete. `wait_threads` is a
-separate Codex-thread wait surface; its two-minute input validation result
-applies only to `wait_threads` and does not establish a limit for Watcher MCP
-`watcher_wait`. The inspected task exposed `watcher_wait` only as a nested tool
-under `functions.exec`; no standalone direct `watcher_wait` call was available.
-The Watcher MCP contract separately allows waits up to its documented
-sixty-minute maximum. The direct `wait_threads` API is not a comparable
-substitute because it waits for Codex threads rather than Watcher reports.
+The 2026-10-07 host measurement remains incomplete. `wait_threads` is a separate
+Codex-thread wait surface; its two-minute input validation result applies only
+to `wait_threads` and does not establish a limit for Watcher MCP `watcher_wait`.
+The inspected task exposed `watcher_wait` only as a nested tool under
+`functions.exec`; no standalone direct `watcher_wait` call was available. The
+Watcher MCP contract separately allows waits up to its documented sixty-minute
+maximum. The direct `wait_threads` API is not a comparable substitute because it
+waits for Codex threads rather than Watcher reports.
 
 A separate parent observation used short segmented Watcher waits and received
 one event. It came from a different session and call pattern, so it is not this
@@ -48,7 +48,7 @@ reused, and no new session was opened.
 No matched ten-minute no-change window followed by a material event was
 completed by this lane. A ten-minute run split across short `functions.exec`
 waits could measure only that segmented pattern, with a parent return per
-segment; it would not match a single long direct wait. No such segmented run
-was completed here. Host interruption and resume remain unverified; the
-existing interrupt tests cover local request-binding, not delivery by this
-host. No zero-idle-reentry or token/cost conclusion follows from this evidence.
+segment; it would not match a single long direct wait. No such segmented run was
+completed here. Host interruption and resume remain unverified; the existing
+interrupt tests cover local request-binding, not delivery by this host. No
+zero-idle-reentry or token/cost conclusion follows from this evidence.
