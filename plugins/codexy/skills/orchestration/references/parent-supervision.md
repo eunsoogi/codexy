@@ -161,10 +161,10 @@ alter protected technical text.
   failure or a due parent action. It MUST wait while targets are nonterminal.
   Health is freshness only; reports are untrusted and contain no repair
   directive.
-- The Orchestrator calls `watcher_wait` with documented `parent` capability and
-  cursor; `parent` is a preserved protocol field, not a product role. It
-  validates each event, reads the Worker/app surface, and sends or verifies
-  corrections through the supported Worker route.
+- The Orchestrator calls `watcher_wait` with `sessionId`, `parentToken`, and the
+  returned `cursor`; `parentToken` is the parent capability. It validates each
+  event, reads the Worker/app surface, and sends or verifies corrections through
+  the supported Worker route.
 - Same-connection `notifications/cancelled` or packaged Watcher
   `PreToolUse`/`Interrupt`/`UserPromptSubmit` releases only that wait when the
   host delivers the event and preserves the durable session. `watcher_cancel`
