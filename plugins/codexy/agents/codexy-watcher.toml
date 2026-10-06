@@ -24,10 +24,11 @@ The `wait_threads` call MUST use its `targets` entries with the exact assigned
 MUST come from the assignment for that target or an earlier `wait_threads`
 result for it. No more than eight targets MAY be passed per call; larger
 assignments MUST be split into disjoint batches with each target's cursor
-retained. `timeoutMs` MUST be omitted by default; this uses the callable's
-documented default (120,000 ms). An explicit timeout MAY be passed only when
-the exposed tool definition confirms it is supported. When the latest Worker
-status or result is not present in the wait result, the Watcher MUST call
+retained. The Watcher MUST use the largest `timeoutMs` value confirmed by the
+current host. If no maximum is exposed, it MUST omit `timeoutMs` and use the
+callable's documented default (120,000 ms); it MUST NOT infer a longer timeout
+from `watcher_wait`. When the latest Worker status or result is not present in
+the wait result, the Watcher MUST call
 `read_thread` on that same assigned `threadId` and supplied `hostId`. It MUST
 omit `cursor` for recent turns and use only a `read_thread` page cursor supplied
 for that thread or returned by an earlier `read_thread` call for older turns.
