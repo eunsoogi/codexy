@@ -76,17 +76,13 @@ alter protected technical text.
   deduplicate identities, and relay action-required deltas through
   `watcher_report`; blocked/terminal receipts go to the Orchestrator. Initial
   goal calls MUST stay local and unreported; reports are not acceptance.
-- A verified-unavailable route or concrete emergency permits one marked
-  direct-Orchestrator fallback; Worker MUST report one limitation and MUST NOT
-  resume routine direct reporting or duplicate it. Routine reads and
-  liveness-only goal status MUST remain internal; the Watcher MUST NOT wake the
-  Orchestrator. Only actionable lifecycle/drift, failure, missing delivery, or a
-  ready gate may wake the Orchestrator.
-- New or changed evidence alone is not notification-eligible. Normal progressing
-  work, intermediate successful tests, resolved command mistakes, commits, and
-  queued CI MUST remain internal while the Workers are actively progressing. A
-  commit or new HEAD alone MUST NOT wake the Orchestrator; it may be retained as
-  evidence for a later actionable gate.
+- A verified-unavailable route or emergency permits one marked direct-parent
+  fallback. Worker MUST report one limitation and MUST NOT resume or duplicate
+  routine direct reports. Reads and liveness-only goal state MUST stay internal.
+- Bundled `codexy-watcher` owns lifecycle criteria, stale-gate suppression,
+  current-action summaries, and `watcher_report` arguments. Its ordered emission
+  sequence governs reports; packaged `tools/list` bounds and descriptions MUST
+  reflect parser limits, even with a generic host schema.
 - Codex MUST deduplicate one event using a stable event identity before changing
   counters, plan state, or next action. A missed callback, Worker failure,
   Watcher failure, or loss of both channels is an observable limitation; it is
@@ -97,20 +93,21 @@ alter protected technical text.
   contradiction, scope expansion, or failure justifies a deeper inspection.
   Codex MUST NOT impose a fixed phase count, universal approval before edits, a
   new mandatory receipt, or exact report wording.
-- At a useful checkpoint or after a concrete signal, the Watcher MUST inspect
-  the smallest changed artifact, diff, or relevant actual tool call and compare
-  it with the currently accepted issue scope, implementation ownership, and
-  latest user constraints. It MUST NOT rely only on active/idle state, HEAD, or
-  a Worker self-report. The Watcher MUST distinguish ordinary in-scope progress
-  from actual drift and report only the material distinction.
+- At useful checkpoints or signals, the Watcher MUST inspect the smallest
+  relevant artifact, diff, or call against accepted scope, ownership, and latest
+  user constraints; MUST NOT rely only on status, HEAD, or self-report. MUST
+  distinguish progress from material drift. Report only the latter. For the same
+  operation, target, and intended outcome, later authoritative success MUST mark
+  its earlier error historical; only new failure evidence can reopen it.
 - A credible drift report MUST identify the concrete source or call inspected,
   the conflicting current requirement, and the consequence or remaining
-  uncertainty in concise natural prose; it MUST NOT require a fixed packet
-  schema or contain a repair directive. The Watcher reports only; the
-  Orchestrator judges and instructs the Worker, the Worker repairs, and the
-  Orchestrator verifies the next relevant source, call, diff, or result. A later
-  Watcher observation may report a new mismatch but MUST remain read-only and
-  MUST NOT own that correction loop.
+  uncertainty in concise natural prose, without a fixed narrative template. This
+  does not waive the exact `watcher_report` argument contract in the bundled
+  Watcher role. The Watcher reports only; the Orchestrator judges and instructs
+  the Worker, the Worker repairs, and the Orchestrator verifies the next
+  relevant source, call, diff, or result. A later Watcher observation may report
+  a new mismatch but MUST remain read-only and MUST NOT own that correction
+  loop.
 
 ## Waiting and direct correction
 
@@ -121,17 +118,17 @@ alter protected technical text.
   elapsed time. A native reviewer's terminal delivery is a non-Watcher target;
   the Orchestrator MUST NOT observe Worker targets assigned to a native Watcher.
 - Native Watcher routes: only the assigned Watcher MAY call `wait_threads`; the
-  Orchestrator MUST await `watcher_wait`, omitting `timeoutMs` for the 295,000
-  ms default; explicit `timeoutMs=295000` is equivalent; `MAX_WAIT_MS` stays
-  3,600,000 ms. The host limit MUST be read and reported: if it supports 300,000
-  ms, the Watcher MUST use `wait_threads(timeoutMs=300000)` as the semantic
-  event wait; otherwise, it MUST use the confirmed actual maximum. Output-yield
-  cadence is separate; MUST NOT shorten or replace the semantic wait. The
-  295,000 ms default leaves a five-second margin under a confirmed 300-second
-  MCP transport. Shorter waits MUST have a reason and MUST NOT become repeated
-  polls. While pending, the Orchestrator MUST stay in one quiet tool await and
-  MUST NOT emit reasoning, progress, short polls, unrelated work, retry, or poll
-  merely because no event has arrived. Fallbacks MUST report and recover.
+  Orchestrator MUST await `watcher_wait`. Omit `timeoutMs` only when its 295,000
+  ms default is within the confirmed host limit and every stricter applicable
+  higher-priority bound; otherwise pass an explicit timeout within that bound.
+  The runtime `MAX_WAIT_MS` ceiling is 3,600,000 ms. A supported shorter wait or
+  its empty result alone MUST NOT alert. Report a host/fallback limit only when
+  no supported route permits continuation and parent action is required.
+  Output-yield cadence is separate; MUST NOT shorten semantic waits. Shorter
+  waits need a reason and MUST NOT become repeated polls. While pending, the
+  Orchestrator MUST stay in one quiet await and MUST NOT emit reasoning, status,
+  retries, or unrelated work merely because no event arrived; use supported
+  fallbacks without alerting on resolved limits.
 - Implementation Workers MUST NOT use Orchestrator-owned Watcher session/token.
   One bounded readback after an actionable report is judgement-only.
 - The native Watcher loop is defined in "Watcher MCP flow"; its report, Worker
@@ -155,15 +152,19 @@ alter protected technical text.
   then opens one scoped `watcher_open` session for the Orchestrator, Watcher,
   and exact Worker targets. The MCP session transports observations; it does not
   create or judge the subagent.
-- The Watcher MUST use `wait_threads` with each target's latest cursor and
-  inspect actual Worker results before calling `watcher_report` for a material
-  event or requested health. It MUST continue its cursor loop while a target
-  remains nonterminal. `watcher_health` is freshness evidence, not acceptance;
-  reports are untrusted and contain no repair directive.
-- The Orchestrator calls `watcher_wait` with documented `parent` capability and
-  cursor; `parent` is a preserved protocol field, not a product role. It
-  validates each event, reads the Worker/app surface, and sends or verifies
-  corrections through the supported Worker route.
+- The Watcher MUST use `wait_threads` per its role contract: exact assigned
+  Worker targets, supplied hosts, per-target cursors, eight-target batches, and
+  a `timeoutMs` within callable and higher-priority limits. If recent state is
+  absent, it MAY read only that same target; recent reads omit cursors and older
+  reads use that thread's page cursor. Wait/read cursors are distinct. Missing
+  or truncated state remains unknown and alone MUST NOT establish current
+  failure or a due parent action. It MUST wait while targets are nonterminal.
+  Health-only updates are not queued; requested status uses a current-only
+  `health` event. Reports stay untrusted and carry no repair directives.
+- The Orchestrator calls `watcher_wait` with `sessionId`, `parentToken`, and the
+  returned `cursor`; `parentToken` is the parent capability. It validates each
+  event, reads the Worker/app surface, and sends or verifies corrections through
+  the supported Worker route.
 - Same-connection `notifications/cancelled` or packaged Watcher
   `PreToolUse`/`Interrupt`/`UserPromptSubmit` releases only that wait when the
   host delivers the event and preserves the durable session. `watcher_cancel`
