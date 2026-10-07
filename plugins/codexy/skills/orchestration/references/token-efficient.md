@@ -130,9 +130,14 @@ MUST use this flow after compaction and before handoff:
 3. **Validate stable event identity**: every event MUST use a deterministic
    `<kind>|<lane>|<subject>` identity. The ledger MUST reject a repeated
    identity before it changes counters or next actions.
-4. **Promote ids, not prose**: MUST keep exact ids and links. MUST NOT transfer
-   a full conversation, full tool body, or full agent-tree listing. Direct reads
-   and command output MUST remain bounded.
+4. **Project before returning**: MUST filter large thread/tool results inside `functions.exec` before returning them to the model.
+   For `read_thread`, MUST retain current thread/turn status, terminal/current `agentMessage`, exact source ids/links, and the
+   [`context-tiers.md`](context-tiers.md) safety envelope: issue/PR, owner/worktree, base/head and dirty/index, checks,
+   unresolved review ids, reviewer/verification state, external gate, and next action; MUST preserve unknowns as unknown.
+   `turnLimit` caps turns, not nested items. Per-item character caps do not cap item count; MUST filter items/fields
+   independently. MUST omit reasoning, repeated progress, unrelated tool bodies, arguments, and stale turns. MUST keep
+   finding ids/status and read details only when needed for the next decision. MUST NOT return the raw response or drop
+   unresolved proof to meet a size budget.
 5. **Fail once**: a failed Orchestrator message MUST emit exactly one terminal
    unavailable report. It MUST include its event identity and MUST NOT retry the
    Orchestrator message.
@@ -214,16 +219,10 @@ gate points to them.
 
 ## Compaction Budget
 
-After compaction, rebuild only the working set:
-
-- active lanes and their latest known SHAs,
-- unresolved review thread ids,
-- child ownership and stop condition,
-- commands already run only when their result still proves a current gate,
-- known tool exposure mismatches that affect the next action.
-
-MUST NOT reload old full review bodies, full command output, resolved feedback,
-or closed lanes unless a current gate references them.
+After compaction, rebuild only active lanes/latest SHAs, unresolved review ids, child ownership/stop condition,
+proof still needed for the current gate, and tool exposure mismatches affecting the next action. Reuse prior commands
+only while they still prove that gate. MUST NOT reload unchanged references, old review or command output, resolved
+feedback, or closed lanes unless a current gate points to them.
 
 ## Handoff Discipline
 
