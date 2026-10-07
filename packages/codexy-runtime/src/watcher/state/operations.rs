@@ -139,20 +139,20 @@ impl Store {
             canonical_text(&event.target).is_ok_and(|candidate| candidate == target_key)
         });
         // Observation time is freshness metadata; only client ids make it part of retry identity.
-        if requested_event_id.is_none() {
-            if let Some(previous) = last_target_event.filter(|previous| {
+        if requested_event_id.is_none()
+            && let Some(previous) = last_target_event.filter(|previous| {
                 previous.kind.as_str() == kind.as_str()
                     && previous.summary.as_str() == summary.as_str()
                     && previous.evidence.as_slice() == evidence.as_slice()
-            }) {
-                self.write_health(session_id, &health)?;
-                return Ok(json!({
-                    "status": "duplicate",
-                    "sessionId": session_id,
-                    "eventId": previous.event_id,
-                    "cursor": previous.sequence.to_string(),
-                }));
-            }
+            })
+        {
+            self.write_health(session_id, &health)?;
+            return Ok(json!({
+                "status": "duplicate",
+                "sessionId": session_id,
+                "eventId": previous.event_id,
+                "cursor": previous.sequence.to_string(),
+            }));
         }
 
         // The session prefix scopes the lane; the prior subject event versions later transitions.
