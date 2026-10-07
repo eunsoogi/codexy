@@ -94,11 +94,11 @@ alter protected technical text.
   Codex MUST NOT impose a fixed phase count, universal approval before edits, a
   new mandatory receipt, or exact report wording.
 - At useful checkpoints or signals, the Watcher MUST inspect the smallest
-  relevant artifact, diff, or call against accepted scope, ownership, and
-  latest user constraints; MUST NOT rely only on status, HEAD, or self-report.
-  MUST distinguish progress from material drift. Report only the latter. For the
-  same operation, target, and intended outcome, later authoritative success MUST
-  mark its earlier error historical; only new failure evidence can reopen it.
+  relevant artifact, diff, or call against accepted scope, ownership, and latest
+  user constraints; MUST NOT rely only on status, HEAD, or self-report. MUST
+  distinguish progress from material drift. Report only the latter. For the same
+  operation, target, and intended outcome, later authoritative success MUST mark
+  its earlier error historical; only new failure evidence can reopen it.
 - A credible drift report MUST identify the concrete source or call inspected,
   the conflicting current requirement, and the consequence or remaining
   uncertainty in concise natural prose, without a fixed narrative template. This
