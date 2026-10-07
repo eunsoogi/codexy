@@ -43,6 +43,9 @@ mod watcher_recovery;
 mod watcher_state;
 #[path = "mcp_stdio/watcher_deterministic.rs"]
 mod watcher_deterministic;
+// Keep material event identity and transition regressions separate from persistence coverage.
+#[path = "mcp_stdio/watcher_material_identity.rs"]
+mod watcher_material_identity;
 
 use client::{InstalledPlugin, McpClient, TempRuntimeDir};
 use fixtures::{installed_plugin_copy, installed_plugin_under_rust_host, temp_runtime_dir};

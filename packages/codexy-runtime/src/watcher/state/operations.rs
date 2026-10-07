@@ -133,18 +133,41 @@ impl Store {
         let summary = summary.context("watcher material reports require summary")?;
         validate_text(&summary, "summary", 4_096)?;
         validate_evidence(&evidence)?;
-        // A client-supplied id gives retries a stable key; otherwise content and time form it.
+        let target_key = canonical_text(&target)?;
+        let existing_events = self.reconcile_events(&mut session)?;
+        let last_target_event = existing_events.iter().rev().find(|event| {
+            canonical_text(&event.target).is_ok_and(|candidate| candidate == target_key)
+        });
+        // Observation time is freshness metadata; only client ids make it part of retry identity.
+        if requested_event_id.is_none()
+            && let Some(previous) = last_target_event.filter(|previous| {
+                previous.kind.as_str() == kind.as_str()
+                    && previous.summary.as_str() == summary.as_str()
+                    && previous.evidence.as_slice() == evidence.as_slice()
+            })
+        {
+            self.write_health(session_id, &health)?;
+            return Ok(json!({
+                "status": "duplicate",
+                "sessionId": session_id,
+                "eventId": previous.event_id,
+                "cursor": previous.sequence.to_string(),
+            }));
+        }
+
+        // The session prefix scopes the lane; the prior subject event versions later transitions.
         let seed = if let Some(id) = requested_event_id {
             safe_id(id, "eventId")?;
             format!("client|{id}")
         } else {
-            format!(
-                "{}|{}|{}|{}",
-                kind,
-                canonical_text(&target)?,
-                summary,
-                timestamp
-            )
+            let material_identity = json!({
+                "subject": target_key,
+                "version": last_target_event.map(|event| event.sequence),
+                "kind": kind,
+                "summary": summary,
+                "evidence": evidence,
+            });
+            format!("material|{}", canonical_text(&material_identity)?)
         };
         let event_id = format!(
             "evt-{}",
@@ -157,17 +180,17 @@ impl Store {
             "summary": summary,
             "evidence": evidence,
         });
-        if requested_event_id.is_none() || observed_at_ms.is_some() {
+        if requested_event_id.is_some() && observed_at_ms.is_some() {
             fingerprint_value["observedAtMs"] = json!(timestamp);
         }
         let fingerprint = hash_text(&canonical_text(&fingerprint_value)?);
-        let existing_events = self.reconcile_events(&mut session)?;
         // Reusing an id is idempotent only when the full material report is unchanged.
         if let Some(previous) = existing_events
             .iter()
             .find(|event| event.event_id == event_id)
         {
             if previous.fingerprint == fingerprint {
+                self.write_health(session_id, &health)?;
                 return Ok(
                     json!({ "status": "duplicate", "sessionId": session_id, "eventId": event_id, "cursor": previous.sequence.to_string() }),
                 );

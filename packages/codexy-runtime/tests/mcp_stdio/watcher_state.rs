@@ -55,6 +55,21 @@ pub(super) fn open_session(
     id: &str,
     request_id: u64,
 ) -> Result<(String, String, String), Box<dyn std::error::Error>> {
+    open_session_with_targets(
+        client,
+        id,
+        request_id,
+        vec![json!({"threadId": "target"})],
+    )
+}
+
+// Test callers can define multiple assigned subjects within one lane.
+pub(super) fn open_session_with_targets(
+    client: &mut McpClient,
+    id: &str,
+    request_id: u64,
+    targets: Vec<Value>,
+) -> Result<(String, String, String), Box<dyn std::error::Error>> {
     let response = client.send(&json!({
         "jsonrpc": "2.0", "id": request_id,
         "method": "tools/call",
@@ -62,7 +77,7 @@ pub(super) fn open_session(
             "assignmentId": id,
             "parent": {"id": "parent"},
             "watcher": {"id": "watcher"},
-            "targets": [{"threadId": "target"}],
+            "targets": targets,
             "ttlSeconds": 600
         }}
     }))?;
