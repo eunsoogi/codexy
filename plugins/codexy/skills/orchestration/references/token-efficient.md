@@ -221,11 +221,11 @@ gate points to them.
 
 ## Compaction Budget
 
-After compaction, refresh the single active-lane inventory with its latest SHAs,
+After compaction, MUST refresh the single active-lane inventory: latest SHAs,
 unresolved review ids, child ownership/stop condition, current-gate proof, and
-relevant tool exposure mismatches. Reuse prior commands only while they prove
-that gate. MUST NOT reload unchanged references, old review/command output,
-resolved feedback, or closed lanes unless a current gate references them.
+relevant tool exposure mismatches. MUST reuse prior commands only while they
+prove that gate. MUST NOT reload unchanged references, old review/command
+output, resolved feedback, or closed lanes unless referenced by a current gate.
 
 ## Handoff Discipline
 
