@@ -2,7 +2,7 @@ use crate::support::TestResult;
 use codexy_runtime::validation::*;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
-#[test] // Canonical events separate reusable policy identity from owner-bound replay state.
+#[test] // Canonical events retain active review and owner-bound head state.
 fn canonical_serialization_separates_stable_and_volatile_payloads() -> TestResult {
     let first = HandoffEnvelope::new(stable(), volatile("red"));
     let canonical = first.canonical_json()?;
@@ -152,8 +152,8 @@ fn volatile(delta: &str) -> HandoffVolatile {
         },
         checks: vec!["not_created".into()],
         unresolved_review_threads: vec![ReviewThread {
-            id: "none".into(),
-            outdated: true,
+            id: "review-603".into(),
+            outdated: false,
         }],
         selected_reviewer_state: "pending".into(),
         verification: vec!["focused".into()],

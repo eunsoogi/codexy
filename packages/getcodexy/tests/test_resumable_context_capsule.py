@@ -26,7 +26,8 @@ VOLATILE_TEMPLATE = json.loads(
     '{"issue_pr_identity":{"issue":679,"pr":null},'
     '"owner_worktree":{"owner":"child-owned","branch":"branch","worktree":"worktree"},'
     '"base_head_sha":{"base":"base","head":"head"},"dirty_index_state":{"dirty":false,"index":false},'
-    '"checks":["focused"],"unresolved_review_threads":[],"selected_reviewer_state":"pending",'
+    '"checks":["focused"],"unresolved_review_threads":['
+    '{"id":"review-thread-679","outdated":false}],"selected_reviewer_state":"pending",'
     '"verification":["installed"],"active_obligation":"validate","external_gate":"none",'
     '"next_action":"continue","child_task":null,"parent_task":null,"preserved_artifacts":null,"delivery":"confirmed","task_surface":"codex-task","event":null,'
     '"authoritative_refresh_handles":[],"omissions":{"authoritative_refresh_handles":"not_applicable",'
@@ -57,18 +58,14 @@ class ResumableContextCapsuleTests(unittest.TestCase):
         self.plugin = self.plugins / "codexy"
         shutil.copytree(ROOT / "plugins/codexy", self.plugin)
         if layout == "github":
-            shutil.copytree(
-                ROOT / "plugins/codexy-github", self.plugins / "codexy-github"
-            )
+            shutil.copytree(ROOT / "plugins/codexy-github", self.plugins / "codexy-github")
         self.runtime = self.plugin
         if layout == "sibling":
             self.runtime = self.plugins / "codexy-devtools"
             self.runtime.mkdir()
 
     def test_component_sources_are_installed_and_manifest_declares_them(self) -> None:
-        self.assertTrue(
-            RUNTIME_SCHEMA.is_file(), "missing runtime-owned handoff schema"
-        )
+        self.assertTrue(RUNTIME_SCHEMA.is_file(), "missing runtime-owned handoff schema")
         missing = [item for item in PLUGIN_FILES if not (self.plugin / item).is_file()]
         self.assertEqual(missing, [], f"missing installed capsule sources: {missing}")
         manifest_path = ROOT / (
@@ -97,6 +94,10 @@ class ResumableContextCapsuleTests(unittest.TestCase):
             result = self._run(capsule, environment=environment)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(result.stdout)["consumer"], consumer)
+            replayed = json.loads(replay.with_name(f"{consumer}.json").read_text())
+            expected = json.loads(capsule.read_text())["envelope"]
+            # Replay must preserve the complete envelope, including review and source HEAD.
+            self.assertEqual(replayed, [expected])
             repeated = self._run(capsule, environment=environment)
             self.assertEqual(repeated.returncode, 2, repeated.stderr)
 
@@ -222,9 +223,7 @@ class ResumableContextCapsuleTests(unittest.TestCase):
 
     def _link_directory(self, link: Path, target: Path) -> None:
         if os.name == "nt":
-            subprocess.run(
-                ["cmd", "/d", "/c", "mklink", "/J", link, target], check=True
-            )
+            subprocess.run(["cmd", "/d", "/c", "mklink", "/J", link, target], check=True)
         else:
             link.symlink_to(target, target_is_directory=True)
 
