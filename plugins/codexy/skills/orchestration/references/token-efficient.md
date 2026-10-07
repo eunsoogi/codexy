@@ -7,25 +7,26 @@ skill when a thread is recovering from compaction, receiving child terminal
 state, routing review feedback, or preparing a handoff that might otherwise
 repeat large unchanged artifacts.
 
-This skill summarizes current proof and byte comparisons without changing which
-obligations apply; token billing and wall-time savings remain unmeasured.
+This skill summarizes proof and byte comparisons; token billing, wall-time, and
+no-change parent-turn savings remain unmeasured.
 
 ## Same-Turn Execution Default
 
 - While an authorized assignment still has actionable in-scope work or an
-  assigned supported observation obligation, MUST default to continuing the full
-  assignment in the same assistant turn. Preserve the assigned objective and
-  current next action across intermediate output and wait timeouts; MUST NOT
-  redefine success around a smaller step merely to end the turn.
-- A host re-entry or goal continuation with the same active objective MUST
-  resume from the latest lane state and next uncompleted action. MUST NOT
-  restart completed or unchanged work or treat the continuation as a new goal;
-  lifecycle-valid new goals remain governed by `runtime-heartbeats.md`.
-- A bounded wait result or output-yield boundary is not an assistant-turn or
-  assignment boundary. An empty, unchanged, or short wait result MUST NOT by
-  itself trigger a final status. Continue the next authorized step, or continue
-  the existing supported event-wait route with its latest cursor and actual host
-  limits. MUST distinguish semantic wait duration from output-yield cadence.
+  assigned supported observation obligation, MUST preserve the full objective,
+  goal owner, and next uncompleted action. A same-turn wait applies only while
+  the host keeps the existing supported route available; this instruction MUST
+  NOT imply that the runtime holds or suspends a parent turn.
+- Same-goal re-entry MUST resume the same Worker owner, active goal, Watcher
+  session, latest returned cursor, and next unfinished action. Advance only from
+  actual Watcher results; preserve confirmed cancellation. Handle user input at
+  re-entry; MUST NOT infer wait cancel/resume or restart unchanged work.
+- The observed host exposes only nested `watcher_wait` in `functions.exec`; its
+  yielded cell is retrieved through `functions.wait`. Each blocking
+  `functions.wait` call MUST be at most 60 seconds. This higher-priority limit
+  only bounds outer retrieval; it does not shorten the inner semantic timeout.
+  Resume only the same cell; wrapper yields MUST NOT reissue the wait, advance
+  the cursor, imply cancellation, or trigger unchanged status or reasoning.
 - Outside a route-required quiet wait, MUST provide concise progress commentary
   at meaningful checkpoints during active work; commentary does not end the turn
   or prove completion. MUST reserve final handoff for the complete assigned

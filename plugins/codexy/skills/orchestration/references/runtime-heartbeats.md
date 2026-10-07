@@ -10,16 +10,42 @@ scheduler.
 ## Same-Turn Wait Handling
 
 - While authorized implementation, verification, coordination, or an assigned
-  supported observation remains actionable, MUST default to continuing the full
-  assignment in the same assistant turn. Preserve the assigned objective across
-  intermediate results and bounded waits; MUST NOT redefine success around the
-  current step merely to end the turn.
+  supported observation remains actionable, MUST preserve the full assignment,
+  active goal owner, and next uncompleted action. A same-turn wait applies only
+  while the host keeps the existing supported route available; this instruction
+  MUST NOT imply runtime-owned parent suspension.
 - An empty, unchanged, or timed-out `wait_threads` or `watcher_wait` result, or
-  a tool output yield, MUST NOT by itself end the assistant turn or assigned
-  objective. When the observation obligation remains, continue through its
-  existing supported route using the latest cursor and the route's actual host
-  limits. An output-yield cadence MUST NOT shorten the semantic wait. MUST NOT
-  use direct Worker polling or replace a native Watcher route.
+  a tool output yield, MUST NOT by itself complete the assignment, trigger an
+  unchanged status or reasoning turn, or narrow the objective. When the
+  observation obligation remains, continue only through its existing supported
+  route using the latest returned cursor and actual host limits. MUST NOT use
+  direct Worker polling or replace a native Watcher route.
+- The inspected host exposed `watcher_wait` only inside `functions.exec`, with
+  caller progress returned through `functions.wait`; a standalone top-level
+  action was not exposed. See the recorded
+  [host wait-path observation](../../../../../docs/watcher-test-coverage.md).
+  Each individual blocking `functions.wait` call MUST be no longer than 60
+  seconds, even where lower-priority local guidance calls for a longer single
+  await. This bounds retrieval of the outer yielded cell only; it MUST NOT
+  shorten the inner `watcher_wait` semantic timeout. A wrapper yield or return
+  while the cell remains active MUST NOT be treated as a semantic timeout,
+  event, cancellation, or completion. Continue retrieval only on that same
+  active cell; preserve the Worker owner, Watcher session, active goal, latest
+  returned cursor, and confirmed cancellation state. MUST NOT reopen or reissue
+  `watcher_wait`, advance the cursor, or emit unchanged status or reasoning just
+  because the wrapper yielded. Only an actual `watcher_wait` result establishes
+  semantic status and returns a new cursor.
+- The recorded intervals were not a matched direct-versus-wrapper comparison,
+  did not verify host interruption or resume, and leave per-path token and cost
+  unknown. These instructions MUST NOT claim fewer no-change parent returns or
+  comparative savings.
+- Explicit user or Orchestrator input MUST be handled at actual host re-entry
+  without waiting for the Watcher timeout. Input or caller re-entry alone MUST
+  NOT be treated as proof that the pending wait was cancelled or resumed. If the
+  host cannot continue the existing cell or deliver input, record that limit; do
+  not claim runtime-owned suspension or create an unverified loop.
+- An output-yield cadence MUST NOT shorten the semantic wait. MUST NOT use
+  direct Worker polling or replace a native Watcher route.
 - Outside a route-required quiet wait, MUST provide concise progress commentary
   at meaningful checkpoints during active work; commentary does not end the turn
   or prove completion. A short wait result alone MUST NOT trigger a final status
