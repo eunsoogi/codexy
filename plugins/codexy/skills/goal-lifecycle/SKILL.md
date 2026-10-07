@@ -176,6 +176,35 @@ Fork/archive and goal readbacks are control-plane evidence; none proves issue,
 PR, implementation, verification, review, CI, merge, release, publication, or
 external-gate completion.
 
+## Deciding Whether Work Is Blocked
+
+The host's `update_goal(blocked)` contract remains authoritative; this skill
+MUST NOT claim to change it. A repetition threshold, including one accrued by
+host-triggered continuations after the same wait, MUST NOT by itself satisfy
+blocked criteria. The task MUST also meet every current host criterion,
+including the distinct inability to make meaningful progress without user input
+or an external state change.
+
+Ordinary CI, review, dependency, resource, and parent-coordination waits,
+retryable errors, and unfinished but actionable authorized work are nonterminal.
+While work remains, the task MUST retain ownership of the exact active
+objective, use the existing event-driven or same-turn wait route, and continue
+available work on re-entry. The task MUST NOT repeat model turns for unchanged
+waits or to reach a threshold.
+
+If parent action can advance a dependency, the child MUST send a concise
+nonterminal update through the assignment's supported report route naming the
+needed parent action and next child action, then preserve ownership through the
+supported wake route. When no immediate action remains, the task MUST use the
+existing wait/handoff contract and MUST NOT complete a finite phase before its
+criteria are met or mark an unfinished assigned goal complete to clear a wait.
+The task MUST follow the existing
+[goal-transition-reporting](../orchestration/references/goal-transition-reporting.md)
+and [runtime-heartbeats](../orchestration/references/runtime-heartbeats.md)
+contracts for handoff and finite-phase rules. The task MUST NOT ask the user to
+clear the goal to resume the same assignment or use a fabricated `complete`,
+`blocked`, or `paused` transition to make a wait disappear.
+
 ## Completion boundary
 
 The task MUST NOT use a `complete` transition to recover a blocked goal. The

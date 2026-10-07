@@ -130,9 +130,16 @@ MUST use this flow after compaction and before handoff:
 3. **Validate stable event identity**: every event MUST use a deterministic
    `<kind>|<lane>|<subject>` identity. The ledger MUST reject a repeated
    identity before it changes counters or next actions.
-4. **Promote ids, not prose**: MUST keep exact ids and links. MUST NOT transfer
-   a full conversation, full tool body, or full agent-tree listing. Direct reads
-   and command output MUST remain bounded.
+4. **Project before returning**: MUST filter large thread/tool results inside
+   `functions.exec` before returning them to the model. For `read_thread`, MUST
+   retain current thread/turn status and the exact terminal/current
+   `agentMessage`, exact source ids/links, and typed safety envelope from
+   [`context-tiers.md`](context-tiers.md). MUST preserve unknowns as unknown.
+   `turnLimit` and per-item character caps do not bound nested item count, so
+   MUST filter items/fields independently. MUST omit reasoning, repeated
+   progress, unrelated tool bodies, arguments, and stale turns. MUST keep
+   unresolved finding ids/status; load details only when needed. MUST NOT return
+   the raw response or drop unresolved proof to meet a size budget.
 5. **Fail once**: a failed Orchestrator message MUST emit exactly one terminal
    unavailable report. It MUST include its event identity and MUST NOT retry the
    Orchestrator message.
@@ -214,16 +221,11 @@ gate points to them.
 
 ## Compaction Budget
 
-After compaction, rebuild only the working set:
-
-- active lanes and their latest known SHAs,
-- unresolved review thread ids,
-- child ownership and stop condition,
-- commands already run only when their result still proves a current gate,
-- known tool exposure mismatches that affect the next action.
-
-MUST NOT reload old full review bodies, full command output, resolved feedback,
-or closed lanes unless a current gate references them.
+After compaction, MUST refresh the single active-lane inventory: latest SHAs,
+unresolved review ids, child ownership/stop condition, current-gate proof, and
+relevant tool exposure mismatches. MUST reuse prior commands only while they
+prove that gate. MUST NOT reload unchanged references, old review/command
+output, resolved feedback, or closed lanes unless referenced by a current gate.
 
 ## Handoff Discipline
 
@@ -231,11 +233,9 @@ For a Worker handoff or Orchestrator status, include:
 
 - `remember`: durable facts needed for the next gate,
 - `refresh`: facts that MUST be re-polled before action,
-- `forget`: resolved, outdated, superseded, or irrelevant details,
+- `forget`: resolved, outdated, superseded, or irrelevant details; MUST NOT
+  drive work unless a fresh poll makes them current again,
 - `next`: one action with the owner.
-
-MUST use `forget` for stale context. It means the detail MUST NOT drive active
-work unless a fresh poll makes it current again.
 
 ## Stop Conditions
 
