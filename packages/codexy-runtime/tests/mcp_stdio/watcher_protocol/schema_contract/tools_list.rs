@@ -117,6 +117,7 @@ fn tools_list_advertises_the_watcher_report_runtime_contract()
 
     let event = &schema["properties"]["event"];
     assert_eq!(event["additionalProperties"], false);
+    assert_eq!(event["required"], json!(["target", "kind", "summary"]));
     assert_eq!(
         event["properties"]
             .as_object()
@@ -126,10 +127,7 @@ fn tools_list_advertises_the_watcher_report_runtime_contract()
     );
     assert_identity_schema(&schema["properties"]["target"]);
     assert_identity_schema(&event["properties"]["target"]);
-    assert_eq!(
-        schema["anyOf"][1]["properties"]["event"]["required"],
-        json!(["target"])
-    );
+    assert_eq!(schema["anyOf"][1]["required"], json!(["event"]));
     for field in [
         "eventId",
         "kind",

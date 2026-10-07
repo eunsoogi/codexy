@@ -146,13 +146,16 @@ pub fn tools() -> Vec<ToolDef> {
     for (name, schema) in &report_properties {
         report.insert(name.clone(), schema.clone());
     }
+    // Nested events are material reports; legacy flat fields still support
+    // metadata-only health updates.
     report.insert(
         "event".to_owned(),
         json!({
             "type":"object",
             "additionalProperties":false,
             "properties":report_properties,
-            "description":"Optional nested report fields; the legacy top-level event fields remain accepted.",
+            "required":["target","kind","summary"],
+            "description":"Nested material event; flat fields accepted.",
         }),
     );
 
@@ -204,7 +207,7 @@ pub fn tools() -> Vec<ToolDef> {
                 "required":["sessionId","watcherToken"],
                 "anyOf":[
                     {"required":["target"]},
-                    {"required":["event"],"properties":{"event":{"required":["target"]}}}
+                    {"required":["event"]}
                 ]
             }),
         ),

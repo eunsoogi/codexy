@@ -93,12 +93,12 @@ alter protected technical text.
   contradiction, scope expansion, or failure justifies a deeper inspection.
   Codex MUST NOT impose a fixed phase count, universal approval before edits, a
   new mandatory receipt, or exact report wording.
-- At a useful checkpoint or after a concrete signal, the Watcher MUST inspect
-  the smallest changed artifact, diff, or relevant actual tool call and compare
-  it with the currently accepted issue scope, implementation ownership, and
-  latest user constraints. It MUST NOT rely only on active/idle state, HEAD, or
-  a Worker self-report. The Watcher MUST distinguish ordinary in-scope progress
-  from actual drift and report only the material distinction.
+- At useful checkpoints or signals, the Watcher MUST inspect the smallest
+  relevant artifact, diff, or call against accepted scope, ownership, and
+  latest user constraints; MUST NOT rely only on status, HEAD, or self-report.
+  MUST distinguish progress from material drift. Report only the latter. For the
+  same operation, target, and intended outcome, later authoritative success MUST
+  mark its earlier error historical; only new failure evidence can reopen it.
 - A credible drift report MUST identify the concrete source or call inspected,
   the conflicting current requirement, and the consequence or remaining
   uncertainty in concise natural prose, without a fixed narrative template. This

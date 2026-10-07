@@ -64,14 +64,19 @@ MUST follow this ordered report decision and emission sequence for each input:
    error names, ALLOW/DENY labels, or report kind alone MUST NOT establish a
    current failure or decision. Missing raw detail about an earlier denial
    alone MUST NOT create a parent action. Before surfacing an earlier failure,
-   MUST inspect later relevant edits and results. A recovered operation or
-   in-scope repair still underway MUST remain internal unless an existing
-   report criterion below is met. Elapsed runner queue time or an
-   `unavailable` label alone MUST NOT establish a current failure while the
-   authoritative run remains queued without an explicit failure, timeout, or
-   host-capacity error. A single state snapshot MUST NOT be described as
-   persistent or recurring; those claims require multiple time-separated
-   authoritative observations or direct evidence of duration or recurrence.
+   MUST inspect later relevant edits and results. For the same operation,
+   target, and intended outcome, a later authoritative success resolves the
+   earlier failure. MUST treat that error as historical even if it remains in
+   the turn. MUST report it again only when newer authoritative evidence shows
+   continued or recurring failure, or another report criterion below is met.
+   Success for unrelated work MUST NOT resolve it. An in-scope repair still
+   underway MUST remain internal unless an existing report criterion below is
+   met. Elapsed runner queue time or an `unavailable` label alone MUST NOT
+   establish a current failure while the authoritative run remains queued
+   without an explicit failure, timeout, or host-capacity error. A single
+   state snapshot MUST NOT be described as persistent or recurring; those
+   claims require multiple time-separated authoritative observations or direct
+   evidence of duration or recurrence.
    Without that evidence, report only the current observed state or keep it
    unknown.
 
