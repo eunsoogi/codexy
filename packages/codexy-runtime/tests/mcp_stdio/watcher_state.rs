@@ -8,12 +8,23 @@ use std::thread;
 const CONCURRENT_REPETITIONS: usize = 3;
 
 pub(super) fn watcher_client(state_dir: &Path) -> Result<McpClient, Box<dyn std::error::Error>> {
+    watcher_client_with_trace(state_dir, None)
+}
+
+pub(super) fn watcher_client_with_trace(
+    state_dir: &Path,
+    trace_dir: Option<&Path>,
+) -> Result<McpClient, Box<dyn std::error::Error>> {
     let mut command = Command::new(env!("CARGO_BIN_EXE_codexy-mcp-watcher"));
     command
+        .env_remove("CODEXY_WATCHER_TRACE_DIR")
         .env("CODEXY_WATCHER_STATE_DIR", state_dir)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    if let Some(trace_dir) = trace_dir {
+        command.env("CODEXY_WATCHER_TRACE_DIR", trace_dir);
+    }
     McpClient::spawn_command(command)
 }
 

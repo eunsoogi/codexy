@@ -21,6 +21,9 @@ mod mcp_client;
 #[path = "validator_hook_watcher_interrupt/active_wait.rs"]
 mod active_wait;
 #[cfg(unix)]
+#[path = "validator_hook_watcher_interrupt/trace.rs"]
+mod trace;
+#[cfg(unix)]
 #[path = "validator_hook_watcher_interrupt/user_prompt_submit.rs"]
 mod user_prompt_submit;
 #[cfg(unix)]
@@ -43,6 +46,29 @@ fn run_hook(
     event: &str,
     payload: Value,
 ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+    run_hook_with_trace(
+        plugin_root,
+        cache,
+        state,
+        runtime_dir,
+        None,
+        platform,
+        event,
+        payload,
+    )
+}
+
+#[cfg(unix)]
+fn run_hook_with_trace(
+    plugin_root: &Path,
+    cache: &Path,
+    state: &Path,
+    runtime_dir: &Path,
+    trace_dir: Option<&Path>,
+    platform: &str,
+    event: &str,
+    payload: Value,
+) -> Result<std::process::Output, Box<dyn std::error::Error>> {
     // Keep host runtimes and watcher state from masking the fixture paths.
     let mut command = Command::new("/bin/sh");
     command
@@ -57,6 +83,9 @@ fn run_hook(
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    if let Some(trace_dir) = trace_dir {
+        command.env("CODEXY_WATCHER_TRACE_DIR", trace_dir);
+    }
     let mut child = command.spawn()?;
     child
         .stdin
@@ -163,7 +192,7 @@ fn binding_cancelled(state: &Path, nonce: &str) -> bool {
 fn copy_plugin(source: &Path, target: &Path) -> Result<(), Box<dyn std::error::Error>> {
     for relative in [".codex-plugin/plugin.json", "hooks/codexy-hook-runtime.sh",
         "hooks/codexy-watcher-interrupt.sh", "hooks/codexy_watcher_interrupt.py",
-        "hooks/codexy_watcher_interrupt_events.py"] {
+        "hooks/codexy_watcher_interrupt_events.py", "hooks/codexy_watcher_interrupt_runtime.py"] {
         let destination = target.join(relative);
         std::fs::create_dir_all(destination.parent().ok_or("plugin parent")?)?;
         std::fs::copy(source.join(relative), destination)?;

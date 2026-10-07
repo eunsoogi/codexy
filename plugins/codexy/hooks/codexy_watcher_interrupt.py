@@ -9,13 +9,18 @@ import platform as host_platform
 import re
 from runpy import run_path
 import stat
-import subprocess
 import sys
 from pathlib import Path
 
-MAX_INPUT_BYTES, EVENTS, UNSUPPORTED_INTERPRETER_EXIT, handle_input_event = run_path(
-    Path(__file__).with_name("codexy_watcher_interrupt_events.py")
-)["HOOK_API"]
+HOOK_HELPERS = run_path(Path(__file__).with_name("codexy_watcher_interrupt_events.py"))
+MAX_INPUT_BYTES, EVENTS, UNSUPPORTED_INTERPRETER_EXIT, handle_input_event = (
+    HOOK_HELPERS["HOOK_API"]
+)
+HookTrace = HOOK_HELPERS["HookTrace"]
+RUNTIME_HELPERS = run_path(
+    Path(__file__).with_name("codexy_watcher_interrupt_runtime.py")
+)
+handle_payload = RUNTIME_HELPERS["handle_payload"]
 REPOSITORY = "https://github.com/eunsoogi/codexy"
 PROTOCOL = "stdio-newline-v1"
 SUPPORTED_PLATFORMS = ("darwin-arm64", "linux-x86_64", "windows-x86_64")
@@ -41,58 +46,11 @@ def main() -> int:
         payload = json.loads(raw)
     except (TypeError, ValueError, json.JSONDecodeError):
         return 0
-    if not isinstance(payload, dict) or payload.get("hook_event_name") != event:
-        return 0
-    if event in ("Interrupt", "UserPromptSubmit"):
-        handle_input_event(event, payload, _invoke)
-        return 0
-    tool_name = payload.get("tool_name")
-    tool_input = payload.get("tool_input")
-    if not isinstance(tool_name, str) or (
-        tool_name != "watcher_wait" and not tool_name.endswith("__watcher_wait")
-    ):
-        return 0
-    if not isinstance(tool_input, dict):
-        return 0
-    result = _invoke("--hook-pretool", payload)
-    binding = result.get("requestBinding") if isinstance(result, dict) else None
-    if not isinstance(binding, str) or not binding:
-        return 0
-    updated = dict(tool_input)  # Copy before adding the confirmed wait binding.
-    updated["requestBinding"] = binding
-    output = {
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "allow",
-            "updatedInput": updated,
-        }
-    }
-    sys.stdout.write(json.dumps(output, separators=(",", ":")))
-    return 0
-
-
-def _invoke(argument: str, payload: dict[str, object]) -> object:
-    runtime = _runtime()
-    if runtime is None:
-        return {}
+    trace = HookTrace()
     try:
-        result = subprocess.run(
-            [str(runtime), argument],
-            input=json.dumps(payload, separators=(",", ":")).encode(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            check=False,
-            timeout=2,
-            env=os.environ.copy(),
-        )
-    except (OSError, subprocess.SubprocessError):
-        return {}
-    if result.returncode != 0:
-        return {}
-    try:
-        return json.loads(result.stdout)
-    except (TypeError, ValueError, json.JSONDecodeError):
-        return {}
+        return handle_payload(event, payload, trace, handle_input_event, _runtime)
+    finally:
+        trace.close()
 
 
 def _runtime() -> Path | None:  # Lookup order: explicit, packaged, cached.

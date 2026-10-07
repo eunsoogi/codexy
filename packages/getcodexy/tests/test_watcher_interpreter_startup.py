@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import runpy
 import shlex
 import shutil
 import subprocess
@@ -30,6 +31,40 @@ class WatcherInterpreterStartupTests(unittest.TestCase):
         gate = source.index("if sys.version_info < (3, 10):")
         self.assertLess(gate, source.index("def main"))
         self.assertIn("read(1024 * 1024 + 1)", source)
+
+    def test_runtime_lookup_error_is_recorded_without_changing_hook_failure(self):
+        helper = runpy.run_path(str(HOOKS / "codexy_watcher_interrupt_runtime.py"))
+        records = []
+
+        class Trace:
+            def record(self, event, **fields):
+                records.append({"event": event, **fields})
+
+        def failed_lookup():
+            raise OSError("private runtime path")
+
+        with self.assertRaisesRegex(OSError, "private runtime path"):
+            helper["_invoke"](
+                "--hook-pretool",
+                {"sessionId": "private-session", "parentToken": "private-token"},
+                Trace(),
+                failed_lookup,
+            )
+
+        self.assertEqual(
+            records,
+            [
+                {
+                    "event": "runtime_result",
+                    "runtimeAvailable": False,
+                    "failureClass": "runtime_lookup_error",
+                }
+            ],
+        )
+        encoded = json.dumps(records)
+        self.assertNotIn("private runtime path", encoded)
+        self.assertNotIn("private-session", encoded)
+        self.assertNotIn("private-token", encoded)
 
     @unittest.skipUnless(os.name != "nt", "POSIX launcher coverage")
     def test_native_macos_python_binds_before_rosetta_fallback(self):
