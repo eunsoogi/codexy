@@ -21,12 +21,13 @@ no-change parent-turn savings remain unmeasured.
   session, latest returned cursor, and next unfinished action. Advance only from
   actual Watcher results; preserve confirmed cancellation. Handle user input at
   re-entry; MUST NOT infer wait cancel/resume or restart unchanged work.
-- The observed host exposes only nested `watcher_wait` in `functions.exec`; its
-  yielded cell is retrieved through `functions.wait`. Each blocking
-  `functions.wait` call MUST be at most 60 seconds. This higher-priority limit
-  only bounds outer retrieval; it does not shorten the inner semantic timeout.
-  Resume only the same cell; wrapper yields MUST NOT reissue the wait, advance
-  the cursor, imply cancellation, or trigger unchanged status or reasoning.
+- The observed route nests `watcher_wait` in `functions.exec`, retrieved with
+  `functions.wait`. This session used a 60-second outer retrieval limit; do not
+  generalize that value to other hosts. A wrapper yield alone MUST NOT imply
+  timeout or shorten `watcher_wait`; stricter applicable instructions or host
+  limits govern every blocking call, including nested `watcher_wait`. Resume the
+  same cell, preserve confirmed cancellation, and MUST NOT reissue the wait,
+  advance the cursor, or emit unchanged status or reasoning.
 - Outside a route-required quiet wait, MUST provide concise progress commentary
   at meaningful checkpoints during active work; commentary does not end the turn
   or prove completion. MUST reserve final handoff for the complete assigned

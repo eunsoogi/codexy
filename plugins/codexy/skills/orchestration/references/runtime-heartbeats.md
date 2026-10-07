@@ -24,10 +24,13 @@ scheduler.
   caller progress returned through `functions.wait`; a standalone top-level
   action was not exposed. See the recorded
   [host wait-path observation](../../../../../docs/watcher-test-coverage.md).
-  Each individual blocking `functions.wait` call MUST be no longer than 60
-  seconds, even where lower-priority local guidance calls for a longer single
-  await. This bounds retrieval of the outer yielded cell only; it MUST NOT
-  shorten the inner `watcher_wait` semantic timeout. A wrapper yield or return
+  Each blocking `functions.wait` retrieval MUST follow its applicable per-call
+  limit (60 seconds in this session); that limits retrieval of the outer yielded
+  cell. A wrapper yield alone MUST NOT be treated as a semantic timeout or a
+  reason to shorten the inner `watcher_wait`. Any stricter applicable
+  higher-priority instruction or actual host limit also governs each blocking
+  call, including nested `watcher_wait`. This session's 60-second value MUST NOT
+  be generalized as a fixed limit for other hosts. A wrapper yield or return
   while the cell remains active MUST NOT be treated as a semantic timeout,
   event, cancellation, or completion. Continue retrieval only on that same
   active cell; preserve the Worker owner, Watcher session, active goal, latest
@@ -44,8 +47,10 @@ scheduler.
   NOT be treated as proof that the pending wait was cancelled or resumed. If the
   host cannot continue the existing cell or deliver input, record that limit; do
   not claim runtime-owned suspension or create an unverified loop.
-- An output-yield cadence MUST NOT shorten the semantic wait. MUST NOT use
-  direct Worker polling or replace a native Watcher route.
+- An output-yield cadence alone MUST NOT be treated as shortening the semantic
+  wait; applicable higher-priority instructions and actual host limits still
+  govern every blocking call. MUST NOT use direct Worker polling or replace a
+  native Watcher route.
 - Outside a route-required quiet wait, MUST provide concise progress commentary
   at meaningful checkpoints during active work; commentary does not end the turn
   or prove completion. A short wait result alone MUST NOT trigger a final status
