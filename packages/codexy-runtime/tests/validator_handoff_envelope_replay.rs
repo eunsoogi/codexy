@@ -1,5 +1,5 @@
-// Rejected batches must not consume event IDs; committed replay state is shared
-// by authority clones so a previously accepted event cannot be reused.
+// Rejected batches leave event IDs reusable; accepted batches retain current HEAD
+// and pending review state in the validated replay envelope.
 use crate::support::TestResult;
 use codexy_runtime::validation::*;
 use std::collections::BTreeMap;
@@ -19,7 +19,15 @@ fn successful_batch_publishes_to_shared_clones() -> TestResult {
     let second = HandoffEnvelope::new(stable(), volatile("603-second")).canonical_json()?;
     let authority = authority();
     let clone = authority.clone();
-    assert!(validate_handoff_batch(&[&first, &second], &authority).is_ok());
+    let validated = validate_handoff_batch(&[&first, &second], &authority)?;
+    assert_eq!(validated[1].volatile.base_head_sha.head, "head");
+    assert_eq!(
+        validated[1].volatile.unresolved_review_threads,
+        vec![ReviewThread {
+            id: "review-603".into(),
+            outdated: false,
+        }]
+    );
     assert!(validate_handoff(&first, &clone).is_err());
     Ok(())
 }
@@ -60,8 +68,8 @@ fn volatile(id: &str) -> HandoffVolatile {
         },
         checks: vec!["not_created".into()],
         unresolved_review_threads: vec![ReviewThread {
-            id: "none".into(),
-            outdated: true,
+            id: "review-603".into(),
+            outdated: false,
         }],
         selected_reviewer_state: "pending".into(),
         verification: vec!["focused".into()],

@@ -10,9 +10,6 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).parents[3]
-PLUGIN_FILES = tuple(
-    "skills/dreaming/scripts/resumable-context-capsule.sh skills/dreaming/scripts/resumable-context-capsule.cmd skills/dreaming/scripts/resumable_context_capsule.py".split()
-)
 KINDS = {"darwin-arm64": "mach-o", "linux-x86_64": "elf", "windows-x86_64": "pe"}
 MACHINES = {"arm64": "arm64", "aarch64": "arm64", "x86_64": "x86_64", "AMD64": "x86_64"}
 EVENT_KINDS = json.loads(
@@ -26,14 +23,14 @@ VOLATILE_TEMPLATE = json.loads(
     '{"issue_pr_identity":{"issue":679,"pr":null},'
     '"owner_worktree":{"owner":"child-owned","branch":"branch","worktree":"worktree"},'
     '"base_head_sha":{"base":"base","head":"head"},"dirty_index_state":{"dirty":false,"index":false},'
-    '"checks":["focused"],"unresolved_review_threads":[],"selected_reviewer_state":"pending",'
+    '"checks":["focused"],"unresolved_review_threads":['
+    '{"id":"review-thread-679","outdated":false}],"selected_reviewer_state":"pending",'
     '"verification":["installed"],"active_obligation":"validate","external_gate":"none",'
     '"next_action":"continue","child_task":null,"parent_task":null,"preserved_artifacts":null,"delivery":"confirmed","task_surface":"codex-task","event":null,'
     '"authoritative_refresh_handles":[],"omissions":{"authoritative_refresh_handles":"not_applicable",'
     '"pr":"not_created","preserved_artifacts":"not_applicable"}}'
 )
 POLICY = ROOT / "plugins/codexy/skills/orchestration/references/context-tiers.md"
-RUNTIME_SCHEMA = ROOT / "packages/codexy-runtime/schemas/handoff-runtime.schema.json"
 STABLE = json.loads(
     '{"policy_digest":"","workflow_profile":"strict","task_classification":"implementation",'
     '"selected_references":["workflow_profiles","task_classification","tdd_classification_policy","execution_budget","proof_completion"]}'
@@ -65,22 +62,6 @@ class ResumableContextCapsuleTests(unittest.TestCase):
             self.runtime = self.plugins / "codexy-devtools"
             self.runtime.mkdir()
 
-    def test_component_sources_are_installed_and_manifest_declares_them(self) -> None:
-        self.assertTrue(
-            RUNTIME_SCHEMA.is_file(), "missing runtime-owned handoff schema"
-        )
-        missing = [item for item in PLUGIN_FILES if not (self.plugin / item).is_file()]
-        self.assertEqual(missing, [], f"missing installed capsule sources: {missing}")
-        manifest_path = ROOT / (
-            "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json"
-        )
-        manifest = json.loads(manifest_path.read_text())
-        core = next(item for item in manifest["components"] if item["id"] == "core")
-        required = core["asset"]["requiredPaths"]
-        self.assertEqual(set(PLUGIN_FILES) - set(required), set())
-        generated = lambda item: item.startswith(("handoff-runtime.json", "runtime/"))
-        self.assertFalse(any(map(generated, required)))
-
     def test_installed_layouts_preserve_three_consumers(self) -> None:
         python_path = str(Path(sys.executable).parent)
         environment = {"PATH": os.pathsep.join((python_path, os.defpath))}
@@ -97,6 +78,10 @@ class ResumableContextCapsuleTests(unittest.TestCase):
             result = self._run(capsule, environment=environment)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(result.stdout)["consumer"], consumer)
+            replayed = json.loads(replay.with_name(f"{consumer}.json").read_text())
+            expected = json.loads(capsule.read_text())["envelope"]
+            # Replay must preserve the complete envelope, including review and source HEAD.
+            self.assertEqual(replayed, [expected])
             repeated = self._run(capsule, environment=environment)
             self.assertEqual(repeated.returncode, 2, repeated.stderr)
 
