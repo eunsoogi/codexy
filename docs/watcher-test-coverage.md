@@ -34,9 +34,9 @@ The 2026-10-07 host observation establishes only the callable route and event
 boundaries. The inspected task exposed no standalone top-level `watcher_wait`
 action; its available route was a nested Watcher MCP call under
 `functions.exec`, with caller progress returned through `functions.wait`. This
-is not a direct-await comparison. `wait_threads` remains a separate
-Codex-thread API; its two-minute validation result does not establish a limit
-for Watcher MCP `watcher_wait`.
+is not a direct-await comparison. `wait_threads` remains a separate Codex-thread
+API; its two-minute validation result does not establish a limit for Watcher MCP
+`watcher_wait`.
 
 One ten-minute no-change interval completed while the tracked parent turn
 remained active. The nested Watcher calls returned without a report during that
