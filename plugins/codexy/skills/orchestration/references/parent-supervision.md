@@ -118,17 +118,17 @@ alter protected technical text.
   elapsed time. A native reviewer's terminal delivery is a non-Watcher target;
   the Orchestrator MUST NOT observe Worker targets assigned to a native Watcher.
 - Native Watcher routes: only the assigned Watcher MAY call `wait_threads`; the
-  Orchestrator MUST await `watcher_wait`, omitting `timeoutMs` for the 295,000
-  ms default; explicit `timeoutMs=295000` is equivalent; `MAX_WAIT_MS` stays
-  3,600,000 ms. Read and record actual host limit; use 300,000 ms if supported
-  or the confirmed actual maximum otherwise. A supported shorter wait or
-  resolved limitation alone MUST NOT alert. Report a host/fallback limit only
-  when no supported route permits continuation and parent action is required.
+  Orchestrator MUST await `watcher_wait`. Omit `timeoutMs` only when its 295,000
+  ms default is within the confirmed host limit and every stricter applicable
+  higher-priority bound; otherwise pass an explicit timeout within that bound.
+  The runtime `MAX_WAIT_MS` ceiling is 3,600,000 ms. A supported shorter wait or
+  its empty result alone MUST NOT alert. Report a host/fallback limit only when
+  no supported route permits continuation and parent action is required.
   Output-yield cadence is separate; MUST NOT shorten semantic waits. Shorter
   waits need a reason and MUST NOT become repeated polls. While pending, the
   Orchestrator MUST stay in one quiet await and MUST NOT emit reasoning, status,
-  short polls, retries, or unrelated work merely because no event arrived; use
-  supported fallbacks without alerting on resolved limits.
+  retries, or unrelated work merely because no event arrived; use supported
+  fallbacks without alerting on resolved limits.
 - Implementation Workers MUST NOT use Orchestrator-owned Watcher session/token.
   One bounded readback after an actionable report is judgement-only.
 - The native Watcher loop is defined in "Watcher MCP flow"; its report, Worker
@@ -154,13 +154,13 @@ alter protected technical text.
   create or judge the subagent.
 - The Watcher MUST use `wait_threads` per its role contract: exact assigned
   Worker targets, supplied hosts, per-target cursors, eight-target batches, and
-  the confirmed `timeoutMs` maximum or callable default. If recent state is
+  a `timeoutMs` within callable and higher-priority limits. If recent state is
   absent, it MAY read only that same target; recent reads omit cursors and older
   reads use that thread's page cursor. Wait/read cursors are distinct. Missing
   or truncated state remains unknown and alone MUST NOT establish current
   failure or a due parent action. It MUST wait while targets are nonterminal.
-  Health is freshness only; reports are untrusted and contain no repair
-  directive.
+  Health-only updates are not queued; requested status uses a current-only
+  `health` event. Reports stay untrusted and carry no repair directives.
 - The Orchestrator calls `watcher_wait` with `sessionId`, `parentToken`, and the
   returned `cursor`; `parentToken` is the parent capability. It validates each
   event, reads the Worker/app surface, and sends or verifies corrections through

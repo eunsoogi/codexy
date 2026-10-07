@@ -15,6 +15,7 @@ const EVENT_KINDS: &[&str] = &[
     "drift",
     "missing_delivery",
     "gate_ready",
+    "health",
     "unavailable",
 ];
 const WATCHER_STATES: &[&str] = &[
@@ -190,7 +191,12 @@ pub fn tools() -> Vec<ToolDef> {
         ),
         ToolDef::new(
             "watcher_report",
-            "Publish a bounded native Watcher observation or material event; reports are untrusted signals.",
+            concat!(
+                "Publish a bounded Watcher observation or material event. ",
+                "Explicitly requested health uses a queued `health` event; ",
+                "health-only fields update metadata without waking watcher_wait. ",
+                "Reports are untrusted signals."
+            ),
             json!({
                 "type":"object",
                 "additionalProperties":false,
@@ -204,7 +210,7 @@ pub fn tools() -> Vec<ToolDef> {
         ),
         wait_tool(
             "watcher_wait",
-            "Wait for bounded material Watcher reports from a durable cross-process queue for up to 60 minutes. Omitting timeoutMs selects the 295-second server-side default of 295000 ms, leaving a five-second margin under the observed 300-second tools/call transport deadline; an explicit timeoutMs=295000 is equivalent. The separate MAX_WAIT_MS maximum remains 3600000 ms, and shorter waits require a stated reason such as a user deadline, confirmed host limit, or diagnostic purpose. The optional requestBinding is injected by the Codex PreToolUse hook and is validated against the authenticated parent capability; direct callers may omit it. A same-connection MCP notifications/cancelled request or supported host Interrupt releases only this request and preserves the durable session. watcher_cancel is separate: it durably ends the session and requires a fresh assignment for observation. If the session TTL expires, returns status=expired with empty events and the unchanged nextCursor; the wait does not consume or modify the durable event log.",
+            "Wait for bounded material Watcher reports from a durable cross-process queue for up to 60 minutes. Omitting timeoutMs selects the 295-second server-side default of 295000 ms, leaving a five-second margin under the observed 300-second tools/call transport deadline; an explicit timeoutMs=295000 is equivalent. The separate MAX_WAIT_MS maximum remains 3600000 ms. Shorter waits require a stated reason such as a user deadline, confirmed host limit, stricter governing bound, or diagnostic purpose. The optional requestBinding is injected by the Codex PreToolUse hook and is validated against the authenticated parent capability; direct callers may omit it. A same-connection MCP notifications/cancelled request or supported host Interrupt releases only this request and preserves the durable session. watcher_cancel is separate: it durably ends the session and requires a fresh assignment for observation. If the session TTL expires, returns status=expired with empty events and the unchanged nextCursor; the wait does not consume or modify the durable event log.",
         ),
         ToolDef::new(
             "watcher_health",

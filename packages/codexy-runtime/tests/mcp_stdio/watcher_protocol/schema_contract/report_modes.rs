@@ -10,6 +10,7 @@ fn parser_matches_report_enums_and_health_field_bounds() -> Result<(), Box<dyn s
         "drift",
         "missing_delivery",
         "gate_ready",
+        "health",
         "unavailable",
     ]
     .into_iter()
@@ -99,6 +100,75 @@ fn parser_matches_report_enums_and_health_field_bounds() -> Result<(), Box<dyn s
         json!({"target":target,"observedAtMs":-1}),
     )?;
     assert_error_contains(&negative_timestamp, "observedAtMs must be an integer");
+    Ok(())
+}
+
+#[test]
+fn requested_health_event_is_delivered_to_parent_waiters()
+-> Result<(), Box<dyn std::error::Error>> {
+    let state = tempfile::tempdir()?;
+    let mut client = super::super::watcher_client(state.path())?;
+    client.send(&json!({
+        "jsonrpc":"2.0","id":1,"method":"initialize","params":{}
+    }))?;
+    let opened = client.send(&json!({
+        "jsonrpc":"2.0","id":2,"method":"tools/call",
+        "params":{"name":"watcher_open","arguments":{
+            "assignmentId":"requested-health",
+            "parent":{"id":"parent-task"},
+            "watcher":{"id":"native-watcher"},
+            "targets":[{"threadId":"target-thread"}],
+            "ttlSeconds":60
+        }}
+    }))?;
+    let opened = super::super::tool_payload(&opened)?;
+    let session = opened["sessionId"].as_str().ok_or("session id")?;
+    let watcher_token = opened["watcherToken"].as_str().ok_or("watcher token")?;
+    let parent_token = opened["parentToken"].as_str().ok_or("parent token")?;
+    let target = json!({"threadId":"target-thread"});
+
+    let metadata = call_report(
+        &mut client,
+        3,
+        session,
+        watcher_token,
+        json!({"target":target,"watcherState":"running"}),
+    )?;
+    assert_status(&metadata, "health_updated")?;
+    let waiting = client.send(&json!({
+        "jsonrpc":"2.0","id":4,"method":"tools/call",
+        "params":{"name":"watcher_wait","arguments":{
+            "sessionId":session,"parentToken":parent_token,"cursor":0,"timeoutMs":0
+        }}
+    }))?;
+    assert_eq!(super::super::tool_payload(&waiting)?["status"], "timeout");
+
+    let report = call_report(
+        &mut client,
+        5,
+        session,
+        watcher_token,
+        json!({"event":{
+            "target":target,"eventId":"requested-health-event",
+            "kind":"health","summary":"Watcher is running"
+        },"watcherState":"running"}),
+    )?;
+    assert!(
+        report["error"]["message"].is_null(),
+        "requested status report was rejected: {}",
+        report["error"]["message"]
+    );
+    assert_status(&report, "accepted")?;
+    let delivered = client.send(&json!({
+        "jsonrpc":"2.0","id":6,"method":"tools/call",
+        "params":{"name":"watcher_wait","arguments":{
+            "sessionId":session,"parentToken":parent_token,"cursor":0,"timeoutMs":0
+        }}
+    }))?;
+    let delivered = super::super::tool_payload(&delivered)?;
+    assert_eq!(delivered["status"], "event");
+    assert_eq!(delivered["events"][0]["kind"], "health");
+    assert_eq!(delivered["events"][0]["summary"], "Watcher is running");
     Ok(())
 }
 

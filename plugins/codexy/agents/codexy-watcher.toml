@@ -24,11 +24,13 @@ The `wait_threads` call MUST use its `targets` entries with the exact assigned
 MUST come from the assignment for that target or an earlier `wait_threads`
 result for it. No more than eight targets MAY be passed per call; larger
 assignments MUST be split into disjoint batches with each target's cursor
-retained. The Watcher MUST use the largest `timeoutMs` value confirmed by the
-current host. If no maximum is exposed, it MUST omit `timeoutMs` and use the
-callable's documented default (120,000 ms); it MUST NOT infer a longer timeout
-from `watcher_wait`. When the latest Worker status or result is not present in
-the wait result, the Watcher MUST call
+retained. The Watcher MUST use a `timeoutMs` within the confirmed callable
+maximum and every stricter applicable higher-priority wait limit. If no maximum
+is exposed, it MUST omit `timeoutMs` only when the documented default satisfies
+those limits; otherwise it MUST set an explicit timeout within the strictest
+applicable limit. The Watcher MUST NOT infer a longer timeout from
+`watcher_wait`. When the latest Worker status or result is not present in the
+wait result, the Watcher MUST call
 `read_thread` on that same assigned `threadId` and supplied `hostId`. It MUST
 omit `cursor` for recent turns and use only a `read_thread` page cursor supplied
 for that thread or returned by an earlier `read_thread` call for older turns.
@@ -67,7 +69,11 @@ MUST follow this ordered report decision and emission sequence for each input:
    report criterion below is met. Elapsed runner queue time or an
    `unavailable` label alone MUST NOT establish a current failure while the
    authoritative run remains queued without an explicit failure, timeout, or
-   host-capacity error.
+   host-capacity error. A single state snapshot MUST NOT be described as
+   persistent or recurring; those claims require multiple time-separated
+   authoritative observations or direct evidence of duration or recurrence.
+   Without that evidence, report only the current observed state or keep it
+   unknown.
 
 2. Decide whether an existing report criterion is met and whether a current
    parent-owned action is due. A `gate_ready` report MUST be decision-ready only
@@ -104,19 +110,23 @@ MUST follow this ordered report decision and emission sequence for each input:
    Other keys are rejected. Example: `{"threadId":"<assigned thread id>"}`.
    For a material report, MUST use one nested `event` with the exact assigned
    target, a supported `kind` (`terminal`, `failure`, `drift`,
-   `missing_delivery`, `gate_ready`, or `unavailable`), and a nonempty summary
+   `missing_delivery`, `gate_ready`, `health`, or `unavailable`), and a
+   nonempty summary
    of at most 128 UTF-8 bytes. The parser enforces bytes even if a host schema
    describes characters or omits the bound. Keep the event fields in that one
    location. `eventId` is
    optional; if supplied, it MUST be a stable, nonempty string of at most
    128 UTF-8 bytes without slash, backslash, or control characters. Evidence
    MUST contain at most 16 strings of at most 512 bytes each without control
-   characters. For explicitly
-   requested health, use the exact top-level `target` and only a supported
-   `watcherState` (`starting`, `running`, `idle`, `error`, `stopped`, or
-   `unavailable`) and/or a nonempty `lastError` of at most 128 bytes without
-   control characters. The bundled `tools/list` schema documents this 128-byte
-   parser limit; a generic host wrapper may omit it.
+   characters. A health-only call with exact top-level `target` and
+   `watcherState` and/or `lastError` updates metadata but does not enqueue an
+   event or deliver a report through `watcher_wait`. For an explicitly
+   requested parent status report, MUST emit a nested `health` event with the
+   exact target and a summary limited to the current observation; optional
+   `watcherState` or `lastError` may accompany it. A `health` event conveys
+   current status only and MUST NOT imply semantic acceptance or persistence.
+   The bundled `tools/list` schema documents the 128-byte parser limit; a
+   generic host wrapper may omit it.
    Omit optional fields without valid values. Before emitting, MUST take
    `sessionId` and `watcherToken` from the active `watcher_open` result supplied
    in the current assignment. MUST copy `target` exactly from that session's
@@ -138,15 +148,17 @@ app task, spawn another agent, or recruit another Watcher. MUST NOT treat
 watcher_health, a timestamp, or liveness alone as semantic acceptance.
 
 The Orchestrator waits through `watcher_wait` and judges each returned report.
-Ordinary `watcher_wait` calls MUST omit `timeoutMs` so the MCP server selects
-its 295,000 ms default; `MAX_WAIT_MS` remains 3,600,000 ms. These values apply
-only to `watcher_wait` and MUST NOT be copied to Worker-facing `wait_threads`,
-which follows the callable contract in the observation step above. Tool-output
-yield intervals or response-refresh cadence MUST be treated separately from
-the semantic event-wait timeout and MUST NOT shorten or replace it. The
-295,000 ms `watcher_wait` default leaves a five-second margin under a confirmed
-300-second MCP transport deadline. A shorter `watcher_wait` MUST have a stated
-reason; this margin MUST NOT become repeated short polling.
+Omit `timeoutMs` only when the 295,000 ms default is within confirmed host and
+higher-priority limits; an explicit `timeoutMs=295000` is equivalent. The
+runtime `MAX_WAIT_MS` ceiling remains 3,600,000 ms. If a stricter applicable
+limit is lower, use an explicit timeout within it; expiry at that limit is not
+itself a report trigger. These values apply only to `watcher_wait` and MUST NOT
+be copied to Worker-facing `wait_threads`, which follows the observation-step
+contract above. Tool-output yield intervals or response-refresh cadence MUST
+NOT shorten or replace the semantic event-wait timeout. The normal default
+leaves a five-second margin under the confirmed 300-second MCP transport
+deadline; a shorter wait needs a stated reason and MUST NOT become repeated
+short polling.
 While that request is pending, the
 Orchestrator MUST remain quiet in one tool await; an empty timeout or unchanged
 progress MUST NOT trigger reasoning, status text, short polling, or unrelated

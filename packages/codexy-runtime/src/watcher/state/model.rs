@@ -4,12 +4,14 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+// Health metadata alone is not queued; this kind delivers an explicitly requested current status.
 pub(super) const EVENT_KINDS: &[&str] = &[
     "terminal",
     "failure",
     "drift",
     "missing_delivery",
     "gate_ready",
+    "health",
     "unavailable",
 ];
 

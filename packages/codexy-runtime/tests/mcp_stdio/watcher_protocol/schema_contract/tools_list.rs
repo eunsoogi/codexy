@@ -99,6 +99,7 @@ fn tools_list_advertises_the_watcher_report_runtime_contract()
             "drift",
             "missing_delivery",
             "gate_ready",
+            "health",
             "unavailable"
         ])
     );
