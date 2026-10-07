@@ -21,6 +21,7 @@ xdg_state_home=${XDG_STATE_HOME-}
 xdg_cache_home=${XDG_CACHE_HOME-}
 runtime_dir=${CODEXY_RUNTIME_DIR-}
 runtime_cache_dir=${CODEXY_RUNTIME_CACHE_DIR-}
+watcher_trace_dir=${CODEXY_WATCHER_TRACE_DIR-}
 runtime_platform=${CODEXY_RUNTIME_PLATFORM-}
 runtime_package_sha256=${CODEXY_RUNTIME_PACKAGE_SHA256-}
 runtime_git_repository=${CODEXY_RUNTIME_GIT_REPOSITORY-}
@@ -44,6 +45,9 @@ set -- \
 [ -n "$xdg_cache_home" ] && set -- "$@" "XDG_CACHE_HOME=$xdg_cache_home"
 [ -n "$runtime_dir" ] && set -- "$@" "CODEXY_RUNTIME_DIR=$runtime_dir"
 [ -n "$runtime_cache_dir" ] && set -- "$@" "CODEXY_RUNTIME_CACHE_DIR=$runtime_cache_dir"
+# Keep the opt-in diagnostic path limited to the Watcher adapter; all other hooks retain the old allowlist.
+[ "$entrypoint" != codexy_watcher_interrupt.py ] || [ -z "$watcher_trace_dir" ] ||
+	set -- "$@" "CODEXY_WATCHER_TRACE_DIR=$watcher_trace_dir"
 [ -n "$runtime_platform" ] && set -- "$@" "CODEXY_RUNTIME_PLATFORM=$runtime_platform"
 [ -n "$runtime_package_sha256" ] && set -- "$@" "CODEXY_RUNTIME_PACKAGE_SHA256=$runtime_package_sha256"
 [ -n "$runtime_git_repository" ] && set -- "$@" "CODEXY_RUNTIME_GIT_REPOSITORY=$runtime_git_repository"
