@@ -214,3 +214,32 @@ session active, and the long-wait tests distinguish `session_cancelled` from
 lifecycle behavior; they do not substitute for the host observations above or
 prove that a real user interruption was the sole cause in the raced host
 observation.
+
+## #1308 installed-agent instruction observation (2026-10-09 UTC)
+
+A bounded observation used installed Codexy 1.13.2 `codexy-watcher`, configured
+`gpt-6-luna/max` (effective settings unavailable), with the three candidate
+guidance files at `b2f66bfb328ed0f883c461dbd23b86b32115343b`. This is
+installed-agent use with supplied candidate guidance, not installation of a
+package built from that candidate.
+
+- Two `wait_threads` calls on one assigned target/turn advanced cursors
+  `84→86→88`. The first complete status/message needed no parent action and
+  caused no `read_thread`, `watcher_report`, or `watcher_health`.
+- The second result had a new failed-command marker but no result. One recent
+  `read_thread` without a cursor and with `includeOutputs=true` retrieved it;
+  the docs/lint lookup exited 2. This was an actual command failure, not a
+  production fault or an accepted blocker.
+- Totals were `wait_threads=2`, `read_thread=1`, `watcher_health=0`. Two later
+  `watcher_report` calls covered a required metadata-only update and requested
+  health delivery. `watcherState=running` returned `health_updated` without a
+  queued wake; a parent timeout at cursor `3` showed `queueDepth=3`, running
+  state, and an updated observation timestamp. The requested `health` event
+  arrived once at cursor `3→4`,
+  `eventId=evt-16aa302fcefc7d5ad66f566b1a9de0d3d329f74f2551fe1822933ed94e71513d`,
+  `observedAtMs=1791569576338` (`2026-10-09T18:12:56.338Z`).
+
+This sample did not cover contradictory or unbound results, retained terminal
+text omitted by an up-to-date cursor, or final reviewed-PR terminal delivery.
+The sample does not prove candidate-package installation, effective model
+settings, hidden inference, or token/billing cost.

@@ -151,20 +151,20 @@ alter protected technical text.
   then opens one scoped `watcher_open` session for the Orchestrator, Watcher,
   and exact Worker targets. The MCP session transports observations; it does not
   create or judge the subagent.
-- The Watcher MUST use `wait_threads` only on assigned targets within role limits.
-  It MUST keep complete, non-contradictory results tied to the exact target/turn and MUST skip redundant reads/reports when no criterion is due. Otherwise, it MUST read
-  that target only when evidence is missing, truncated, contradictory, or
-  unbound. Recent reads MUST omit cursors; older reads MUST use that target's page cursor,
-  never the wait cursor. Cursors prove neither semantic change nor freshness;
-  unknown stays unknown. Explicitly requested status MUST queue `health`; required metadata-only updates
-  MUST stay non-queued without new triggers or heartbeats; signals MUST stay untrusted and directive-free.
+- The Watcher MUST follow [result rules](../../../agents/codexy-watcher.toml).
+  Sufficient exact target/turn results MUST skip reads/reports when no criterion
+  is due. Missing, truncated, contradictory, or unbound evidence requires a
+  bounded read of that target. Explicit status MUST queue `health`; required
+  metadata-only updates MUST remain non-queued without new triggers or
+  heartbeats.
 - The Orchestrator MUST consume one `watcher_wait`: `status`, `sessionId`,
-  `nextCursor`, `events`; `health.status`, `watcherState`, `lastObservationAtMs`,
-  `lastError`; cancelled-only `cancellationReason`.
-  Events MUST contain exactly these seven fields: `eventId`, `sequence`, `kind`, `target`, `summary`, `observedAtMs`, and `evidence`.
-  MUST use assignment context for removed identity/transport; MUST call
-  `watcher_health` only for concrete unresolved diagnostics. Its timestamp is
-  not acceptance proof; MUST read Worker/app state only as needed.
+  `nextCursor`, `events`; `health.status`, `watcherState`,
+  `lastObservationAtMs`, `lastError`; cancelled-only `cancellationReason`.
+  Events MUST contain exactly these seven fields: `eventId`, `sequence`, `kind`,
+  `target`, `summary`, `observedAtMs`, and `evidence`. MUST use assignment
+  context for removed identity/transport; MUST call `watcher_health` only for
+  concrete unresolved diagnostics. Its timestamp is not acceptance proof; MUST
+  read Worker/app state only as needed.
 - Same-connection `notifications/cancelled` or packaged Watcher
   `PreToolUse`/`Interrupt`/`UserPromptSubmit` releases only that wait when the
   host delivers the event and preserves the durable session. `watcher_cancel`
