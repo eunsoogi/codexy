@@ -152,8 +152,8 @@ comparative cost claim follows.
 
 The issue-reported failure was an outer `functions.exec` default yield that
 returned `Script running with cell ID` while nested `watcher_wait` remained
-pending. The parent then retrieved the cell with `functions.wait`, resumed
-model reasoning, emitted commentary and performed unrelated cleanup observation. This
+pending. The parent then retrieved the cell with `functions.wait`, resumed model
+reasoning, emitted commentary and performed unrelated cleanup observation. This
 is the issue's reported baseline, not a replay performed for this change.
 
 On the verified host, no standalone top-level `watcher_wait` action was exposed.
@@ -210,7 +210,7 @@ and the `watcher_interrupt` tests are unchanged. PR #1313 changes the public
 event projection in `response.rs`; its cancellation-reason mapping is unchanged.
 The current protocol test verifies request cancellation leaves the durable
 session active, and the long-wait tests distinguish `session_cancelled` from
-`expired` while preserving cursor and queued data.
-These tests support runtime lifecycle behavior; they do not substitute for the
-host observations above or prove that a real user interruption was the sole
-cause in the raced host observation.
+`expired` while preserving cursor and queued data. These tests support runtime
+lifecycle behavior; they do not substitute for the host observations above or
+prove that a real user interruption was the sole cause in the raced host
+observation.
