@@ -120,13 +120,12 @@ alter protected technical text.
 - Native Watcher routes: only the assigned Watcher MAY call `wait_threads`; the
   Orchestrator MUST await `watcher_wait`. This verified host's quiet route nests
   `watcher_wait(timeoutMs=295000)` in one `functions.exec` with first-line
-  `// @exec: {"yield_time_ms":300000}`; two parent calls reached timeout.
-  Hidden inference and other hosts remain unverified. The Orchestrator MUST omit
+  `// @exec: {"yield_time_ms":300000}`; two parent calls reached timeout. Hidden
+  inference and other hosts remain unverified. The Orchestrator MUST omit
   `timeoutMs` only when 295,000 ms fits confirmed host/stricter limits;
   otherwise MUST pass an explicit supported value. `MAX_WAIT_MS` remains
-  3,600,000 ms.
-  Output-yield cadence MUST NOT shorten semantic waits. The Orchestrator MUST
-  follow [runtime-heartbeats](runtime-heartbeats.md) and
+  3,600,000 ms. Output-yield cadence MUST NOT shorten semantic waits. The
+  Orchestrator MUST follow [runtime-heartbeats](runtime-heartbeats.md) and
   [token-efficient coordination](token-efficient.md) for quiet waits, early
   yields, shorter/empty waits, and fallback handling.
 - Implementation Workers MUST NOT use Orchestrator-owned Watcher session/token.

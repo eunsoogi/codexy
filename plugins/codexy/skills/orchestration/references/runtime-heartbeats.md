@@ -29,9 +29,8 @@ scheduler.
   universal cap or synchronous fix. If the outer call yields early, the owner
   MUST preserve the active cell, session, cursor, and cancellation while marking
   synchronous waiting unproved; MUST NOT reissue the wait or call a later
-  retrieval a synchronous pass.
-  Only an actual `watcher_wait` result establishes semantic status and returns
-  a new cursor.
+  retrieval a synchronous pass. Only an actual `watcher_wait` result establishes
+  semantic status and returns a new cursor.
 - A shorter wait or its empty result alone MUST NOT alert. Any shorter wait MUST
   state a reason and MUST NOT become repeated polling. MUST report a
   host/fallback limit only when no supported route permits continuation and
