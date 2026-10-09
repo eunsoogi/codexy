@@ -103,10 +103,10 @@ MUST use this flow after compaction and before handoff:
    MUST use event-driven `wait_threads` with each target's latest cursor. This
    route covers a task's own non-Watcher target, including a native reviewer's
    terminal delivery, and MUST NOT authorize the Orchestrator to observe Worker
-   targets assigned to a native Watcher. Native Watcher waits, report routing,
-   host limits, quiet waits, interruption/cancellation, and fallback MUST follow
-   [parent-supervision.md](parent-supervision.md); only the assigned Watcher MAY
-   wait on its Worker/task targets, and the Orchestrator MUST await
+   targets assigned to a native Watcher. Result sufficiency, bounded evidence
+   reads, report routing, host limits, quiet waits, cancellation, and fallback
+   MUST follow [parent-supervision.md](parent-supervision.md); only the assigned
+   Watcher MAY wait on its Worker/task targets, and the Orchestrator MUST await
    `watcher_wait` without direct polling or unbounded `read_thread`. Workers
    MUST NOT open, wait on, report to, cancel, or reuse an Orchestrator-owned
    Watcher session or token. The Watcher MUST NOT create or own the Orchestrator
