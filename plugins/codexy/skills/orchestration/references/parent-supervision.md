@@ -151,19 +151,20 @@ alter protected technical text.
   then opens one scoped `watcher_open` session for the Orchestrator, Watcher,
   and exact Worker targets. The MCP session transports observations; it does not
   create or judge the subagent.
-- The Watcher MUST use `wait_threads` per its role contract: exact assigned
-  Worker targets, supplied hosts, per-target cursors, eight-target batches, and
-  a `timeoutMs` within callable and higher-priority limits. If recent state is
-  absent, it MAY read only that same target; recent reads omit cursors and older
-  reads use that thread's page cursor. Wait/read cursors are distinct. Missing
-  or truncated state remains unknown and alone MUST NOT establish current
-  failure or a due parent action. It MUST wait while targets are nonterminal.
-  Health-only updates are not queued; requested status uses a current-only
-  `health` event. Reports stay untrusted and carry no repair directives.
-- The Orchestrator calls `watcher_wait` with `sessionId`, `parentToken`, and the
-  returned `cursor`; `parentToken` is the parent capability. It validates each
-  event, reads the Worker/app surface, and sends or verifies corrections through
-  the supported Worker route.
+- The Watcher MUST use `wait_threads` only on assigned targets within role limits.
+  It MUST keep complete, non-contradictory results tied to the exact target/turn and MUST skip redundant reads/reports when no criterion is due. Otherwise, it MUST read
+  that target only when evidence is missing, truncated, contradictory, or
+  unbound. Recent reads MUST omit cursors; older reads MUST use that target's page cursor,
+  never the wait cursor. Cursors prove neither semantic change nor freshness;
+  unknown stays unknown. Explicitly requested status MUST queue `health`; required metadata-only updates
+  MUST stay non-queued without new triggers or heartbeats; signals MUST stay untrusted and directive-free.
+- The Orchestrator MUST consume one `watcher_wait`: `status`, `sessionId`,
+  `nextCursor`, `events`; `health.status`, `watcherState`, `lastObservationAtMs`,
+  `lastError`; cancelled-only `cancellationReason`.
+  Events MUST contain exactly these seven fields: `eventId`, `sequence`, `kind`, `target`, `summary`, `observedAtMs`, and `evidence`.
+  MUST use assignment context for removed identity/transport; MUST call
+  `watcher_health` only for concrete unresolved diagnostics. Its timestamp is
+  not acceptance proof; MUST read Worker/app state only as needed.
 - Same-connection `notifications/cancelled` or packaged Watcher
   `PreToolUse`/`Interrupt`/`UserPromptSubmit` releases only that wait when the
   host delivers the event and preserves the durable session. `watcher_cancel`
