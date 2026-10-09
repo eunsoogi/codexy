@@ -10,6 +10,8 @@ use std::fs::{self, OpenOptions};
 // Keep response-shape and byte-count cases separate from persistence tests.
 #[path = "watcher_response.rs"]
 pub(super) mod watcher_response;
+#[path = "watcher_projection.rs"]
+pub(super) mod watcher_projection;
 
 use self::watcher_response::assert_wait_health_fields;
 
@@ -66,6 +68,21 @@ fn approved_events_and_health_survive_restart_with_exact_pagination() -> TestRes
     assert_ne!(approved[0], approved[1]);
     assert_ne!(approved[0], approved[2]);
     assert_ne!(approved[1], approved[2]);
+    let event_log_path = state
+        .path()
+        .join("codexy-watcher")
+        .join(&session)
+        .join("events.jsonl");
+    let stored_event_log = fs::read(&event_log_path)?;
+    let stored_events = std::str::from_utf8(&stored_event_log)?
+        .lines()
+        .map(serde_json::from_str::<Value>)
+        .collect::<Result<Vec<_>, _>>()?;
+    assert_eq!(stored_events.len(), approved.len());
+    for (index, stored) in stored_events.iter().enumerate() {
+        assert_eq!(stored["eventId"], approved[index]);
+        assert_eq!(stored["fingerprint"].as_str().map(str::len), Some(64));
+    }
     drop(writer);
     drop(observer);
 
@@ -96,13 +113,23 @@ fn approved_events_and_health_survive_restart_with_exact_pagination() -> TestRes
         assert_eq!(event["kind"], "gate_ready");
         assert_eq!(event["evidence"], json!([format!("evidence-{input_id}")]));
         assert_eq!(event["observedAtMs"], input_id);
-        assert_eq!(event["fingerprint"].as_str().map(str::len), Some(64));
+        let expected = json!({
+            "eventId":approved[index],
+            "sequence":index + 1,
+            "kind":"gate_ready",
+            "target":{"threadId":"target"},
+            "summary":format!("message-{input_id}"),
+            "observedAtMs":input_id,
+            "evidence":[format!("evidence-{input_id}")]
+        });
+        watcher_response::assert_public_event(event, &expected);
     }
     let empty = tool_payload(&restarted.send(&wait_page(&session, &parent, &cursor, 12))?)?;
     assert_eq!(empty["status"], "timeout");
     assert_wait_health_fields(&empty);
     assert_eq!(empty["events"], json!([]));
     assert_eq!(empty["nextCursor"], "3");
+    assert_eq!(fs::read(&event_log_path)?, stored_event_log);
     Ok(())
 }
 
