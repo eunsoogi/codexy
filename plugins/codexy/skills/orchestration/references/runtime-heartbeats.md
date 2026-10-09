@@ -20,24 +20,21 @@ scheduler.
   observation obligation remains, continue only through its existing supported
   route using the latest returned cursor and actual host limits. MUST NOT use
   direct Worker polling or replace a native Watcher route.
-- The inspected host exposed `watcher_wait` only inside `functions.exec`, with
-  caller progress returned through `functions.wait`; a standalone top-level
-  action was not exposed. See the recorded
-  [host wait-path observation](../../../../../docs/watcher-test-coverage.md).
-  Each blocking `functions.wait` retrieval MUST follow its applicable per-call
-  limit (60 seconds in this session); that limits retrieval of the outer yielded
-  cell. A wrapper yield alone MUST NOT be treated as a semantic timeout or a
-  reason to shorten the inner `watcher_wait`. Any stricter applicable
-  higher-priority instruction or actual host limit also governs each blocking
-  call, including nested `watcher_wait`. This session's 60-second value MUST NOT
-  be generalized as a fixed limit for other hosts. A wrapper yield or return
-  while the cell remains active MUST NOT be treated as a semantic timeout,
-  event, cancellation, or completion. Continue retrieval only on that same
-  active cell; preserve the Worker owner, Watcher session, active goal, latest
-  returned cursor, and confirmed cancellation state. MUST NOT reopen or reissue
-  `watcher_wait`, advance the cursor, or emit unchanged status or reasoning just
-  because the wrapper yielded. Only an actual `watcher_wait` result establishes
+- The current host exposes `watcher_wait` inside `functions.exec`, with no
+  standalone top-level action. Its verified 295,000 ms route sets the first-line
+  `yield_time_ms=300000` pragma; two parent production waits returned timeout in
+  one call each. The results and limits are recorded in
+  [host wait-path coverage](../../../../../docs/watcher-test-coverage.md). The
+  earlier 60-second `functions.wait` observation is session-specific, not a
+  universal cap or synchronous fix. If the outer call yields early, the owner
+  MUST preserve the active cell, session, cursor, and cancellation while marking
+  synchronous waiting unproved; MUST NOT reissue the wait or call a later
+  retrieval a synchronous pass. Only an actual `watcher_wait` result establishes
   semantic status and returns a new cursor.
+- A shorter wait or its empty result alone MUST NOT alert. Any shorter wait MUST
+  state a reason and MUST NOT become repeated polling. MUST report a
+  host/fallback limit only when no supported route permits continuation and
+  parent action is required.
 - The recorded intervals were not a matched direct-versus-wrapper comparison,
   did not verify host interruption or resume, and leave per-path token and cost
   unknown. These instructions MUST NOT claim fewer no-change parent returns or
