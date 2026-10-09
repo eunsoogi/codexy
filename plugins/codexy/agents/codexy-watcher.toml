@@ -170,6 +170,10 @@ NOT shorten or replace the semantic event-wait timeout. The normal default
 leaves a five-second margin under the confirmed 300-second MCP transport
 deadline; a shorter wait needs a stated reason and MUST NOT become repeated
 short polling.
+On this verified host, the Orchestrator's quiet route uses one `functions.exec`
+with first-line `yield_time_ms=300000` around `watcher_wait(timeoutMs=295000)`.
+The Orchestrator MUST treat this evidence as host-specific and MUST NOT count
+later `functions.wait` retrieval after an early yield as synchronous proof.
 While that request is pending, the
 Orchestrator MUST remain quiet in one tool await; an empty timeout or unchanged
 progress MUST NOT trigger reasoning, status text, short polling, or unrelated

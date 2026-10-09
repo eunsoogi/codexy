@@ -116,7 +116,7 @@ checks preserves that observed load limitation; it does not repair production
 contention or prove burst fairness. No production timeout or Store lifetime is
 changed. Default correctness success must not be reported as stress success.
 
-## Host wait-path observation status
+## Historical 2026-10-07 host wait-path observations
 
 The 2026-10-07 host observation establishes only the callable route and event
 boundaries. The inspected task exposed no standalone top-level `watcher_wait`
@@ -145,3 +145,78 @@ remain unverified. No matched direct-versus-wrapper comparison was available
 because a standalone direct call was not exposed. Model/tier, cache state, and
 per-path token/cost categories remain unknown. No zero-idle-wakeup or
 comparative cost claim follows.
+
+## #1312 synchronous host-wait evidence (2026-10-10)
+
+### Route and material events
+
+The issue-reported failure was an outer `functions.exec` default yield that
+returned `Script running with cell ID` while nested `watcher_wait` remained
+pending. The parent then retrieved the cell with `functions.wait`, resumed
+model reasoning, emitted commentary and performed unrelated cleanup
+observation. This is the issue's reported baseline, not a replay performed for
+this change.
+
+On the verified host, no standalone top-level `watcher_wait` action was
+exposed. Each measured call used one `functions.exec` with first-line
+`// @exec: {"yield_time_ms":300000}` and one nested
+`watcher_wait(timeoutMs=295000)`. The MCP wait, the outer `functions.exec`
+yield, host scheduling and model-visible parent turn are separate boundaries.
+The Responses API's `async: true` metadata is not a Codex host control; see the
+[official async tool-calling
+guide](https://developers.openai.com/api/docs/guides/async-tool-calling).
+
+Parent-supplied sanitized receipts cover one production session with the same
+parent and assigned native Watcher identities. The session ID value was not
+included in the sanitized receipt. Each call returned one genuine event
+directly, with no intermediate cell response or duplicate/replay waiter:
+
+- Cursor `0` → `1`; `gate_ready` for the #1312 Worker; 32.7 s;
+  `observedAtMs=1791563583274`;
+  `eventId`:
+  `evt-cc5933d64b5b5ca0e4e5520ebb9e2b80b6e6ba60ac491de28ec09f2b2331314e`.
+- Cursor `1` → `2`; `unavailable` for the #1306 cleanup Worker; 140.7 s;
+  `observedAtMs=1791563784852`;
+  `eventId`:
+  `evt-79a5b0e6e9c172011f9d93654871a7771a461ad57df6aaa0dd8de7a900edbe35`.
+- Cursor `2` → `3`; `gate_ready` for the #1306 cleanup Worker; 228.3 s;
+  `observedAtMs=1791564069515`;
+  `eventId`:
+  `evt-7f64fcd33049a77136b617120443fc4aca6115bf98a6ff81c79996b31d36e77d`.
+
+The #1306 cleanup observations were delivered through the assigned Watcher;
+the parent did not use a direct `wait_threads` bypass in these calls.
+
+Two subsequent parent waits on cursor `3` returned `status=timeout`, empty
+events and unchanged cursor after 295.3 s and 296.1 s. The parent observed no
+intermediate wrapper response or host-visible model, tool, or commentary item
+before either final result. Hidden inference is not observable. These were
+production observations on installed Codexy 1.13.2 before these candidate
+instructions were installed; they verify the route on this host, not behavior
+on another host or hidden model state.
+
+### Interruption and runtime invariants
+
+On the same route at cursor `3`, the parent reports that the human user
+confirmed interruption and the wait returned `status=cancelled`, empty events
+and unchanged cursor `3`. A fresh `watcher_health` read remained active, with
+`waiting=false`; the durable session was not cancelled. A child terminal
+message arrived near the same time, and the outer call ended at 27.9 s. The
+available timeline cannot isolate the user's input as the sole cancellation
+cause. This records a real host cancellation result and preserved session, but
+does not claim exclusive causal instrumentation.
+
+Runtime tests continue to cover the distinct outcomes. The Rust runtime and
+system suites in [PR #1311](https://github.com/eunsoogi/codexy/pull/1311)
+passed on head
+`0633359204960673de7cc1cfe347263a6e02c41f`, merged as
+`6a0edb09affcb93db4e01f5c35270164d6d0a6c2`. Since that head,
+`request_binding.rs`, `wait.rs`, `watcher_protocol.rs`, `watcher_long_wait.rs`,
+and the `watcher_interrupt` tests are unchanged. PR #1313 changes the public
+event projection in `response.rs`; its cancellation-reason mapping is
+unchanged. The current protocol test verifies request cancellation leaves the
+durable session active, and the long-wait tests distinguish
+`session_cancelled` from `expired` while preserving cursor and queued data.
+These tests support runtime lifecycle behavior; they do not substitute for the
+host observations above or prove that a real user interruption was the sole
+cause in the raced host observation.

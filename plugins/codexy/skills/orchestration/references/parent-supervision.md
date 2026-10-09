@@ -118,17 +118,17 @@ alter protected technical text.
   elapsed time. A native reviewer's terminal delivery is a non-Watcher target;
   the Orchestrator MUST NOT observe Worker targets assigned to a native Watcher.
 - Native Watcher routes: only the assigned Watcher MAY call `wait_threads`; the
-  Orchestrator MUST await `watcher_wait`. Omit `timeoutMs` only when its 295,000
-  ms default is within the confirmed host limit and every stricter applicable
-  higher-priority bound; otherwise pass an explicit timeout within that bound.
-  The runtime `MAX_WAIT_MS` ceiling is 3,600,000 ms. A supported shorter wait or
-  its empty result alone MUST NOT alert. Report a host/fallback limit only when
-  no supported route permits continuation and parent action is required.
-  Output-yield cadence is separate; MUST NOT shorten semantic waits. Shorter
-  waits need a reason and MUST NOT become repeated polls. While pending, the
-  Orchestrator MUST stay in one quiet await and MUST NOT emit reasoning, status,
-  retries, or unrelated work merely because no event arrived; use supported
-  fallbacks without alerting on resolved limits.
+  Orchestrator MUST await `watcher_wait`. This verified host's quiet route nests
+  `watcher_wait(timeoutMs=295000)` in one `functions.exec` with first-line
+  `// @exec: {"yield_time_ms":300000}`; two parent calls reached timeout.
+  Hidden inference and other hosts remain unverified. The Orchestrator MUST omit
+  `timeoutMs` only when 295,000 ms fits confirmed host/stricter limits;
+  otherwise MUST pass an explicit supported value. `MAX_WAIT_MS` remains
+  3,600,000 ms.
+  Output-yield cadence MUST NOT shorten semantic waits. The Orchestrator MUST
+  follow [runtime-heartbeats](runtime-heartbeats.md) and
+  [token-efficient coordination](token-efficient.md) for quiet waits, early
+  yields, shorter/empty waits, and fallback handling.
 - Implementation Workers MUST NOT use Orchestrator-owned Watcher session/token.
   One bounded readback after an actionable report is judgement-only.
 - The native Watcher loop is defined in "Watcher MCP flow"; its report, Worker
