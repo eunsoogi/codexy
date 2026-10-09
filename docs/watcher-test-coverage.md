@@ -35,6 +35,42 @@ call; they MUST NOT assume every wait includes them or add an automatic health
 request after each wait. The expired-session test now checks `queueDepth`
 through the explicit health result.
 
+### Event projection and migration
+
+Every `watcher_wait.events[]` entry contains exactly `eventId`, `sequence`,
+`kind`, `target`, `summary`, `observedAtMs`, and `evidence`. The values and
+event order are preserved in full. The response no longer includes
+`fingerprint`; that value remains in durable event records for retry and
+explicit-ID conflict validation. Existing stored records replay without a schema
+migration or an identity change.
+
+Consumers that read `fingerprint` from wait events MUST migrate to the
+seven-field response contract and use the unchanged `eventId` for public event
+identity. This note describes the intended single-response change and does not
+claim that every external consumer has been audited for compatibility.
+
+The deterministic event test uses identical fixed inputs with one report and an
+eight-report page, including Korean and multibyte values. It measures payload
+JSON and the serialized MCP `result.content` bytes separately:
+
+| Reports | Baseline payload | Candidate payload | Payload reduction | Baseline MCP content | Candidate MCP content | MCP content reduction |
+| ------: | ---------------: | ----------------: | ----------------: | -------------------: | --------------------: | --------------------: |
+|       1 |              514 |               433 |             15.8% |                  601 |                   516 |                 14.1% |
+|       8 |             2852 |              2204 |             22.7% |                 3163 |                  2483 |                 21.5% |
+
+The baseline bytes were captured on the integrated #1306 base
+`6a0edb09affcb93db4e01f5c35270164d6d0a6c2` before the response projection. That
+characterization run intentionally failed the new seven-field assertion because
+the predecessor still returned `fingerprint`. The candidate measurement uses the
+same fixture and passed:
+
+```sh
+cargo test --locked --manifest-path packages/codexy-runtime/Cargo.toml --test suite_system system::mcp_stdio::watcher_deterministic::watcher_projection::event_wait_projection_preserves_full_values_and_reduces_payloads -- --exact --nocapture
+```
+
+These byte counts describe serialized response size only; they do not measure
+tokenizer behavior, model use, or billing.
+
 The deterministic stdio test uses fixed session IDs, targets, expiry, and health
 values for one-target and eight-target empty timeouts. It counts UTF-8 bytes in
 the returned payload JSON and in the serialized MCP `result.content` array

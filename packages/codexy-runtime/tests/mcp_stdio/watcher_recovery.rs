@@ -4,6 +4,9 @@
 use super::watcher_state::{initialize, open_session, tool_payload, watcher_client};
 use super::*;
 
+#[path = "watcher_storage_compat.rs"]
+mod storage_compat;
+
 fn event_path(state: &Path, session: &str) -> PathBuf {
     state
         .join("codexy-watcher")

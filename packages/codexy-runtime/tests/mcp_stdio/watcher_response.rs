@@ -35,6 +35,29 @@ pub(crate) fn assert_wait_health_fields(wait: &Value) {
     );
 }
 
+pub(crate) fn assert_public_event(event: &Value, expected: &Value) {
+    let mut keys = event
+        .as_object()
+        .expect("wait event must be an object")
+        .keys()
+        .cloned()
+        .collect::<Vec<_>>();
+    keys.sort();
+    assert_eq!(
+        keys,
+        vec![
+            "eventId".to_owned(),
+            "evidence".to_owned(),
+            "kind".to_owned(),
+            "observedAtMs".to_owned(),
+            "sequence".to_owned(),
+            "summary".to_owned(),
+            "target".to_owned()
+        ]
+    );
+    assert_eq!(event, expected);
+}
+
 fn measure_empty_wait_bytes(target_count: usize) -> Result<(usize, usize), Box<dyn std::error::Error>> {
     let state = tempfile::tempdir()?;
     let mut client = watcher_client(state.path())?;
