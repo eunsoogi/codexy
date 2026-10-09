@@ -1,9 +1,9 @@
 //! Exercises native interrupt delivery for an armed or active Watcher wait,
 //! preserving the session while scoping cancellation to its request binding.
 
-use super::*;
 use super::watcher_deterministic::watcher_response::assert_wait_health_fields;
 use super::watcher_state::{initialize, open_session, tool_payload, watcher_client};
+use super::*;
 use std::fs;
 use std::process::{Command, Stdio};
 use std::thread;
@@ -36,6 +36,47 @@ fn waiting_until_true(
     Err("waiter did not acquire wait.lock".into())
 }
 
+pub(super) fn arm_preclaim_request_interrupt(
+    state: &std::path::Path,
+) -> Result<(String, String, String, String), Box<dyn std::error::Error>> {
+    let mut setup = watcher_client(state)?;
+    initialize(&mut setup)?;
+    let (session, parent_token, watcher_token) = open_session(&mut setup, "armed-interrupt", 2)?;
+    drop(setup);
+
+    // Arm the marker before watcher_wait starts so priority checks exercise the pre-claim path.
+    let binding = hook_call(
+        state,
+        "--hook-pretool",
+        json!({
+            "hook_event_name": "PreToolUse",
+            "tool_name": "mcp__codexy-watcher__watcher_wait",
+            "session_id": "armed-main",
+            "turn_id": "armed-turn",
+            "tool_use_id": "armed-tool",
+            "tool_input": {"sessionId": session, "parentToken": parent_token}
+        }),
+    )?["requestBinding"]
+        .as_str()
+        .ok_or("missing request binding")?
+        .to_owned();
+
+    let wrong_turn = hook_call(
+        state,
+        "--hook-interrupt",
+        json!({"hook_event_name": "Interrupt", "session_id": "armed-main", "turn_id": "other-turn"}),
+    )?;
+    assert_eq!(wrong_turn["cancelled"], false);
+    let interrupt = hook_call(
+        state,
+        "--hook-interrupt",
+        json!({"hook_event_name": "Interrupt", "session_id": "armed-main", "turn_id": "armed-turn"}),
+    )?;
+    assert_eq!(interrupt["cancelled"], true);
+
+    Ok((session, parent_token, watcher_token, binding))
+}
+
 #[test]
 fn wait_schema_exposes_an_optional_host_interrupt_binding() -> TestResult {
     let state = tempfile::tempdir()?;
@@ -55,41 +96,10 @@ fn wait_schema_exposes_an_optional_host_interrupt_binding() -> TestResult {
 }
 
 #[test]
-fn armed_interrupt_is_preserved_until_wait_claims() -> TestResult {
+fn pending_event_wins_over_preclaim_request_interrupt() -> TestResult {
     let state = tempfile::tempdir()?;
-    let mut setup = watcher_client(state.path())?;
-    initialize(&mut setup)?;
-    let (session, parent_token, watcher_token) = open_session(&mut setup, "armed-interrupt", 2)?;
-    drop(setup);
-
-    let binding = hook_call(
-        state.path(),
-        "--hook-pretool",
-        json!({
-            "hook_event_name": "PreToolUse",
-            "tool_name": "mcp__codexy-watcher__watcher_wait",
-            "session_id": "armed-main",
-            "turn_id": "armed-turn",
-            "tool_use_id": "armed-tool",
-            "tool_input": {"sessionId": session, "parentToken": parent_token}
-        }),
-    )?["requestBinding"]
-        .as_str()
-        .ok_or("missing request binding")?
-        .to_owned();
-
-    let wrong_turn = hook_call(
-        state.path(),
-        "--hook-interrupt",
-        json!({"hook_event_name": "Interrupt", "session_id": "armed-main", "turn_id": "other-turn"}),
-    )?;
-    assert_eq!(wrong_turn["cancelled"], false);
-    let interrupt = hook_call(
-        state.path(),
-        "--hook-interrupt",
-        json!({"hook_event_name": "Interrupt", "session_id": "armed-main", "turn_id": "armed-turn"}),
-    )?;
-    assert_eq!(interrupt["cancelled"], true);
+    let (session, parent_token, watcher_token, binding) =
+        arm_preclaim_request_interrupt(state.path())?;
 
     let mut reader = watcher_client(state.path())?;
     initialize(&mut reader)?;
@@ -130,7 +140,10 @@ fn binding_path(state: &std::path::Path, nonce: &str) -> std::path::PathBuf {
         .join(format!("{nonce}.json"))
 }
 
-fn binding_record(state: &std::path::Path, nonce: &str) -> Result<Value, Box<dyn std::error::Error>> {
+fn binding_record(
+    state: &std::path::Path,
+    nonce: &str,
+) -> Result<Value, Box<dyn std::error::Error>> {
     let path = binding_path(state, nonce);
     Ok(serde_json::from_slice(&fs::read(path)?)?)
 }
