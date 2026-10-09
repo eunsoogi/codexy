@@ -4,7 +4,7 @@
   "version": "1.13.2",
   "bootstrap": {
     "selectedVersion": "1.13.2",
-    "candidateVersion": "1.13.2",
+    "candidateVersion": "1.13.3",
     "publicationWorkflow": ".github/workflows/bootstrap-package.yml"
   },
   "runtime": {
