@@ -170,9 +170,9 @@ Each normal JSON result contains only `status`, `sessionId`, decimal-string
 `lastObservationAtMs`, and `lastError`). Events contain exactly `eventId`,
 `sequence`, `kind`, `target`, `summary`, `observedAtMs`, and `evidence`; a
 `cancelled` result adds `cancellationReason=request_cancelled` or
-`cancellationReason=session_cancelled`. Use assignment context for removed
+`cancellationReason=session_cancelled`. MUST use assignment context for removed
 identity, target, and transport details; MUST NOT call `watcher_health` to
-reconstruct them after every wait. Fetch detailed health only for a concrete
+reconstruct them after every wait. MUST fetch detailed health only for a concrete
 unresolved session/observation diagnostic; its timestamp is not acceptance.
 Omit `timeoutMs` only when the 295,000 ms default is within confirmed host and
 higher-priority limits; an explicit `timeoutMs=295000` is equivalent. The
