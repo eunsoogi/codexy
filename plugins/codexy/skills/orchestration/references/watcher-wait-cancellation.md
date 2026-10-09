@@ -5,6 +5,13 @@ opaque, short-lived request record. A same-connection MCP cancellation or a
 packaged Watcher cancellation hook releases only that request; it preserves the
 durable Watcher session and its event log.
 
+When a JSON wait result is returned, `cancellationReason` appears only with
+`status=cancelled`: `request_cancelled` identifies the request-binding branch,
+and `session_cancelled` identifies durable `watcher_cancel`. The runtime derives
+this value from the branch that returned the result. A same-connection MCP
+`notifications/cancelled` response may be suppressed by the transport, so it
+does not produce a synthetic JSON result or cancellation reason.
+
 The `Interrupt` hook matches the exact host `session_id` and `turn_id`. The
 `UserPromptSubmit` hook matches the host session and cancels only when exactly
 one armed or active Watcher wait is bound to that session. If more than one

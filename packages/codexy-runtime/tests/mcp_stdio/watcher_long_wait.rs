@@ -1,4 +1,5 @@
 use super::*;
+use super::watcher_deterministic::watcher_response::assert_wait_health_fields;
 use super::watcher_state::{initialize, open_session, tool_payload, watcher_client};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -151,6 +152,9 @@ fn watcher_cancel_releases_a_long_wait_without_changing_the_cursor() -> TestResu
     let waited = tool_payload(&reader.read_frame()?)?;
     assert!(started.elapsed() < Duration::from_secs(2));
     assert_eq!(waited["status"], "cancelled");
+    assert_eq!(waited["cancellationReason"], "session_cancelled");
+    assert_wait_health_fields(&waited);
+    assert_eq!(waited["health"]["status"], "cancelled");
     assert_eq!(waited["nextCursor"], "0");
     assert_eq!(waited["events"], json!([]));
     Ok(())
@@ -186,6 +190,9 @@ fn ttl_expiry_preserves_queued_events_on_disk() -> TestResult {
     ))?)?;
     assert!(started.elapsed() < Duration::from_secs(3));
     assert_eq!(expired["status"], "expired");
+    assert_wait_health_fields(&expired);
+    assert_eq!(expired["health"]["status"], "expired");
+    assert!(expired.get("cancellationReason").is_none());
     assert_eq!(expired["nextCursor"], "1");
     assert_eq!(expired["events"], json!([]));
 
@@ -200,8 +207,17 @@ fn ttl_expiry_preserves_queued_events_on_disk() -> TestResult {
         0,
     ))?)?;
     assert_eq!(still_expired["status"], "expired");
+    assert_wait_health_fields(&still_expired);
+    assert_eq!(still_expired["health"]["status"], "expired");
     assert_eq!(still_expired["nextCursor"], "0");
     assert_eq!(still_expired["events"], json!([]));
-    assert_eq!(still_expired["health"]["queueDepth"], 1);
+    let health = tool_payload(&reconnect.send(&json!({
+        "jsonrpc": "2.0", "id": 6, "method": "tools/call",
+        "params": {"name": "watcher_health", "arguments": {
+            "sessionId": session, "token": parent_token
+        }}
+    }))?)?;
+    assert_eq!(health["status"], "expired");
+    assert_eq!(health["queueDepth"], 1);
     Ok(())
 }

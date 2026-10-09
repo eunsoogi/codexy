@@ -13,6 +13,58 @@ Existing cancellation, process-death, interrupted-write recovery, bounded
 quarantine recovery and unknown-data preservation tests remain in the default
 suite.
 
+## Single wait response envelope
+
+The normal `watcher_wait` JSON envelope contains only `status`, `sessionId`,
+`nextCursor`, `events`, and `health`. The health object always has exactly
+`status`, `watcherState`, `lastObservationAtMs`, and `lastError`, preserving
+null observation times, unknown states, and errors. The wait `status` retains
+its event, timeout, cancelled, and expired meanings; health `status` remains
+active, cancelled, or expired. A returned `cancelled` result additionally has
+`cancellationReason`: `request_cancelled` for request-binding interruption or
+`session_cancelled` for durable `watcher_cancel`. Same-connection MCP
+cancellation can suppress the JSON result and does not gain a synthetic success
+response.
+
+Wait health no longer repeats `actor`, `sessionId`, `assignmentId`, `parent`,
+`watcher`, `targets`, `generation`, `queueDepth`, `lastMaterialEventAtMs`,
+`waiting`, `transport`, `transportConnected`, `nativeStatus`, or `expiresAtMs`
+inside health. `watcher_health` retains those detailed diagnostics.
+In-repository callers that need them MUST make an explicit `watcher_health`
+call; they MUST NOT assume every wait includes them or add an automatic health
+request after each wait. The expired-session test now checks `queueDepth`
+through the explicit health result.
+
+The deterministic stdio test uses fixed session IDs, targets, expiry, and health
+values for one-target and eight-target empty timeouts. It counts UTF-8 bytes in
+the returned payload JSON and in the serialized MCP `result.content` array
+without normalizing removed fields:
+
+| Targets | Baseline payload | Baseline MCP content | Candidate payload | Candidate MCP content | Payload reduction |
+| ------: | ---------------: | -------------------: | ----------------: | --------------------: | ----------------: |
+|       1 |              514 |                  619 |               171 |                   226 |             66.7% |
+|       8 |              682 |                  815 |               171 |                   226 |             74.9% |
+
+The baseline was measured at `d11327aaae041830d7d6b4efa08ecc80b0ab31ca` before
+the production response edit with:
+
+```sh
+cargo test --locked --manifest-path packages/codexy-runtime/Cargo.toml --test suite_system system::mcp_stdio::watcher_deterministic::empty_wait_response_sizes_are_measured_for_one_and_eight_targets -- --exact --nocapture
+```
+
+That run passed and reported payload/content byte counts of `514/619` for one
+target and `682/815` for eight targets. The candidate uses the same real stdio
+fixture; its current command is:
+
+```sh
+cargo test --locked --manifest-path packages/codexy-runtime/Cargo.toml --test suite_system system::mcp_stdio::watcher_deterministic::watcher_response::empty_wait_response_sizes_are_measured_for_one_and_eight_targets -- --exact --nocapture
+```
+
+The baseline raw stdout was not saved as a separate file; the command, result,
+revision, and counts above are transcribed from the task's recorded baseline
+run. These byte counts describe the serialized response only. They do not
+measure tokenizer, model, or billing savings.
+
 The original three rounds of 32 reports competing with 40 health requests remain
 an explicitly ignored stress test. Run it separately with:
 

@@ -1,11 +1,13 @@
 //! Covers binding expiry, completion, and replay rules while an interrupted
 //! long wait releases only its own lock and leaves the session available.
 
-use super::{
-    LONG_WAIT_MS, TestResult, active_binding_until_true, binding_gone_until_true, binding_record,
-    hook_call, now_ms, waiting_until_true, write_binding_record,
-};
+use super::super::watcher_deterministic::watcher_response::assert_wait_health_fields;
 use super::super::watcher_state::{initialize, open_session, tool_payload, watcher_client};
+use super::{
+    LONG_WAIT_MS, TestResult, active_binding_until_true, arm_preclaim_request_interrupt,
+    binding_gone_until_true, binding_record, hook_call, now_ms, waiting_until_true,
+    write_binding_record,
+};
 use serde_json::json;
 use std::time::{Duration, Instant};
 
@@ -59,24 +61,30 @@ fn native_interrupt_releases_only_the_bound_wait_and_preserves_the_session() -> 
     write_binding_record(state.path(), &binding, &expired_active)?;
 
     let stale = hook_call(
-        state.path(), "--hook-interrupt",
+        state.path(),
+        "--hook-interrupt",
         json!({"hook_event_name": "Interrupt", "session_id": "wrong", "turn_id": "turn-1"}),
     )?;
     assert_eq!(stale["cancelled"], false);
     let wrong_turn = hook_call(
-        state.path(), "--hook-interrupt",
+        state.path(),
+        "--hook-interrupt",
         json!({"hook_event_name": "Interrupt", "session_id": "main-session", "turn_id": "wrong-turn"}),
     )?;
     assert_eq!(wrong_turn["cancelled"], false);
     let started = Instant::now();
     let interrupt = hook_call(
-        state.path(), "--hook-interrupt",
+        state.path(),
+        "--hook-interrupt",
         json!({"hook_event_name": "Interrupt", "session_id": "main-session", "turn_id": "turn-1"}),
     )?;
     assert_eq!(interrupt["cancelled"], true);
     let waited = tool_payload(&reader.read_frame()?)?;
     assert!(started.elapsed() < Duration::from_secs(2));
     assert_eq!(waited["status"], "cancelled");
+    assert_eq!(waited["cancellationReason"], "request_cancelled");
+    assert_wait_health_fields(&waited);
+    assert_eq!(waited["health"]["status"], "active");
     assert_eq!(waited["nextCursor"], "0");
     assert!(binding_gone_until_true(state.path(), &binding));
 
@@ -102,7 +110,8 @@ fn native_interrupt_releases_only_the_bound_wait_and_preserves_the_session() -> 
         "completed binding was replayable: {replay}"
     );
     let after_completion = hook_call(
-        state.path(), "--hook-interrupt",
+        state.path(),
+        "--hook-interrupt",
         json!({"hook_event_name": "Interrupt", "session_id": "main-session", "turn_id": "turn-1"}),
     )?;
     assert_eq!(after_completion["cancelled"], false);
@@ -198,5 +207,39 @@ fn expired_armed_binding_is_rejected_and_reclaimed() -> TestResult {
     )?;
     assert_eq!(interrupt["cancelled"], false);
     assert!(binding_gone_until_true(state.path(), &binding));
+    Ok(())
+}
+
+#[test]
+fn preclaim_interrupt_returns_request_cancelled_and_reusable_session() -> TestResult {
+    let state = tempfile::tempdir()?;
+    let (session, parent_token, _, binding) = arm_preclaim_request_interrupt(state.path())?;
+    let mut reader = watcher_client(state.path())?;
+    initialize(&mut reader)?;
+
+    let waited = tool_payload(&reader.send(&json!({
+        "jsonrpc": "2.0", "id": 4, "method": "tools/call",
+        "params": {"name": "watcher_wait", "arguments": {
+            "sessionId": session, "parentToken": parent_token,
+            "timeoutMs": LONG_WAIT_MS, "requestBinding": binding
+        }}
+    }))?)?;
+    assert_eq!(waited["status"], "cancelled");
+    assert_eq!(waited["cancellationReason"], "request_cancelled");
+    assert_eq!(waited["events"], json!([]));
+    assert_eq!(waited["nextCursor"], "0");
+    assert_wait_health_fields(&waited);
+    assert_eq!(waited["health"]["status"], "active");
+
+    let reused = tool_payload(&reader.send(&json!({
+        "jsonrpc": "2.0", "id": 5, "method": "tools/call",
+        "params": {"name": "watcher_wait", "arguments": {
+            "sessionId": session, "parentToken": parent_token,
+            "cursor": "0", "timeoutMs": 0
+        }}
+    }))?)?;
+    assert_eq!(reused["status"], "timeout");
+    assert_eq!(reused["nextCursor"], "0");
+    assert_eq!(reused["health"]["status"], "active");
     Ok(())
 }

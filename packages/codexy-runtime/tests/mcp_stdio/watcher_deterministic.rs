@@ -2,8 +2,16 @@
 //! numbers, health, and cursor pagination across process restarts.
 
 use super::*;
-use super::watcher_state::{initialize, open_session, tool_payload, watcher_client};
+use super::watcher_state::{
+    initialize, open_session, tool_payload, watcher_client,
+};
 use std::fs::{self, OpenOptions};
+
+// Keep response-shape and byte-count cases separate from persistence tests.
+#[path = "watcher_response.rs"]
+pub(super) mod watcher_response;
+
+use self::watcher_response::assert_wait_health_fields;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -68,6 +76,10 @@ fn approved_events_and_health_survive_restart_with_exact_pagination() -> TestRes
     for (id, length, next) in [(10, 2, "2"), (11, 1, "3")] {
         let page = tool_payload(&restarted.send(&wait_page(&session, &parent, &cursor, id))?)?;
         assert_eq!(page["status"], "event");
+        assert_eq!(page["sessionId"], session);
+        assert_eq!(page.as_object().expect("wait result object").len(), 5);
+        assert_wait_health_fields(&page);
+        assert_eq!(page["health"]["status"], "active");
         let page_events = page["events"].as_array().ok_or("missing events")?;
         assert_eq!(page_events.len(), length);
         assert_eq!(page["nextCursor"], next);
@@ -84,9 +96,11 @@ fn approved_events_and_health_survive_restart_with_exact_pagination() -> TestRes
         assert_eq!(event["kind"], "gate_ready");
         assert_eq!(event["evidence"], json!([format!("evidence-{input_id}")]));
         assert_eq!(event["observedAtMs"], input_id);
+        assert_eq!(event["fingerprint"].as_str().map(str::len), Some(64));
     }
     let empty = tool_payload(&restarted.send(&wait_page(&session, &parent, &cursor, 12))?)?;
     assert_eq!(empty["status"], "timeout");
+    assert_wait_health_fields(&empty);
     assert_eq!(empty["events"], json!([]));
     assert_eq!(empty["nextCursor"], "3");
     Ok(())

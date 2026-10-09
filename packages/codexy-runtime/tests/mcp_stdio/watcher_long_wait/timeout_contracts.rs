@@ -47,5 +47,10 @@ fn wait_schema_documents_the_long_poll_bounds() -> TestResult {
     assert!(description.contains("does not consume or modify the durable event log"));
     assert!(description.contains("notifications/cancelled"));
     assert!(description.contains("watcher_cancel is separate"));
+    assert!(description.contains("sessionId, decimal-string nextCursor, unchanged events"));
+    assert!(description.contains("lastObservationAtMs, and lastError"));
+    assert!(description.contains("cancellationReason=request_cancelled"));
+    assert!(description.contains("cancellationReason=session_cancelled"));
+    assert!(description.contains("A caller MUST call watcher_health only when detailed diagnostics are explicitly needed"));
     Ok(())
 }
