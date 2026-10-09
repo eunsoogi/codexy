@@ -213,7 +213,18 @@ pub fn tools() -> Vec<ToolDef> {
         ),
         wait_tool(
             "watcher_wait",
-            "Wait for bounded material Watcher reports from a durable cross-process queue for up to 60 minutes. Omitting timeoutMs selects the 295-second server-side default of 295000 ms, leaving a five-second margin under the observed 300-second tools/call transport deadline; an explicit timeoutMs=295000 is equivalent. The separate MAX_WAIT_MS maximum remains 3600000 ms. Shorter waits require a stated reason such as a user deadline, confirmed host limit, stricter governing bound, or diagnostic purpose. The optional requestBinding is injected by the Codex PreToolUse hook and is validated against the authenticated parent capability; direct callers may omit it. A same-connection MCP notifications/cancelled request or supported host Interrupt releases only this request and preserves the durable session. watcher_cancel is separate: it durably ends the session and requires a fresh assignment for observation. If the session TTL expires, returns status=expired with empty events and the unchanged nextCursor; the wait does not consume or modify the durable event log.",
+            concat!(
+                "Wait for bounded material Watcher reports from a durable cross-process queue for up to 60 minutes. ",
+                "Omitting timeoutMs selects the 295-second server-side default of 295000 ms, leaving a five-second margin under the observed 300-second tools/call transport deadline; an explicit timeoutMs=295000 is equivalent. ",
+                "The separate MAX_WAIT_MS maximum remains 3600000 ms. Shorter waits require a stated reason such as a user deadline, confirmed host limit, stricter governing bound, or diagnostic purpose. ",
+                "The optional requestBinding is injected by the Codex PreToolUse hook and is validated against the authenticated parent capability; direct callers may omit it. ",
+                "A same-connection MCP notifications/cancelled request or supported host Interrupt releases only this request and preserves the durable session. ",
+                "watcher_cancel is separate: it durably ends the session and requires a fresh assignment for observation. ",
+                "If the session TTL expires, returns status=expired with empty events and the unchanged nextCursor; the wait does not consume or modify the durable event log. ",
+                "A normal JSON result contains status, sessionId, decimal-string nextCursor, unchanged events, and health with exactly status, watcherState, lastObservationAtMs, and lastError. ",
+                "A returned cancelled result also contains cancellationReason=request_cancelled for request-binding interruption or cancellationReason=session_cancelled for durable watcher_cancel. ",
+                "A caller MUST call watcher_health only when detailed diagnostics are explicitly needed and MUST NOT call it automatically after each wait."
+            ),
         ),
         ToolDef::new(
             "watcher_health",

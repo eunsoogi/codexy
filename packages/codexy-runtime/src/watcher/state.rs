@@ -4,6 +4,7 @@ mod operations;
 mod recovery;
 #[allow(unreachable_pub)]
 pub mod request_binding;
+mod response;
 mod session_directories;
 mod validation;
 mod wait;
@@ -15,7 +16,7 @@ use anyhow::{Context as _, Result, bail};
 use serde_json::{Value, json};
 
 use self::model::{Event, Health, Session};
-use super::io::{ensure_dir, now_ms, read_json, reject_link, safe_id, state_root, write_json};
+use super::io::{ensure_dir, read_json, reject_link, safe_id, state_root, write_json};
 use super::lock::LockGuard;
 
 pub(super) use request_binding::{interrupt_request_binding, prepare_request_binding};
@@ -187,35 +188,11 @@ impl Store {
         Ok(events)
     }
 
-    fn wait_result(
-        &self,
-        status: &str,
-        cursor: u64,
-        session: &Session,
-        events: Vec<Event>,
-    ) -> Result<Value> {
-        let health = self.load_health(&session.session_id)?;
-        Ok(json!({
-            "status": status,
-            "sessionId": session.session_id,
-            "events": events,
-            "nextCursor": cursor.to_string(),
-            "health": self.health_value(session, &health, "parent")?,
-        }))
-    }
-
     fn health_value(&self, session: &Session, health: &Health, actor: &str) -> Result<Value> {
         let wait_path = self.session_dir(&session.session_id)?.join("wait.lock");
         let waiting = LockGuard::try_acquire(&wait_path)?.is_none();
-        let status = if session.status == "cancelled" {
-            "cancelled"
-        } else if now_ms() >= session.expires_at_ms {
-            "expired"
-        } else {
-            "active"
-        };
         Ok(json!({
-            "status": status,
+            "status": Self::health_status(session),
             "actor": actor,
             "sessionId": session.session_id,
             "assignmentId": session.assignment_id,

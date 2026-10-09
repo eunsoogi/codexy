@@ -12,6 +12,7 @@ use serde_json::{Value, json};
 
 use crate::mcp::CancellationToken;
 
+use super::response::WaitCancellationReason;
 use super::validation::{authorize, authorize_parent, check_cancelled};
 use super::{MAX_REPORTS, MAX_WAIT_MS, Store};
 use wait_trace::{
@@ -95,14 +96,20 @@ impl Store {
                 if session.status == "cancelled" {
                     return finish_wait(
                         &mut trace,
-                        self.wait_result("cancelled", cursor, &session, Vec::new()),
+                        self.wait_result(
+                            "cancelled",
+                            Some(WaitCancellationReason::Session),
+                            cursor,
+                            &session,
+                            Vec::new(),
+                        ),
                         "session_cancelled",
                     );
                 }
                 if crate::watcher::io::now_ms() >= session.expires_at_ms {
                     return finish_wait(
                         &mut trace,
-                        self.wait_result("expired", cursor, &session, Vec::new()),
+                        self.wait_result("expired", None, cursor, &session, Vec::new()),
                         "expired",
                     );
                 }
@@ -115,7 +122,7 @@ impl Store {
                     let next = pending.last().map_or(cursor, |event| event.sequence);
                     return finish_wait(
                         &mut trace,
-                        self.wait_result("event", next, &session, pending),
+                        self.wait_result("event", None, next, &session, pending),
                         "event",
                     );
                 }
@@ -124,7 +131,13 @@ impl Store {
                         Ok(true) => {
                             return finish_wait(
                                 &mut trace,
-                                self.wait_result("cancelled", cursor, &session, Vec::new()),
+                                self.wait_result(
+                                    "cancelled",
+                                    Some(WaitCancellationReason::RequestBinding),
+                                    cursor,
+                                    &session,
+                                    Vec::new(),
+                                ),
                                 "request_binding_cancelled",
                             );
                         }
@@ -138,7 +151,7 @@ impl Store {
                 if timeout_ms == 0 || Instant::now() >= deadline {
                     return finish_wait(
                         &mut trace,
-                        self.wait_result("timeout", cursor, &session, Vec::new()),
+                        self.wait_result("timeout", None, cursor, &session, Vec::new()),
                         "timeout",
                     );
                 }

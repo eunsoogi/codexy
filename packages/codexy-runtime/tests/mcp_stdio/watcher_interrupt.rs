@@ -2,6 +2,7 @@
 //! preserving the session while scoping cancellation to its request binding.
 
 use super::*;
+use super::watcher_deterministic::watcher_response::assert_wait_health_fields;
 use super::watcher_state::{initialize, open_session, tool_payload, watcher_client};
 use std::fs;
 use std::process::{Command, Stdio};
@@ -58,7 +59,7 @@ fn armed_interrupt_is_preserved_until_wait_claims() -> TestResult {
     let state = tempfile::tempdir()?;
     let mut setup = watcher_client(state.path())?;
     initialize(&mut setup)?;
-    let (session, parent_token, _) = open_session(&mut setup, "armed-interrupt", 2)?;
+    let (session, parent_token, watcher_token) = open_session(&mut setup, "armed-interrupt", 2)?;
     drop(setup);
 
     let binding = hook_call(
@@ -92,6 +93,18 @@ fn armed_interrupt_is_preserved_until_wait_claims() -> TestResult {
 
     let mut reader = watcher_client(state.path())?;
     initialize(&mut reader)?;
+    // A queued event wins over the already-written request marker by the existing wait priority.
+    let reported = reader.send(&json!({
+        "jsonrpc": "2.0", "id": 3, "method": "tools/call",
+        "params": {"name": "watcher_report", "arguments": {
+            "sessionId": session, "watcherToken": watcher_token,
+            "target": {"threadId": "target"}, "eventId": "event-before-wait",
+            "kind": "gate_ready", "summary": "queued before wait"
+        }}
+    }))?;
+    let reported = tool_payload(&reported)?;
+    assert_eq!(reported["status"], "accepted");
+    let event_id = reported["eventId"].clone();
     let waited = reader.send(&json!({
         "jsonrpc": "2.0", "id": 4, "method": "tools/call",
         "params": {"name": "watcher_wait", "arguments": {
@@ -99,8 +112,15 @@ fn armed_interrupt_is_preserved_until_wait_claims() -> TestResult {
             "timeoutMs": LONG_WAIT_MS, "requestBinding": binding
         }}
     }))?;
-    assert_eq!(tool_payload(&waited)?["status"], "cancelled");
-    assert_eq!(tool_payload(&waited)?["nextCursor"], "0");
+    let waited = tool_payload(&waited)?;
+    assert_eq!(waited["status"], "event");
+    assert_eq!(waited["events"].as_array().map(Vec::len), Some(1));
+    assert_eq!(waited["events"][0]["eventId"], event_id);
+    assert_eq!(waited["events"][0]["summary"], "queued before wait");
+    assert_eq!(waited["nextCursor"], "1");
+    assert!(waited.get("cancellationReason").is_none());
+    assert_wait_health_fields(&waited);
+    assert_eq!(waited["health"]["status"], "active");
     Ok(())
 }
 

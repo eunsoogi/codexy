@@ -153,6 +153,12 @@ app task, spawn another agent, or recruit another Watcher. MUST NOT treat
 watcher_health, a timestamp, or liveness alone as semantic acceptance.
 
 The Orchestrator waits through `watcher_wait` and judges each returned report.
+Each normal JSON result contains only `status`, `sessionId`, decimal-string
+`nextCursor`, unchanged `events`, and `health` (`status`, `watcherState`, `lastObservationAtMs`, and
+`lastError`). A returned `cancelled` result also identifies the branch with
+`cancellationReason=request_cancelled` or `cancellationReason=session_cancelled`.
+MUST use `watcher_health` only for explicitly requested detailed diagnostics;
+MUST NOT make it an automatic call after each wait.
 Omit `timeoutMs` only when the 295,000 ms default is within confirmed host and
 higher-priority limits; an explicit `timeoutMs=295000` is equivalent. The
 runtime `MAX_WAIT_MS` ceiling remains 3,600,000 ms. If a stricter applicable

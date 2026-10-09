@@ -5,6 +5,7 @@ use super::{
     LONG_WAIT_MS, TestResult, active_binding_until_true, binding_gone_until_true, binding_record,
     hook_call, now_ms, waiting_until_true, write_binding_record,
 };
+use super::super::watcher_deterministic::watcher_response::assert_wait_health_fields;
 use super::super::watcher_state::{initialize, open_session, tool_payload, watcher_client};
 use serde_json::json;
 use std::time::{Duration, Instant};
@@ -77,6 +78,9 @@ fn native_interrupt_releases_only_the_bound_wait_and_preserves_the_session() -> 
     let waited = tool_payload(&reader.read_frame()?)?;
     assert!(started.elapsed() < Duration::from_secs(2));
     assert_eq!(waited["status"], "cancelled");
+    assert_eq!(waited["cancellationReason"], "request_cancelled");
+    assert_wait_health_fields(&waited);
+    assert_eq!(waited["health"]["status"], "active");
     assert_eq!(waited["nextCursor"], "0");
     assert!(binding_gone_until_true(state.path(), &binding));
 
