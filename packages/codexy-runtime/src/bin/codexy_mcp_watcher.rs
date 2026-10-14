@@ -14,6 +14,9 @@ fn main() -> Result<()> {
         Some("--hook-user-prompt-submit") => {
             run_hook(codexy_runtime::watcher::run_user_prompt_submit_hook)
         }
+        Some("--hook-posttool-send-message") => {
+            run_hook(codexy_runtime::watcher::run_posttool_send_message_hook)
+        }
         Some(argument) => bail!("unsupported codexy-mcp-watcher argument: {argument}"),
     }
 }

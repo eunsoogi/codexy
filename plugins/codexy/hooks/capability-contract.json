@@ -1,6 +1,6 @@
 {
   "schema": "codexy.hooks.capability-contract.v3",
-  "contentDigest": "67e57cfb1fd13c43",
+  "contentDigest": "92d1397142a8c452",
   "concerns": [
     {
       "concernId": "thread-delivery",
@@ -53,6 +53,20 @@
       ],
       "diagnosticFamily": "CODEXY_WATCHER_INTERRUPT_",
       "contentDigest": "041204472a02970c"
+    },
+    {
+      "concernId": "watcher-message-cancellation",
+      "trigger": "^mcp__codex_app__send_message_to_thread$",
+      "events": ["PostToolUse"],
+      "inputContract": "codexy.hooks.watcher-message-cancellation.v1",
+      "preventive": false,
+      "entrypoints": [
+        "codexy-watcher-interrupt.sh",
+        "codexy-watcher-interrupt.cmd",
+        "codexy_watcher_interrupt.py"
+      ],
+      "diagnosticFamily": "CODEXY_WATCHER_MESSAGE_CANCELLATION_",
+      "contentDigest": "c458f1d2e24b01d0"
     }
   ]
 }

@@ -3,6 +3,7 @@
 from .component_core_hooks import (
     COMMAND_HOOKS as _CORE_COMMAND_HOOKS,
     LIFECYCLE_HOOKS as _CORE_LIFECYCLE_HOOKS,
+    POST_TOOL_HOOKS as _CORE_POST_TOOL_HOOKS,
     LAUNCHERS as CORE_HOOK_LAUNCHERS,
 )
 
@@ -16,11 +17,13 @@ def _hook(command: str, windows: str, timeout: int) -> dict[str, object]:
     }
 
 
-def _command_hook(matcher: str, launcher_stem: str, event: str) -> dict[str, object]:
+def _command_hook(
+    matcher: str, launcher_stem: str, event: str, timeout: int = 5
+) -> dict[str, object]:
     command = f'"${{PLUGIN_ROOT}}/hooks/{launcher_stem}'
     return {
         "matcher": matcher,
-        "hooks": [_hook(f'{command}.sh" {event}', f'{command}.cmd" {event}', 5)],
+        "hooks": [_hook(f'{command}.sh" {event}', f'{command}.cmd" {event}', timeout)],
     }
 
 
@@ -69,17 +72,22 @@ _TITLE_MATCHERS = (
 
 
 def _core_hooks() -> dict[str, object]:
-    """Build core event groups, keeping interrupt and prompt callbacks matcher-free."""
+    """Build core event groups with a separate completed-send cancellation hook."""
     command = lambda event: [
         _command_hook(matcher, stem, event) for matcher, stem in _CORE_COMMAND_HOOKS
     ]
     lifecycle = lambda event: [
         _command_hook(matcher, stem, event) for matcher, stem in _CORE_LIFECYCLE_HOOKS
     ]
+    post_tool = [
+        _command_hook(matcher, stem, "PostToolUse", 3)
+        for matcher, stem in _CORE_POST_TOOL_HOOKS
+    ]
     return {
         "hooks": {
             "PermissionRequest": command("PermissionRequest"),
             "PreToolUse": command("PreToolUse") + lifecycle("PreToolUse"),
+            "PostToolUse": post_tool,
             "Interrupt": [
                 _lifecycle_hook(stem, "Interrupt") for _, stem in _CORE_LIFECYCLE_HOOKS
             ],

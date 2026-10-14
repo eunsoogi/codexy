@@ -10,65 +10,12 @@ use serde_json::{Map, Value};
 use crate::paths::display_relative;
 use crate::validation::load_json;
 
+mod expected;
+
+use expected::{CONCERNS, EVENT_ORDER, Expected};
+
 const PATH: &str = "hooks/capability-contract.json";
 const SCHEMA: &str = "codexy.hooks.capability-contract.v3";
-const PREVENTIVE_EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
-const EVENT_ORDER: &[&str] = &[
-    "PermissionRequest",
-    "PreToolUse",
-    "Interrupt",
-    "UserPromptSubmit",
-];
-
-struct Expected {
-    id: &'static str,
-    trigger: &'static str,
-    input: &'static str,
-    launcher: &'static str,
-    diagnostic: &'static str,
-    events: &'static [&'static str],
-    preventive: bool,
-}
-
-// This ordered table drives schema checks, hook topology, entrypoints, and digests.
-const CONCERNS: &[Expected] = &[
-    Expected {
-        id: "thread-delivery",
-        trigger: "^(?:codex_app__|mcp__codex_app__)send_message_to_thread$",
-        input: "codexy.hooks.thread-delivery.v2",
-        launcher: "codexy-thread-delivery",
-        diagnostic: "CODEXY_THREAD_DELIVERY_",
-        events: PREVENTIVE_EVENTS,
-        preventive: true,
-    },
-    Expected {
-        id: "child-thread-creation",
-        trigger: "^(?:codex_app__|mcp__codex_app__)create_thread$",
-        input: "codexy.hooks.child-thread-creation.v1",
-        launcher: "codexy-child-thread-creation",
-        diagnostic: "CODEXY_CHILD_THREAD_CREATION_",
-        events: PREVENTIVE_EVENTS,
-        preventive: true,
-    },
-    Expected {
-        id: "subagent-ownership",
-        trigger: "^(?:(?:agents|multi_agent_v1)__)?spawn_agent$",
-        input: "codexy.hooks.subagent-ownership.v1",
-        launcher: "codexy-subagent-ownership",
-        diagnostic: "CODEXY_SUBAGENT_OWNERSHIP_",
-        events: PREVENTIVE_EVENTS,
-        preventive: true,
-    },
-    Expected {
-        id: "watcher-wait-interruption",
-        trigger: "^(?:mcp__[^ ]+__)?watcher_wait$",
-        input: "codexy.hooks.watcher-wait-interruption.v2",
-        launcher: "codexy-watcher-interrupt",
-        diagnostic: "CODEXY_WATCHER_INTERRUPT_",
-        events: &["PreToolUse", "Interrupt", "UserPromptSubmit"],
-        preventive: false,
-    },
-];
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

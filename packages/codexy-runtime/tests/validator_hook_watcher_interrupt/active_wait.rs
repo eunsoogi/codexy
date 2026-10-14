@@ -109,6 +109,7 @@ pub(super) struct TraceFixture {
     pub(super) runtime_dir: PathBuf,
     pub(super) session: String,
     pub(super) parent_token: String,
+    pub(super) watcher_token: String,
 }
 
 pub(super) fn trace_fixture() -> Result<TraceFixture, Box<dyn std::error::Error>> {
@@ -131,7 +132,8 @@ pub(super) fn trace_fixture() -> Result<TraceFixture, Box<dyn std::error::Error>
 
     let mut setup = watcher_state::watcher_client(&state)?;
     watcher_state::initialize(&mut setup)?;
-    let (session, parent_token, _) = watcher_state::open_session(&mut setup, "trace-boundary", 2)?;
+    let (session, parent_token, watcher_token) =
+        watcher_state::open_session(&mut setup, "trace-boundary", 2)?;
     drop(setup);
     Ok(TraceFixture {
         _temp: temp,
@@ -141,5 +143,6 @@ pub(super) fn trace_fixture() -> Result<TraceFixture, Box<dyn std::error::Error>
         runtime_dir,
         session,
         parent_token,
+        watcher_token,
     })
 }

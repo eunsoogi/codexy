@@ -1,13 +1,16 @@
 #!/bin/sh
 entrypoint=${1-}
 event=${2-}
-# Admit only packaged hook adapters and lifecycle events before building the child environment.
+# Admit packaged hook adapters and keep PostToolUse scoped to Watcher cancellation.
 case "$entrypoint" in
 codexy-child-thread-creation.py | codexy-subagent-ownership.py | codexy-thread-delivery.py | codexy_watcher_interrupt.py) ;;
 *) exit 1 ;;
 esac
 case "$event" in
 PreToolUse | PermissionRequest | Interrupt | UserPromptSubmit) ;;
+PostToolUse)
+	[ "$entrypoint" = codexy_watcher_interrupt.py ] || exit 1
+	;;
 *) exit 1 ;;
 esac
 

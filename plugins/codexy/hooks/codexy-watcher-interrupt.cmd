@@ -1,8 +1,8 @@
 @echo off
-@rem Ignore unrelated events because this wrapper handles only watcher wait lifecycle signals.
+@rem Ignore unrelated events because this wrapper handles Watcher wait cancellation callbacks only.
 setlocal EnableExtensions DisableDelayedExpansion
 set "event=%~1"
-if /I not "%event%"=="PreToolUse" if /I not "%event%"=="Interrupt" if /I not "%event%"=="UserPromptSubmit" exit /b 0
+if /I not "%event%"=="PreToolUse" if /I not "%event%"=="Interrupt" if /I not "%event%"=="UserPromptSubmit" if /I not "%event%"=="PostToolUse" exit /b 0
 set "runtime=%SystemRoot%\py.exe"
 @rem The Windows Python launcher is optional; absence must leave tool execution unaffected.
 if not exist "%runtime%" exit /b 0

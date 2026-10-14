@@ -81,6 +81,19 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "matcher": "^mcp__codex_app__send_message_to_thread$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-watcher-interrupt.sh\" PostToolUse",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-watcher-interrupt.cmd\" PostToolUse",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
     "Interrupt": [
       {
         "hooks": [

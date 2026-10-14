@@ -45,12 +45,14 @@ plugins = {
     "github": "codexy-github",
 }
 events = {
+    "PostToolUse": "postToolUse",
     "PreToolUse": "preToolUse",
     "PermissionRequest": "permissionRequest",
     "UserPromptSubmit": "userPromptSubmit",
     "Interrupt": "interrupt",
 }
 event_keys = {
+    "PostToolUse": "post_tool_use",
     "PreToolUse": "pre_tool_use",
     "PermissionRequest": "permission_request",
     "UserPromptSubmit": "user_prompt_submit",

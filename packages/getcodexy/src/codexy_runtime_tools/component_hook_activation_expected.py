@@ -12,8 +12,10 @@ from .component_hook_activation_host import HookStateError
 from .component_manifest import ComponentManifest
 
 
+# Keep manifest events aligned with the names and stable keys returned by hooks/list.
 _EVENT_LABELS = {
     "PreToolUse": "preToolUse",
+    "PostToolUse": "postToolUse",
     "PermissionRequest": "permissionRequest",
     "UserPromptSubmit": "userPromptSubmit",
     "SessionStart": "sessionStart",
@@ -22,6 +24,7 @@ _EVENT_LABELS = {
 }
 _EVENT_KEYS = {
     "PreToolUse": "pre_tool_use",
+    "PostToolUse": "post_tool_use",
     "PermissionRequest": "permission_request",
     "UserPromptSubmit": "user_prompt_submit",
     "SessionStart": "session_start",

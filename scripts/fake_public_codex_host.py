@@ -22,8 +22,10 @@ state.setdefault("versions", {})
 command = sys.argv[1:]
 
 
+# Keep the fake host's returned keys aligned with every packaged hook event.
 EVENTS = {
     "PreToolUse": ("preToolUse", "pre_tool_use"),
+    "PostToolUse": ("postToolUse", "post_tool_use"),
     "PermissionRequest": ("permissionRequest", "permission_request"),
     "UserPromptSubmit": ("userPromptSubmit", "user_prompt_submit"),
     "Interrupt": ("interrupt", "interrupt"),

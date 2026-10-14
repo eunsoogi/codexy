@@ -13,6 +13,7 @@ use crate::watcher::io::{
 };
 use crate::watcher::lock::LockGuard;
 
+mod posttool;
 mod support;
 
 use support::{
@@ -125,6 +126,12 @@ pub fn cancel_request_binding_for_user_prompt(payload: &Value) -> Result<bool> {
     let root = state_root()?;
     let main_session_id = text(payload.get("session_id"), "session_id", 256)?;
     cancel_unique_binding(&root, |binding| binding.main_session_id == main_session_id)
+}
+
+#[allow(unreachable_pub)]
+// Keep sender parsing separate from the shared request-binding registry.
+pub fn cancel_request_binding_for_posttool_message(payload: &Value) -> Result<bool> {
+    posttool::cancel_request_binding_for_posttool_message(payload)
 }
 
 fn cancel_unique_binding(root: &Path, matches: impl Fn(&Binding) -> bool) -> Result<bool> {
