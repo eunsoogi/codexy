@@ -27,6 +27,12 @@ mod trace;
 #[path = "validator_hook_watcher_interrupt/user_prompt_submit.rs"]
 mod user_prompt_submit;
 #[cfg(unix)]
+#[path = "validator_hook_watcher_interrupt/post_tool_use.rs"]
+mod post_tool_use;
+#[cfg(unix)]
+#[path = "validator_hook_watcher_interrupt/post_tool_use_cases.rs"]
+mod post_tool_use_cases;
+#[cfg(unix)]
 use mcp_client::McpClient;
 #[cfg(unix)]
 #[path = "mcp_stdio/watcher_state.rs"]

@@ -32,6 +32,24 @@ def handle_payload(event, payload, trace, input_event, runtime_lookup):
             lambda argument, body: _invoke(argument, body, trace, runtime_lookup),
         )
         return 0
+    if event == "PostToolUse":
+        tool_name = payload.get("tool_name")
+        tool_input = payload.get("tool_input")
+        tool_name_matched = tool_name == "mcp__codex_app__send_message_to_thread"
+        trace.record(
+            "hook_received",
+            eventKind=event,
+            toolNamePresent=isinstance(tool_name, str),
+            toolNameMatched=tool_name_matched,
+            toolInputPresent=isinstance(tool_input, dict),
+        )
+        if tool_name_matched and isinstance(tool_input, dict):
+            input_event(
+                event,
+                payload,
+                lambda argument, body: _invoke(argument, body, trace, runtime_lookup),
+            )
+        return 0
     tool_name = payload.get("tool_name")
     tool_input = payload.get("tool_input")
     tool_name_matched = isinstance(tool_name, str) and (

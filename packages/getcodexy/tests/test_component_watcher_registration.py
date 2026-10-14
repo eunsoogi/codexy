@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import unittest
 from unittest.mock import patch
@@ -9,7 +10,10 @@ from unittest.mock import patch
 from codexy_runtime_tools.component_inspection import doctor
 from codexy_runtime_tools.component_registration_catalog import _catalog_agent_files
 from codexy_runtime_tools.component_registration_files import _text
-from codexy_runtime_tools.component_registration_health import MANAGED_MARKERS
+from codexy_runtime_tools.component_registration_health import (
+    MANAGED_MARKERS,
+    valid_registration,
+)
 from codexy_runtime_tools.component_mcp_materialization import materialize_component_mcp
 from packages.getcodexy.tests.component_lifecycle_support import fixture
 from packages.getcodexy.tests.component_lifecycle_support import VERSION
@@ -29,6 +33,30 @@ def _write_core_roles(home, plugin) -> None:
 
 
 class WatcherRegistrationTests(unittest.TestCase):
+    def test_sender_posttool_hook_is_registered_as_its_own_exact_concern(self) -> None:
+        with fixture({"core"}) as state:
+            plugin = state.marketplace / "plugins/codexy"
+            materialize_component_mcp(plugin, "core", VERSION)
+            hooks = json.loads((plugin / "hooks/hooks.json").read_text())["hooks"]
+
+            self.assertEqual(
+                hooks["PostToolUse"],
+                [
+                    {
+                        "matcher": "^mcp__codex_app__send_message_to_thread$",
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": '"${PLUGIN_ROOT}/hooks/codexy-watcher-interrupt.sh" PostToolUse',
+                                "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-watcher-interrupt.cmd" PostToolUse',
+                                "timeout": 3,
+                            }
+                        ],
+                    }
+                ],
+            )
+            self.assertTrue(valid_registration(plugin, "core"))
+
     def test_doctor_rejects_a_missing_registered_watcher_bootstrap(self) -> None:
         with fixture({"core"}) as state:
             _register_core(state, state.marketplace / "plugins/codexy")

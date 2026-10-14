@@ -9,6 +9,10 @@ COMMAND_HOOKS = (
 )
 WATCHER_WAIT_HOOK = (r"^(?:mcp__[^ ]+__)?watcher_wait$", "codexy-watcher-interrupt")
 LIFECYCLE_HOOKS = (WATCHER_WAIT_HOOK,)
+# Observe only completed sender calls; failed sends cannot release recipient waits.
+POST_TOOL_HOOKS = (
+    (r"^mcp__codex_app__send_message_to_thread$", "codexy-watcher-interrupt"),
+)
 LAUNCHERS = tuple(
     f"hooks/{stem}.{extension}"
     for _, stem in (*COMMAND_HOOKS, *LIFECYCLE_HOOKS)

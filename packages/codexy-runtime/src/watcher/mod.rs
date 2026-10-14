@@ -34,3 +34,10 @@ pub fn run_user_prompt_submit_hook(payload: &Value) -> Result<Value> {
         "cancelled": state::request_binding::cancel_request_binding_for_user_prompt(payload)?,
     }))
 }
+
+// A successful sender callback releases only the uniquely bound recipient wait.
+pub fn run_posttool_send_message_hook(payload: &Value) -> Result<Value> {
+    Ok(json!({
+        "cancelled": state::request_binding::cancel_request_binding_for_posttool_message(payload)?,
+    }))
+}

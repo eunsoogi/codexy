@@ -11,7 +11,11 @@ acceptable or add a client retry policy.
 
 Existing cancellation, process-death, interrupted-write recovery, bounded
 quarantine recovery and unknown-data preservation tests remain in the default
-suite.
+suite. Sender `PostToolUse` tests require a successful exact send result with
+matching input and output `threadId`, cancel only a unique armed or active
+recipient binding, preserve session/cursor continuity, and cover failure,
+malformed, mismatch, missing, ambiguous and unrelated-binding cases. Actual app
+delivery remains a separate proof surface.
 
 ## Single wait response envelope
 

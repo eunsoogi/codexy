@@ -19,6 +19,17 @@ request matches, it fails closed. The hook forwards only `session_id`; prompt
 text does not reach the Watcher runtime. Direct Watcher callers remain
 binding-free.
 
+A successful cross-thread send may release the recipient wait through the
+sender's `PostToolUse`. The handler accepts only the exact
+`mcp__codex_app__send_message_to_thread` tool with outer `isError=false`, one
+text result containing a JSON `threadId`, and matching input and result
+recipients. It uses that recipient in the shared Watcher state root; sender
+`session_id` is not the binding key. Failed or malformed results, mismatches,
+missing bindings, and multiple live matches are no-ops. A unique armed or active
+match cancels only that request, preserving the durable session, queue, and
+cursor. Actual app proof must still identify the installed candidate and verify
+recipient handling and a later report through the same session.
+
 The host MUST deliver a matching hook for plugin cancellation to take effect. A
 delegated task message or outer wait termination may leave the native request
 active. Codex MUST keep host observations tied to the exact candidate and

@@ -11,12 +11,14 @@ from codexy_runtime_tools.updater import SyncResult
 
 def hook_rows(plugin: Path) -> list[dict[str, object]]:
     events = {
+        "PostToolUse": "postToolUse",
         "PreToolUse": "preToolUse",
         "PermissionRequest": "permissionRequest",
         "UserPromptSubmit": "userPromptSubmit",
         "Interrupt": "interrupt",
     }
     event_keys = {
+        "PostToolUse": "post_tool_use",
         "PreToolUse": "pre_tool_use",
         "PermissionRequest": "permission_request",
         "UserPromptSubmit": "user_prompt_submit",

@@ -141,7 +141,8 @@ fn lifecycle_quiet_fixture(
     for event in QUIET_EVENTS {
         events.remove(*event);
     }
-    events.insert("PostToolUse".to_string(), safe_post_tool_use_hook());
+    // PostToolUse now has an owned concern; Stop remains outside this manifest's contract.
+    events.insert("Stop".to_string(), unaccounted_event_hook("Stop"));
     std::fs::write(hooks_path, serde_json::to_string_pretty(&hooks)?)?;
     Ok(plugin_root)
 }
@@ -167,13 +168,13 @@ fn add_diagnostic_hook(
     Ok(())
 }
 
-fn safe_post_tool_use_hook() -> serde_json::Value {
+fn unaccounted_event_hook(event: &str) -> serde_json::Value {
     serde_json::json!([{
         "matcher": "*",
         "hooks": [{
             "type": "command",
-            "command": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.sh\" PostToolUse",
-            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-thread-delivery.cmd\" PostToolUse",
+            "command": format!("\"${{PLUGIN_ROOT}}/hooks/codexy-thread-delivery.sh\" {event}"),
+            "commandWindows": format!("\"${{PLUGIN_ROOT}}/hooks/codexy-thread-delivery.cmd\" {event}"),
             "timeout": 3
         }]
     }])

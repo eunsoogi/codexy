@@ -7,7 +7,7 @@ import time
 
 
 MAX_INPUT_BYTES = 1024 * 1024
-EVENTS = ("PreToolUse", "Interrupt", "UserPromptSubmit")
+EVENTS = ("PreToolUse", "Interrupt", "UserPromptSubmit", "PostToolUse")
 UNSUPPORTED_INTERPRETER_EXIT = 125
 TRACE_ENV = "CODEXY_WATCHER_TRACE_DIR"
 TRACE_FILE_LIMIT = 32
@@ -168,6 +168,10 @@ def handle_input_event(event, payload, invoke):
     if event == "Interrupt":
         # Preserve the complete host payload so runtime cancellation can match its session and turn.
         invoke("--hook-interrupt", payload)
+        return
+    if event == "PostToolUse":
+        # The runtime validates both recipient ids and the completed-send result.
+        invoke("--hook-posttool-send-message", payload)
         return
     # Prompt text is irrelevant to cancellation; scope the notification to the originating session.
     session_id = payload.get("session_id")

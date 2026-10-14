@@ -1,8 +1,8 @@
 #!/bin/sh
 event=${1-}
-# Limit this best-effort adapter to watcher wait lifecycle events.
+# Limit this best-effort adapter to Watcher wait lifecycle events and post-send delivery.
 case "$event" in
-PreToolUse | Interrupt | UserPromptSubmit) ;;
+PreToolUse | Interrupt | UserPromptSubmit | PostToolUse) ;;
 *) exit 0 ;;
 esac
 plugin_root=${PLUGIN_ROOT-}

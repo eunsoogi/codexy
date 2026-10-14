@@ -14,6 +14,7 @@ fn opt_in_trace_reports_hook_and_wait_boundaries_without_values() -> TestResult 
         runtime_dir,
         session,
         parent_token,
+        ..
     } = fixture;
     assert_eq!(std::fs::read_dir(&trace)?.count(), 0);
 
