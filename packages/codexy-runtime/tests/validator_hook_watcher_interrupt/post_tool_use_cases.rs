@@ -58,6 +58,47 @@ fn ambiguous_post_tool_recipient_is_a_no_op() -> TestResult {
     Ok(())
 }
 
+// JSON formatting whitespace belongs to the envelope, not to the extracted thread id.
+#[test]
+fn successful_post_tool_send_accepts_json_whitespace() -> TestResult {
+    let fixture = active_wait::trace_fixture()?;
+    let responses = [
+        (
+            "formatted-recipient",
+            "{\n  \"threadId\": \"formatted-recipient\"\n}\n",
+        ),
+        (
+            "newline-recipient",
+            "{\"threadId\":\"newline-recipient\"}\n",
+        ),
+    ];
+
+    for (index, (recipient, response_text)) in responses.into_iter().enumerate() {
+        let binding = arm_binding(
+            &fixture,
+            recipient,
+            "recipient-turn",
+            &format!("wait-whitespace-{index}"),
+        )?;
+        let mut payload = posttool_payload(recipient, recipient);
+        payload["tool_response"]["content"][0]["text"] = json!(response_text);
+        let output = super::run_hook(
+            &fixture.plugin,
+            &fixture.runtime_dir,
+            &fixture.state,
+            &fixture.runtime_dir,
+            "linux-x86_64",
+            "PostToolUse",
+            payload,
+        )?;
+
+        assert!(output.status.success(), "PostToolUse hook failed: {:?}", output.stderr);
+        assert!(output.stdout.is_empty(), "PostToolUse must not alter the sent message");
+        assert!(binding_cancelled(&fixture.state, &binding), "{recipient}");
+    }
+    Ok(())
+}
+
 // The package contract keeps sender cancellation separate from preventive delivery hooks.
 #[test]
 fn sender_posttool_concern_is_separate_and_non_preventive() -> TestResult {

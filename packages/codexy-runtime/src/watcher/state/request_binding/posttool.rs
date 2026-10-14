@@ -28,10 +28,14 @@ pub(super) fn cancel_request_binding_for_posttool_message(payload: &Value) -> an
     if content.len() != 1 || content[0].get("type").and_then(Value::as_str) != Some("text") {
         return Ok(false);
     }
-    let Ok(encoded_result) = text(content[0].get("text"), "tool response text", 16_384) else {
+    let Some(encoded_result) = content[0].get("text").and_then(Value::as_str) else {
         return Ok(false);
     };
-    let Ok(result) = serde_json::from_str::<Value>(&encoded_result) else {
+    // This field is JSON, so keep a size bound but let the JSON parser accept its whitespace.
+    if encoded_result.is_empty() || encoded_result.len() > 16_384 {
+        return Ok(false);
+    }
+    let Ok(result) = serde_json::from_str::<Value>(encoded_result) else {
         return Ok(false);
     };
     let Ok(output_recipient) = text(result.get("threadId"), "response threadId", 256) else {
