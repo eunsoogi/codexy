@@ -80,11 +80,20 @@ jobs:
         run: scripts/download-runtime-staging-artifact staging
       - name: Verify selected archive identity
         run: |
-          # Cross-check the receipt, run metadata, immutable archive bytes, and activated version before packaging.
+          # Cross-check the selected class contract, receipt, run metadata, archive bytes, and activated version before packaging.
           receipt=staging/runtime-staging-receipt.json
           test "$(git rev-parse HEAD)" = "$ACTIVATION_COMMIT"
-          test "$(jq -r .candidate.source.commit "$receipt")" = "$STAGING_SOURCE_COMMIT"
-          jq -e '(.candidate.source.tree | test("^[0-9a-f]{40}$")) and .candidate.classes.coreHandoff.manifest.path == "handoff-runtime.json" and (.candidate.classes.coreWatcherMcp.platforms | keys | length == 3)' "$receipt" >/dev/null
+          record=.agents/plugins/runtime-activation.json
+          jq -e --slurpfile selected "$record" --arg source "$STAGING_SOURCE_COMMIT" '
+            . as $receipt | $selected[0] as $selected
+            | ($receipt.candidate.source.commit == $source and ($receipt.candidate.source.tree | test("^[0-9a-f]{40}$")))
+            and ($receipt.candidate.source.tree == $selected.candidate.source.tree)
+            and ($receipt.candidate.classes.coreHandoff.manifest.path == "handoff-runtime.json" and $receipt.candidate.classes.coreHandoff.manifest.sha256 == $selected.candidate.classes.coreHandoff.manifest.sha256)
+            and (($receipt.candidate.classes | has("coreWatcherMcp")) == ($selected.candidate.classes | has("coreWatcherMcp")))
+            and (if ($receipt.candidate.classes | has("coreWatcherMcp")) then
+              ($receipt.candidate.classes.coreWatcherMcp.platforms | keys | length == 3) and ($receipt.candidate.classes.coreWatcherMcp.platforms["linux-x86_64"].sha256 == $selected.candidate.classes.coreWatcherMcp.platforms["linux-x86_64"].sha256)
+            else ($receipt.candidate.classes.coreHandoff == $selected.candidate.classes.coreHandoff and $receipt.candidate.classes.devtoolsMcp != null and $receipt.candidate.classes.devtoolsMcp == $selected.candidate.classes.devtoolsMcp) end)
+          ' "$receipt" >/dev/null
           test "$(jq -r .provenance.runId "$receipt")" = "$STAGING_RUN_ID"
           test "$(jq -r .candidate.artifact.stagingRunAttempt "$receipt")" = "$(jq -r .run_attempt staging/runtime-staging-run.json)"
           test "$(jq -r .provenance.runAttempt "$receipt")" = "$(jq -r .run_attempt staging/runtime-staging-run.json)"
@@ -97,12 +106,9 @@ jobs:
               plugins/codexy-devtools/.codex-plugin/plugin.json |
               jq -er .version
           )" = "$TARGET_VERSION"
-          record=.agents/plugins/runtime-activation.json
           test "$(jq -r .candidate.artifact.stagingRunId "$record")" = "$STAGING_RUN_ID"
           test "$(jq -r .candidate.source.commit "$record")" = "$STAGING_SOURCE_COMMIT"
           test "$(jq -r .artifact.sha256 "$record")" = "$(jq -r .artifact.sha256 "$receipt")"
-          test "$(jq -r .candidate.classes.coreHandoff.manifest.sha256 "$record")" = "$(jq -r .candidate.classes.coreHandoff.manifest.sha256 "$receipt")"
-          test "$(jq -r '.candidate.classes.coreWatcherMcp.platforms["linux-x86_64"].sha256' "$record")" = "$(jq -r '.candidate.classes.coreWatcherMcp.platforms["linux-x86_64"].sha256' "$receipt")"
           test ! -e plugins/codexy-devtools/runtime-candidate.json
       - name: Materialize and exercise activated final artifacts
         id: materialize_final_artifacts
