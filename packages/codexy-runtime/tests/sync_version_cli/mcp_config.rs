@@ -22,6 +22,34 @@ fn source_and_version_checks_accept_both_core_mcp_shapes() -> TestResult {
 }
 
 #[test]
+fn version_check_rejects_no_mcp_omission_for_a_non_core_manifest() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let (root, _) = super::selected_fixture(&temp, "mcp-non-core-omission")?;
+    let core_manifest = root.join("plugins/codexy/.codex-plugin/plugin.json");
+    let mut manifest: Value = serde_json::from_slice(&fs::read(&core_manifest)?)?;
+    // Package location alone must not extend the no-MCP exception to another plugin identity.
+    manifest["name"] = json!("third-party-mcp");
+    manifest
+        .as_object_mut()
+        .ok_or("core manifest object")?
+        .remove("mcpServers");
+    fs::remove_file(root.join("plugins/codexy/.mcp.json"))?;
+    fs::write(&core_manifest, serde_json::to_vec_pretty(&manifest)?)?;
+
+    let version = super::run_sync(&root, &["--check"])?;
+    assert!(
+        !version.status.success(),
+        "version check accepted the no-MCP omission for a non-core manifest"
+    );
+    assert!(
+        String::from_utf8_lossy(&version.stderr).contains("only valid for the codexy core manifest"),
+        "no-MCP rejection did not come from the core-identity guard: {}",
+        String::from_utf8_lossy(&version.stderr)
+    );
+    Ok(())
+}
+
+#[test]
 fn source_and_version_checks_reject_partial_or_invalid_core_declarations() -> TestResult {
     let temp = tempfile::tempdir()?;
     let (root, _) = super::selected_fixture(&temp, "mcp-invalid-core")?;

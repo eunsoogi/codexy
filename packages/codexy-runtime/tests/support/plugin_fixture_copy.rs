@@ -2,9 +2,12 @@
 //! read-only seed while copying declared mutable files as writable instances.
 
 use std::path::{Path, PathBuf};
-#[cfg(windows)]
-use std::sync::{Mutex, OnceLock};
 use std::time::Instant;
+#[cfg(windows)]
+use std::{
+    collections::HashMap,
+    sync::{Mutex, OnceLock},
+};
 
 #[cfg(windows)]
 struct PrivateSeed {
@@ -13,7 +16,7 @@ struct PrivateSeed {
 }
 
 #[cfg(windows)]
-static PRIVATE_SEED: OnceLock<Mutex<Option<PrivateSeed>>> = OnceLock::new();
+static PRIVATE_SEEDS: OnceLock<Mutex<HashMap<PathBuf, PrivateSeed>>> = OnceLock::new();
 
 #[derive(Default)]
 pub(crate) struct FixtureMaterialization {
@@ -91,19 +94,24 @@ fn materialization_profile(root: &Path) -> std::io::Result<FixtureMaterializatio
 
 #[cfg(windows)]
 fn private_seed(source: &Path) -> std::io::Result<PathBuf> {
-    let seeds = PRIVATE_SEED.get_or_init(|| Mutex::new(None));
+    let source = source.canonicalize()?;
+    let seeds = PRIVATE_SEEDS.get_or_init(|| Mutex::new(HashMap::new()));
     let mut seed = seeds
         .lock()
         .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "fixture seed lock"))?;
-    if seed.is_none() {
-        // The shared seed is immutable; each test receives its own writable destination tree.
+    if !seed.contains_key(&source) {
+        // Each plugin source needs its own immutable seed; test copies remain isolated and writable.
         let temp = tempfile::tempdir()?;
         let root = temp.path().join("codexy");
-        super::copy_dir(source, &root)?;
+        super::copy_dir(&source, &root)?;
         make_seed_readonly(&root)?;
-        *seed = Some(PrivateSeed { _temp: temp, root });
+        seed.insert(source.clone(), PrivateSeed { _temp: temp, root });
     }
-    Ok(seed.as_ref().expect("private fixture seed").root.clone())
+    Ok(seed
+        .get(&source)
+        .expect("private fixture seed")
+        .root
+        .clone())
 }
 
 #[cfg(any(test, windows))]

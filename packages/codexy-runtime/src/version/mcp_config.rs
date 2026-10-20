@@ -41,10 +41,19 @@ pub(super) fn check_at(root: &Path) -> Result<()> {
         );
     }
     match core_manifest.get("mcpServers") {
-        None => reject_present(
-            &root.join(CORE_PLUGIN).join(CORE_CONFIG),
-            "core MCP config is present without a manifest declaration",
-        )?,
+        None => {
+            if core_manifest.get("name").and_then(Value::as_str) != Some("codexy") {
+                bail!(
+                    "{} no-MCP omission is only valid for the codexy core manifest",
+                    display_relative(&core_manifest_path)
+                );
+            }
+            // Only the identified core package may intentionally omit both declarations.
+            reject_present(
+                &root.join(CORE_PLUGIN).join(CORE_CONFIG),
+                "core MCP config is present without a manifest declaration",
+            )?;
+        }
         Some(declaration) => {
             let plugin_root = root.join(CORE_PLUGIN);
             let configured = declaration

@@ -61,8 +61,17 @@ fn validator_rejects_partial_and_invalid_core_mcp_declarations() -> TestResult {
     // A declared legacy path cannot be accepted when its file is missing.
     fs::write(&manifest_path, &original)?;
     fs::remove_file(plugin_root.join(".mcp.json"))?;
-    let missing = super::validator(&plugin_root, "--check")?;
+    let missing = super::validator(&plugin_root, "--check-mcp")?;
     assert!(!missing.status.success(), "missing legacy core config unexpectedly passed");
+
+    // An invalid alias cannot disappear behind a healthy sibling Devtools package.
+    manifest = serde_json::from_slice(&original)?;
+    let object = manifest.as_object_mut().ok_or("core manifest object")?;
+    object.remove("mcpServers");
+    object.insert("mcp_servers".to_owned(), json!({"watcher": {}}));
+    write_manifest(&plugin_root, &manifest)?;
+    let alias = super::validator(&plugin_root, "--check-mcp")?;
+    assert!(!alias.status.success(), "invalid mcp_servers alias unexpectedly passed");
 
     // Null is malformed metadata, not an alternate spelling of no MCP servers.
     manifest = serde_json::from_slice(&original)?;
@@ -172,12 +181,21 @@ fn read_manifest(plugin_root: &Path) -> TestResult<Value> {
 }
 
 fn core_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
-    let (temp, plugin_root) = support::copy_plugin_fixture()?;
+    let mutable_files = [
+        Path::new(".codex-plugin/plugin.json"),
+        Path::new(".mcp.json"),
+        Path::new("mcp/codexy-mcp-watcher.sh"),
+    ];
+    // Windows fixture copies are read-only unless every test-mutated file is declared here.
+    let (temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&mutable_files)?;
     let devtools_root = plugin_root
         .parent()
         .ok_or("core fixture parent")?
         .join("codexy-devtools");
     support::copy_devtools_fixture_into_with_mutable_files(&devtools_root, &[])?;
+    // These copies must retain distinct package identities on Windows, where seed trees are reused.
+    assert_eq!(read_manifest(&plugin_root)?["name"], "codexy");
+    assert_eq!(read_manifest(&devtools_root)?["name"], "codexy-devtools");
     Ok((temp, plugin_root))
 }
 
