@@ -19,6 +19,8 @@ mod fixture_files;
 mod isolation;
 #[path = "sync_version_cli/mutation_preflight.rs"]
 mod mutation_preflight;
+#[path = "sync_version_cli/mcp_config.rs"]
+mod mcp_config;
 #[path = "sync_version_cli/readme.rs"]
 mod readme;
 #[path = "sync_version_cli/restoration.rs"]
