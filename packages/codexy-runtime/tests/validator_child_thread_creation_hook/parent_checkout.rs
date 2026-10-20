@@ -1,54 +1,52 @@
-//! Rejects linked or unverifiable parent checkouts while admitting the primary
-//! checkout and its ordinary subdirectories.
+//! Keeps linked-worktree parent checks in force for both supported Worker
+//! pairs while admitting the primary checkout and its ordinary subdirectories.
 
 use super::*;
 
 #[test]
 fn parent_worktree_is_rejected_before_worker_creation() -> TestResult {
     let (_temp, _primary, worktree) = git_worktree_fixture()?;
-    for tool in TOOLS {
-        for event in ["PreToolUse", "PermissionRequest"] {
-            let mut input = pre_tool_input_at(
-                tool,
-                json!({"model":"gpt-6-luna","thinking":"max"}),
-                &worktree,
-            );
-            input["hook_event_name"] = json!(event);
-            let output = hook_output(&input, event)?;
-            let reason = if event == "PermissionRequest" {
-                output["hookSpecificOutput"]["decision"]["message"].as_str()
-            } else {
-                output["hookSpecificOutput"]["permissionDecisionReason"].as_str()
+    for &(model, thinking) in worktree_environment::SUPPORTED_WORKER_PAIRS {
+        let tool_input =
+            worktree_environment::with_project_worktree(json!({"model":model,"thinking":thinking}));
+        for tool in TOOLS {
+            for event in ["PreToolUse", "PermissionRequest"] {
+                let mut input = pre_tool_input_at(tool, tool_input.clone(), &worktree);
+                input["hook_event_name"] = json!(event);
+                let output = hook_output(&input, event)?;
+                let reason = if event == "PermissionRequest" {
+                    output["hookSpecificOutput"]["decision"]["message"].as_str()
+                } else {
+                    output["hookSpecificOutput"]["permissionDecisionReason"].as_str()
+                }
+                .ok_or("worktree denial reason")?;
+                assert!(
+                    reason.contains("PARENT_WORKTREE"),
+                    "{model}/{thinking}: {reason}"
+                );
+                assert!(reason.contains("handoff_thread"), "{reason}");
+                assert!(reason.contains("primary checkout"), "{reason}");
             }
-            .ok_or("worktree denial reason")?;
-            assert!(reason.contains("PARENT_WORKTREE"), "{reason}");
-            assert!(reason.contains("handoff_thread"), "{reason}");
-            assert!(reason.contains("primary checkout"), "{reason}");
         }
     }
     Ok(())
 }
 
 #[test]
-fn verified_primary_checkout_admits_the_assigned_worker_pair() -> TestResult {
+fn verified_primary_checkout_admits_both_supported_worker_pairs() -> TestResult {
     let (_temp, primary, _worktree) = git_worktree_fixture()?;
-    for tool in TOOLS {
-        for event in ["PreToolUse", "PermissionRequest"] {
-            let mut input = pre_tool_input_at(
-                tool,
-                json!({
-                    "model":"gpt-6-luna",
-                    "thinking":"max",
-                    "target":{
-                        "type":"project",
-                        "projectId":"local-test-project",
-                        "environment":{"type":"worktree"}
-                    }
-                }),
-                &primary,
-            );
-            input["hook_event_name"] = json!(event);
-            assert!(!hook_denied_for(&input, event)?, "{event}: {input}");
+    for &(model, thinking) in worktree_environment::SUPPORTED_WORKER_PAIRS {
+        let tool_input =
+            worktree_environment::with_project_worktree(json!({"model":model,"thinking":thinking}));
+        for tool in TOOLS {
+            for event in ["PreToolUse", "PermissionRequest"] {
+                let mut input = pre_tool_input_at(tool, tool_input.clone(), &primary);
+                input["hook_event_name"] = json!(event);
+                assert!(
+                    !hook_denied_for(&input, event)?,
+                    "{model}/{thinking} {event}: {input}"
+                );
+            }
         }
     }
     Ok(())
@@ -87,11 +85,8 @@ fn primary_subdirectories_allow_but_nested_worktrees_are_rejected() -> TestResul
             );
 
             for cwd in [&nested_worktree, &nested_subdirectory] {
-                let mut input = pre_tool_input_at(
-                    tool,
-                    json!({"model":"gpt-6-luna","thinking":"max"}),
-                    cwd,
-                );
+                let mut input =
+                    pre_tool_input_at(tool, json!({"model":"gpt-6-luna","thinking":"max"}), cwd);
                 input["hook_event_name"] = json!(event);
                 let output = hook_output(&input, event)?;
                 let reason = if event == "PermissionRequest" {
