@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from packages.getcodexy.tests import component_distribution_support as support
+from . import component_capability_probe_timing_support as timing_support
 from packages.getcodexy.tests.component_probe_support import windows_argv
 
 
@@ -219,18 +220,16 @@ class CapabilityProcessTests(unittest.TestCase):
                 '@echo off\r\npy -3 -I -B "%~dp0pipe-holder.py"\r\n',
                 encoding="utf-8",
             )
+            failed_tree_kill = subprocess.CompletedProcess([], 1)
             try:
                 with patch.object(
-                    process.subprocess,
-                    "run",
-                    return_value=subprocess.CompletedProcess([], 1),
-                ):
-                    result = process._run(
-                        probe._argv(f'"{launcher}" PermissionRequest', root),
-                        root,
-                        "{}",
-                        os.environ | {"CODEXY_TIMEOUT_PID_FILE": str(pid_file)},
-                    )
+                    process.subprocess, "run", return_value=failed_tree_kill
+                ), timing_support.capture_process_stages(
+                    process
+                ) as stage_seconds:
+                    argv = probe._argv(f'"{launcher}" PermissionRequest', root)
+                    env = os.environ | {"CODEXY_TIMEOUT_PID_FILE": str(pid_file)}
+                    result = process._run(argv, root, "{}", env)
             finally:
                 if pid_file.is_file():
                     subprocess.run(
@@ -239,10 +238,13 @@ class CapabilityProcessTests(unittest.TestCase):
                         capture_output=True,
                         timeout=5,
                     )
-            self.assertEqual(result.category, "timeout")
-            self.assertIsNone(result.returncode)
-            self.assertLess(
-                result.elapsed_seconds, process._RUN_OPTIONS["timeout"] + 1.5
-            )
-            self.assertTrue(pid_file.is_file())
-            self.assertFalse(support.host_process_active(pid_file))
+            checks = {  # Evaluate each outcome eagerly; process lookup requires a PID.
+                "timeout category": result.category == "timeout",
+                "timeout return code": result.returncode is None,
+                "time": result.elapsed_seconds < process._RUN_OPTIONS["timeout"] + 1.5,
+                "holder PID recorded": (pid_recorded := pid_file.is_file()),
+                "holder process stopped": pid_recorded
+                and not support.host_process_active(pid_file),
+            }
+            evidence = (result.elapsed_seconds, checks, stage_seconds)
+            self.assertTrue(all(checks.values()), evidence)
