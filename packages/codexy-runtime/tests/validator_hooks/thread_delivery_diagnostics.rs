@@ -69,7 +69,10 @@ fn field_denials_are_actionable_on_authoritative_and_installed_hooks() -> TestRe
                     !reason.contains(ORCHESTRATOR_ID),
                     "{event} leaked Orchestrator id: {reason}"
                 );
-                assert!(!reason.contains(OTHER), "{event} leaked recipient id: {reason}");
+                assert!(
+                    !reason.contains(OTHER),
+                    "{event} leaked recipient id: {reason}"
+                );
             }
         }
     }
@@ -110,7 +113,14 @@ fn identity_and_present_routing_denials_are_distinct_and_non_leaking() -> TestRe
             assert!(missing_identity.contains("MUST NOT retry blindly"));
             assert!(!missing_identity.contains(ORCHESTRATOR_ID));
 
-            let legacy = run(root, event, &transcript, Some(WORKER_ID), input.clone(), None)?;
+            let legacy = run(
+                root,
+                event,
+                &transcript,
+                Some(WORKER_ID),
+                input.clone(),
+                None,
+            )?;
             assert_admitted(legacy, event, "legacy-metadata-absent")?;
 
             let malformed = reason(
@@ -155,6 +165,13 @@ fn authenticated_worker_and_orchestrator_routes_remain_admitted_for_both_events(
                     "gpt-6-luna",
                     "max",
                 ),
+                (
+                    "root_to_child",
+                    ORCHESTRATOR_ID,
+                    WORKER_ID,
+                    "gpt-6.1-sol",
+                    "medium",
+                ),
             ] {
                 let output = run(
                     plugin,
@@ -176,7 +193,10 @@ fn launcher_fallbacks_keep_the_same_runtime_diagnostic_on_both_platforms() -> Te
     let hooks = codexy_runtime::paths::repository_root().join("plugins/codexy/hooks");
     for launcher in ["codexy-thread-delivery.sh", "codexy-thread-delivery.cmd"] {
         let source = std::fs::read_to_string(hooks.join(launcher))?;
-        assert!(source.contains("CODEXY_THREAD_DELIVERY_RUNTIME"), "{launcher}");
+        assert!(
+            source.contains("CODEXY_THREAD_DELIVERY_RUNTIME"),
+            "{launcher}"
+        );
         assert!(source.contains("MUST NOT execute"), "{launcher}");
         assert!(source.contains("PermissionRequest"), "{launcher}");
         assert!(source.contains("PreToolUse"), "{launcher}");

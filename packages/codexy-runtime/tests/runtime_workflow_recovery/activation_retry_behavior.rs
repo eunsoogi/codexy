@@ -1,6 +1,8 @@
 use std::fs;
 #[path = "activation_retry_fixture.rs"]
 pub(super) mod fixture;
+#[path = "activation_retry_workflow_validation.rs"]
+mod workflow_validation;
 #[path = "activation_retry_receipt.rs"]
 pub(super) mod receipt;
 pub(super) use fixture::{Fixture, git, success};
