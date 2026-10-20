@@ -7,11 +7,7 @@ from pathlib import Path
 from typing import cast
 
 from .envelope import Diagnostic, Request
-from .thread_delivery import FIELDS, WORKER_ROUTE
-
-# Native ordinary-route creation is the assigned Worker route. The hook filename
-# remains a compatibility identifier for the installed concern and launcher.
-WORKER_MODEL, WORKER_THINKING = WORKER_ROUTE
+from .thread_delivery import FIELDS, WORKER_ROUTES
 
 
 def forbidden(request: Request) -> bool | Diagnostic:
@@ -28,9 +24,12 @@ def forbidden(request: Request) -> bool | Diagnostic:
     missing = [field for field in FIELDS if not _non_empty_string(data.get(field))]
     if missing:
         return _missing_field_diagnostic(missing)
-    if data["model"] != WORKER_MODEL:
+    model = cast(str, data["model"])
+    thinking = cast(str, data["thinking"])
+    # Match the shared allowlist as pairs, so a model cannot borrow another pair's setting.
+    if not any(model == route_model for route_model, _ in WORKER_ROUTES):
         return Diagnostic("UNSUPPORTED_MODEL", _UNSUPPORTED_MODEL)
-    if data["thinking"] != WORKER_THINKING:
+    if (model, thinking) not in WORKER_ROUTES:
         return Diagnostic("UNSUPPORTED_THINKING", _UNSUPPORTED_THINKING)
     return False
 
@@ -129,7 +128,11 @@ def _missing_field_diagnostic(fields: list[str]) -> Diagnostic:
     )
 
 
-_REQUIRED_ROUTE = "Worker creation requires model='gpt-6-luna' and thinking='max'"
+# Build denials from the delivery allowlist so their accepted pairs cannot drift.
+_REQUIRED_ROUTE = "Worker creation requires either " + " or ".join(
+    f"model='{model}' and thinking='{thinking}'"
+    for model, thinking in sorted(WORKER_ROUTES)
+)
 _APP_WORKTREE_REQUIRED = (
     "Worker creation requires the Codex app-managed project worktree in the original "
     "create_thread call: target.type='project', a non-empty projectId, and "
