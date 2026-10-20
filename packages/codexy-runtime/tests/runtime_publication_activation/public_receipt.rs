@@ -137,7 +137,7 @@ fn staged_candidate(include_watcher: bool) -> Value {
 }
 
 fn public_receipt_check_script() -> Result<String, Box<dyn std::error::Error>> {
-    // Run the workflow's actual receipt command so these fixtures test its public contract.
+    // Trace the workflow's exact predicate with captured output for platform-specific failures.
     let (_, _, workflow) = super::workflow("verify-version-release.yml")?;
     let steps = workflow["jobs"]["verify-public-release"]["steps"]
         .as_sequence()
@@ -164,7 +164,7 @@ fn public_receipt_check_script() -> Result<String, Box<dyn std::error::Error>> {
         .find(|(_, line)| line.contains("public-receipt.json") && line.contains(">/dev/null"))
         .map(|(index, _)| index)
         .ok_or("runtime class receipt check end")?;
-    Ok(lines[start..=end].join("\n"))
+    Ok(format!("set -x\n{}", lines[start..=end].join("\n").replace(" >/dev/null", "")))
 }
 
 fn run_public_receipt_check(
@@ -210,7 +210,7 @@ fn run_public_receipt_check(
 #[test]
 fn public_receipt_verifier_matches_the_optional_watcher_class() -> Result<(), Box<dyn std::error::Error>> {
     let legacy = run_public_receipt_check(true, true, None)?;
-    assert!(legacy.status.success(), "legacy Watcher receipt rejected: {}", String::from_utf8_lossy(&legacy.stderr));
+    assert!(legacy.status.success(), "legacy Watcher receipt rejected: stdout={}, stderr={}", String::from_utf8_lossy(&legacy.stdout), String::from_utf8_lossy(&legacy.stderr));
     let no_watcher = run_public_receipt_check(false, false, None)?;
     assert!(no_watcher.status.success(), "no-Watcher receipt rejected: {}", String::from_utf8_lossy(&no_watcher.stderr));
     for (selected, receipt, mutation, check) in [
