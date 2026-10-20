@@ -8,6 +8,8 @@ from .envelope import Diagnostic, Request
 
 FIELDS = ("model", "thinking")
 WORKER_ROUTE = ("gpt-6-luna", "max")
+# Keep WORKER_ROUTE as the creation default while admissions accept either assigned pair.
+WORKER_ROUTES = frozenset({WORKER_ROUTE, ("gpt-6.1-sol", "medium")})
 ORCHESTRATOR_ROUTE = ("gpt-6-astra", "medium")
 ROUTING_SCHEMA = "codexy.thread-delivery.v2"
 ROUTING_FIELDS = frozenset(
@@ -66,9 +68,18 @@ def forbidden(request: Request) -> bool | str | Diagnostic:
     if metadata["target_thread_id"] == metadata["sender_thread_id"]:
         return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
 
-    expected = ORCHESTRATOR_ROUTE if direction == "child_to_parent" else WORKER_ROUTE
-    if (metadata["target_model"], metadata["target_thinking"]) != expected:
-        return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
+    target_route = (
+        cast(str, metadata["target_model"]),
+        cast(str, metadata["target_thinking"]),
+    )
+    if direction == "child_to_parent":
+        expected = ORCHESTRATOR_ROUTE
+        if target_route != expected:
+            return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
+    else:
+        expected = target_route
+        if expected not in WORKER_ROUTES:
+            return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
     if data["model"] != expected[0]:
         return Diagnostic("UNSUPPORTED_MODEL", _unsupported_model(direction))
     if data["thinking"] != expected[1]:
@@ -133,7 +144,8 @@ _ORCHESTRATOR_ROUTE = (
     "threadId=<authenticated Orchestrator>, model='gpt-6-astra', and thinking='medium'"
 )
 _WORKER_ROUTE = (
-    "threadId=<authenticated Worker>, model='gpt-6-luna', and thinking='max'"
+    "threadId=<authenticated Worker> with either model='gpt-6-luna' and thinking='max' "
+    "or model='gpt-6.1-sol' and thinking='medium'"
 )
 _MISSING_IDENTITY = (
     "Missing authenticated session_id; MUST NOT retry blindly. "

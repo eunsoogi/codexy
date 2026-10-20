@@ -7,6 +7,13 @@ use super::thread_delivery_support::{
     CHILD, OTHER, PARENT, assert_admitted, assert_denied, input, plugin_roots, route, run,
 };
 use crate::support::TestResult;
+
+// Keep the separated recipient and delivery contract suites in the runnable aggregate.
+#[path = "thread_delivery_parent_route/delivery_contract.rs"]
+mod delivery_contract;
+#[path = "thread_delivery_parent_route/recipient_routes.rs"]
+mod recipient_routes;
+
 const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
 
 #[test]

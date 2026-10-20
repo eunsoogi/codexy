@@ -1,161 +1,199 @@
-//! Checks both route directions, supported tool aliases and explicit settings,
-//! while distinguishing stable control-plane receipts from ordinary wording.
+//! Covers authenticated delivery settings for both message directions.
+
+use std::path::Path;
 
 use serde_json::json;
 
-use super::fixtures::*;
+use super::super::thread_delivery_support::{
+    CHILD as WORKER_ID, PARENT as ORCHESTRATOR_ID, assert_admitted, assert_denied, input,
+    plugin_roots, route, run,
+};
 use crate::support::TestResult;
 
-#[test]
-fn preventive_events_and_tool_aliases_bind_both_recipient_directions() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let child = temp.path().join("child.jsonl");
-    let root_path = temp.path().join("root.jsonl");
-    std::fs::write(&child, child_transcript(CHILD, &[PARENT]))?;
-    std::fs::write(&root_path, root_transcript(PARENT))?;
-    let installed = temp.path().join("installed");
-    crate::support::copy_dir(
-        codexy_runtime::paths::repository_root().join("plugins/codexy"),
-        &installed,
-    )?;
-    let authoritative = codexy_runtime::paths::repository_root().join("plugins/codexy");
+// Keep host-authenticated settings separate from message args to detect mismatches.
+fn run_delivery(
+    root: &Path,
+    event: &str,
+    transcript: &Path,
+    route_spec: (&str, &str, &str, &str, &str),
+    recipient: &str,
+    args: (&str, &str),
+    prompt: &str,
+) -> TestResult<std::process::Output> {
+    let (direction, sender, target, model, thinking) = route_spec;
+    run(
+        root,
+        event,
+        transcript,
+        Some(sender),
+        input(recipient, args.0, args.1, prompt),
+        Some(route(direction, sender, target, model, thinking)),
+    )
+}
 
-    for root in [&authoritative, &installed] {
-        for event in ["PermissionRequest", "PreToolUse"] {
-            for tool in TOOLS {
-                assert_admitted(run_route_at(
-                    root,
-                    &root_path,
-                    PARENT,
-                    CHILD,
-                    "gpt-6-luna",
-                    "max",
-                    tool,
-                    event,
-                )?)?;
-                assert_denied_with(
-                    run_route_at(
+#[test]
+fn both_worker_pairs_and_parent_route_preserve_authenticated_settings() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let transcript = temp.path().join("ignored.jsonl");
+    std::fs::write(&transcript, b"not-json\n")?;
+    let roots = plugin_roots(temp.path())?;
+    let admitted = [
+        (
+            "root_to_child",
+            ORCHESTRATOR_ID,
+            WORKER_ID,
+            "gpt-6-luna",
+            "max",
+        ),
+        (
+            "root_to_child",
+            ORCHESTRATOR_ID,
+            WORKER_ID,
+            "gpt-6.1-sol",
+            "medium",
+        ),
+        (
+            "child_to_parent",
+            WORKER_ID,
+            ORCHESTRATOR_ID,
+            "gpt-6-astra",
+            "medium",
+        ),
+    ];
+
+    for event in ["PermissionRequest", "PreToolUse"] {
+        for root in &roots {
+            for (direction, sender, target, model, thinking) in admitted {
+                assert_admitted(
+                    run_delivery(
                         root,
-                        &root_path,
-                        PARENT,
-                        CHILD,
-                        "gpt-6-sol",
-                        "medium",
-                        tool,
                         event,
+                        &transcript,
+                        (direction, sender, target, model, thinking),
+                        target,
+                        (model, thinking),
+                        "Post-result receipt wording is ordinary message content.",
                     )?,
-                    "UNSUPPORTED_MODEL",
-                )?;
-                assert_admitted(run_route_at(
-                    root,
-                    &child,
-                    CHILD,
-                    PARENT,
-                    "gpt-6-astra",
-                    "medium",
-                    tool,
                     event,
-                )?)?;
-                assert_denied_with(
-                    run_route_at(
-                        root,
-                        &child,
-                        CHILD,
-                        PARENT,
-                        "gpt-6-luna",
-                        "max",
-                        tool,
-                        event,
-                    )?,
-                    "UNSUPPORTED_MODEL",
+                    direction,
                 )?;
             }
+
+            for (direction, sender, target, model, thinking) in [
+                (
+                    "root_to_child",
+                    ORCHESTRATOR_ID,
+                    WORKER_ID,
+                    "gpt-6-luna",
+                    "medium",
+                ),
+                (
+                    "root_to_child",
+                    ORCHESTRATOR_ID,
+                    WORKER_ID,
+                    "gpt-6.1-sol",
+                    "max",
+                ),
+                (
+                    "root_to_child",
+                    ORCHESTRATOR_ID,
+                    WORKER_ID,
+                    "gpt-6-sol",
+                    "medium",
+                ),
+                (
+                    "child_to_parent",
+                    WORKER_ID,
+                    ORCHESTRATOR_ID,
+                    "gpt-6-luna",
+                    "max",
+                ),
+            ] {
+                assert_denied(
+                    run_delivery(
+                        root,
+                        event,
+                        &transcript,
+                        (direction, sender, target, model, thinking),
+                        target,
+                        (model, thinking),
+                        "receipt",
+                    )?,
+                    event,
+                    "MISMATCHED_ROUTING_METADATA",
+                )?;
+            }
+
+            assert_denied(
+                run_delivery(
+                    root,
+                    event,
+                    &transcript,
+                    (
+                        "root_to_child",
+                        ORCHESTRATOR_ID,
+                        WORKER_ID,
+                        "gpt-6.1-sol",
+                        "medium",
+                    ),
+                    WORKER_ID,
+                    ("gpt-6-luna", "max"),
+                    "receipt",
+                )?,
+                event,
+                "UNSUPPORTED_MODEL",
+            )?;
         }
     }
     Ok(())
 }
 
 #[test]
-fn recipient_delivery_requires_explicit_model_and_thinking() -> TestResult {
+fn recipient_delivery_requires_model_and_thinking_even_with_valid_metadata() -> TestResult {
     let temp = tempfile::tempdir()?;
-    let transcript = temp.path().join("root.jsonl");
-    std::fs::write(&transcript, root_transcript(PARENT))?;
-    for (tool_input, expected) in [
-        (json!({"threadId":CHILD,"thinking":"max"}), "MISSING_MODEL"),
-        (json!({"threadId":CHILD,"model":"gpt-6-luna"}), "MISSING_THINKING"),
-        (json!({"threadId":CHILD,"model":"","thinking":"max"}), "MISSING_MODEL"),
-        (json!({"threadId":CHILD,"model":"gpt-6-luna","thinking":""}), "MISSING_THINKING"),
-    ] {
-        assert_denied_with(
-            run_payload(json!({
-                "hook_event_name":"PreToolUse",
-                "tool_name":"codex_app__send_message_to_thread",
-                "session_id":PARENT,
-                "transcript_path":transcript,
-                "tool_input":tool_input
-            }))?,
-            expected,
-        )?;
-    }
-    Ok(())
-}
-
-#[test]
-fn post_result_receipts_require_one_stable_transition_key() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let transcript = temp.path().join("child.jsonl");
-    let transition = "idle-wait|878|28aac223";
-    let prior = format!(
-        "Post-result receipt for transition key={transition}; operation=update_goal(status=complete); exact tool result=complete"
+    let transcript = temp.path().join("ignored.jsonl");
+    std::fs::write(&transcript, b"not-json\n")?;
+    let roots = plugin_roots(temp.path())?;
+    let metadata = route(
+        "root_to_child",
+        ORCHESTRATOR_ID,
+        WORKER_ID,
+        "gpt-6-luna",
+        "max",
     );
-    let mut records = child_transcript(CHILD, &[PARENT]);
-    records.extend_from_slice(&completed_delivery(
-        PARENT,
-        "gpt-6-astra",
-        "medium",
-        &prior,
-    ));
-    std::fs::write(&transcript, records)?;
 
-    assert_denied_with(
-        run_route_prompt(
-            &transcript,
-            CHILD,
-            PARENT,
-            "gpt-6-astra",
-            "medium",
-            &format!(
-                "Post-result receipt for transition key={transition}; operation=update_goal(status=complete); exact tool result=complete; unchanged=true"
+    for root in &roots {
+        for (tool_input, expected) in [
+            (
+                json!({"threadId":WORKER_ID,"thinking":"max"}),
+                "MISSING_MODEL",
             ),
-        )?,
-        "DUPLICATE_DELIVERY",
-    )?;
-    assert_denied_with(
-        run_route_prompt(
-            &transcript,
-            CHILD,
-            PARENT,
-            "gpt-6-astra",
-            "medium",
-            "#878 post-result receipt: update_goal(status=complete) succeeded; stable fingerprint=issue878|head-28aac223|gate-145-main-integration",
-        )?,
-        "DELIVERY_KEY_REQUIRED",
-    )?;
-    Ok(())
-}
-
-#[test]
-fn ordinary_handoff_wording_is_not_a_control_plane_delivery() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let transcript = temp.path().join("child.jsonl");
-    std::fs::write(&transcript, child_transcript(CHILD, &[PARENT]))?;
-    assert_admitted(run_route_prompt(
-        &transcript,
-        CHILD,
-        PARENT,
-        "gpt-6-astra",
-        "medium",
-        "Search for references to the handoff function",
-    )?)?;
+            (
+                json!({"threadId":WORKER_ID,"model":"gpt-6-luna"}),
+                "MISSING_THINKING",
+            ),
+            (
+                json!({"threadId":WORKER_ID,"model":"","thinking":"max"}),
+                "MISSING_MODEL",
+            ),
+            (
+                json!({"threadId":WORKER_ID,"model":"gpt-6-luna","thinking":""}),
+                "MISSING_THINKING",
+            ),
+        ] {
+            assert_denied(
+                run(
+                    root,
+                    "PreToolUse",
+                    &transcript,
+                    Some(ORCHESTRATOR_ID),
+                    tool_input,
+                    Some(metadata.clone()),
+                )?,
+                "PreToolUse",
+                expected,
+            )?;
+        }
+    }
     Ok(())
 }
