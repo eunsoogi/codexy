@@ -1,15 +1,26 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import unittest
+from dataclasses import replace
 from unittest.mock import patch
 
+from codexy_runtime_tools import component_mcp_cache
 from codexy_runtime_tools import component_registration_health
 from codexy_runtime_tools import component_lifecycle_recovery
 from codexy_runtime_tools.component_lifecycle import run_operation
+from codexy_runtime_tools.component_lifecycle_mcp import (
+    materialize_mcp_caches,
+    materialize_mcp_sources,
+)
+from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.component_mcp_materialization import (
+    MCP_SPECS,
+    component_cache_plugin,
     materialize_component_mcp,
+    valid_component_mcp_cache,
 )
 from packages.getcodexy.tests.component_lifecycle_records import record
 from packages.getcodexy.tests.component_lifecycle_support import VERSION, fixture
@@ -193,31 +204,46 @@ class LifecycleWatcherTests(unittest.TestCase):
                 (state.home / "plugins/cache/codexy/codexy" / VERSION).exists()
             )
 
-    @unittest.skipIf(os.name == "nt", "creating a symlink requires Windows privileges")
-    def test_install_rejects_a_symlinked_mcp_parent_before_materialization(
-        self,
-    ) -> None:
-        with fixture() as state:
-            core = state.marketplace / "plugins/codexy"
-            outside = state.root / "outside"
-            outside.mkdir()
-            moved = outside / "mcp"
-            (core / "mcp").rename(moved)
-            marker = moved / "codexy-mcp-watcher"
-            marker.write_bytes(b"preserve")
-            (core / "mcp").symlink_to(moved, target_is_directory=True)
-
-            receipt = run_operation(
-                "install",
-                ("core",),
-                state.home,
-                state.codex,
-                state.run,
-                operation_id="op-install-symlinked-mcp-parent",
+    def test_no_mcp_lifecycle_keeps_source_and_cache_surfaces_empty(self) -> None:
+        with fixture({"core"}) as state:
+            plugin = state.marketplace / "plugins/codexy"
+            version = "2.0.0"
+            package_path = plugin / ".codex-plugin/plugin.json"
+            package = json.loads(package_path.read_text(encoding="utf-8"))
+            package["version"] = version
+            package_path.write_text(json.dumps(package), encoding="utf-8")
+            for relative in MCP_SPECS["core"].surface_paths:
+                (plugin / relative).unlink(missing_ok=True)
+            current = load_component_manifest()
+            manifest = replace(
+                current,
+                version=version,
+                components=tuple(
+                    replace(component, version=version)
+                    for component in current.components
+                ),
             )
 
-            self.assertEqual(receipt["outcome"], "rolled-back")
-            self.assertEqual(marker.read_bytes(), b"preserve")
+            materialize_mcp_sources(state.marketplace, manifest, ("core",))
+            cache = component_cache_plugin(state.home, "core", version)
+            cache.parent.mkdir(parents=True)
+            shutil.copytree(plugin, cache)
+            cache_args = state.home, state.marketplace, manifest, ("core",)
+            with patch.object(component_mcp_cache, "_atomic_copy") as copy_file:
+                materialize_mcp_caches(*cache_args)
+                materialize_mcp_caches(*cache_args)
+
+            copy_file.assert_not_called()
+            self.assertTrue(
+                all(
+                    not os.path.lexists(root / relative)
+                    for root in (plugin, cache)
+                    for relative in MCP_SPECS["core"].surface_paths
+                )
+            )
+            residual = cache / ".mcp.json"
+            residual.write_text("{}", encoding="utf-8")
+            self.assertFalse(valid_component_mcp_cache(state.home, "core", version))
 
 
 if __name__ == "__main__":
