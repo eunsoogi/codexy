@@ -13,6 +13,7 @@ from .component_capability_probe_process import (
     _probe_diagnostics,
     _run,
 )
+from .component_mcp_materialization import mcp_spec, valid_component_mcp
 from .component_watcher_probe import probe_watcher as _probe_watcher
 from .version_lock import default_package_version
 
@@ -68,9 +69,16 @@ def probe_component(component, plugin, record):
 
 
 def _probe_core(plugin, base):
-    # The watcher probe depends on a callable core hook; merge only observed results.
+    # A validated no-MCP package has no Watcher subprocess to probe or report.
+    watcher_declared = _core_declares_watcher(plugin)
+    if watcher_declared is not None:
+        base["_capability_contract"] = {"mcp:watcher": watcher_declared}
+
+    # The legacy Watcher probe depends on a callable core hook; merge observed results.
     hook = _probe_hook("core", plugin, base)
     if not hook.get("started") or not hook.get("callable"):
+        return hook
+    if watcher_declared is False:
         return hook
     watcher = _probe_watcher(plugin, base)
     probes = dict(hook.get("_capability_probes", {}))
@@ -79,6 +87,20 @@ def _probe_core(plugin, base):
     if not watcher.get("started") or not watcher.get("callable"):
         return watcher
     return _outcome(base, _capability_probes=probes)
+
+
+def _core_declares_watcher(plugin):
+    """Read Watcher selection only from a valid package MCP contract."""
+    try:
+        manifest = json.loads(
+            (plugin / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
+        )
+    except (OSError, ValueError, json.JSONDecodeError):
+        return None
+    version = manifest.get("version") if isinstance(manifest, dict) else None
+    if not isinstance(version, str) or not valid_component_mcp(plugin, "core", version):
+        return None
+    return "watcher" in mcp_spec("core", version).servers
 
 
 def _probe_hook(component, plugin, base):

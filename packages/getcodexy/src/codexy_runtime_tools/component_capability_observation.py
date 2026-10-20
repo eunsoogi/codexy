@@ -47,6 +47,14 @@ def component_observations(
     direct = probe.get("_capability_probes")
     if not isinstance(direct, dict):
         direct = {}
+    contract = probe.get("_capability_contract")
+    if (
+        component == "core"
+        and isinstance(contract, dict)
+        and contract.get("mcp:watcher") is False
+    ):
+        # A validated no-MCP core has no configured Watcher capability to report.
+        observations.pop("mcp:watcher", None)
     for name in observations:
         details = direct.get(name)
         if isinstance(details, dict):
