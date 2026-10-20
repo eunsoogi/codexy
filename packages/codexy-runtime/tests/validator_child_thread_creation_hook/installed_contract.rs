@@ -14,11 +14,11 @@ fn windows_permission_request_runtime_failure_fallback_is_valid_json() -> TestRe
         })
         .ok_or("PermissionRequest fallback")?;
     let denial: Value = serde_json::from_str(fallback.strip_prefix("echo ").ok_or("echo")?)?;
-    assert_eq!(denial["hookSpecificOutput"]["hookEventName"], "PermissionRequest");
     assert_eq!(
-        denial["hookSpecificOutput"]["decision"]["behavior"],
-        "deny"
+        denial["hookSpecificOutput"]["hookEventName"],
+        "PermissionRequest"
     );
+    assert_eq!(denial["hookSpecificOutput"]["decision"]["behavior"], "deny");
     Ok(())
 }
 
@@ -39,6 +39,42 @@ fn installed_matcher_covers_both_canonical_create_thread_tool_names() -> TestRes
         "mcp__codex_app__create_thread_extra",
     ] {
         assert!(!matcher.is_match(tool), "matcher overmatches {tool}");
+    }
+    Ok(())
+}
+
+#[test]
+fn worker_creation_diagnostics_describe_both_supported_pairs() -> TestResult {
+    let cases = [
+        ("missing settings", json!({}), "MISSING_ROUTE_FIELDS"),
+        (
+            "unsupported model",
+            json!({"model":"gpt-5.6-sol","thinking":"medium"}),
+            "UNSUPPORTED_MODEL",
+        ),
+        (
+            "crossed pair",
+            json!({"model":"gpt-6.1-sol","thinking":"max"}),
+            "UNSUPPORTED_THINKING",
+        ),
+    ];
+
+    for (label, settings, diagnostic) in cases {
+        let tool_input = worktree_environment::with_project_worktree(settings);
+        for tool in TOOLS {
+            let input = pre_tool_input(tool, tool_input.clone());
+            let output = hook_output(&input, "PreToolUse")?;
+            let reason = output["hookSpecificOutput"]["permissionDecisionReason"]
+                .as_str()
+                .ok_or("Worker creation diagnostic")?;
+            assert!(reason.contains(diagnostic), "{label}: {reason}");
+            for pair in [
+                "model='gpt-6-luna' and thinking='max'",
+                "model='gpt-6.1-sol' and thinking='medium'",
+            ] {
+                assert!(reason.contains(pair), "{label} omitted {pair}: {reason}");
+            }
+        }
     }
     Ok(())
 }
@@ -86,7 +122,10 @@ fn native_windows_worker_launcher_runtime_failure_emits_valid_permission_denial(
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
     let denial: Value = serde_json::from_slice(&output.stdout)?;
-    assert_eq!(denial["hookSpecificOutput"]["hookEventName"], "PermissionRequest");
+    assert_eq!(
+        denial["hookSpecificOutput"]["hookEventName"],
+        "PermissionRequest"
+    );
     assert_eq!(denial["hookSpecificOutput"]["decision"]["behavior"], "deny");
     Ok(())
 }
