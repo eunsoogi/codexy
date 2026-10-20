@@ -22,7 +22,7 @@ _TIMED_PROCESS_STAGES = (
 
 @contextmanager
 def capture_process_stages(process: Any) -> Iterator[dict[str, list[float]]]:
-    """Time cleanup calls and each communicate attempt without replacing Popen."""
+    """Capture and report bounded cleanup and communicate timings around real Popen."""
     timings: dict[str, list[float]] = {stage: [] for _, stage in _TIMED_PROCESS_STAGES}
     timings["communicate"] = []
 
@@ -59,4 +59,8 @@ def capture_process_stages(process: Any) -> Iterator[dict[str, list[float]]]:
                     side_effect=measure(stage_name, getattr(process, function_name)),
                 )
             )
-        yield timings
+        try:
+            yield timings
+        finally:
+            # Emit on pass; unittest omits assertion messages on success.
+            print("Windows process cleanup stage timings:", timings)
