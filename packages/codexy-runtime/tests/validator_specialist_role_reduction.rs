@@ -43,6 +43,56 @@ fn advisor_remains_resolvable_as_a_named_specialist() -> TestResult {
 }
 
 #[test]
+fn recipient_follow_ups_require_assignment_and_advertised_capabilities() -> TestResult {
+    let plugin_root = codexy_runtime::paths::repository_root().join("plugins/codexy");
+    let cases = [
+        (
+            json!({
+                "schema":"codexy.child-routing-request.v2",
+                "classification":"general",
+                "codex_thread_operation":"send_message_to_thread",
+                "codex_thread_direction":"parent_to_generic",
+                "codex_thread_capabilities":{"models":[{"model":"gpt-6-luna","thinking":["max"]}]}
+            }),
+            "Recipient-bound follow-up routing requires recipient_assignment in schema v2; sender settings are not a substitute.",
+        ),
+        (
+            json!({
+                "schema":"codexy.child-routing-request.v2",
+                "classification":"general",
+                "codex_thread_operation":"send_message_to_thread",
+                "codex_thread_direction":"parent_to_generic",
+                "recipient_assignment":{"model":"gpt-6.1-sol","thinking":"medium"},
+                "codex_thread_capabilities":{"models":[{"model":"gpt-6-luna","thinking":["max"]}]}
+            }),
+            "Assigned recipient model and thinking are not supported by declared thread capabilities.",
+        ),
+    ];
+    for (request, reason) in cases {
+        let output = codexy_runtime::validation::resolve_child_routing(
+            &plugin_root,
+            &serde_json::to_string(&request)?,
+        )?;
+        assert_eq!(output, json!({"route":"root_or_named_specialist","reason":reason}));
+    }
+
+    let incomplete = json!({
+        "schema":"codexy.child-routing-request.v2",
+        "classification":"general",
+        "codex_thread_operation":"send_message_to_thread",
+        "codex_thread_direction":"parent_to_generic",
+        "recipient_assignment":{"model":"gpt-6.1-sol"}
+    });
+    let error = codexy_runtime::validation::resolve_child_routing(
+        &plugin_root,
+        &serde_json::to_string(&incomplete)?,
+    )
+    .expect_err("partial recipient assignment must not route");
+    assert!(error.to_string().contains("missing field `thinking`"));
+    Ok(())
+}
+
+#[test]
 fn retired_specialists_are_not_registered_or_callable() -> TestResult {
     let plugin_root = codexy_runtime::paths::repository_root().join("plugins/codexy");
     assert_retired_specialists(&plugin_root)

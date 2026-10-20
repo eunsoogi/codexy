@@ -2,7 +2,7 @@ use serde_json::{Value, json};
 
 use super::{
     Policy,
-    thread_capabilities::{self, ThreadCapabilities},
+    thread_capabilities::{self, RecipientAssignment, ThreadCapabilities},
 };
 pub(super) fn simple_route(
     policy: &Policy,
@@ -37,22 +37,41 @@ pub(super) fn child_to_root_route(
 pub(super) fn parent_to_generic_route(
     policy: &Policy,
     capabilities: Option<&ThreadCapabilities>,
+    assignment: Option<&RecipientAssignment>,
+    schema: &str,
     operation: &str,
 ) -> Value {
-    if thread_capabilities::supports(
-        capabilities,
-        &policy.delivery.parent_to_generic.model,
-        &policy.delivery.parent_to_generic.thinking,
-    ) {
-        route(
-            "parent_to_generic",
-            operation,
-            &policy.delivery.parent_to_generic.model,
-            &policy.delivery.parent_to_generic.thinking,
-        )
-    } else {
-        json!({"route":policy.fallback})
+    // Missing or mismatched assignments stay pending; sender defaults never identify the recipient.
+    let Some(assignment) = assignment else {
+        let reason = if schema == "codexy.child-routing-request.v1" {
+            "Version 1 cannot identify a follow-up recipient; use schema v2 with recipient_assignment."
+        } else {
+            "Recipient-bound follow-up routing requires recipient_assignment in schema v2; sender settings are not a substitute."
+        };
+        return json!({"route":policy.fallback,"reason":reason});
+    };
+    if assignment.model == policy.delivery.child_to_root.model
+        && assignment.thinking == policy.delivery.child_to_root.thinking
+    {
+        return json!({"route":policy.fallback,"reason":"Assigned recipient pair matches Orchestrator sender settings, not a supported Worker pair."});
     }
+    if !policy
+        .delivery
+        .parent_to_generic
+        .iter()
+        .any(|route| route.model == assignment.model && route.thinking == assignment.thinking)
+    {
+        return json!({"route":policy.fallback,"reason":"Assigned recipient model and thinking do not form a supported Worker pair."});
+    }
+    if !thread_capabilities::supports(capabilities, &assignment.model, &assignment.thinking) {
+        return json!({"route":policy.fallback,"reason":"Assigned recipient model and thinking are not supported by declared thread capabilities."});
+    }
+    route(
+        "parent_to_generic",
+        operation,
+        &assignment.model,
+        &assignment.thinking,
+    )
 }
 
 pub(super) fn selected_general_route(
