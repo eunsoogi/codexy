@@ -54,9 +54,9 @@ acceptance; any user or parent authority remains in place.
 
 An Advisor consultation MAY help diagnose a reviewer `BLOCK`, but it MUST NOT
 replace the selected reviewer, turn `BLOCK` into `PASS`, or clear an unresolved
-finding. Keep required verification and review gates open until their existing
-contracts are satisfied.
+finding. The caller MUST keep required verification and review gates open until
+their existing contracts are satisfied.
 
-Keep the question, advice, decision and subsequent verification in the existing
-task, issue, or review records. MUST NOT create an Advisor receipt schema,
-persistent service, or new work-record format.
+The caller MUST keep the question, advice, decision and subsequent verification
+in the existing task, issue, or review records. The caller MUST NOT create an
+Advisor receipt schema, persistent service, or new work-record format.
