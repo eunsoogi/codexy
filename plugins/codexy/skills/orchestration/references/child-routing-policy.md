@@ -49,8 +49,8 @@ Worker pair (`gpt-6-luna` at `max` or `gpt-6.1-sol` at `medium`); new ordinary
 Worker creation still defaults to `gpt-6-luna` at `max`. `child_to_parent`
 represents Worker-to-Orchestrator delivery using `gpt-6-astra` at `medium`. The
 runtime request's serialized `parent_to_generic` and `child_to_root` directions
-remain unchanged for these delivery routes. These serialized identifiers do
-not authorize parameters that the actual tool contract forbids. Unsupported or
+remain unchanged for these delivery routes. These serialized identifiers do not
+authorize parameters that the actual tool contract forbids. Unsupported or
 mismatched recipient settings MUST leave the lane pending with the exact
 limitation. Missing observations MUST be reported as unavailable/not observed.
 Codex MUST NOT fall back to the sender route.
