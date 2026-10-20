@@ -1,7 +1,6 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    process::Command,
 };
 
 use crate::support::FixtureCommand;
@@ -137,7 +136,7 @@ fn staged_candidate(include_watcher: bool) -> Value {
 }
 
 fn public_receipt_check_script() -> Result<String, Box<dyn std::error::Error>> {
-    // Trace the workflow's exact predicate with captured output for platform-specific failures.
+    // Extract the workflow's exact receipt predicate so the fixture covers its public contract.
     let (_, _, workflow) = super::workflow("verify-version-release.yml")?;
     let steps = workflow["jobs"]["verify-public-release"]["steps"]
         .as_sequence()
@@ -164,7 +163,7 @@ fn public_receipt_check_script() -> Result<String, Box<dyn std::error::Error>> {
         .find(|(_, line)| line.contains("public-receipt.json") && line.contains(">/dev/null"))
         .map(|(index, _)| index)
         .ok_or("runtime class receipt check end")?;
-    Ok(format!("set -x\n{}", lines[start..=end].join("\n").replace(" >/dev/null", "")))
+    Ok(lines[start..=end].join("\n"))
 }
 
 fn run_public_receipt_check(
@@ -199,9 +198,12 @@ fn run_public_receipt_check(
         root.join("public-release/runtime-release-receipt.json"),
         root.join("public-receipt.json"),
     )?;
-    Ok(Command::new("bash")
-        .args(["-e", "-o", "pipefail", "-c"])
-        .arg(public_receipt_check_script()?)
+    // Use the platform-aware launcher because bare `bash` can resolve to the WSL stub on Windows.
+    let script_path = root.join("public-receipt-check.sh");
+    let shebang = if cfg!(windows) { "#!/bin/sh\n" } else { "#!/usr/bin/env bash\n" };
+    fs::write(&script_path, format!("{shebang}set -e -o pipefail\n{}", public_receipt_check_script()?))?;
+    crate::support::make_executable(&script_path)?;
+    Ok(FixtureCommand::new(&script_path)
         .current_dir(root)
         .env("STAGING_SOURCE_COMMIT", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         .output()?)
