@@ -141,40 +141,37 @@ fn release_train_inspector_accepts_the_complete_activation_checkout()
     assert!(inspected.status.success(), "{}", String::from_utf8_lossy(&inspected.stderr));
     let staging_receipt = temporary.path().join("staging-receipt.json");
     let staging_run = temporary.path().join("staging-run.json");
-    let runtime = temporary.path().join("runtime.tar.gz");
-    let receipt = temporary.path().join("release-receipt.json");
-    let activation: Value = serde_json::from_slice::<Value>(&fs::read(
-        checkout.join(".agents/plugins/runtime-activation.json"),
-    )?)?;
-    let mut staging_candidate = activation["candidate"].clone();
-    staging_candidate["source"]["commit"] = json!("a".repeat(40));
-    fs::write(
-        &staging_receipt,
-        serde_json::to_vec(&json!({
-            "candidate": staging_candidate,
-            "provenance": {"runId": 42},
-        }))?,
-    )?;
+    let activation: Value = serde_json::from_slice(&fs::read(checkout.join(".agents/plugins/runtime-activation.json"))?)?;
     fs::write(&staging_run, r#"{"run_attempt":7}"#)?;
-    let created = Command::new(checkout.join("scripts/create_release_train_receipt.py"))
-        .arg_path(&runtime)
-        .arg_path(&bundle)
-        .arg_path(&runtime)
-        .arg_path(&staging_receipt)
-        .arg_path(&staging_run)
-        .arg_path(&receipt)
-        .current_dir(&checkout)
-        .env("RELEASE_TAG", &release_tag)
-        .env("ACTIVATION_COMMIT", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-        .env("STAGING_SOURCE_COMMIT", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-        .env("STAGING_RUN_ID", "42")
-        .output()?;
-    assert!(created.status.success(), "{}", String::from_utf8_lossy(&created.stderr));
-    let receipt: serde_json::Value = serde_json::from_slice(&fs::read(receipt)?)?;
-    assert_eq!(receipt["schema"], "codexy-runtime-release-receipt/v2");
-    assert_eq!(receipt["components"].as_array().ok_or("receipt components")?.len(), 3);
-    assert_eq!(receipt["runtimeClasses"]["coreWatcherMcp"]["source"]["commit"], "a".repeat(40));
-    assert_eq!(receipt["runtimeClasses"]["coreWatcherMcp"]["sha256"].as_str().map(str::len), Some(64));
+    // The public receipt producer keeps its optional runtime-class shape aligned with the staged candidate.
+    for include_watcher in [true, false] {
+        let receipt_path = temporary.path().join(if include_watcher { "receipt-with-watcher.json" } else { "receipt-without-watcher.json" });
+        let mut staging_candidate = activation["candidate"].clone();
+        staging_candidate["source"]["commit"] = json!("a".repeat(40));
+        if !include_watcher {
+            staging_candidate["classes"]
+                .as_object_mut()
+                .ok_or("candidate classes")?
+                .remove("coreWatcherMcp");
+        }
+        fs::write(
+            &staging_receipt,
+            serde_json::to_vec(&json!({
+                "candidate": staging_candidate,
+                "provenance": {"runId": 42},
+            }))?,
+        )?;
+        let receipt = super::public_receipt::run_release_receipt_fixture(
+            &checkout, &runtime, &bundle, &staging_receipt, &staging_run, &receipt_path, &release_tag,
+        )?;
+        assert_eq!(receipt["schema"], "codexy-runtime-release-receipt/v2");
+        assert_eq!(receipt["components"].as_array().ok_or("receipt components")?.len(), 3);
+        assert_eq!(receipt["runtimeClasses"].get("coreWatcherMcp").is_some(), include_watcher);
+        if include_watcher {
+            assert_eq!(receipt["runtimeClasses"]["coreWatcherMcp"]["source"]["commit"], "a".repeat(40));
+            assert_eq!(receipt["runtimeClasses"]["coreWatcherMcp"]["sha256"].as_str().map(str::len), Some(64));
+        }
+    }
     fs::write(staged.join("unexpected.txt"), "unexpected\n")?;
     let tampered_runtime = temporary.path().join("tampered-runtime.tar.gz");
     assert!(Command::new("tar")
