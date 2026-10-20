@@ -49,6 +49,7 @@ def _make_no_mcp_core(plugin) -> tuple[str, object]:
     path = plugin / ".codex-plugin/plugin.json"
     package = json.loads(path.read_text(encoding="utf-8"))
     package["version"] = version
+    package.pop("mcpServers", None)
     path.write_text(json.dumps(package), encoding="utf-8")
     for relative in MCP_SPECS["core"].surface_paths:
         (plugin / relative).unlink(missing_ok=True)
@@ -68,8 +69,11 @@ class WatcherRegistrationTests(unittest.TestCase):
         with fixture({"core"}) as state:
             plugin = state.marketplace / "plugins/codexy"
             version, manifest = _make_no_mcp_core(plugin)
+            package_path = plugin / ".codex-plugin/plugin.json"
+            package = json.loads(package_path.read_text(encoding="utf-8"))
 
             self.assertTrue(valid_component_mcp(plugin, "core", version))
+            self.assertEqual(materialize_component_mcp(plugin, "core", version), plugin)
             self.assertFalse(valid_component_mcp(plugin, "core"))
             with (
                 patch.object(
@@ -84,23 +88,23 @@ class WatcherRegistrationTests(unittest.TestCase):
                 ),
             ):
                 self.assertTrue(valid_registration(plugin, "core"))
+                if os.name != "nt":
+                    residual = plugin / "mcp/codexy-mcp-watcher.sh"
+                    residual.symlink_to(plugin.parent / "missing-target")
+                    self.assertFalse(valid_component_mcp(plugin, "core", version))
+                    residual.unlink()
+                for declaration in ("./.mcp.json", "../outside/mcp.json"):
+                    package["mcpServers"] = declaration
+                    package_path.write_text(json.dumps(package), encoding="utf-8")
+                    self.assertFalse(valid_component_mcp(plugin, "core", version))
+                    self.assertFalse(valid_registration(plugin, "core"))
+                    with self.assertRaisesRegex(RuntimeError, "surface is invalid"):
+                        materialize_component_mcp(plugin, "core", version)
 
-            if os.name != "nt":
-                residual = plugin / "mcp/codexy-mcp-watcher.sh"
-                residual.symlink_to(plugin.parent / "missing-target")
-                self.assertFalse(valid_component_mcp(plugin, "core", version))
-                residual.unlink()
-            package_path = plugin / ".codex-plugin/plugin.json"
-            package = json.loads(package_path.read_text(encoding="utf-8"))
             package["version"] = VERSION
+            package["mcpServers"] = "./.mcp.json"
             package_path.write_text(json.dumps(package), encoding="utf-8")
             self.assertFalse(valid_component_mcp(plugin, "core", VERSION))
-            self.assertTrue(
-                all(
-                    not os.path.lexists(plugin / path)
-                    for path in MCP_SPECS["core"].surface_paths
-                )
-            )
 
     @unittest.skipIf(os.name == "nt", "creating a symlink requires Windows privileges")
     def test_install_rejects_a_symlinked_mcp_parent_before_materialization(

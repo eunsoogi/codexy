@@ -215,7 +215,12 @@ def _plugin_version(root: Path, component: str) -> str:
 
 
 def _valid_absent_surface(root: Path, component: str) -> bool:
-    """Reject remnants and unsafe paths from the prior versioned MCP surface."""
+    """Require an undeclared MCP surface and reject unsafe legacy remnants."""
+    manifest = json.loads(
+        (root / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
+    )
+    if not isinstance(manifest, dict) or "mcpServers" in manifest:
+        return False
     for path in MCP_SPECS[component].surface_paths:
         candidate = root / path
         try:

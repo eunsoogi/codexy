@@ -211,6 +211,7 @@ class LifecycleWatcherTests(unittest.TestCase):
             package_path = plugin / ".codex-plugin/plugin.json"
             package = json.loads(package_path.read_text(encoding="utf-8"))
             package["version"] = version
+            package.pop("mcpServers", None)
             package_path.write_text(json.dumps(package), encoding="utf-8")
             for relative in MCP_SPECS["core"].surface_paths:
                 (plugin / relative).unlink(missing_ok=True)
@@ -219,8 +220,7 @@ class LifecycleWatcherTests(unittest.TestCase):
                 current,
                 version=version,
                 components=tuple(
-                    replace(component, version=version)
-                    for component in current.components
+                    replace(c, version=version) for c in current.components
                 ),
             )
 
