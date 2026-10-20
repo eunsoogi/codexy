@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from packages.getcodexy.tests import component_distribution_support as support
-from . import component_capability_probe_timing_support as timing_support
+from packages.getcodexy.tests import component_capability_probe_timing_support as timing
 from packages.getcodexy.tests.component_probe_support import windows_argv
 
 
@@ -224,9 +224,7 @@ class CapabilityProcessTests(unittest.TestCase):
             failed_tree_kill = subprocess.CompletedProcess([], 1)
             try:
                 with patch.object(subprocess_api, "run", return_value=failed_tree_kill):
-                    with timing_support.capture_process_stages(
-                        process
-                    ) as stage_seconds:
+                    with timing.capture_process_stages(process) as stage_seconds:
                         argv = probe._argv(f'"{launcher}" PermissionRequest', root)
                         env = os.environ | {"CODEXY_TIMEOUT_PID_FILE": str(pid_file)}
                         result = process._run(argv, root, "{}", env)

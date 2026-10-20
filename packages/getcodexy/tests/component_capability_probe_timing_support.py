@@ -10,7 +10,9 @@ from unittest.mock import patch
 
 
 _MAX_STAGE_SAMPLES = 4
+# Keep total probe time beside each inner stage to expose time outside cleanup.
 _TIMED_PROCESS_STAGES = (
+    ("_run", "probe_run"),
     ("_terminate_process_tree", "tree_termination"),
     ("_cancel_windows_pipe_threads", "reader_cancel"),
     ("_cancel_synchronous_io", "sync_io_cancel"),
@@ -22,9 +24,10 @@ _TIMED_PROCESS_STAGES = (
 
 @contextmanager
 def capture_process_stages(process: Any) -> Iterator[dict[str, list[float]]]:
-    """Capture and report bounded cleanup and communicate timings around real Popen."""
+    """Capture and report bounded probe, process-start, and cleanup timings."""
     timings: dict[str, list[float]] = {stage: [] for _, stage in _TIMED_PROCESS_STAGES}
     timings["communicate"] = []
+    timings["popen_start"] = []
 
     def measure(stage: str, operation: Callable[..., Any]) -> Callable[..., Any]:
         def measured(*args: Any, **kwargs: Any) -> Any:
@@ -32,7 +35,7 @@ def capture_process_stages(process: Any) -> Iterator[dict[str, list[float]]]:
             try:
                 return operation(*args, **kwargs)
             finally:
-                # The process cleanup path has a small fixed call count; cap each
+                # The probe path has a small fixed call count; cap each
                 # stage so accidental retries cannot grow the diagnostic output.
                 samples = timings[stage]
                 if len(samples) < _MAX_STAGE_SAMPLES:
@@ -43,7 +46,7 @@ def capture_process_stages(process: Any) -> Iterator[dict[str, list[float]]]:
     real_popen = process.subprocess.Popen
 
     def measured_popen(*args: Any, **kwargs: Any) -> Any:
-        process_handle = real_popen(*args, **kwargs)
+        process_handle = measure("popen_start", real_popen)(*args, **kwargs)
         process_handle.communicate = measure("communicate", process_handle.communicate)
         return process_handle
 
@@ -63,4 +66,4 @@ def capture_process_stages(process: Any) -> Iterator[dict[str, list[float]]]:
             yield timings
         finally:
             # Emit on pass; unittest omits assertion messages on success.
-            print("Windows process cleanup stage timings:", timings)
+            print("Windows probe stage timings:", timings)
