@@ -5,10 +5,8 @@ use std::{
 };
 use tempfile::{tempdir, TempDir};
 
-use super::{
-    candidate::{make_candidate_proven_windows_package, run_source_projection},
-    complete_plugin_fixture,
-};
+use super::candidate::{make_candidate_proven_windows_package, run_source_projection};
+use super::{complete_archive_fixture, complete_plugin_fixture};
 
 #[path = "../runtime_candidate_assembly_contract/fixture_seed.rs"]
 mod fixture_seed;
@@ -57,20 +55,23 @@ fn source_projection_rejects_multiline_and_malformed_heredoc_declarations() {
 }
 
 #[test]
-fn watcher_free_candidate_archive_passes_readers() -> Result<(), Box<dyn std::error::Error>> {
-    let root = tempdir()?;
-    let plugin = complete_plugin_fixture(root.path())?;
-    super::candidate::make_core_candidate(&plugin, true, false);
-
-    let archive = root.path().join("watcher-free-candidate.tar.gz");
-    super::create_archive(root.path(), &archive)?;
-    let output = super::candidate::run_candidate_gate(root.path(), &archive, &plugin);
-    assert!(
-        output.status.success(),
-        "watcher-free candidate failed Rust/Python archive readers:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
+fn archive_gate_rejects_a_candidate_runtime_path_outside_its_contract() {
+    let (root, plugin_root, archive) = complete_archive_fixture("candidate-runtime-path");
+    super::candidate::make_candidate_proven_windows_package(&plugin_root);
+    let release_path = plugin_root.join("runtime-release.json");
+    let mut release: serde_json::Value =
+        serde_json::from_slice(&fs::read(&release_path).expect("release contract"))
+            .expect("release contract JSON");
+    release["platforms"]["windows-x86_64"]["lsp"]["path"] =
+        serde_json::json!("runtime/codexy-mcp-lsp-untrusted.exe");
+    fs::write(
+        &release_path,
+        serde_json::to_vec_pretty(&release).expect("release JSON"),
+    )
+    .expect("malformed candidate release");
+    super::create_archive(root.path(), &archive).expect("candidate archive");
+    let status = super::candidate::run_candidate_gate(root.path(), &archive, &plugin_root).status;
+    assert!(!status.success());
 }
 
 #[cfg(unix)]
@@ -102,13 +103,15 @@ impl CandidateAssemblyFixture {
         let temp = tempdir()?;
         let root = temp.path();
         copy_fixture_tree(&fixture_seed::candidate_fixture_seed()?, root)?;
+        // Keep real package delegates and metadata so the Rust artifact validator checks a complete staged plugin.
+        copy_fixture_tree(
+            &codexy_runtime::paths::repository_root().join("plugins/codexy-devtools"),
+            &root.join("plugins/codexy-devtools"),
+        )?;
+        super::candidate::watchers::seed_reader_runtime_inputs(root)?;
         fs::write(
             root.join("plugins/codexy-devtools/mcp/codexy-mcp-devtools"),
             "bundled_platforms=\"darwin-arm64 linux-x86_64\"\n",
-        )?;
-        fs::write(
-            root.join("staged-runtime/codexy-mcp-devtools-windows-x86_64.exe"),
-            "dispatcher-windows\n",
         )?;
         run_git(root, &["add", "plugins/codexy-devtools/mcp"])?;
         run_git(root, &["commit", "-qm", "candidate fixture"])?;
@@ -212,7 +215,10 @@ fn run_git(root: &Path, arguments: &[&str]) -> Result<Vec<u8>, Box<dyn std::erro
     }
 }
 
-fn copy_fixture_tree(source: &Path, target: &Path) -> Result<(), Box<dyn std::error::Error>> {
+pub(super) fn copy_fixture_tree(
+    source: &Path,
+    target: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
     fs::create_dir_all(target)?;
     for entry in fs::read_dir(source)? {
         let entry = entry?;

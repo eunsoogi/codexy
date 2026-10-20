@@ -1,13 +1,27 @@
 use super::super::candidate_projection::core_assembly_fixture;
 use serde_json::json;
 use sha2::{Digest as _, Sha256};
-use std::{fs, path::Path, process::Command};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
-const WATCHERS: [(&str, &str); 3] = [
-    ("darwin-arm64", "bin"),
-    ("linux-x86_64", "bin"),
-    ("windows-x86_64", "exe"),
+const WATCHERS: [(&str, &str, &str); 3] = [
+    ("darwin-arm64", "bin", "mach-o"),
+    ("linux-x86_64", "bin", "elf"),
+    ("windows-x86_64", "exe", "pe"),
 ];
+
+fn watcher_path(root: &Path, platform: &str) -> PathBuf {
+    let extension = WATCHERS
+        .iter()
+        .find(|(known, _, _)| *known == platform)
+        .expect("known watcher platform")
+        .1;
+    root.join("staged-runtime")
+        .join(format!("codexy-mcp-watcher-{platform}.{extension}"))
+}
 
 pub(super) fn materialize(
     plugin_root: &Path,
@@ -28,11 +42,7 @@ pub(super) fn materialize(
         std::env::consts::ARCH,
     )
     .expect("host platform");
-    for (platform, extension, kind) in [
-        ("darwin-arm64", "bin", "mach-o"),
-        ("linux-x86_64", "bin", "elf"),
-        ("windows-x86_64", "exe", "pe"),
-    ] {
+    for (platform, extension, kind) in WATCHERS {
         let relative = format!("runtime/codexy-mcp-watcher-{platform}.{extension}");
         let path = plugin_root.join(&relative);
         if platform == host {
@@ -53,42 +63,11 @@ pub(super) fn materialize(
 }
 
 #[test]
-fn candidate_archive_rejects_each_missing_watcher_platform() {
-    for platform in ["darwin-arm64", "linux-x86_64", "windows-x86_64"] {
-        let root = super::tempdir().expect("candidate root");
-        let plugin = super::complete_plugin_fixture(root.path()).expect("plugin");
-        super::make_core_candidate(&plugin, true, true);
-        let extension = if platform == "windows-x86_64" {
-            "exe"
-        } else {
-            "bin"
-        };
-        let name = format!("codexy-mcp-watcher-{platform}.{extension}");
-        std::fs::remove_file(plugin.join("runtime").join(&name)).expect("remove watcher");
-        let archive = root.path().join("missing-watcher.tar.gz");
-        super::create_archive(root.path(), &archive).expect("archive");
-        let output = super::run_candidate_gate(root.path(), &archive, &plugin);
-        assert!(!output.status.success(), "accepted missing {platform}");
-        assert!(
-            String::from_utf8_lossy(&output.stderr)
-                .contains(&format!("missing core watcher runtime: {name}")),
-            "{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-}
-
-#[test]
 fn assembled_candidate_without_watchers_preserves_handoff_and_devtools(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let fixture = core_assembly_fixture()?;
-    for (platform, extension) in WATCHERS {
-        fs::remove_file(
-            fixture
-                .root()
-                .join("staged-runtime")
-                .join(format!("codexy-mcp-watcher-{platform}.{extension}")),
-        )?;
+    for (platform, _, _) in WATCHERS {
+        fs::remove_file(watcher_path(fixture.root(), platform))?;
     }
 
     let candidate = assemble_and_validate(&fixture, false)?;
@@ -118,26 +97,15 @@ fn assembled_candidate_with_all_watchers_keeps_the_complete_class(
 fn candidate_assembler_rejects_partial_and_nonfile_watcher_inputs(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let partial = core_assembly_fixture()?;
-    fs::remove_file(
-        partial
-            .root()
-            .join("staged-runtime/codexy-mcp-watcher-darwin-arm64.bin"),
-    )?;
+    fs::remove_file(watcher_path(partial.root(), "darwin-arm64"))?;
     let output = partial.assemble();
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("core-watcher inventory is partial"));
 
     let wrong_kind = core_assembly_fixture()?;
-    fs::remove_file(
-        wrong_kind
-            .root()
-            .join("staged-runtime/codexy-mcp-watcher-linux-x86_64.bin"),
-    )?;
-    fs::create_dir(
-        wrong_kind
-            .root()
-            .join("staged-runtime/codexy-mcp-watcher-linux-x86_64.bin"),
-    )?;
+    let path = watcher_path(wrong_kind.root(), "linux-x86_64");
+    fs::remove_file(&path)?;
+    fs::create_dir(path)?;
     let output = wrong_kind.assemble();
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr)
@@ -184,28 +152,36 @@ fn assemble_and_validate(
         format!("{:x}", Sha256::digest(fs::read(&archive)?)),
         receipt["artifact"]["sha256"]
     );
-    let archive_read = Command::new("python3")
-        .args([
-            "-c",
-            "import sys,tarfile; print('\\n'.join(tarfile.open(sys.argv[1]).getnames()))",
-        ])
+    let extracted = root.join("extracted");
+    let extracted_plugin = extracted.join("plugins/codexy-devtools");
+    // Exercise both archive readers on the assembler's bytes without launching fixture MCP runtimes.
+    let archive_read = Command::new("sh")
+        .arg("-c")
+        .arg(
+            "mkdir -p \"$2\" && tar -xzf \"$1\" -C \"$2\" && python3 \"$3\" staged \"$4\" && \"$5\" --plugin-root \"$4\" --check-runtime-artifacts",
+        )
+        .arg("--")
         .arg(&archive)
+        .arg(&extracted)
+        .arg(codexy_runtime::paths::repository_root().join("scripts/inspect-release-archive-contract.py"))
+        .arg(&extracted_plugin)
+        .arg(env!("CARGO_BIN_EXE_codexy-validate"))
         .output()?;
     assert!(
         archive_read.status.success(),
-        "archive is not readable as tar.gz"
+        "generated archive failed Python/Rust readers: {}",
+        String::from_utf8_lossy(&archive_read.stderr)
     );
-    assert!(String::from_utf8_lossy(&archive_read.stdout)
-        .contains("plugins/codexy-devtools/runtime-candidate.json"));
 
     // The private activation path must preserve candidate digests and the optional Watcher class.
     let selected = root.join("selected-candidate.json");
     let protected = root.join("protected.json");
-    let materialized = Command::new("python3")
+    let mut materializer = Command::new("python3");
+    materializer
         .arg(codexy_runtime::paths::repository_root().join("scripts/materialize_runtime_source.py"))
         .current_dir(root)
         .env("SOURCE_PLUGIN", &plugin)
-        .env("STAGED_PLUGIN", &plugin)
+        .env("STAGED_PLUGIN", &extracted_plugin)
         .env("PUBLIC_RELEASE", "0")
         .env("ACTIVATION_RECORD", &receipt_path)
         .env(
@@ -224,8 +200,8 @@ fn assemble_and_validate(
         .env("RELEASE_TAG", "v1.6.0")
         .env("SELECTED_CANDIDATE", &selected)
         .env("LEGACY_DISPATCHER_FREE", "0")
-        .env("PROTECTED", &protected)
-        .output()?;
+        .env("PROTECTED", &protected);
+    let materialized = materializer.output()?;
     assert!(
         materialized.status.success(),
         "generated candidate failed source materialization: {}",
@@ -245,5 +221,30 @@ fn assemble_and_validate(
             .any(|path| path.contains("codexy-mcp-watcher-")),
         expect_watchers
     );
+    if !expect_watchers {
+        // A copied generated candidate with a corrupt schema must fail the activation identity check.
+        let candidate_path = extracted_plugin.join("runtime-candidate.json");
+        let mut malformed: serde_json::Value = serde_json::from_slice(&fs::read(&candidate_path)?)?;
+        malformed["schema"] = json!("codexy-runtime-candidate/invalid");
+        fs::write(&candidate_path, serde_json::to_vec(&malformed)?)?;
+        let rejected = materializer.output()?;
+        assert!(
+            !rejected.status.success(),
+            "accepted malformed generated candidate"
+        );
+    }
     Ok(candidate)
+}
+
+pub(crate) fn seed_reader_runtime_inputs(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let binaries = super::complete_plugin_fixture(&root.join("reader-fixtures"))?;
+    super::make_core_candidate(&binaries, true, false);
+    let staged = root.join("staged-runtime");
+    // Reuse valid runtime signatures so readers validate the archive without executing these fixtures.
+    super::super::candidate_projection::copy_fixture_tree(&binaries.join("runtime"), &staged)?;
+    fs::copy(
+        binaries.join("mcp/codexy-mcp-devtools.exe"),
+        staged.join("codexy-mcp-devtools-windows-x86_64.exe"),
+    )?;
+    Ok(())
 }
