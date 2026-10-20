@@ -116,7 +116,7 @@ fn publisher_identity_accepts_legacy_and_no_watcher_receipts() {
         .unwrap();
         fs::write(stage.join("runtime-staging-receipt.json"), serde_json::to_vec(&json!({"candidate": candidate, "artifact": selection["artifact"], "provenance": selection["provenance"]})).unwrap()).unwrap();
         Command::new("bash")
-            .args(["-e", "-o", "pipefail", "-c"])
+            .args(["-e", "-x", "-o", "pipefail", "-c"])
             .arg(&step)
             .current_dir(root.path())
             .env("ACTIVATION_COMMIT", &head)
@@ -132,7 +132,8 @@ fn publisher_identity_accepts_legacy_and_no_watcher_receipts() {
     let legacy = run(&selected, &selected["candidate"]);
     assert!(
         legacy.status.success(),
-        "legacy receipt rejected: {}",
+        "legacy receipt rejected\nstdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&legacy.stdout),
         String::from_utf8_lossy(&legacy.stderr)
     );
     let mut bad_watcher = selected["candidate"].clone();
