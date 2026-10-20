@@ -8,14 +8,15 @@ use super::routing_json;
 mod routes;
 mod thread_capabilities;
 use routes::{child_to_root_route, parent_to_generic_route, selected_general_route, simple_route};
-use thread_capabilities::ThreadCapabilities;
+use thread_capabilities::ThreadDirection;
 
 // The schema string, policy field names, and route labels are serialized
 // compatibility identifiers; product-role terminology is standardized in
 // diagnostics and model constants below.
-const REQUEST_SCHEMA: &str = "codexy.child-routing-request.v1";
 const WORKER_MODEL: &str = "gpt-6-luna";
 const WORKER_THINKING: &str = "max";
+const ASSIGNED_WORKER_ROUTES: [(&str, &str); 2] =
+    [(WORKER_MODEL, WORKER_THINKING), ("gpt-6.1-sol", "medium")];
 const ORCHESTRATOR_MODEL: &str = "gpt-6-astra";
 const ORCHESTRATOR_THINKING: &str = "medium";
 
@@ -45,33 +46,8 @@ pub(super) struct Simple {
 }
 
 pub(super) struct Delivery {
-    pub(super) parent_to_generic: Route,
+    pub(super) parent_to_generic: Vec<Route>,
     pub(super) child_to_root: Route,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Request {
-    schema: String,
-    classification: String,
-    #[serde(default)]
-    named_specialist: Option<String>,
-    #[serde(default)]
-    simple_predicates: Option<Predicates>,
-    codex_thread_operation: String,
-    #[serde(default)]
-    codex_thread_direction: Option<ThreadDirection>,
-    #[serde(default)]
-    codex_thread_capabilities: Option<ThreadCapabilities>,
-}
-
-#[derive(Clone, Copy, Deserialize, PartialEq)]
-#[serde(rename_all = "snake_case")]
-enum ThreadDirection {
-    #[serde(rename = "parent_to_generic")]
-    OrchestratorToWorker,
-    #[serde(rename = "child_to_root")]
-    WorkerToOrchestrator,
 }
 
 #[derive(Deserialize)]
@@ -93,9 +69,19 @@ pub(super) fn check(plugin_root: &Path) -> Vec<String> {
 }
 
 pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
-    // Named specialists win first; simple and generic routes require their complete evidence/capability gates.
+    // Recipient-bound follow-ups are checked first; named specialists precede classification-based routes.
     let policy = contract();
-    let request = parse_request(request)?;
+    let request = thread_capabilities::parse_request(request)?;
+    // A follow-up targets an already assigned Worker, so classification or specialist fields cannot bypass recipient checks.
+    if request.codex_thread_direction == Some(ThreadDirection::OrchestratorToWorker) {
+        return Ok(parent_to_generic_route(
+            &policy,
+            request.codex_thread_capabilities.as_ref(),
+            request.recipient_assignment.as_ref(),
+            &request.schema,
+            &request.codex_thread_operation,
+        ));
+    }
     if let Some(agent_type) = request
         .named_specialist
         .filter(|value| !value.trim().is_empty())
@@ -107,13 +93,6 @@ pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
     }
     if request.codex_thread_direction == Some(ThreadDirection::WorkerToOrchestrator) {
         return Ok(child_to_root_route(
-            &policy,
-            request.codex_thread_capabilities.as_ref(),
-            &request.codex_thread_operation,
-        ));
-    }
-    if request.codex_thread_direction == Some(ThreadDirection::OrchestratorToWorker) {
-        return Ok(parent_to_generic_route(
             &policy,
             request.codex_thread_capabilities.as_ref(),
             &request.codex_thread_operation,
@@ -171,35 +150,20 @@ fn contract() -> Policy {
         },
         fallback: "root_or_named_specialist".to_owned(),
         delivery: Delivery {
-            parent_to_generic: Route {
-                model: WORKER_MODEL.to_owned(),
-                thinking: WORKER_THINKING.to_owned(),
-            },
+            // Keep this allowlist aligned with the authenticated thread-delivery hook.
+            parent_to_generic: ASSIGNED_WORKER_ROUTES
+                .iter()
+                .map(|(model, thinking)| Route {
+                    model: (*model).to_owned(),
+                    thinking: (*thinking).to_owned(),
+                })
+                .collect(),
             child_to_root: Route {
                 model: ORCHESTRATOR_MODEL.to_owned(),
                 thinking: ORCHESTRATOR_THINKING.to_owned(),
             },
         },
     }
-}
-
-fn parse_request(text: &str) -> Result<Request> {
-    let value = routing_json::parse(text).map_err(anyhow::Error::msg)?;
-    let request = serde_json::from_value::<Request>(value)?;
-    if request.schema != REQUEST_SCHEMA {
-        bail!("Worker routing request has an unsupported schema");
-    }
-    thread_capabilities::validate_operation(&request.codex_thread_operation)?;
-    match (
-        request.codex_thread_operation.as_str(),
-        request.codex_thread_direction,
-    ) {
-        ("create_thread", None)
-        | ("send_message_to_thread", Some(ThreadDirection::OrchestratorToWorker))
-        | ("send_message_to_thread", Some(ThreadDirection::WorkerToOrchestrator)) => {}
-        _ => bail!("Worker routing request has an invalid thread delivery direction"),
-    }
-    Ok(request)
 }
 
 fn validate(policy: &Policy) -> Result<()> {
@@ -223,8 +187,12 @@ fn validate(policy: &Policy) -> Result<()> {
             .map(String::as_str)
             .eq(required)
         || policy.fallback != "root_or_named_specialist"
-        || policy.delivery.parent_to_generic.model != WORKER_MODEL
-        || policy.delivery.parent_to_generic.thinking != WORKER_THINKING
+        || !policy
+            .delivery
+            .parent_to_generic
+            .iter()
+            .map(|route| (route.model.as_str(), route.thinking.as_str()))
+            .eq(ASSIGNED_WORKER_ROUTES)
         || policy.delivery.child_to_root.model != ORCHESTRATOR_MODEL
         || policy.delivery.child_to_root.thinking != ORCHESTRATOR_THINKING
     {

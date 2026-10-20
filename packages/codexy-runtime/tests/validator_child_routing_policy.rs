@@ -100,30 +100,65 @@ fn resolver_preserves_capability_fallback_and_codex_thread_delivery() -> TestRes
             json!({"route":"root_or_named_specialist"}),
         )?;
     }
-    assert_in_process_route(
-        &root,
-        json!({
-            "schema":"codexy.child-routing-request.v1",
+    let legacy_parent_request = json!({
+        "schema":"codexy.child-routing-request.v1",
+        "classification":"general",
+        "named_specialist":"codexy-architect",
+        "codex_thread_operation":"send_message_to_thread",
+        "codex_thread_direction":"parent_to_generic",
+        "codex_thread_capabilities":{"models":[{"model":"gpt-6-luna","thinking":["max"]}]}
+    });
+    let legacy_parent_result = json!({
+        "route":"root_or_named_specialist",
+        "reason":"Version 1 cannot identify a follow-up recipient; use schema v2 with recipient_assignment."
+    });
+    assert_in_process_route(&root, legacy_parent_request.clone(), legacy_parent_result.clone())?;
+    assert_cli_success(&root, legacy_parent_request, legacy_parent_result)?;
+
+    for (model, thinking, admitted) in [
+        ("gpt-6-luna", "max", true),
+        ("gpt-6.1-sol", "medium", true),
+        ("gpt-6.1-sol", "max", false),
+        ("gpt-6-astra", "medium", false),
+    ] {
+        let request = json!({
+            "schema":"codexy.child-routing-request.v2",
             "classification":"general",
             "codex_thread_operation":"send_message_to_thread",
             "codex_thread_direction":"parent_to_generic",
-            "codex_thread_capabilities":{"models":[
-                {"model":"gpt-6-astra","thinking":["medium"]},
-                {"model":"gpt-6-luna","thinking":["max"]}
-            ]}
-        }),
-        json!({"route":"parent_to_generic","codex_thread_operation":"send_message_to_thread","model":"gpt-6-luna","thinking":"max"}),
+            "recipient_assignment":{"model":model,"thinking":thinking},
+            "codex_thread_capabilities":{"models":[{"model":model,"thinking":[thinking]}]}
+        });
+        let expected = if admitted {
+            json!({"route":"parent_to_generic","codex_thread_operation":"send_message_to_thread","model":model,"thinking":thinking})
+        } else {
+            let reason = if model == "gpt-6-astra" {
+                "Assigned recipient pair matches Orchestrator sender settings, not a supported Worker pair."
+            } else {
+                "Assigned recipient model and thinking do not form a supported Worker pair."
+            };
+            json!({"route":"root_or_named_specialist","reason":reason})
+        };
+        assert_in_process_route(&root, request.clone(), expected.clone())?;
+        assert_cli_success(&root, request, expected)?;
+    }
+    let sender_contaminated = json!({
+        "schema":"codexy.child-routing-request.v2",
+        "classification":"general",
+        "codex_thread_operation":"send_message_to_thread",
+        "codex_thread_direction":"parent_to_generic",
+        "model":"gpt-6-astra",
+        "thinking":"medium"
+    });
+    assert_in_process_rejects(
+        &root,
+        sender_contaminated.clone(),
+        "Worker routing request contains sender settings; use recipient_assignment",
     )?;
-    assert_in_process_route(
+    assert_cli_rejects(
         &root,
-        json!({
-            "schema":"codexy.child-routing-request.v1",
-            "classification":"general",
-            "codex_thread_operation":"send_message_to_thread",
-            "codex_thread_direction":"parent_to_generic",
-            "codex_thread_capabilities":{"models":[{"model":"gpt-5.6-terra","thinking":["high"]}]}
-        }),
-        json!({"route":"root_or_named_specialist"}),
+        sender_contaminated,
+        "Worker routing request contains sender settings; use recipient_assignment",
     )?;
     assert_cli_rejects(
         &root,

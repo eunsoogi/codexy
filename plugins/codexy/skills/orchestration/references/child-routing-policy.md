@@ -53,6 +53,18 @@ leave the lane pending with the exact limitation. Missing observations MUST be
 reported as unavailable/not observed. Codex MUST NOT fall back to the sender
 route.
 
+The runtime keeps `codexy.child-routing-request.v1` for thread creation,
+Worker-to-Orchestrator delivery, and other existing routing requests. A v1
+Orchestrator-to-Worker follow-up has no recipient assignment, so the resolver
+MUST leave it pending with a migration reason instead of inferring settings.
+Version 2 is reserved for `send_message_to_thread` requests in the
+`parent_to_generic` direction. It MUST include the recipient's exact
+`model`/`thinking` pair under `recipient_assignment`; both values MUST be an
+allowed Worker pair and MUST be advertised by the declared thread capabilities.
+Top-level sender `model`/`thinking` fields MUST be rejected. The resolver's
+selected pair MUST be used for that authenticated recipient, and the delivery
+hook MUST independently reject crossed, unsupported, or mismatched arguments.
+
 ### Blocked-goal fork recovery
 
 An authorized same-directory fork continues the source task lane and role; it is
