@@ -69,6 +69,7 @@ fn register_codexy_agents_writes_stable_discovery_files() -> Result<(), Box<dyn 
         .join("agents/codexy");
     for name in [
         "codexy-architect",
+        "codexy-advisor",
         "codexy-cartographer",
         "codexy-auditor",
         "codexy-shipwright",
@@ -79,6 +80,22 @@ fn register_codexy_agents_writes_stable_discovery_files() -> Result<(), Box<dyn 
         let installed = std::fs::read_to_string(agents_root.join(format!("{name}.toml")))?;
         assert!(installed.starts_with("# CODEXY MANAGED AGENT\n"));
         assert!(installed.contains(&format!("name = \"{name}\"")));
+    }
+    let advisor_path = agents_root.join("codexy-advisor.toml");
+    let advisor: toml::Value = toml::from_str(&std::fs::read_to_string(advisor_path)?)?;
+    assert_eq!(advisor["model"].as_str(), Some("gpt-6-astra"));
+    assert_eq!(advisor["model_reasoning_effort"].as_str(), Some("medium"));
+    let instructions = advisor["developer_instructions"]
+        .as_str()
+        .ok_or("advisor developer instructions")?;
+    for boundary in [
+        "MUST NOT create, edit, delete, rename, or stage files",
+        "MUST NOT spawn or delegate",
+        "MUST NOT change ownership",
+        "MUST NOT grant final approval",
+        "do not provide host-level permission enforcement",
+    ] {
+        assert!(instructions.contains(boundary), "advisor instruction missing: {boundary}");
     }
     Ok(())
 }

@@ -214,8 +214,12 @@ GitHub 정책에 동의한 것으로 해석되지 않습니다.
 | 역할                       | 모델          | 추론 수준 | 담당 범위                                                                                                                            |
 | -------------------------- | ------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | Orchestrator / parent      | `gpt-6-astra` | `medium`  | Worker 작업을 배정·추적하고 전체 작업 목표를 맡아 이탈을 교정하며 보고를 검증하고 결과를 인수합니다.                                 |
+| Advisor / `codexy-advisor` | `gpt-6-astra` | `medium`  | 지정된 질문을 읽고 분석해 조언하며 파일 수정·위임·담당 변경·최종 인수를 하지 않습니다.                                               |
 | Watcher / `codexy-watcher` | `gpt-6-luna`  | `max`     | 할당된 Worker를 native subagent로 읽기 전용 관찰하고 core Watcher MCP로 중요한 사건을 보고하며, 지시·수정·교체·인수는 하지 않습니다. |
 | Worker / ordinary child    | `gpt-6-luna`  | `max`     | 별도 app task에서 자신의 branch/worktree로 이슈를 구현·검증하고, Watcher 경로가 있으면 지정된 Watcher를 통해 보고합니다.             |
+
+Advisor의 읽기 전용 경계는 에이전트 지침에 따른 행동 규칙이며, 호스트 권한이
+차단된다는 보장은 아닙니다.
 
 보고 흐름은 Orchestrator가 native Watcher를 호출하고 Worker에게 작업을
 배정·교정하면, 해당 경로에서 Worker가 host가 지원하는 task-message 경로로 source
@@ -242,6 +246,7 @@ Worker는 유한한 실행 목표를 맡습니다. Watcher는 전체 목표를 �
 | 컴포넌트 | 전문 에이전트         | 모델          | 추론 수준 | 담당 범위                                  |
 | -------- | --------------------- | ------------- | --------- | ------------------------------------------ |
 | core     | `codexy-architect`    | `gpt-6-astra` | `high`    | 아키텍처와 통합 경계                       |
+| core     | `codexy-advisor`      | `gpt-6-astra` | `medium`  | 지정된 질문의 제한된 분석과 조언           |
 | core     | `codexy-sentinel`     | `gpt-6-astra` | `xhigh`   | 엄격한 리뷰                                |
 | core     | `codexy-warden`       | `gpt-6-astra` | `xhigh`   | 안전·권한 경계                             |
 | core     | `codexy-inspector`    | `gpt-6.1-sol` | `medium`  | 표준 리뷰                                  |

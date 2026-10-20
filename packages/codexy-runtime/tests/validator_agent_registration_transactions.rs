@@ -7,8 +7,9 @@ use crate::support;
 
 const MANAGED: &str = "# CODEXY MANAGED AGENT\n";
 const PERSONAL: &[u8] = b"name = \"personal\"\ndescription = \"keep these bytes\"\n";
-const ROLES: [&str; 8] = [
+const ROLES: [&str; 9] = [
     "codexy-architect",
+    "codexy-advisor",
     "codexy-auditor",
     "codexy-cartographer",
     "codexy-inspector",

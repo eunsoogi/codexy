@@ -11,10 +11,12 @@ _DIRECT_SCOPE = "plugin-subprocess"
 _REGISTRATION_SOURCE = "getcodexy-registration-check"
 _REGISTRATION_SCOPE = "current-doctor-invocation"
 
+# Registration records configuration only; native specialist invocation remains unverified.
 CAPABILITIES = {
     "core": (
         "hook:codexy-thread-delivery",
         "specialist:codexy-architect",
+        "specialist:codexy-advisor",
         "specialist:codexy-auditor",
         "specialist:codexy-cartographer",
         "specialist:codexy-inspector",

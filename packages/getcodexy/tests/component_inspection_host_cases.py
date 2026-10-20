@@ -41,20 +41,45 @@ class ComponentInspectionHostCases:
             entry = result["component_health"][0]
             registration = entry["observed"]["registration"]
             self.assertTrue(registration["observed"])
-            self.assertEqual(registration["expected_count"], 8)
+            self.assertEqual(registration["expected_count"], 9)
             capabilities = entry["observed"]["capabilities"]
             self.assertIn("mcp:watcher", capabilities)
+            self.assertIn("specialist:codexy-advisor", capabilities)
             self.assertIn("specialist:codexy-watcher", capabilities)
             for capability in capabilities.values():
                 self.assertEqual(capability["states"]["verified"], "unknown")
                 self.assertIsNone(capability["host_id"])
                 self.assertIsNone(capability["session_id"])
             if expected == "exact":
+                advisor = capabilities["specialist:codexy-advisor"]
+                self.assertEqual(
+                    advisor["states"],
+                    {
+                        "configured": "configured",
+                        "loaded": "unknown",
+                        "callable": "unknown",
+                        "verified": "unknown",
+                    },
+                )
+                self.assertEqual(advisor["source"], "getcodexy-registration-check")
+                self.assertEqual(advisor["scope"], "current-doctor-invocation")
+                # Registration is not evidence of authenticated native-role invocation.
+                self.assertIsNone(advisor["host_id"])
+                self.assertIsNone(advisor["session_id"])
                 self.assertEqual(
                     capabilities["specialist:codexy-watcher"]["states"]["configured"],
                     "configured",
                 )
             else:
+                self.assertEqual(
+                    capabilities["specialist:codexy-advisor"]["states"],
+                    {
+                        "configured": "unknown",
+                        "loaded": "unknown",
+                        "callable": "unknown",
+                        "verified": "unknown",
+                    },
+                )
                 self.assertEqual(
                     capabilities["specialist:codexy-watcher"]["states"],
                     {

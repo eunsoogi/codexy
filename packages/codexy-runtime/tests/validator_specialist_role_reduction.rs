@@ -6,8 +6,9 @@ use serde_json::json;
 
 use crate::support::{TestResult, copy_plugin_fixture_with_mutable_files};
 
-const CURRENT: [&str; 8] = [
+const CURRENT: [&str; 9] = [
     "codexy-architect",
+    "codexy-advisor",
     "codexy-auditor",
     "codexy-cartographer",
     "codexy-inspector",
@@ -28,6 +29,17 @@ const RETIRED: [&str; 5] = [
 fn current_catalog_matches_expected_specialists() -> TestResult {
     let plugin_root = codexy_runtime::paths::repository_root().join("plugins/codexy");
     assert_current_catalog(&plugin_root)
+}
+
+#[test]
+fn advisor_remains_resolvable_as_a_named_specialist() -> TestResult {
+    let plugin_root = codexy_runtime::paths::repository_root().join("plugins/codexy");
+    let output = resolve_named_specialist(&plugin_root, "codexy-advisor")?;
+    assert!(
+        output.status.success(),
+        "new Advisor role must remain callable through named specialist routing"
+    );
+    Ok(())
 }
 
 #[test]

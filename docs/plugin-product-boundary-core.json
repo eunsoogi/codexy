@@ -60,6 +60,7 @@
       "sources": [
         "plugins/codexy/agents/catalog.toml",
         "plugins/codexy/agents/codexy-architect.toml",
+        "plugins/codexy/agents/codexy-advisor.toml",
         "plugins/codexy/agents/codexy-auditor.toml",
         "plugins/codexy/agents/codexy-cartographer.toml",
         "plugins/codexy/agents/codexy-inspector.toml",
