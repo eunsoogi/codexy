@@ -19,55 +19,28 @@ struct ExpectedAgent {
     effort: &'static str,
 }
 
-const EXPECTED_AGENTS: &[ExpectedAgent] = &[ // Independent of packaged declarations.
-    ExpectedAgent {
-        name: "codexy-architect",
-        filename: "codexy-architect.toml",
-        model: "gpt-6-astra",
-        effort: "high",
-    },
-    ExpectedAgent {
-        name: "codexy-auditor",
-        filename: "codexy-auditor.toml",
-        model: "gpt-6.1-sol",
-        effort: "medium",
-    },
-    ExpectedAgent {
-        name: "codexy-cartographer",
-        filename: "codexy-cartographer.toml",
-        model: "gpt-6-luna",
-        effort: "low",
-    },
-    ExpectedAgent {
-        name: "codexy-inspector",
-        filename: "codexy-inspector.toml",
-        model: "gpt-6.1-sol",
-        effort: "medium",
-    },
-    ExpectedAgent {
-        name: "codexy-sentinel",
-        filename: "codexy-sentinel.toml",
-        model: "gpt-6-astra",
-        effort: "xhigh",
-    },
-    ExpectedAgent {
-        name: "codexy-shipwright",
-        filename: "codexy-shipwright.toml",
-        model: "gpt-6.1-sol",
-        effort: "high",
-    },
-    ExpectedAgent {
-        name: "codexy-warden",
-        filename: "codexy-warden.toml",
-        model: "gpt-6-astra",
-        effort: "xhigh",
-    },
-    ExpectedAgent {
-        name: "codexy-watcher",
-        filename: "codexy-watcher.toml",
-        model: "gpt-6-luna",
-        effort: "max",
-    },
+// Keep expected names independent from packaged declarations while deriving filenames consistently.
+macro_rules! expected_agent {
+    ($name:literal, $model:literal, $effort:literal) => {
+        ExpectedAgent {
+            name: $name,
+            filename: concat!($name, ".toml"),
+            model: $model,
+            effort: $effort,
+        }
+    };
+}
+
+const EXPECTED_AGENTS: &[ExpectedAgent] = &[
+    expected_agent!("codexy-architect", "gpt-6-astra", "high"),
+    expected_agent!("codexy-advisor", "gpt-6-astra", "medium"),
+    expected_agent!("codexy-auditor", "gpt-6.1-sol", "medium"),
+    expected_agent!("codexy-cartographer", "gpt-6-luna", "low"),
+    expected_agent!("codexy-inspector", "gpt-6.1-sol", "medium"),
+    expected_agent!("codexy-sentinel", "gpt-6-astra", "xhigh"),
+    expected_agent!("codexy-shipwright", "gpt-6.1-sol", "high"),
+    expected_agent!("codexy-warden", "gpt-6-astra", "xhigh"),
+    expected_agent!("codexy-watcher", "gpt-6-luna", "max"),
 ];
 
 #[test]
@@ -131,7 +104,7 @@ fn validator_rejects_previous_sol_for_upgraded_roles() -> TestResult {
                 expected.model,
                 "gpt-6-sol",
             )?,
-            &format!("{} model must be {}", expected.name, expected.model),
+                &format!("{} model must be {}", expected.name, expected.model),
         );
     }
     Ok(())
@@ -185,7 +158,7 @@ fn validator_in_process_rejects_every_role_model_regression() -> TestResult {
                 expected.model,
                 "gpt-5.5",
             )?,
-            &format!("{} model must be {}", expected.name, expected.model),
+                &format!("{} model must be {}", expected.name, expected.model),
         );
     }
     Ok(())

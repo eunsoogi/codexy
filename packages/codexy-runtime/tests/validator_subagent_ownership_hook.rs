@@ -55,7 +55,7 @@ fn packaged_specialist_catalogs_remain_admitted() -> TestResult {
             admitted.push(agent_type.to_owned());
         }
     }
-    assert_eq!(admitted.len(), 9);
+    assert_eq!(admitted.len(), 10);
     Ok(())
 }
 
@@ -91,6 +91,7 @@ fn bounded_roles_cannot_receive_durable_lane_ownership() -> TestResult {
     for agent_type in [
         "explorer",
         "codexy-architect",
+        "codexy-advisor",
         "codexy-auditor",
         "codexy-cartographer",
         "codexy-inspector",
@@ -115,6 +116,7 @@ fn bounded_roles_cannot_receive_durable_lane_ownership() -> TestResult {
 fn bounded_specialists_remain_helpers_and_reviewers() -> TestResult {
     for (agent_type, message) in [
         ("codexy-architect", "Review the hook boundary and report findings."),
+        ("codexy-advisor", "Analyze the supplied facts and return bounded advice only."),
         ("codexy-auditor", "Verify PR #879 and report current evidence."),
         ("codexy-sentinel", "Review the frozen diff and report blockers."),
         ("explorer", "Create a read-only test plan for PR #145."),

@@ -1,11 +1,13 @@
 # Specialist role equivalence
 
-Codexy retains seven distinct implementation specialist roles. This mapping
-preserves former capabilities without retaining removed callable aliases.
+Codexy retains seven distinct implementation specialist roles and adds a
+separate advisory role. This mapping preserves former capabilities without
+retaining removed callable aliases.
 
-| Former role           | Disposition | Capability owner                                                                                                                                      |
+| Role                  | Disposition | Capability owner                                                                                                                                      |
 | --------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `codexy-architect`    | Retain      | Architecture and durable schema boundaries.                                                                                                           |
+| `codexy-advisor`      | Add         | Bounded analysis and recommendations; no file edits, delegation, ownership changes, or final approval.                                                |
 | `codexy-auditor`      | Retain      | Acceptance evidence and observable QA.                                                                                                                |
 | `codexy-cartographer` | Retain      | Read-only repository and ownership mapping.                                                                                                           |
 | `codexy-forge`        | Remove      | The generic owning child performs scoped implementation.                                                                                              |
@@ -18,6 +20,9 @@ preserves former capabilities without retaining removed callable aliases.
 | `codexy-warden`       | Retain      | Security, permission, shell, and state-mutation boundaries.                                                                                           |
 | `codexy-watcher`      | Retain      | Bounded native Worker observation through the core Watcher MCP.                                                                                       |
 | `codexy-weaver`       | Move        | GitHub/integration contract in the Codexy GitHub package.                                                                                             |
+
+Advisor constraints are behavioral instructions, not host-level permission
+enforcement.
 
 `codexy-inspector` is reserved for #562 as the distinct bounded standard-review
 role. It is packaged separately from the retained implementation specialists and

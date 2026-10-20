@@ -246,8 +246,12 @@ opt a user into another repository's GitHub policy.
 | Role                       | Model         | Reasoning effort | Responsibility                                                                                                                                                            |
 | -------------------------- | ------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Orchestrator / parent      | `gpt-6-astra` | `medium`         | Assigns and follows Worker work, owns the overall task goal, corrects deviations, verifies reports, and accepts results.                                                  |
+| Advisor / `codexy-advisor` | `gpt-6-astra` | `medium`         | Instruction-bounded analysis and advice; does not edit, delegate, change ownership, or grant final approval.                                                              |
 | Watcher / `codexy-watcher` | `gpt-6-luna`  | `max`            | Bounded native-subagent observation of assigned Workers through the core Watcher MCP; reports material events and never directs, edits, replaces, or accepts Worker work. |
 | Worker / ordinary child    | `gpt-6-luna`  | `max`            | Separate app task that owns its implementation branch/worktree, verifies the issue, and reports through the assigned Watcher when that route exists.                      |
+
+The Advisor's read-only boundary is part of its instructions; it does not imply
+host-level permission enforcement.
 
 Reporting flow: the Orchestrator assigns or corrects the Worker through the
 native Watcher. Worker reports use the supported route to its exact task,
@@ -272,6 +276,7 @@ the optional `codexy-github` plugin supplies Weaver.
 | Component | Specialist            | Model         | Reasoning effort | Responsibility                                                 |
 | --------- | --------------------- | ------------- | ---------------- | -------------------------------------------------------------- |
 | core      | `codexy-architect`    | `gpt-6-astra` | `high`           | Architecture and integration boundaries                        |
+| core      | `codexy-advisor`      | `gpt-6-astra` | `medium`         | Bounded analysis and advice                                    |
 | core      | `codexy-sentinel`     | `gpt-6-astra` | `xhigh`          | Strict review                                                  |
 | core      | `codexy-warden`       | `gpt-6-astra` | `xhigh`          | Safety and permission boundaries                               |
 | core      | `codexy-inspector`    | `gpt-6.1-sol` | `medium`         | Standard review                                                |

@@ -11,8 +11,9 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 const BEGIN: &str = "# BEGIN CODEXY MANAGED AGENTS";
 const END: &str = "# END CODEXY MANAGED AGENTS";
 const MANAGED: &str = "# CODEXY MANAGED AGENT\n";
-const AGENTS: [&str; 8] = [
+const AGENTS: [&str; 9] = [
     "codexy-architect",
+    "codexy-advisor",
     "codexy-auditor",
     "codexy-cartographer",
     "codexy-inspector",

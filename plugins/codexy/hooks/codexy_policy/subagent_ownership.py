@@ -7,9 +7,11 @@ from typing import cast
 from .envelope import Request
 from .subagent_ownership_message import durable_owner_requested
 
+# Admission makes these roles valid bounded targets; role-specific behavior remains instruction-level.
 _SPECIALISTS = frozenset(
     {
         "codexy-architect",
+        "codexy-advisor",
         "codexy-auditor",
         "codexy-cartographer",
         "codexy-inspector",
