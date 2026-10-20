@@ -220,16 +220,16 @@ class CapabilityProcessTests(unittest.TestCase):
                 '@echo off\r\npy -3 -I -B "%~dp0pipe-holder.py"\r\n',
                 encoding="utf-8",
             )
+            subprocess_api = process.subprocess
             failed_tree_kill = subprocess.CompletedProcess([], 1)
             try:
-                with patch.object(
-                    process.subprocess, "run", return_value=failed_tree_kill
-                ), timing_support.capture_process_stages(
-                    process
-                ) as stage_seconds:
-                    argv = probe._argv(f'"{launcher}" PermissionRequest', root)
-                    env = os.environ | {"CODEXY_TIMEOUT_PID_FILE": str(pid_file)}
-                    result = process._run(argv, root, "{}", env)
+                with patch.object(subprocess_api, "run", return_value=failed_tree_kill):
+                    with timing_support.capture_process_stages(
+                        process
+                    ) as stage_seconds:
+                        argv = probe._argv(f'"{launcher}" PermissionRequest', root)
+                        env = os.environ | {"CODEXY_TIMEOUT_PID_FILE": str(pid_file)}
+                        result = process._run(argv, root, "{}", env)
             finally:
                 if pid_file.is_file():
                     subprocess.run(
