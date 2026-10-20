@@ -85,18 +85,28 @@ python3 scripts/inspect-release-archive-contract.py candidate-assembly "$root"
 
 core_sources="packages/codexy-runtime/schemas/handoff-runtime.schema.json plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py"
 core_count=0
-# Require the core handoff source set to be all present or all absent; partial candidates are ambiguous.
+# Validate both inventories before candidate assembly can chmod or hash their runtime inputs.
 for source in $core_sources; do test -f "$source" && core_count=$((core_count + 1)); done
 case "$core_count" in 0) core_aware=0 ;; 4) core_aware=1 ;; *)
 	echo "core-handoff source inventory is partial" >&2
 	exit 1
 	;;
 esac
+watcher_count=0
+for watcher_path in "$root"/runtime/codexy-mcp-watcher-*; do
+	if ! test -e "$watcher_path" && ! test -L "$watcher_path"; then continue; fi
+	case "${watcher_path##*/}" in codexy-mcp-watcher-darwin-arm64.bin|codexy-mcp-watcher-linux-x86_64.bin|codexy-mcp-watcher-windows-x86_64.exe) ;;
+	*) echo "unsupported core-watcher runtime: ${watcher_path##*/}" >&2; exit 1 ;;
+	esac
+	if ! test -f "$watcher_path" || test -L "$watcher_path"; then echo "core-watcher runtime must be a regular file: ${watcher_path##*/}" >&2; exit 1; fi
+	watcher_count=$((watcher_count + 1))
+done
+case "$watcher_count" in 0) watcher_aware=0 ;; 3) watcher_aware=1 ;; *) echo "core-watcher inventory is partial" >&2; exit 1 ;; esac
 for platform in darwin-arm64 linux-x86_64; do
 	for server in lsp codegraph; do
 		chmod 755 "$root/runtime/codexy-mcp-${server}-${platform}.bin"
 	done
-	chmod 755 "$root/runtime/codexy-mcp-watcher-${platform}.bin"
+	if test "$watcher_aware" = 1; then chmod 755 "$root/runtime/codexy-mcp-watcher-${platform}.bin"; fi
 	if test "$core_aware" = 1; then chmod 755 "$root/runtime/codexy-handoff-validate-${platform}.bin"; fi
 done
 
@@ -104,6 +114,7 @@ SOURCE_TREE="$(git rev-parse "${source_commit}^{tree}")"
 SOURCE_COMMIT="$source_commit" \
 	SOURCE_TREE="$SOURCE_TREE" \
 	CORE_AWARE="$core_aware" \
+	WATCHER_AWARE="$watcher_aware" \
 	STAGING_RUN_ID="$STAGING_RUN_ID" \
 	STAGING_RUN_ATTEMPT="$STAGING_RUN_ATTEMPT" \
 	MODE="$mode" \
@@ -123,6 +134,7 @@ platforms = {}
 handoff = {}
 watcher = {}
 core_aware = os.environ["CORE_AWARE"] == "1"
+watcher_aware = os.environ["WATCHER_AWARE"] == "1"
 for platform in ("darwin-arm64", "linux-x86_64", "windows-x86_64"):
     inventory = {}
     for server in ("lsp", "codegraph"):
@@ -130,7 +142,7 @@ for platform in ("darwin-arm64", "linux-x86_64", "windows-x86_64"):
         path = f"runtime/codexy-mcp-{server}-{platform}.{extension}"
         data = open(f"{root}/{path}", "rb").read()
         inventory[server] = {"path": path, "sha256": hashlib.sha256(data).hexdigest()}
-    if core_aware:
+    if core_aware and watcher_aware:
         extension = "exe" if platform == "windows-x86_64" else "bin"
         watcher_path = f"runtime/codexy-mcp-watcher-{platform}.{extension}"
         watcher_data = open(f"{root}/{watcher_path}", "rb").read()
@@ -164,14 +176,16 @@ candidate = {
     "platforms": platforms,
 }
 if core_aware:
-    candidate["classes"] = {
+    classes = {
         "devtoolsMcp": {"platforms": platforms},
-        "coreWatcherMcp": {"platforms": watcher},
         "coreHandoff": {
             "manifest": {"path": "handoff-runtime.json", "sha256": hashlib.sha256(handoff_bytes).hexdigest()},
             "platforms": handoff,
         },
     }
+    if watcher_aware:
+        classes["coreWatcherMcp"] = {"platforms": watcher}
+    candidate["classes"] = classes
 open(f"{root}/runtime-candidate.json", "wb").write(json.dumps(candidate, sort_keys=True, separators=(",", ":")).encode())
 # Stamp only the staged devtools package with the complete runtime platform set.
 manifest_path = f"{root}/.codex-plugin/plugin.json"
