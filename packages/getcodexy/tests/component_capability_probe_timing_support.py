@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from contextlib import ExitStack, contextmanager
+from threading import Event, Thread
 from time import perf_counter
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
@@ -20,6 +22,23 @@ _TIMED_PROCESS_STAGES = (
     ("_close_process_pipes", "pipe_close"),
     ("_wait_for_exit", "wait_for_exit"),
 )
+
+
+def expired_deadline_cancel_calls(process: Any) -> int:
+    """Count cancellation requests when a live reader meets an expired deadline."""
+    release = Event()
+    reader = Thread(target=release.wait)
+    reader.start()
+    try:
+        with patch.object(process, "_cancel_synchronous_io") as cancel:
+            deadline = process.perf_counter() - 1
+            process._cancel_windows_pipe_threads(
+                SimpleNamespace(stdout_thread=reader), deadline
+            )
+            return cancel.call_count
+    finally:
+        release.set()
+        reader.join(timeout=1)
 
 
 @contextmanager
