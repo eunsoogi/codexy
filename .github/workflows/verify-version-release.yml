@@ -53,7 +53,47 @@ jobs:
           sha256sum public.tar.gz | grep "$(jq -r .artifact.sha256 public-receipt.json)"
           sha256sum public-bundle.tar.gz | grep "$(jq -r .bundleArtifact.sha256 public-receipt.json)"
           sha256sum public-runtime.tar.gz | grep "$(jq -r .runtimeArtifact.sha256 public-receipt.json)"
-          jq -e --arg commit "$STAGING_SOURCE_COMMIT" '.runtimeClasses.coreHandoff.source.commit == $commit and (.runtimeClasses.coreHandoff.source.tree | test("^[0-9a-f]{40}$")) and (.runtimeClasses.coreHandoff.sha256 | test("^[0-9a-f]{64}$")) and .runtimeClasses.coreWatcherMcp.source.commit == $commit and (.runtimeClasses.coreWatcherMcp.source.tree | test("^[0-9a-f]{40}$")) and (.runtimeClasses.coreWatcherMcp.sha256 | test("^[0-9a-f]{64}$"))' public-receipt.json >/dev/null
+          # Omit jq's record separator so platform newline conversion cannot change the fingerprint bytes.
+          watcher_class_sha256="$(jq -cjS '.candidate.classes.coreWatcherMcp // empty' .agents/plugins/runtime-activation.json | sha256sum | awk '{print $1}')"
+          jq -e --slurpfile selected .agents/plugins/runtime-activation.json \
+            --arg commit "$STAGING_SOURCE_COMMIT" \
+            --arg watcherClassSha256 "$watcher_class_sha256" '
+              # Keep failure details on stderr because the successful JSON result is discarded below.
+              def check($name; $valid; $details):
+                if $valid then true
+                else error("public release receipt check failed: " + $name + " (" + $details + ")")
+                end;
+              . as $receipt | $selected[0] as $selected | $selected.candidate as $candidate |
+              check("coreHandoff source commit";
+                $receipt.runtimeClasses.coreHandoff.source.commit == $commit;
+                "receipt=\($receipt.runtimeClasses.coreHandoff.source.commit), expected=\($commit)") and
+              check("coreHandoff source tree format";
+                ($receipt.runtimeClasses.coreHandoff.source.tree | test("^[0-9a-f]{40}$"));
+                "receipt=\($receipt.runtimeClasses.coreHandoff.source.tree)") and
+              check("coreHandoff fingerprint format";
+                ($receipt.runtimeClasses.coreHandoff.sha256 | test("^[0-9a-f]{64}$"));
+                "receipt=\($receipt.runtimeClasses.coreHandoff.sha256)") and
+              check("coreWatcherMcp class presence";
+                (($candidate.classes | has("coreWatcherMcp")) == ($receipt.runtimeClasses | has("coreWatcherMcp")));
+                "selected=\($candidate.classes | has("coreWatcherMcp")), receipt=\($receipt.runtimeClasses | has("coreWatcherMcp"))") and
+              (if ($candidate.classes | has("coreWatcherMcp")) then
+                check("coreWatcherMcp selected source commit";
+                  $candidate.source.commit == $commit;
+                  "selected=\($candidate.source.commit), expected=\($commit)") and
+                check("coreWatcherMcp receipt source commit";
+                  $receipt.runtimeClasses.coreWatcherMcp.source.commit == $candidate.source.commit;
+                  "receipt=\($receipt.runtimeClasses.coreWatcherMcp.source.commit), selected=\($candidate.source.commit)") and
+                check("coreWatcherMcp receipt source tree";
+                  $receipt.runtimeClasses.coreWatcherMcp.source.tree == $candidate.source.tree;
+                  "receipt=\($receipt.runtimeClasses.coreWatcherMcp.source.tree), selected=\($candidate.source.tree)") and
+                check("coreWatcherMcp receipt source tree format";
+                  ($receipt.runtimeClasses.coreWatcherMcp.source.tree | test("^[0-9a-f]{40}$"));
+                  "receipt=\($receipt.runtimeClasses.coreWatcherMcp.source.tree)") and
+                check("coreWatcherMcp fingerprint";
+                  $receipt.runtimeClasses.coreWatcherMcp.sha256 == $watcherClassSha256;
+                  "receipt=\($receipt.runtimeClasses.coreWatcherMcp.sha256), selected=\($watcherClassSha256)")
+              else true end)
+            ' public-receipt.json >/dev/null
           test "$(jq -r .release.tag public-receipt.json)" = "$RELEASE_TAG"
           test "$(jq -r .source.activationCommit public-receipt.json)" = "$ACTIVATION_COMMIT"
           test "$(jq -r .source.stagingSourceCommit public-receipt.json)" = "$STAGING_SOURCE_COMMIT"
