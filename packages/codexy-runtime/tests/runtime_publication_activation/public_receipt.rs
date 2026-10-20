@@ -213,15 +213,17 @@ fn public_receipt_verifier_matches_the_optional_watcher_class() -> Result<(), Bo
     assert!(legacy.status.success(), "legacy Watcher receipt rejected: {}", String::from_utf8_lossy(&legacy.stderr));
     let no_watcher = run_public_receipt_check(false, false, None)?;
     assert!(no_watcher.status.success(), "no-Watcher receipt rejected: {}", String::from_utf8_lossy(&no_watcher.stderr));
-    for (selected, receipt, mutation) in [
-        (true, false, None),
-        (false, true, None),
-        (true, true, Some("source.commit")),
-        (true, true, Some("source.tree")),
-        (true, true, Some("sha256")),
+    for (selected, receipt, mutation, check) in [
+        (true, false, None, "coreWatcherMcp class presence"),
+        (false, true, None, "coreWatcherMcp class presence"),
+        (true, true, Some("source.commit"), "coreWatcherMcp receipt source commit"),
+        (true, true, Some("source.tree"), "coreWatcherMcp receipt source tree"),
+        (true, true, Some("sha256"), "coreWatcherMcp fingerprint"),
     ] {
         let rejected = run_public_receipt_check(selected, receipt, mutation)?;
         assert!(!rejected.status.success(), "invalid public receipt accepted: {mutation:?}");
+        let stderr = String::from_utf8_lossy(&rejected.stderr);
+        assert!(stderr.contains(check), "wrong receipt failure: expected {check}, stderr={stderr}");
     }
     Ok(())
 }

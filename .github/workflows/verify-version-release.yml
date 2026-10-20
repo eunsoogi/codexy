@@ -58,10 +58,10 @@ jobs:
           jq -e --slurpfile selected .agents/plugins/runtime-activation.json \
             --arg commit "$STAGING_SOURCE_COMMIT" \
             --arg watcherClassSha256 "$watcher_class_sha256" '
-              # Emit the failed predicate and values so platform-specific receipt mismatches are diagnosable.
+              # Keep failure details on stderr because the successful JSON result is discarded below.
               def check($name; $valid; $details):
                 if $valid then true
-                else ("public release receipt check failed: " + $name + " (" + $details + ")") | debug | false
+                else error("public release receipt check failed: " + $name + " (" + $details + ")")
                 end;
               . as $receipt | $selected[0] as $selected | $selected.candidate as $candidate |
               check("coreHandoff source commit";
