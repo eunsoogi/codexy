@@ -1,9 +1,17 @@
-use tempfile::tempdir;
+use std::{
+    fs,
+    path::Path,
+    process::{Command, Output},
+};
+use tempfile::{tempdir, TempDir};
 
 use super::{
     candidate::{make_candidate_proven_windows_package, run_source_projection},
     complete_plugin_fixture,
 };
+
+#[path = "../runtime_candidate_assembly_contract/fixture_seed.rs"]
+mod fixture_seed;
 
 fn projection(appended: &str) -> std::process::Output {
     let root = tempdir().expect("candidate projection root");
@@ -47,3 +55,189 @@ fn source_projection_rejects_multiline_and_malformed_heredoc_declarations() {
     );
     assert!(!projection("cat <<'").status.success());
 }
+
+#[test]
+fn watcher_free_candidate_archive_passes_readers() -> Result<(), Box<dyn std::error::Error>> {
+    let root = tempdir()?;
+    let plugin = complete_plugin_fixture(root.path())?;
+    super::candidate::make_core_candidate(&plugin, true, false);
+
+    let archive = root.path().join("watcher-free-candidate.tar.gz");
+    super::create_archive(root.path(), &archive)?;
+    let output = super::candidate::run_candidate_gate(root.path(), &archive, &plugin);
+    assert!(
+        output.status.success(),
+        "watcher-free candidate failed Rust/Python archive readers:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn candidate_assembler_rejects_watcher_symlink_hash_input() -> Result<(), Box<dyn std::error::Error>>
+{
+    let fixture = core_assembly_fixture()?;
+    let path = fixture
+        .root()
+        .join("staged-runtime/codexy-mcp-watcher-darwin-arm64.bin");
+    fs::remove_file(&path)?;
+    // Reject links before hashing so external or missing targets cannot enter the candidate.
+    std::os::unix::fs::symlink("missing-watcher", &path)?;
+    let output = fixture.assemble();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr)
+        .contains("core-watcher runtime must be a regular file"));
+    Ok(())
+}
+
+// Keep assembler fixtures in this owned test module; the shared fixture uses a private suite export.
+pub(super) struct CandidateAssemblyFixture {
+    temp: TempDir,
+    source_commit: String,
+}
+
+impl CandidateAssemblyFixture {
+    pub(super) fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        let temp = tempdir()?;
+        let root = temp.path();
+        copy_fixture_tree(&fixture_seed::candidate_fixture_seed()?, root)?;
+        fs::write(
+            root.join("plugins/codexy-devtools/mcp/codexy-mcp-devtools"),
+            "bundled_platforms=\"darwin-arm64 linux-x86_64\"\n",
+        )?;
+        fs::write(
+            root.join("staged-runtime/codexy-mcp-devtools-windows-x86_64.exe"),
+            "dispatcher-windows\n",
+        )?;
+        run_git(root, &["add", "plugins/codexy-devtools/mcp"])?;
+        run_git(root, &["commit", "-qm", "candidate fixture"])?;
+        let source_commit = String::from_utf8(run_git(root, &["rev-parse", "HEAD"])?)?;
+        Ok(Self {
+            temp,
+            source_commit: source_commit.trim().into(),
+        })
+    }
+
+    pub(super) fn enable_core_runtime(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let repository = codexy_runtime::paths::repository_root();
+        for (platform, extension) in [
+            ("darwin-arm64", "bin"),
+            ("linux-x86_64", "bin"),
+            ("windows-x86_64", "exe"),
+        ] {
+            fs::write(
+                self.root().join(format!(
+                    "staged-runtime/codexy-handoff-validate-{platform}.{extension}"
+                )),
+                format!("handoff-{platform}\n"),
+            )?;
+        }
+        for relative in [
+            "packages/codexy-runtime/schemas/handoff-runtime.schema.json",
+            "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh",
+            "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd",
+            "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py",
+            "scripts/handoff_runtime_contract.py",
+        ] {
+            let target = self.root().join(relative);
+            fs::create_dir_all(target.parent().ok_or("core source parent")?)?;
+            fs::copy(repository.join(relative), target)?;
+        }
+        Ok(())
+    }
+
+    pub(super) fn root(&self) -> &Path {
+        self.temp.path()
+    }
+
+    pub(super) fn assemble(&self) -> Output {
+        Command::new("sh")
+            .arg("scripts/assemble-runtime-candidate")
+            .current_dir(self.root())
+            .env("SOURCE_COMMIT", &self.source_commit)
+            .env("STAGING_RUN_ID", "1")
+            .env("STAGING_RUN_ATTEMPT", "1")
+            .env("GITHUB_SERVER_URL", "https://github.invalid")
+            .env("GITHUB_REPOSITORY", "example/codexy")
+            .env("TARGET_VERSION", "1.6.0")
+            .env(
+                "PATH",
+                format!(
+                    "{}:{}",
+                    self.root().join("test-bin").display(),
+                    std::env::var("PATH").expect("PATH")
+                ),
+            )
+            .output()
+            .expect("candidate assembly starts")
+    }
+}
+
+pub(super) fn core_assembly_fixture() -> Result<CandidateAssemblyFixture, Box<dyn std::error::Error>>
+{
+    let fixture = CandidateAssemblyFixture::new()?;
+    fixture.enable_core_runtime()?;
+    let test_bin = fixture.root().join("test-bin");
+    let tar = Command::new("tar").arg("--version").output().ok();
+    if !tar.as_ref().is_some_and(|output| {
+        output.status.success() && String::from_utf8_lossy(&output.stdout).contains("GNU tar")
+    }) {
+        // The seed tar stub cannot emit an artifact; use Python to produce one off GNU hosts.
+        fs::write(test_bin.join("tar"), PYTHON_TAR_FALLBACK)?;
+    } else {
+        fs::remove_file(test_bin.join("tar"))?;
+    }
+    if Command::new("sha256sum").arg("--version").output().is_err() {
+        let checksum = test_bin.join("sha256sum");
+        fs::write(&checksum, PYTHON_SHA256SUM_FALLBACK)?;
+        super::make_executable(&checksum)?;
+    }
+    Ok(fixture)
+}
+
+fn run_git(root: &Path, arguments: &[&str]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let output = Command::new("git")
+        .args(arguments)
+        .current_dir(root)
+        .output()?;
+    if output.status.success() {
+        Ok(output.stdout)
+    } else {
+        Err(format!(
+            "git {arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )
+        .into())
+    }
+}
+
+fn copy_fixture_tree(source: &Path, target: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    fs::create_dir_all(target)?;
+    for entry in fs::read_dir(source)? {
+        let entry = entry?;
+        let source_path = entry.path();
+        let target_path = target.join(entry.file_name());
+        if source_path.is_dir() {
+            copy_fixture_tree(&source_path, &target_path)?;
+        } else {
+            fs::copy(source_path, target_path)?;
+        }
+    }
+    Ok(())
+}
+
+const PYTHON_SHA256SUM_FALLBACK: &str = "#!/usr/bin/env python3\nimport hashlib, pathlib, sys\nfor name in sys.argv[1:]:\n print(hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest(), name)\n";
+
+const PYTHON_TAR_FALLBACK: &str = r#"#!/usr/bin/env python3
+import os
+import sys
+import tarfile
+
+arguments = sys.argv[1:]
+base = arguments[arguments.index("-C") + 1]
+archive = arguments[arguments.index("-czf") + 1]
+with tarfile.open(archive, "w:gz") as output:
+    for name in arguments[arguments.index("-czf") + 2:]:
+        output.add(os.path.join(base, name), arcname=name)
+"#;

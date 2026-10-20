@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, process::Output};
 
 use super::*;
 use crate::support::FixtureCommand;
@@ -12,7 +12,7 @@ fn archive_gate_accepts_a_complete_candidate_proven_windows_package() {
     let root = tempdir().expect("candidate package root");
     let plugin_root = complete_plugin_fixture(root.path()).expect("candidate plugin fixture");
     let archive = root.path().join("candidate-proven-windows.tar.gz");
-    make_candidate_proven_windows_package_with_core(&plugin_root, true);
+    make_core_candidate(&plugin_root, true, true);
     create_archive(root.path(), &archive).expect("candidate archive");
     let output = run_candidate_gate(root.path(), &archive, &plugin_root);
     assert!(
@@ -54,7 +54,7 @@ fn archive_gate_rejects_a_candidate_runtime_path_outside_its_contract() {
     let status = run_candidate_gate(root.path(), &archive, &plugin_root).status;
     assert!(!status.success());
 }
-fn run_candidate_gate(root: &Path, archive: &Path, plugin_root: &Path) -> std::process::Output {
+pub(super) fn run_candidate_gate(root: &Path, archive: &Path, plugin_root: &Path) -> Output {
     // Stage only the repository inputs used to validate this target-version package.
     let repo_root = root.join("candidate-repository");
     std::fs::create_dir_all(repo_root.join(".agents/plugins")).expect("candidate contract parent");
@@ -87,7 +87,7 @@ fn run_candidate_gate(root: &Path, archive: &Path, plugin_root: &Path) -> std::p
         .expect("archive gate should start")
 }
 pub(super) fn make_candidate_proven_windows_package(plugin_root: &Path) {
-    make_candidate_proven_windows_package_with_core(plugin_root, false);
+    make_core_candidate(plugin_root, false, true);
 }
 fn copy_candidate_source(relative: &str, repo_root: &Path) {
     let source = codexy_runtime::paths::repository_root().join(relative);
@@ -97,7 +97,7 @@ fn copy_candidate_source(relative: &str, repo_root: &Path) {
 pub(super) fn run_source_projection(plugin_root: &Path) -> std::process::Output {
     candidate_repository::run_source_projection(plugin_root)
 }
-fn make_candidate_proven_windows_package_with_core(plugin_root: &Path, core_aware: bool) {
+pub(super) fn make_core_candidate(plugin_root: &Path, core_aware: bool, watcher_aware: bool) {
     let digest =
         |path: &Path| format!("{:x}", Sha256::digest(std::fs::read(path).expect("digest")));
     let mut manifest: serde_json::Value = serde_json::from_slice(
@@ -226,7 +226,7 @@ fn make_candidate_proven_windows_package_with_core(plugin_root: &Path, core_awar
             },
             "platforms": handoff["platforms"].clone(),
         });
-        watchers::materialize(plugin_root, &mut release);
+        watchers::materialize(plugin_root, &mut release, watcher_aware);
         candidate["classes"] = release["classes"].clone();
     }
     let candidate_path = plugin_root.join("runtime-candidate.json");
