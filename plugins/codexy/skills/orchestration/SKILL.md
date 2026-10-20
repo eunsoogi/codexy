@@ -35,6 +35,14 @@ proof; it MAY require evidence collection or leave authorized reversible work in
 progress, but it MUST NOT by itself require a new approval to continue that
 work.
 
+When a non-routine judgment needs an Advisor's second opinion, Orchestrators and
+Workers MUST follow the
+[Advisor consultation contract](references/advisor-consultation.md). A Worker
+MUST keep advice within its assigned issue lane and route cross-lane design,
+ownership, shared-interface, or contradictory-verification decisions to the
+Orchestrator. Routine actions with a clear governing rule do not need
+consultation.
+
 Verification procedure remains owned by the selected references:
 [workflow profiles](references/workflow-profiles.md) selects the profile,
 [TDD classification policy](references/tdd-classification-policy.md) selects
