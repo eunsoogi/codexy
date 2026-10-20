@@ -157,9 +157,14 @@ fn tooling_root(plugin_root: &Path) -> PathBuf {
 }
 
 fn mcp_root(plugin_root: &Path) -> PathBuf {
-    if is_devtools(plugin_root) || plugin_root.join(".mcp.json").is_file() {
+    if is_devtools(plugin_root)
+        || plugin_root.file_name().is_some_and(|name| name == "codexy")
+        || plugin_root.join(".codex-plugin").is_dir()
+        || plugin_root.join(".mcp.json").exists()
+    {
         plugin_root.to_path_buf()
     } else {
+        // A manifest identifies this package even when its valid contract omits .mcp.json.
         devtools_root(plugin_root)
     }
 }

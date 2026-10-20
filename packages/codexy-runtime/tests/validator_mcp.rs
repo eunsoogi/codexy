@@ -4,6 +4,9 @@ use std::process::Command;
 
 use crate::support;
 
+#[path = "validator_mcp/core.rs"]
+mod core;
+
 #[test]
 fn validator_cli_rejects_mixed_type_string_arrays() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;

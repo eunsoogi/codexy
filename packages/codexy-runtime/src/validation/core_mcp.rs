@@ -11,6 +11,25 @@ const SOURCE_LAUNCHER: &str = "mcp/codexy-mcp-watcher.sh";
 
 /// Enforces the single watcher server contract, safe launchers, and platform runtime artifacts.
 pub(super) fn check(plugin_root: &Path, manifest: &Value) -> Result<()> {
+    if manifest.get("mcp_servers").is_some() {
+        bail!("core plugin manifest must use the mcpServers field");
+    }
+    if manifest.get("mcpServers").is_none() {
+        let path = plugin_root.join(".mcp.json");
+        // Omission means no MCP only when no file or dangling symlink remains in the package.
+        match std::fs::symlink_metadata(&path) {
+            Ok(_) => bail!(
+                "{} core MCP config is present without a manifest declaration",
+                display_relative(&path)
+            ),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(error) => {
+                return Err(error).with_context(|| {
+                    format!("inspecting core MCP config {}", display_relative(&path))
+                });
+            }
+        }
+    }
     let path = super::manifest::mcp_config_path(plugin_root, manifest)?;
     let data = load_json(&path)?;
     if data.get("mcpServers").is_some() || data.get("mcp_servers").is_some() {
