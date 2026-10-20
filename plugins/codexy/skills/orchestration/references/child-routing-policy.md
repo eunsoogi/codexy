@@ -7,16 +7,16 @@ Named packaged specialists MUST be selected when their role matches the task;
 their catalogued model and effort apply automatically, and callers MUST NOT
 override them. Ordinary Worker selection is difficulty based: a clearly scoped
 general implementation task uses `gpt-6.1-sol` at `medium`; a simple task uses
-`gpt-6-luna` at `max` only when all four `simple_predicates` are true. Difficulty
-uncertainty may support a general classification, but ambiguous scope, unknown
-authority, or missing required inputs MUST stay fail-closed as `ambiguous`,
-`incomplete`, or `high_risk`. Unsupported model or reasoning capabilities MUST
-keep the route pending with an explicit safe outcome. Codex MUST NOT ask the user
-to choose or reconfirm a defined pair. If the selected host or tool cannot honor it, Codex
-MUST report the exact limitation and keep the lane pending; it MUST NOT silently
-substitute a model, sender settings, parent implementation, or duplicate Worker.
-A specialist is a separate route only when its role matches the task, not a
-fallback for model unavailability.
+`gpt-6-luna` at `max` only when all four `simple_predicates` are true.
+Difficulty uncertainty may support a general classification, but ambiguous
+scope, unknown authority, or missing required inputs MUST stay fail-closed as
+`ambiguous`, `incomplete`, or `high_risk`. Unsupported model or reasoning
+capabilities MUST keep the route pending with an explicit safe outcome. Codex
+MUST NOT ask the user to choose or reconfirm a defined pair. If the selected
+host or tool cannot honor it, Codex MUST report the exact limitation and keep
+the lane pending; it MUST NOT silently substitute a model, sender settings,
+parent implementation, or duplicate Worker. A specialist is a separate route
+only when its role matches the task, not a fallback for model unavailability.
 
 The native `create_thread` admission hook MUST enforce the selected Worker pair
 and the app-managed project worktree environment before mutation. Every Worker
@@ -52,10 +52,10 @@ serialized compatibility identifiers. `root_to_child` represents
 Orchestrator-to-Worker delivery using the authenticated recipient's assigned
 Worker pair (`gpt-6-luna` at `max` or `gpt-6.1-sol` at `medium`); ordinary
 Worker creation selects Luna/Max for simple work with all four predicates and
-Sol/Medium for clearly scoped general work. `child_to_parent`
-represents Worker-to-Orchestrator delivery using `gpt-6-astra` at `medium`. The
-runtime request's serialized `parent_to_generic` and `child_to_root` directions
-remain unchanged for these delivery routes. These serialized identifiers do not
+Sol/Medium for clearly scoped general work. `child_to_parent` represents
+Worker-to-Orchestrator delivery using `gpt-6-astra` at `medium`. The runtime
+request's serialized `parent_to_generic` and `child_to_root` directions remain
+unchanged for these delivery routes. These serialized identifiers do not
 authorize parameters that the actual tool contract forbids. Unsupported or
 mismatched recipient settings MUST leave the lane pending with the exact
 limitation. Missing observations MUST be reported as unavailable/not observed.

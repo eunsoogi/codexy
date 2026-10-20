@@ -17,14 +17,14 @@ When this arrangement is authorized, Codex MUST keep these roles distinct:
   authority.
 - The bounded, read-only native `codexy-watcher` MUST NOT own, recreate, or
   transfer task/release goals; finite goals MUST stay in scope.
-- A Worker app task MUST own implementation files, branch, verification, review
-  patches, and its finite goal. Its idle-wait and blocked recovery MUST stay
-  separate from the Orchestrator's lifecycle; the Watcher MUST remain distinct.
+- Worker MUST own files, branch, verification, review patches, and finite goal.
+  Worker MUST own idle-wait and blocked recovery; Watcher MUST stay distinct.
 
 Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
 
 - Orchestrator and Worker-to-Orchestrator: `gpt-6-astra` / `medium`.
-- Worker creation MUST follow [child-routing policy](child-routing-policy.md); Orchestrator-to-Worker follow-ups MUST preserve the authenticated recipient's assigned pair.
+- Worker creation MUST use [routing](child-routing-policy.md); parent-to-Worker
+  follow-ups MUST preserve the authenticated recipient's pair.
 - Watcher: `gpt-6-luna` / `max`; Inspector: `gpt-6.1-sol` / `medium`.
 
 New-role thread creation and delivery MUST use the explicit model/effort pair
