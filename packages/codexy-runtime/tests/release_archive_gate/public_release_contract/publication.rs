@@ -4,6 +4,27 @@ use std::fs;
 
 use super::Command;
 
+#[cfg(windows)]
+fn workflow_bash() -> std::path::PathBuf {
+    // A bare `bash` can select the WSL launcher; bind this fixture to Git for Windows Bash.
+    let exec_path = Command::new("git")
+        .arg("--exec-path")
+        .output()
+        .expect("Git executable path");
+    assert_eq!(exec_path.status.code(), Some(0), "git --exec-path");
+    let exec_path = String::from_utf8(exec_path.stdout).expect("Git executable path is UTF-8");
+    std::path::Path::new(exec_path.trim())
+        .ancestors()
+        .map(|root| root.join("bin/bash.exe"))
+        .find(|candidate| candidate.is_file())
+        .expect("Git for Windows Bash beside Git")
+}
+
+#[cfg(not(windows))]
+fn workflow_bash() -> &'static str {
+    "bash"
+}
+
 #[test]
 fn publisher_identity_accepts_legacy_and_no_watcher_receipts() {
     // Run the workflow's own consumer checks before invoking any release producer.
@@ -115,7 +136,7 @@ fn publisher_identity_accepts_legacy_and_no_watcher_receipts() {
         )
         .unwrap();
         fs::write(stage.join("runtime-staging-receipt.json"), serde_json::to_vec(&json!({"candidate": candidate, "artifact": selection["artifact"], "provenance": selection["provenance"]})).unwrap()).unwrap();
-        Command::new("bash")
+        Command::new(workflow_bash())
             .args(["-e", "-x", "-o", "pipefail", "-c"])
             .arg(&step)
             .current_dir(root.path())
