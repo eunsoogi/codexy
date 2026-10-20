@@ -4,6 +4,7 @@ use std::{
     process::Command,
 };
 
+use crate::support::FixtureCommand;
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
 
@@ -78,9 +79,9 @@ pub(super) fn run_release_receipt_fixture(
     receipt: &Path,
     release_tag: &str,
 ) -> Result<Value, Box<dyn std::error::Error>> {
-    // Use the existing producer so consumer fixtures retain the real receipt shape.
-    let output = Command::new(checkout.join("scripts/create_release_train_receipt.py"))
-        .arg(runtime).arg(bundle).arg(runtime).arg(staging_receipt).arg(staging_run).arg(receipt)
+    // Keep interpreter selection and argument paths portable for the Python producer.
+    let output = FixtureCommand::new(checkout.join("scripts/create_release_train_receipt.py"))
+        .arg_path(runtime).arg_path(bundle).arg_path(runtime).arg_path(staging_receipt).arg_path(staging_run).arg_path(receipt)
         .current_dir(checkout)
         .env("RELEASE_TAG", release_tag)
         .env("ACTIVATION_COMMIT", ACTIVATION_COMMIT)
