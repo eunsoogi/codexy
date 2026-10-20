@@ -1,6 +1,7 @@
 """Focused lifecycle tests for the core Watcher capability probe."""
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -33,8 +34,13 @@ class WatcherProbeTests(unittest.TestCase):
 
             # Validate the selected no-MCP package before checking its probe path.
             self.assertEqual(materialize_component_mcp(plugin, "core", "2.0.0"), plugin)
-            hook_script = plugin / "hooks/codexy-thread-delivery.sh"
-            # Keep the registered hook real while trapping any Watcher launch.
+            if os.name == "nt":
+                hook_script = plugin / "hooks/codexy-thread-delivery.cmd"
+                failing_hook = b"@echo off\r\nexit /b 37\r\n"
+            else:
+                hook_script = plugin / "hooks/codexy-thread-delivery.sh"
+                failing_hook = b"#!/bin/sh\nexit 37\n"
+            # Fail the selected launcher with a real exit code and trap Watcher.
             with patch.object(
                 capability_probe,
                 "_probe_watcher",
@@ -44,8 +50,9 @@ class WatcherProbeTests(unittest.TestCase):
                     "core", plugin, {"name": "codexy", "version": "2.0.0"}
                 )
                 # A failed remaining hook still controls core health on this path.
-                hook_script.write_text("#!/bin/sh\nexit 37\n", encoding="utf-8")
-                hook_script.chmod(0o755)
+                hook_script.write_bytes(failing_hook)
+                if os.name != "nt":
+                    hook_script.chmod(0o755)
                 failed = capability_probe.probe_component(
                     "core", plugin, {"name": "codexy", "version": "2.0.0"}
                 )
