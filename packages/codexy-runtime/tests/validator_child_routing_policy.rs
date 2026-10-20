@@ -11,12 +11,12 @@ use serde_json::{json, Value};
 use crate::support::TestResult;
 
 #[test]
-fn resolver_preserves_named_specialist_first_worker_default_and_fail_closed_routes() -> TestResult {
+fn resolver_preserves_named_specialist_first_difficulty_based_worker_routing_and_safe_fallbacks() -> TestResult {
     let root = root();
-    assert_in_process_route(
+    assert_cli_success(
         &root,
-        json!({"schema":"codexy.child-routing-request.v1","classification":"general","codex_thread_operation":"create_thread","codex_thread_capabilities":{"models":[{"model":"gpt-5.6-terra","thinking":["high"]}]}}),
-        json!({"route":"root_or_named_specialist"}),
+        json!({"schema":"codexy.child-routing-request.v1","classification":"general","codex_thread_operation":"create_thread","codex_thread_capabilities":{"models":[{"model":"gpt-6.1-sol","thinking":["medium"]}]}}),
+        json!({"route":"generic","codex_thread_operation":"create_thread","model":"gpt-6.1-sol","thinking":"medium"}),
     )?;
     assert_in_process_route(
         &root,
@@ -28,12 +28,17 @@ fn resolver_preserves_named_specialist_first_worker_default_and_fail_closed_rout
         json!({"schema":"codexy.child-routing-request.v1","classification":"general","named_specialist":"codexy-architect","codex_thread_operation":"create_thread"}),
         json!({"route":"named_specialist","agent_type":"codexy-architect"}),
     )?;
-    for classification in ["ambiguous", "high_risk", "incomplete"] {
+    for classification in ["simple", "ambiguous", "high_risk", "incomplete"] {
         assert_in_process_route(
             &root,
             json!({"schema":"codexy.child-routing-request.v1","classification":classification,"codex_thread_operation":"create_thread"}),
             json!({"route":"root_or_named_specialist"}),
         )?;
+    }
+    for predicate in ["fixed_scope", "deterministic_oracle", "low_risk_reversible", "no_unresolved_decision"] {
+        let mut predicates = json!({"fixed_scope":true,"deterministic_oracle":true,"low_risk_reversible":true,"no_unresolved_decision":true});
+        predicates[predicate] = Value::Bool(false);
+        assert_in_process_route(&root, json!({"schema":"codexy.child-routing-request.v1","classification":"simple","simple_predicates":predicates,"codex_thread_operation":"create_thread","codex_thread_capabilities":{"models":[{"model":"gpt-6-luna","thinking":["max"]}]}}), json!({"route":"root_or_named_specialist"}))?;
     }
     assert_in_process_rejects(
         &root,
@@ -72,7 +77,7 @@ fn resolver_preserves_capability_fallback_and_codex_thread_delivery() -> TestRes
             "schema":"codexy.child-routing-request.v1",
             "classification":"general",
             "codex_thread_operation":"create_thread",
-            "codex_thread_capabilities":{"models":[]}
+            "codex_thread_capabilities":{"models":[{"model":"gpt-6-luna","thinking":["max"]}]}
         }),
         json!({"route":"root_or_named_specialist"}),
     )?;

@@ -13,16 +13,20 @@ use thread_capabilities::ThreadDirection;
 // The schema string, policy field names, and route labels are serialized
 // compatibility identifiers; product-role terminology is standardized in
 // diagnostics and model constants below.
-const WORKER_MODEL: &str = "gpt-6-luna";
-const WORKER_THINKING: &str = "max";
-const ASSIGNED_WORKER_ROUTES: [(&str, &str); 2] =
-    [(WORKER_MODEL, WORKER_THINKING), ("gpt-6.1-sol", "medium")];
+const SIMPLE_WORKER_MODEL: &str = "gpt-6-luna";
+const SIMPLE_WORKER_THINKING: &str = "max";
+const GENERAL_WORKER_MODEL: &str = "gpt-6.1-sol";
+const GENERAL_WORKER_THINKING: &str = "medium";
+const ASSIGNED_WORKER_ROUTES: [(&str, &str); 2] = [
+    (SIMPLE_WORKER_MODEL, SIMPLE_WORKER_THINKING),
+    (GENERAL_WORKER_MODEL, GENERAL_WORKER_THINKING),
+];
 const ORCHESTRATOR_MODEL: &str = "gpt-6-astra";
 const ORCHESTRATOR_THINKING: &str = "medium";
 
 pub(super) struct Policy {
     pub(super) schema: String,
-    pub(super) generic: Route,
+    pub(super) general: Route,
     pub(super) named_specialist: Specialist,
     pub(super) simple: Simple,
     pub(super) fallback: String,
@@ -127,17 +131,17 @@ fn known_specialist(plugin_root: &Path, policy: &Policy, agent_type: &str) -> Re
 fn contract() -> Policy {
     Policy {
         schema: "codexy.child-routing-policy.v1".to_owned(),
-        generic: Route {
-            model: WORKER_MODEL.to_owned(),
-            thinking: WORKER_THINKING.to_owned(),
+        general: Route {
+            model: GENERAL_WORKER_MODEL.to_owned(),
+            thinking: GENERAL_WORKER_THINKING.to_owned(),
         },
         named_specialist: Specialist {
             catalog: "agents/catalog.toml".to_owned(),
             caller_overrides: "forbidden".to_owned(),
         },
         simple: Simple {
-            model: WORKER_MODEL.to_owned(),
-            thinking: WORKER_THINKING.to_owned(),
+            model: SIMPLE_WORKER_MODEL.to_owned(),
+            thinking: SIMPLE_WORKER_THINKING.to_owned(),
             all_required: [
                 "fixed_scope",
                 "deterministic_oracle",
@@ -174,12 +178,12 @@ fn validate(policy: &Policy) -> Result<()> {
         "no_unresolved_decision",
     ];
     if policy.schema != "codexy.child-routing-policy.v1"
-        || policy.generic.model != WORKER_MODEL
-        || policy.generic.thinking != WORKER_THINKING
+        || policy.general.model != GENERAL_WORKER_MODEL
+        || policy.general.thinking != GENERAL_WORKER_THINKING
         || policy.named_specialist.catalog != "agents/catalog.toml"
         || policy.named_specialist.caller_overrides != "forbidden"
-        || policy.simple.model != WORKER_MODEL
-        || policy.simple.thinking != WORKER_THINKING
+        || policy.simple.model != SIMPLE_WORKER_MODEL
+        || policy.simple.thinking != SIMPLE_WORKER_THINKING
         || !policy
             .simple
             .all_required

@@ -5,17 +5,22 @@ the product role described by the ordinary route is Worker.
 
 Named packaged specialists MUST be selected when their role matches the task;
 their catalogued model and effort apply automatically, and callers MUST NOT
-override them. Ordinary Worker work selects `gpt-6-luna` at `max`, including
-simple work when all simple predicates are complete. Codex MUST NOT ask the user
-to choose or reconfirm a defined pair. If the selected host or tool cannot honor
-it, Codex MUST report the exact limitation and keep the lane pending; it MUST
-NOT silently substitute a model, sender settings, parent implementation, or
-duplicate Worker. A specialist is a separate route only when its role matches
-the task, not a fallback for model unavailability.
+override them. Ordinary Worker selection is difficulty based: a clearly scoped
+general implementation task uses `gpt-6.1-sol` at `medium`; a simple task uses
+`gpt-6-luna` at `max` only when all four `simple_predicates` are true. Difficulty
+uncertainty may support a general classification, but ambiguous scope, unknown
+authority, or missing required inputs MUST stay fail-closed as `ambiguous`,
+`incomplete`, or `high_risk`. Unsupported model or reasoning capabilities MUST
+keep the route pending with an explicit safe outcome. Codex MUST NOT ask the user
+to choose or reconfirm a defined pair. If the selected host or tool cannot honor it, Codex
+MUST report the exact limitation and keep the lane pending; it MUST NOT silently
+substitute a model, sender settings, parent implementation, or duplicate Worker.
+A specialist is a separate route only when its role matches the task, not a
+fallback for model unavailability.
 
-The native `create_thread` admission hook MUST enforce the Worker pair and the
-app-managed project worktree environment before mutation. Every Worker call MUST
-include the assigned `model` and `thinking` values and set
+The native `create_thread` admission hook MUST enforce the selected Worker pair
+and the app-managed project worktree environment before mutation. Every Worker
+call MUST include the selected `model` and `thinking` values and set
 `target.type="project"`, a non-empty `projectId`, and
 `target.environment.type="worktree"` in the original call. Local or projectless
 Worker requests MUST be denied. A later `create_worktree`, `fork_thread`, shell
@@ -36,7 +41,7 @@ native subagent facility. It MUST NOT substitute an unassigned subagent or treat
 a self-declared role name as specialist identity. The packaged Watcher declares
 `gpt-6-luna` at `max`; caller overrides remain forbidden.
 
-When creating a Worker, Codex MUST bind the assigned model and effort to the
+When creating a Worker, Codex MUST bind the selected model and effort to the
 authenticated recipient. For existing tasks, Codex MUST send to the
 authenticated `threadId` with the recipient's assigned model and effort; it MUST
 NOT copy sender settings. If the actual message-tool contract cannot accept that
@@ -45,8 +50,9 @@ MUST preserve the lane as pending and report the exact incompatibility. The
 existing host-envelope directions `root_to_child` and `child_to_parent` are
 serialized compatibility identifiers. `root_to_child` represents
 Orchestrator-to-Worker delivery using the authenticated recipient's assigned
-Worker pair (`gpt-6-luna` at `max` or `gpt-6.1-sol` at `medium`); new ordinary
-Worker creation still defaults to `gpt-6-luna` at `max`. `child_to_parent`
+Worker pair (`gpt-6-luna` at `max` or `gpt-6.1-sol` at `medium`); ordinary
+Worker creation selects Luna/Max for simple work with all four predicates and
+Sol/Medium for clearly scoped general work. `child_to_parent`
 represents Worker-to-Orchestrator delivery using `gpt-6-astra` at `medium`. The
 runtime request's serialized `parent_to_generic` and `child_to_root` directions
 remain unchanged for these delivery routes. These serialized identifiers do not
@@ -66,6 +72,7 @@ allowed Worker pair and MUST be advertised by the declared thread capabilities.
 Top-level sender `model`/`thinking` fields MUST be rejected. The resolver's
 selected pair MUST be used for that authenticated recipient, and the delivery
 hook MUST independently reject crossed, unsupported, or mismatched arguments.
+The selected pair MUST pass through follow-up routing unchanged.
 
 ### Blocked-goal fork recovery
 

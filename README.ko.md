@@ -216,7 +216,7 @@ GitHub 정책에 동의한 것으로 해석되지 않습니다.
 | Orchestrator / parent      | `gpt-6-astra` | `medium`  | Worker 작업을 배정·추적하고 전체 작업 목표를 맡아 이탈을 교정하며 보고를 검증하고 결과를 인수합니다.                                 |
 | Advisor / `codexy-advisor` | `gpt-6-astra` | `medium`  | 지정된 질문을 읽고 분석해 조언하며 파일 수정·위임·담당 변경·최종 인수를 하지 않습니다.                                               |
 | Watcher / `codexy-watcher` | `gpt-6-luna`  | `max`     | 할당된 Worker를 native subagent로 읽기 전용 관찰하고 core Watcher MCP로 중요한 사건을 보고하며, 지시·수정·교체·인수는 하지 않습니다. |
-| Worker / ordinary child    | `gpt-6-luna`  | `max`     | 별도 app task에서 자신의 branch/worktree로 이슈를 구현·검증하고, Watcher 경로가 있으면 지정된 Watcher를 통해 보고합니다.             |
+| Worker / ordinary child    | `gpt-6-luna` (simple) 또는 `gpt-6.1-sol` (general) | `max` (simple) 또는 `medium` (general) | 별도 app task에서 이슈를 구현·검증하고 지정된 Watcher를 통해 보고합니다. 네 가지 `simple_predicates`를 모두 충족할 때만 Luna/Max를 사용하고, 범위가 분명한 general 구현 작업은 Sol/Medium을 선택하며, 범위·권한·필수 입력이 불분명하면 안전 경로로 보냅니다. |
 
 Advisor의 읽기 전용 경계는 에이전트 지침에 따른 행동 규칙이며, 호스트 권한이
 차단된다는 보장은 아닙니다.
