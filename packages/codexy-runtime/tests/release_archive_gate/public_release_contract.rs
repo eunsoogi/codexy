@@ -2,6 +2,9 @@ use std::{fs, path::Path};
 
 use super::{Command, candidate::make_candidate_proven_windows_package, complete_plugin_fixture};
 
+#[path = "public_release_contract/publication.rs"]
+mod publication;
+
 #[test]
 fn public_release_contract_accepts_exact_windows_delegates() {
     let root = tempfile::tempdir().expect("full plugin fixture");
