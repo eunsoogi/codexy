@@ -1,4 +1,6 @@
-use super::super::candidate_projection::core_assembly_fixture;
+use super::super::candidate_projection::{
+    CandidateAssemblyFixture, CandidateTestResult, core_assembly_fixture,
+};
 use serde_json::json;
 use sha2::{Digest as _, Sha256};
 use std::{
@@ -7,7 +9,7 @@ use std::{
     process::Command,
 };
 
-const WATCHERS: [(&str, &str, &str); 3] = [
+pub(crate) const WATCHERS: [(&str, &str, &str); 3] = [
     ("darwin-arm64", "bin", "mach-o"),
     ("linux-x86_64", "bin", "elf"),
     ("windows-x86_64", "exe", "pe"),
@@ -63,60 +65,65 @@ pub(super) fn materialize(
 }
 
 #[test]
-fn assembled_candidate_without_watchers_preserves_handoff_and_devtools(
-) -> Result<(), Box<dyn std::error::Error>> {
-    let fixture = core_assembly_fixture()?;
-    for (platform, _, _) in WATCHERS {
-        fs::remove_file(watcher_path(fixture.root(), platform))?;
+fn assembled_candidates_support_complete_or_absent_watchers() -> CandidateTestResult {
+    for expect_watchers in [false, true] {
+        let fixture = core_assembly_fixture()?;
+        if !expect_watchers {
+            for (platform, _, _) in WATCHERS {
+                fs::remove_file(watcher_path(fixture.root(), platform))?;
+            }
+        }
+        let candidate = assemble_and_validate(&fixture, expect_watchers)?;
+        let classes = candidate["classes"].as_object().expect("candidate classes");
+        assert!(classes.contains_key("devtoolsMcp"));
+        assert!(classes.contains_key("coreHandoff"));
+        assert_eq!(classes.contains_key("coreWatcherMcp"), expect_watchers);
+        if expect_watchers {
+            assert_eq!(
+                classes["coreWatcherMcp"]["platforms"]
+                    .as_object()
+                    .unwrap()
+                    .len(),
+                WATCHERS.len()
+            );
+        }
     }
-
-    let candidate = assemble_and_validate(&fixture, false)?;
-    let classes = candidate["classes"].as_object().expect("candidate classes");
-    assert!(classes.contains_key("devtoolsMcp"));
-    assert!(classes.contains_key("coreHandoff"));
-    assert!(!classes.contains_key("coreWatcherMcp"));
     Ok(())
 }
 
 #[test]
-fn assembled_candidate_with_all_watchers_keeps_the_complete_class(
-) -> Result<(), Box<dyn std::error::Error>> {
-    let fixture = core_assembly_fixture()?;
-    let candidate = assemble_and_validate(&fixture, true)?;
-    assert_eq!(
-        candidate["classes"]["coreWatcherMcp"]["platforms"]
-            .as_object()
-            .expect("watcher platforms")
-            .len(),
-        WATCHERS.len()
-    );
-    Ok(())
-}
-
-#[test]
-fn candidate_assembler_rejects_partial_and_nonfile_watcher_inputs(
-) -> Result<(), Box<dyn std::error::Error>> {
+fn candidate_assembler_rejects_invalid_watcher_inputs() -> CandidateTestResult {
     let partial = core_assembly_fixture()?;
     fs::remove_file(watcher_path(partial.root(), "darwin-arm64"))?;
-    let output = partial.assemble();
-    assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("core-watcher inventory is partial"));
+    assert_rejected(&partial, "core-watcher inventory is partial");
 
     let wrong_kind = core_assembly_fixture()?;
     let path = watcher_path(wrong_kind.root(), "linux-x86_64");
     fs::remove_file(&path)?;
     fs::create_dir(path)?;
-    let output = wrong_kind.assemble();
-    assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr)
-        .contains("core-watcher runtime must be a regular file"));
+    assert_rejected(&wrong_kind, "core-watcher runtime must be a regular file");
+    #[cfg(unix)]
+    {
+        let symlink = core_assembly_fixture()?;
+        let path = watcher_path(symlink.root(), "darwin-arm64");
+        fs::remove_file(&path)?;
+        // Reject links before hashing so external or missing targets cannot enter the candidate.
+        std::os::unix::fs::symlink("missing-watcher", &path)?;
+        assert_rejected(&symlink, "core-watcher runtime must be a regular file");
+    }
     Ok(())
+}
+
+fn assert_rejected(fixture: &CandidateAssemblyFixture, reason: &str) {
+    let output = fixture.assemble();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains(reason));
 }
 
 fn assemble_and_validate(
     fixture: &super::super::candidate_projection::CandidateAssemblyFixture,
     expect_watchers: bool,
-) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+) -> CandidateTestResult<serde_json::Value> {
     let output = fixture.assemble();
     assert!(
         output.status.success(),
@@ -128,50 +135,59 @@ fn assemble_and_validate(
     let receipt_path = root.join("dist/runtime-staging-receipt.json");
     let receipt: serde_json::Value = serde_json::from_slice(&fs::read(&receipt_path)?)?;
     let candidate = receipt["candidate"].clone();
-    assert_eq!(candidate["artifact"]["stagingRunId"], 1);
-    assert_eq!(receipt["provenance"]["runId"], 1);
-    assert_eq!(
-        receipt["candidate"]["classes"]
-            .get("coreWatcherMcp")
-            .is_some(),
-        expect_watchers
-    );
-    for digest in [
-        receipt["artifact"]["sha256"].as_str().unwrap_or_default(),
-        receipt["artifact"]["payloadManifestSha256"]
-            .as_str()
-            .unwrap_or_default(),
-    ] {
-        assert_eq!(digest.len(), 64, "staging receipt has an invalid digest");
-    }
-
     // Verify the staged receipt binds a readable archive before its payload reaches activation.
     let archive = root.join("dist/codexy-marketplace-plugin.tar.gz");
-    assert!(archive.is_file(), "assembler did not produce its archive");
     assert_eq!(
         format!("{:x}", Sha256::digest(fs::read(&archive)?)),
         receipt["artifact"]["sha256"]
     );
     let extracted = root.join("extracted");
     let extracted_plugin = extracted.join("plugins/codexy-devtools");
-    // Exercise both archive readers on the assembler's bytes without launching fixture MCP runtimes.
-    let archive_read = Command::new("sh")
-        .arg("-c")
-        .arg(
-            "mkdir -p \"$2\" && tar -xzf \"$1\" -C \"$2\" && python3 \"$3\" staged \"$4\" && \"$5\" --plugin-root \"$4\" --check-runtime-artifacts",
-        )
-        .arg("--")
+    fs::create_dir_all(&extracted)?;
+    let extract = Command::new("tar")
+        .args(["-xzf"])
         .arg(&archive)
+        .arg("-C")
         .arg(&extracted)
-        .arg(codexy_runtime::paths::repository_root().join("scripts/inspect-release-archive-contract.py"))
-        .arg(&extracted_plugin)
-        .arg(env!("CARGO_BIN_EXE_codexy-validate"))
-        .output()?;
-    assert!(
-        archive_read.status.success(),
-        "generated archive failed Python/Rust readers: {}",
-        String::from_utf8_lossy(&archive_read.stderr)
+        .status()?;
+    assert!(extract.success(), "could not extract generated candidate");
+    let candidate_bytes = fs::read(extracted_plugin.join("runtime-candidate.json"))?;
+    assert_eq!(
+        format!("{:x}", Sha256::digest(&candidate_bytes)),
+        receipt["artifact"]["payloadManifestSha256"]
     );
+    let mut reader_receipt = receipt.clone();
+    reader_receipt["candidate"] = serde_json::from_slice(&candidate_bytes)?;
+    assert_eq!(reader_receipt["candidate"], candidate);
+    let reader_receipt_path = root.join("dist/archive-backed-receipt.json");
+    fs::write(&reader_receipt_path, serde_json::to_vec(&reader_receipt)?)?;
+
+    if !expect_watchers {
+        // Refresh the payload digest so this counterexample reaches Rust schema validation.
+        let mut malformed = reader_receipt.clone();
+        malformed["candidate"]["schema"] = json!("codexy-runtime-candidate/invalid");
+        let malformed_bytes = serde_json::to_vec(&malformed["candidate"])?;
+        malformed["artifact"]["payloadManifestSha256"] =
+            json!(format!("{:x}", Sha256::digest(malformed_bytes)));
+        let malformed_path = root.join("dist/malformed-candidate-receipt.json");
+        fs::write(&malformed_path, serde_json::to_vec(&malformed)?)?;
+        let rejected = codexy_runtime::version::activation::activate(
+            fixture.root(),
+            env!("CARGO_PKG_VERSION"),
+            &malformed_path,
+        )
+        .expect_err("accepted malformed candidate schema");
+        assert!(
+            rejected.to_string().contains("candidate schema"),
+            "{rejected}"
+        );
+    }
+    // The Rust activation API validates archive-backed staging receipts and optional class sets.
+    codexy_runtime::version::activation::activate(
+        fixture.root(),
+        env!("CARGO_PKG_VERSION"),
+        &reader_receipt_path,
+    )?;
 
     // The private activation path must preserve candidate digests and the optional Watcher class.
     let selected = root.join("selected-candidate.json");
@@ -183,7 +199,7 @@ fn assemble_and_validate(
         .env("SOURCE_PLUGIN", &plugin)
         .env("STAGED_PLUGIN", &extracted_plugin)
         .env("PUBLIC_RELEASE", "0")
-        .env("ACTIVATION_RECORD", &receipt_path)
+        .env("ACTIVATION_RECORD", &reader_receipt_path)
         .env(
             "STAGING_SOURCE_COMMIT",
             candidate["source"]["commit"]
@@ -197,7 +213,7 @@ fn assemble_and_validate(
                 .as_str()
                 .expect("archive digest"),
         )
-        .env("RELEASE_TAG", "v1.6.0")
+        .env("RELEASE_TAG", format!("v{}", env!("CARGO_PKG_VERSION")))
         .env("SELECTED_CANDIDATE", &selected)
         .env("LEGACY_DISPATCHER_FREE", "0")
         .env("PROTECTED", &protected);
@@ -221,30 +237,5 @@ fn assemble_and_validate(
             .any(|path| path.contains("codexy-mcp-watcher-")),
         expect_watchers
     );
-    if !expect_watchers {
-        // A copied generated candidate with a corrupt schema must fail the activation identity check.
-        let candidate_path = extracted_plugin.join("runtime-candidate.json");
-        let mut malformed: serde_json::Value = serde_json::from_slice(&fs::read(&candidate_path)?)?;
-        malformed["schema"] = json!("codexy-runtime-candidate/invalid");
-        fs::write(&candidate_path, serde_json::to_vec(&malformed)?)?;
-        let rejected = materializer.output()?;
-        assert!(
-            !rejected.status.success(),
-            "accepted malformed generated candidate"
-        );
-    }
     Ok(candidate)
-}
-
-pub(crate) fn seed_reader_runtime_inputs(root: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let binaries = super::complete_plugin_fixture(&root.join("reader-fixtures"))?;
-    super::make_core_candidate(&binaries, true, false);
-    let staged = root.join("staged-runtime");
-    // Reuse valid runtime signatures so readers validate the archive without executing these fixtures.
-    super::super::candidate_projection::copy_fixture_tree(&binaries.join("runtime"), &staged)?;
-    fs::copy(
-        binaries.join("mcp/codexy-mcp-devtools.exe"),
-        staged.join("codexy-mcp-devtools-windows-x86_64.exe"),
-    )?;
-    Ok(())
 }

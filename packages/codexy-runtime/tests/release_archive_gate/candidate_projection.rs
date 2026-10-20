@@ -3,10 +3,12 @@ use std::{
     path::Path,
     process::{Command, Output},
 };
-use tempfile::{tempdir, TempDir};
+use tempfile::{TempDir, tempdir};
 
 use super::candidate::{make_candidate_proven_windows_package, run_source_projection};
 use super::{complete_archive_fixture, complete_plugin_fixture};
+
+pub(super) type CandidateTestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 #[path = "../runtime_candidate_assembly_contract/fixture_seed.rs"]
 mod fixture_seed;
@@ -35,6 +37,11 @@ fn source_projection_rejects_executable_platform_mutations_and_ignores_inert_tex
         ),
         ("eval 'bundled_platforms=darwin-arm64'", false),
         ("printf '%s\\n' 'bundled_platforms=darwin-arm64'", true),
+        (
+            "bundled_platforms=\\\ndarwin-arm64 linux-x86_64 windows-x86_64",
+            false,
+        ),
+        ("cat <<'", false),
     ] {
         assert_eq!(
             projection(appended).status.success(),
@@ -42,16 +49,6 @@ fn source_projection_rejects_executable_platform_mutations_and_ignores_inert_tex
             "{appended}"
         );
     }
-}
-
-#[test]
-fn source_projection_rejects_multiline_and_malformed_heredoc_declarations() {
-    assert!(
-        !projection("bundled_platforms=\\\ndarwin-arm64 linux-x86_64 windows-x86_64")
-            .status
-            .success()
-    );
-    assert!(!projection("cat <<'").status.success());
 }
 
 #[test]
@@ -74,46 +71,58 @@ fn archive_gate_rejects_a_candidate_runtime_path_outside_its_contract() {
     assert!(!status.success());
 }
 
-#[cfg(unix)]
-#[test]
-fn candidate_assembler_rejects_watcher_symlink_hash_input() -> Result<(), Box<dyn std::error::Error>>
-{
-    let fixture = core_assembly_fixture()?;
-    let path = fixture
-        .root()
-        .join("staged-runtime/codexy-mcp-watcher-darwin-arm64.bin");
-    fs::remove_file(&path)?;
-    // Reject links before hashing so external or missing targets cannot enter the candidate.
-    std::os::unix::fs::symlink("missing-watcher", &path)?;
-    let output = fixture.assemble();
-    assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr)
-        .contains("core-watcher runtime must be a regular file"));
-    Ok(())
-}
-
-// Keep assembler fixtures in this owned test module; the shared fixture uses a private suite export.
+// Keep assembler and archive fixtures aligned on the canonical Watcher platform inventory.
 pub(super) struct CandidateAssemblyFixture {
     temp: TempDir,
     source_commit: String,
 }
 
 impl CandidateAssemblyFixture {
-    pub(super) fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    pub(super) fn new() -> CandidateTestResult<Self> {
         let temp = tempdir()?;
         let root = temp.path();
-        copy_fixture_tree(&fixture_seed::candidate_fixture_seed()?, root)?;
+        crate::support::release_archive::copy_tree(&fixture_seed::candidate_fixture_seed()?, root)?;
         // Keep real package delegates and metadata so the Rust artifact validator checks a complete staged plugin.
-        copy_fixture_tree(
-            &codexy_runtime::paths::repository_root().join("plugins/codexy-devtools"),
+        let repository = codexy_runtime::paths::repository_root();
+        crate::support::release_archive::copy_tree(
+            &repository.join("plugins/codexy-devtools"),
             &root.join("plugins/codexy-devtools"),
         )?;
-        super::candidate::watchers::seed_reader_runtime_inputs(root)?;
+        // Keep authentic versions, MCP pairs, wrapper pins, and handoff inputs for activation.
+        let core_plugin = repository.join("plugins/codexy");
+        crate::support::release_archive::copy_tree(&core_plugin, &root.join("plugins/codexy"))?;
+        for relative in [
+            ".agents/plugins/release-publish-contract.json",
+            "packages/codexy-runtime/src/version/bootstrap.rs",
+        ] {
+            let target = root.join(relative);
+            fs::create_dir_all(target.parent().ok_or("activation fixture parent")?)?;
+            fs::copy(repository.join(relative), target)?;
+        }
+        // The seed rsync stub must honor the assembler's excluded receipts, not copy source-selected metadata.
         fs::write(
-            root.join("plugins/codexy-devtools/mcp/codexy-mcp-devtools"),
-            "bundled_platforms=\"darwin-arm64 linux-x86_64\"\n",
+            root.join("test-bin/rsync"),
+            "#!/bin/sh\nset -eu\nsource=${8:?source}\ndestination=${9:?destination}\nmkdir -p \"$destination\"\ncp -R \"${source%/}/.\" \"$destination/\"\nrm -rf \"$destination/runtime\" \"$destination/runtime-release.json\" \"$destination/runtime-candidate.json\"\n",
         )?;
-        run_git(root, &["add", "plugins/codexy-devtools/mcp"])?;
+        seed_reader_runtime_inputs(root)?;
+        // Preserve the selected-runtime launcher while narrowing its source-projection declaration.
+        let wrapper = root.join("plugins/codexy-devtools/mcp/codexy-mcp-devtools");
+        let text = fs::read_to_string(&wrapper)?;
+        fs::write(
+            &wrapper,
+            text.replace(
+                "bundled_platforms=\"darwin-arm64 linux-x86_64 windows-x86_64\"",
+                "bundled_platforms=\"darwin-arm64 linux-x86_64\"",
+            ),
+        )?;
+        run_git(
+            root,
+            &[
+                "add",
+                ".agents/plugins/release-publish-contract.json",
+                "plugins/codexy-devtools/mcp",
+            ],
+        )?;
         run_git(root, &["commit", "-qm", "candidate fixture"])?;
         let source_commit = String::from_utf8(run_git(root, &["rev-parse", "HEAD"])?)?;
         Ok(Self {
@@ -122,13 +131,9 @@ impl CandidateAssemblyFixture {
         })
     }
 
-    pub(super) fn enable_core_runtime(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub(super) fn enable_core_runtime(&self) -> CandidateTestResult {
         let repository = codexy_runtime::paths::repository_root();
-        for (platform, extension) in [
-            ("darwin-arm64", "bin"),
-            ("linux-x86_64", "bin"),
-            ("windows-x86_64", "exe"),
-        ] {
+        for (platform, extension, _) in super::candidate::watchers::WATCHERS {
             fs::write(
                 self.root().join(format!(
                     "staged-runtime/codexy-handoff-validate-{platform}.{extension}"
@@ -161,9 +166,9 @@ impl CandidateAssemblyFixture {
             .env("SOURCE_COMMIT", &self.source_commit)
             .env("STAGING_RUN_ID", "1")
             .env("STAGING_RUN_ATTEMPT", "1")
-            .env("GITHUB_SERVER_URL", "https://github.invalid")
-            .env("GITHUB_REPOSITORY", "example/codexy")
-            .env("TARGET_VERSION", "1.6.0")
+            .env("GITHUB_SERVER_URL", "https://github.com")
+            .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
+            .env("TARGET_VERSION", env!("CARGO_PKG_VERSION"))
             .env(
                 "PATH",
                 format!(
@@ -177,8 +182,7 @@ impl CandidateAssemblyFixture {
     }
 }
 
-pub(super) fn core_assembly_fixture() -> Result<CandidateAssemblyFixture, Box<dyn std::error::Error>>
-{
+pub(super) fn core_assembly_fixture() -> CandidateTestResult<CandidateAssemblyFixture> {
     let fixture = CandidateAssemblyFixture::new()?;
     fixture.enable_core_runtime()?;
     let test_bin = fixture.root().join("test-bin");
@@ -199,37 +203,29 @@ pub(super) fn core_assembly_fixture() -> Result<CandidateAssemblyFixture, Box<dy
     Ok(fixture)
 }
 
-fn run_git(root: &Path, arguments: &[&str]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+fn run_git(root: &Path, arguments: &[&str]) -> CandidateTestResult<Vec<u8>> {
     let output = Command::new("git")
         .args(arguments)
         .current_dir(root)
         .output()?;
-    if output.status.success() {
-        Ok(output.stdout)
-    } else {
-        Err(format!(
-            "git {arguments:?}: {}",
-            String::from_utf8_lossy(&output.stderr)
-        )
-        .into())
-    }
+    assert!(
+        output.status.success(),
+        "git: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(output.stdout)
 }
 
-pub(super) fn copy_fixture_tree(
-    source: &Path,
-    target: &Path,
-) -> Result<(), Box<dyn std::error::Error>> {
-    fs::create_dir_all(target)?;
-    for entry in fs::read_dir(source)? {
-        let entry = entry?;
-        let source_path = entry.path();
-        let target_path = target.join(entry.file_name());
-        if source_path.is_dir() {
-            copy_fixture_tree(&source_path, &target_path)?;
-        } else {
-            fs::copy(source_path, target_path)?;
-        }
-    }
+fn seed_reader_runtime_inputs(root: &Path) -> CandidateTestResult {
+    let binaries = complete_plugin_fixture(&root.join("reader-fixtures"))?;
+    super::candidate::make_core_candidate(&binaries, true, false);
+    let staged = root.join("staged-runtime");
+    // Reuse valid runtime signatures so readers validate the archive without executing these fixtures.
+    crate::support::release_archive::copy_tree(&binaries.join("runtime"), &staged)?;
+    fs::copy(
+        binaries.join("mcp/codexy-mcp-devtools.exe"),
+        staged.join("codexy-mcp-devtools-windows-x86_64.exe"),
+    )?;
     Ok(())
 }
 
