@@ -1,4 +1,4 @@
-use super::super::receipt::receipt_with_identity;
+use super::super::receipt::{receipt_with_identity, receipt_without_watcher};
 use super::*;
 
 pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Error>> {
@@ -45,7 +45,12 @@ pub(super) fn prepare(mutation: &str) -> Result<Fixture, Box<dyn std::error::Err
     let base = git(&repo, &["rev-parse", "HEAD"])?;
     let tree = git(&repo, &["rev-parse", "HEAD^{tree}"])?;
     let receipt_path = root.path().join("receipt.json");
-    fs::write(&receipt_path, serde_json::to_vec(&receipt(&base, &tree))?)?;
+    let staged_receipt = if mutation == "no-watcher" {
+        receipt_without_watcher(&base, &tree)
+    } else {
+        receipt(&base, &tree)
+    };
+    fs::write(&receipt_path, serde_json::to_vec(&staged_receipt)?)?;
     let version = codexy_runtime::version::runtime_version().to_owned();
     let generation_branch = format!("codexy/runtime-activation-v{version}-staging-42-1");
     let legacy_branch = if matches!(mutation, "merged-deleted" | "retained") {

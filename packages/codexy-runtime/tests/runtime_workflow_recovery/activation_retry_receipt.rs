@@ -11,6 +11,29 @@ pub(crate) fn receipt_with_identity(
     staging_run_id: u64,
     staging_run_attempt: u64,
 ) -> Value {
+    receipt_with_optional_watcher(source, tree, staging_run_id, staging_run_attempt, true)
+}
+
+pub(crate) fn receipt_without_watcher(source: &str, tree: &str) -> Value {
+    receipt_with_optional_watcher(source, tree, 42, 1, false)
+}
+
+pub(crate) fn refresh_payload_manifest_digest(receipt: &mut Value) {
+    let digest = format!(
+        "{:x}",
+        Sha256::digest(serde_json::to_vec(&canonical(receipt["candidate"].clone())).unwrap())
+    );
+    receipt["artifact"]["payloadManifestSha256"] = json!(digest);
+}
+
+fn receipt_with_optional_watcher(
+    source: &str,
+    tree: &str,
+    staging_run_id: u64,
+    staging_run_attempt: u64,
+    include_watcher: bool,
+) -> Value {
+    // Keep the legacy receipt shape honest by omitting the Watcher class as a whole.
     // Canonicalize the candidate before hashing so JSON object-key order cannot change receipt identity.
     let mut devtools = json!({});
     let mut handoff = json!({});
@@ -35,17 +58,20 @@ pub(crate) fn receipt_with_identity(
             "sha256": "d".repeat(64), "kind": kind,
         });
     }
+    let mut classes = json!({
+        "devtoolsMcp": {"platforms": devtools},
+        "coreHandoff": {"manifest": {"path": "handoff-runtime.json", "sha256": "e".repeat(64)}, "platforms": handoff},
+    });
+    if include_watcher {
+        classes["coreWatcherMcp"] = json!({"platforms": watcher});
+    }
     let candidate = json!({
         "schema": "codexy-runtime-candidate/v1",
         "source": {"repository": "https://github.com/eunsoogi/codexy", "commit": source, "tree": tree},
         "artifact": {"stagingRunId": staging_run_id, "stagingRunAttempt": staging_run_attempt},
         "compatibility": {"bootstrapApi": 1, "pluginRuntimeApi": 1, "transport": "stdio-newline-v1", "mcpProtocol": "2024-11-05"},
         "platforms": devtools,
-        "classes": {
-            "devtoolsMcp": {"platforms": devtools},
-            "coreHandoff": {"manifest": {"path": "handoff-runtime.json", "sha256": "e".repeat(64)}, "platforms": handoff},
-            "coreWatcherMcp": {"platforms": watcher},
-        },
+        "classes": classes,
     });
     json!({
         "schema": "codexy-runtime-candidate-receipt/v1", "candidate": candidate,
