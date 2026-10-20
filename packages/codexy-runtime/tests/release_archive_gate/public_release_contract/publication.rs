@@ -71,21 +71,32 @@ fn publisher_identity_accepts_legacy_and_no_watcher_receipts() {
         serde_json::to_vec(&selected["provenance"]).unwrap(),
     )
     .unwrap();
-    let git_dir = Command::new("git")
-        .arg("-C")
-        .arg_path(&repo)
-        .args(["rev-parse", "--absolute-git-dir"])
-        .output()
-        .unwrap();
-    // Keep Git's HEAD check authentic while all workflow files stay inside the temporary fixture.
-    fs::write(
-        root.path().join(".git"),
-        format!(
-            "gitdir: {}\n",
-            String::from_utf8(git_dir.stdout).unwrap().trim()
-        ),
-    )
-    .unwrap();
+    // Give the workflow an isolated HEAD so fixture behavior does not depend on the host's .git layout.
+    assert!(
+        Command::new("git")
+            .args(["init", "-q"])
+            .current_dir(root.path())
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert!(
+        Command::new("git")
+            .args([
+                "-c",
+                "user.name=Codexy fixture",
+                "-c",
+                "user.email=codexy-fixture@example.invalid",
+                "commit",
+                "--allow-empty",
+                "-m",
+                "publisher fixture"
+            ])
+            .current_dir(root.path())
+            .status()
+            .unwrap()
+            .success()
+    );
     let head = Command::new("git")
         .args(["rev-parse", "HEAD"])
         .current_dir(root.path())
@@ -118,9 +129,11 @@ fn publisher_identity_accepts_legacy_and_no_watcher_receipts() {
             .output()
             .unwrap()
     };
+    let legacy = run(&selected, &selected["candidate"]);
     assert!(
-        run(&selected, &selected["candidate"]).status.success(),
-        "legacy receipt rejected"
+        legacy.status.success(),
+        "legacy receipt rejected: {}",
+        String::from_utf8_lossy(&legacy.stderr)
     );
     let mut bad_watcher = selected["candidate"].clone();
     bad_watcher["classes"]["coreWatcherMcp"]["platforms"]["linux-x86_64"]["sha256"] =
