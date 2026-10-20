@@ -18,7 +18,10 @@ the validator compares the complete list including its order.
 The selected list is the canonical handoff set, not a prohibition on
 conditionally required guidance. When an independent condition requires a
 reference, the agent MUST load it for that condition and MUST NOT add its
-identifier to an unrelated route or change the exact selected list.
+identifier to an unrelated route or change the exact selected list. For a
+warranted Advisor consultation, load the canonical consultation reference as
+conditional guidance without adding it to `selected_references` or changing a
+route.
 
 For a valid structured classification, use this procedure:
 
