@@ -50,18 +50,18 @@ Live Sentinel observation MUST be read-only and event-driven. Generic task and
 ledger polling remains permitted only for the owner's own non-Watcher target.
 Native-reviewer terminal delivery remains event-driven and MUST NOT be polled;
 it is not a polling exception. The Orchestrator MUST NOT use generic polling for
-Worker host observation or targets assigned to a native Watcher. The Watcher
-MUST NOT directly observe, read, wait on, or poll a native Sentinel; its
-observation targets MUST remain limited to its assigned Workers and their scoped
-artifact or tool-call channel. Both the Worker owner and the root Orchestrator
-MUST NOT message, interrupt, replace, duplicate, follow up with, or poll a live
-Sentinel. When only a native-reviewer event remains pending, the Worker MUST NOT
-start unchanged model-continuation turns or poll the reviewer. Once the current
-finite execution phase is satisfied, the Worker MUST use the existing finite
-idle-wait handoff; that finite phase transition MUST be reported separately and
-MUST NOT be treated as completion of an unmet issue, release, or long-lived
-goal. If the current finite phase objective is genuinely unmet, the Worker MUST
-retain its honest goal state and return control through the supported wait or
+Worker host observation or targets assigned to an external Watcher. See
+[parent supervision](parent-supervision.md) for its wait route. A Watcher MUST
+NOT observe or poll a native Sentinel and MUST stay within its assigned Worker
+evidence. Both the Worker owner and the root Orchestrator MUST NOT message,
+interrupt, replace, duplicate, follow up with, or poll a live Sentinel. When
+only a native-reviewer event remains pending, the Worker MUST NOT start
+unchanged model-continuation turns or poll the reviewer. Once the current finite
+execution phase is satisfied, the Worker MUST use the existing finite idle-wait
+handoff; that finite phase transition MUST be reported separately and MUST NOT
+be treated as completion of an unmet issue, release, or long-lived goal. If the
+current finite phase objective is genuinely unmet, the Worker MUST retain its
+honest goal state and return control through the supported wait or
 terminal-delivery path; it MUST NOT force-complete the unmet goal or edit
 goal-lifecycle state merely to escape the wait. A bounded wait with no event is
 a non-terminal `PENDING` observation, and an independently observed live
@@ -103,10 +103,11 @@ MUST use this flow after compaction and before handoff:
    MUST use event-driven `wait_threads` with each target's latest cursor. This
    route covers a task's own non-Watcher target, including a native reviewer's
    terminal delivery, and MUST NOT authorize the Orchestrator to observe Worker
-   targets assigned to a native Watcher. Result sufficiency, bounded evidence
-   reads, report routing, host limits, quiet waits, cancellation, and fallback
-   MUST follow [parent-supervision.md](parent-supervision.md); only the assigned
-   Watcher MAY wait on its Worker/task targets, and the Orchestrator MUST await
+   targets assigned to a separately supplied Watcher. Result sufficiency,
+   bounded evidence reads, report routing, host limits, quiet waits,
+   cancellation, and fallback MUST follow
+   [parent-supervision.md](parent-supervision.md); only the assigned Watcher MAY
+   wait on its Worker/task targets, and the Orchestrator MUST await
    `watcher_wait` without direct polling or unbounded `read_thread`. Workers
    MUST NOT open, wait on, report to, cancel, or reuse an Orchestrator-owned
    Watcher session or token. The Watcher MUST NOT create or own the Orchestrator

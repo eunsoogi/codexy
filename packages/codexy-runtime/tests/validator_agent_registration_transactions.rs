@@ -7,7 +7,7 @@ use crate::support;
 
 const MANAGED: &str = "# CODEXY MANAGED AGENT\n";
 const PERSONAL: &[u8] = b"name = \"personal\"\ndescription = \"keep these bytes\"\n";
-const ROLES: [&str; 9] = [
+const ROLES: [&str; 8] = [
     "codexy-architect",
     "codexy-advisor",
     "codexy-auditor",
@@ -16,7 +16,6 @@ const ROLES: [&str; 9] = [
     "codexy-sentinel",
     "codexy-shipwright",
     "codexy-warden",
-    "codexy-watcher",
 ];
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -60,9 +59,10 @@ fn assert_failure_is_transactional(operation: Operation) -> TestResult {
             root.join("codexy-sentinel.toml"),
             format!("{MANAGED}name = \"stale-sentinel\"\n"),
         )?;
+        // The stale 1.13.4 Watcher projection must return if an upgrade fails mid-transaction.
         std::fs::write(
-            root.join("codexy-retired.toml"),
-            format!("{MANAGED}name = \"codexy-retired\"\n"),
+            root.join("codexy-watcher.toml"),
+            format!("{MANAGED}name = \"codexy-watcher\"\n"),
         )?;
     }
 

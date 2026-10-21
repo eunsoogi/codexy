@@ -38,11 +38,9 @@ unavailable, registration is not the defect. MUST record the active tool-schema
 or host-exposure mismatch and fail closed. MUST NOT substitute `default`,
 `worker`, or `explorer` for a Codexy specialist or Sentinel.
 
-For the bounded native Worker-observation route, the exact role is
-`codexy-watcher`. The Orchestrator MUST observe that packaged identity in a
-fresh native-subagent call before treating its Watcher MCP report as a
-specialist report; a generic subagent, self-declared name, or MCP-only call is
-not equivalent.
+Codexy no longer packages a native Watcher specialist. The core Watcher MCP and
+its interrupt hooks remain available as a reporting transport, but their
+presence does not register or prove a Watcher role in a fresh task.
 
 The registration bridge and update checker MUST NOT run from SessionStart,
 UserPromptSubmit, or another lifecycle hook. Codexy MUST NOT commit generated

@@ -5,6 +5,11 @@ use std::{io::Write as _, process::Stdio};
 use crate::support::FixtureCommand as Command;
 use serde_json::{Value, json};
 
+#[path = "validator_subagent_ownership_hook/retired_watcher.rs"]
+mod retired_watcher;
+#[path = "validator_subagent_ownership_hook/catalog_admission.rs"]
+mod catalog_admission;
+
 pub(crate) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 pub(crate) const TOOLS: &[&str] = &[
@@ -30,32 +35,6 @@ fn installed_matcher_covers_observed_native_and_flattened_names() -> TestResult 
     for tool in ["create_thread", "spawn_agent_extra", "agents__send_message"] {
         assert!(!matcher.is_match(tool), "matcher overmatches {tool}");
     }
-    Ok(())
-}
-
-#[test]
-fn packaged_specialist_catalogs_remain_admitted() -> TestResult {
-    let root = codexy_runtime::paths::repository_root();
-    let mut admitted = Vec::new();
-    for relative in [
-        "plugins/codexy/agents/catalog.toml",
-        "plugins/codexy-github/agents/catalog.toml",
-    ] {
-        let catalog: toml::Value =
-            toml::from_str(&std::fs::read_to_string(root.join(relative))?)?;
-        for file in catalog["agent_files"].as_array().ok_or("agent_files")? {
-            let agent_type = file
-                .as_str()
-                .and_then(|name| name.strip_suffix(".toml"))
-                .ok_or("specialist filename")?;
-            assert_admitted(
-                agent_type,
-                "Inspect or implement the specialist-owned bounded task.",
-            )?;
-            admitted.push(agent_type.to_owned());
-        }
-    }
-    assert_eq!(admitted.len(), 10);
     Ok(())
 }
 

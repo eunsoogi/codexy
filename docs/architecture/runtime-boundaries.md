@@ -94,14 +94,15 @@ as permission to claim the server worked.
   separate. A direct plugin-subprocess probe can establish the first three, but
   `verified` remains `unknown` without host/session evidence; `unknown` is
   non-proof for that observation and does not by itself classify overall health.
-- Native Watcher observation uses one quiet `watcher_wait`: omitting `timeoutMs`
-  selects the 295-second server-side default of 295,000 ms, leaving a
-  five-second margin under the observed 300-second `tools/call` transport
-  deadline; the bounded `MAX_WAIT_MS` maximum remains 3,600,000 ms. An explicit
-  shorter wait remains supported for a user deadline or a confirmed host limit.
-  Same-connection `notifications/cancelled` releases only the pending request
-  when the host propagates it and preserves the durable session;
-  `watcher_cancel` separately ends that session and requires a fresh assignment.
+- A separately supplied Watcher using the core MCP uses one quiet
+  `watcher_wait`: omitting `timeoutMs` selects the 295,000 ms server-side
+  default, leaving a five-second margin under the observed 300-second
+  `tools/call` transport deadline. The bounded `MAX_WAIT_MS` maximum remains
+  3,600,000 ms. An explicit shorter wait remains supported for a user deadline
+  or a confirmed host limit. Same-connection `notifications/cancelled` releases
+  only the pending request when the host propagates it and preserves the durable
+  session; `watcher_cancel` separately ends that session and requires a fresh
+  assignment.
 - The core hook contract binds an authenticated Orchestrator `watcher_wait` in
   `PreToolUse` with an opaque `requestBinding`; the synchronous `Interrupt` hook
   cancels the exact host session and turn, while `UserPromptSubmit` cancels only

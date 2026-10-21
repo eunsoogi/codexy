@@ -23,7 +23,7 @@ CAPABILITIES = {
         "specialist:codexy-sentinel",
         "specialist:codexy-shipwright",
         "specialist:codexy-warden",
-        "specialist:codexy-watcher",
+        # The retained Watcher MCP remains distinct from native role registration.
         "mcp:watcher",
     ),
     "github": ("hook:codexy-github-workflow-context", "specialist:codexy-weaver"),

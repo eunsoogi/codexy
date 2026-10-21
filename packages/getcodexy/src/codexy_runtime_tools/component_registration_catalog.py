@@ -24,7 +24,6 @@ agent_files = [
   "codexy-sentinel.toml",
   "codexy-warden.toml",
   "codexy-advisor.toml",
-  "codexy-watcher.toml",
 ]
 """,
     "github": """version = "0.1.0"

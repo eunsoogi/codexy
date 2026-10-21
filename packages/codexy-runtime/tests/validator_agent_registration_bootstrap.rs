@@ -28,8 +28,8 @@ fn installed_bootstrap_registers_agents_and_then_becomes_idempotent() -> TestRes
         &first_stdout,
         "agent registration bootstrap transition",
         &[
-            "A role-discovery: FAIL (0/9",
-            "A role-discovery: PASS (9 marker-owned",
+            "A role-discovery: FAIL (0/8",
+            "A role-discovery: PASS (8 marker-owned",
             "D bootstrap: RESTART_REQUIRED",
         ],
     );

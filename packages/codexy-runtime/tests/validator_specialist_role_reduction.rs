@@ -6,7 +6,10 @@ use serde_json::json;
 
 use crate::support::{TestResult, copy_plugin_fixture_with_mutable_files};
 
-const CURRENT: [&str; 9] = [
+#[path = "validator_specialist_role_reduction/catalog_mutations.rs"]
+mod catalog_mutations;
+
+const CURRENT: [&str; 8] = [
     "codexy-architect",
     "codexy-advisor",
     "codexy-auditor",
@@ -15,14 +18,14 @@ const CURRENT: [&str; 9] = [
     "codexy-sentinel",
     "codexy-shipwright",
     "codexy-warden",
-    "codexy-watcher",
 ];
-const RETIRED: [&str; 5] = [
+const RETIRED: [&str; 6] = [
     "codexy-forge",
     "codexy-pathfinder",
     "codexy-scribe",
     "codexy-sculptor",
     "codexy-tracer",
+    "codexy-watcher",
 ];
 
 #[test]
@@ -126,28 +129,6 @@ fn historical_prose_does_not_define_current_role_contract() -> TestResult {
     assert_retired_specialists(&plugin_root)
 }
 
-#[test]
-fn disposable_catalog_mutations_are_detected() -> TestResult {
-    assert_catalog_mutation_is_detected(|catalog| {
-        catalog.replacen("  \"codexy-watcher.toml\",\n", "", 1)
-    })?;
-    assert_catalog_mutation_is_detected(|catalog| {
-        catalog.replacen(
-            "  \"codexy-watcher.toml\",\n]",
-            "  \"codexy-watcher.toml\",\n  \"codexy-forge.toml\",\n]",
-            1,
-        )
-    })?;
-    assert_catalog_mutation_is_detected(|catalog| {
-        catalog.replacen(
-            "  \"codexy-watcher.toml\",\n]",
-            "  \"codexy-watcher.toml\",\n  \"codexy-watcher.toml\",\n]",
-            1,
-        )
-    })?;
-    Ok(())
-}
-
 fn assert_current_catalog(plugin_root: &Path) -> TestResult {
     let entries = read_catalog_entries(plugin_root)?;
     let configured = entries.iter().cloned().collect::<BTreeSet<_>>();
@@ -173,6 +154,10 @@ fn assert_retired_specialists(plugin_root: &Path) -> TestResult {
         assert!(
             !configured.contains(&filename),
             "retired specialist remains in the packaged catalog: {name}"
+        );
+        assert!(
+            !plugin_root.join("agents").join(&filename).exists(),
+            "retired specialist definition remains in the package: {name}"
         );
         let output = resolve_named_specialist(plugin_root, name)?;
         assert!(

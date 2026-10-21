@@ -8,6 +8,7 @@ from .envelope import Request
 from .subagent_ownership_message import durable_owner_requested
 
 # Admission makes these roles valid bounded targets; role-specific behavior remains instruction-level.
+# The Watcher MCP is a transport, not admission for the retired native Watcher role.
 _SPECIALISTS = frozenset(
     {
         "codexy-architect",
@@ -18,7 +19,6 @@ _SPECIALISTS = frozenset(
         "codexy-sentinel",
         "codexy-shipwright",
         "codexy-warden",
-        "codexy-watcher",
         "codexy-weaver",
     }
 )

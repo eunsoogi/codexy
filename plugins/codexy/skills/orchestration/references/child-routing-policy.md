@@ -38,13 +38,12 @@ observed, not claimed as observed.
 For ordinary observation of assigned Codex Workers, the Orchestrator MUST use
 the native event-driven `wait_threads` route with each task's latest cursor. It
 MUST NOT summon a Watcher solely to relay routine Worker events. A separately
-assigned bounded observation MAY use the packaged `codexy-watcher` specialist,
-summoned through the host's native subagent facility; only that Watcher may
-observe its exact assigned targets, and the Orchestrator MUST await
-`watcher_wait` without also waiting directly on them. It MUST NOT substitute an
-unassigned subagent or treat a self-declared role name as specialist identity.
-The packaged Watcher declares `gpt-6-luna` at `max`; caller overrides remain
-forbidden.
+assigned bounded observation MAY use a Watcher supplied outside Codexy's
+packaged specialist catalog. Only that Watcher may observe its exact assigned
+targets, and the Orchestrator MUST await `watcher_wait` without also waiting
+directly on them. Codexy retains the core Watcher MCP for such separately
+configured reporters, but does not register a native Watcher specialist or
+assign it a packaged model pair.
 
 When creating a Worker, Codex MUST bind the selected model and effort to the
 authenticated recipient. For existing tasks, Codex MUST send to the

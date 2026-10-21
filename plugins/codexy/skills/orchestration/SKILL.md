@@ -64,9 +64,9 @@ technical text MUST follow that contract.
 
 ### Delegated supervision route
 
-When a task uses app-thread Workers, a native Watcher, Worker callbacks, drift
-correction, or delegated Worker goal ownership, MUST read
-[parent supervision](references/parent-supervision.md) before dispatch,
+When a task uses app-thread Workers, a separately assigned external Watcher,
+Worker callbacks, drift correction, or delegated Worker goal ownership, MUST
+read [parent supervision](references/parent-supervision.md) before dispatch,
 observation, reporting, interruption, correction, or handoff. That reference is
 the canonical source for role ownership, assigned model policy, Worker report
 routing, Watcher observation and waits, deduplication, host limits, interruption
