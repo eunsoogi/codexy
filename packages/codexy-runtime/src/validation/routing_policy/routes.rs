@@ -9,7 +9,13 @@ pub(super) fn simple_route(
     capabilities: Option<&ThreadCapabilities>,
     operation: &str,
 ) -> Value {
-    generic_route(policy, capabilities, operation)
+    selected_route(
+        policy,
+        capabilities,
+        operation,
+        &policy.simple.model,
+        &policy.simple.thinking,
+    )
 }
 
 pub(super) fn child_to_root_route(
@@ -79,25 +85,25 @@ pub(super) fn selected_general_route(
     capabilities: Option<&ThreadCapabilities>,
     operation: &str,
 ) -> Value {
-    generic_route(policy, capabilities, operation)
+    selected_route(
+        policy,
+        capabilities,
+        operation,
+        &policy.general.model,
+        &policy.general.thinking,
+    )
 }
 
-fn generic_route(
+// Difficulty chooses the pair, while capability checks still fail closed on that exact pair.
+fn selected_route(
     policy: &Policy,
     capabilities: Option<&ThreadCapabilities>,
     operation: &str,
+    model: &str,
+    thinking: &str,
 ) -> Value {
-    if thread_capabilities::supports(
-        capabilities,
-        &policy.generic.model,
-        &policy.generic.thinking,
-    ) {
-        route(
-            "generic",
-            operation,
-            &policy.generic.model,
-            &policy.generic.thinking,
-        )
+    if thread_capabilities::supports(capabilities, model, thinking) {
+        route("generic", operation, model, thinking)
     } else {
         json!({"route":policy.fallback})
     }
