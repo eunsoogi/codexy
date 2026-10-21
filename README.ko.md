@@ -211,12 +211,11 @@ Codexy는 작업 담당자와 Codexy에 포함된 전문 에이전트를 구분�
 프로젝트의 역할 설정이며, 설치만으로 호스트의 기본 모델이 바뀌거나 다른 저장소의
 GitHub 정책에 동의한 것으로 해석되지 않습니다.
 
-| 역할                       | 모델                                               | 추론 수준                              | 담당 범위                                                                                                                                                                                                                                                                                                                    |
-| -------------------------- | -------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Orchestrator / parent      | `gpt-6-luna`                                       | `max`                                  | Worker 작업을 배정·추적하고 전체 작업 목표를 맡아 이탈을 교정하며 보고를 검증하고 결과를 인수합니다.                                                                                                                                                                                                                         |
-| Advisor / `codexy-advisor` | `gpt-6-astra`                                      | `medium`                               | 지정된 질문을 읽고 분석해 조언하며 파일 수정·위임·담당 변경·최종 인수를 하지 않습니다.                                                                                                                                                                                                                                       |
-| Watcher / `codexy-watcher` | `gpt-6-luna`                                       | `max`                                  | 할당된 Worker를 native subagent로 읽기 전용 관찰하고 core Watcher MCP로 중요한 사건을 보고하며, 지시·수정·교체·인수는 하지 않습니다.                                                                                                                                                                                         |
-| Worker / ordinary child    | `gpt-6-luna` (simple) 또는 `gpt-6.1-sol` (general) | `max` (simple) 또는 `medium` (general) | 별도 app task에서 이슈를 구현·검증합니다. 일반 Worker 이벤트는 Orchestrator가 직접 관찰하고, 별도 Watcher 배정은 대상 범위를 제한합니다. 네 가지 `simple_predicates`를 모두 충족할 때만 Luna/Max를 사용하고, 범위가 분명한 general 구현 작업은 Sol/Medium을 선택하며, 범위·권한·필수 입력이 불분명하면 안전 경로로 보냅니다. |
+| 역할                       | 모델                                               | 추론 수준                              | 담당 범위                                                                                                                                                                                                                                                                          |
+| -------------------------- | -------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Orchestrator / parent      | `gpt-6-luna`                                       | `max`                                  | Worker 작업을 배정·추적하고 전체 작업 목표를 맡아 이탈을 교정하며 보고를 검증하고 결과를 인수합니다.                                                                                                                                                                               |
+| Advisor / `codexy-advisor` | `gpt-6-astra`                                      | `medium`                               | 지정된 질문을 읽고 분석해 조언하며 파일 수정·위임·담당 변경·최종 인수를 하지 않습니다.                                                                                                                                                                                             |
+| Worker / ordinary child    | `gpt-6-luna` (simple) 또는 `gpt-6.1-sol` (general) | `max` (simple) 또는 `medium` (general) | 별도 app task에서 이슈를 구현·검증합니다. Orchestrator가 일반 Worker 이벤트를 직접 관찰합니다. 네 가지 `simple_predicates`를 모두 충족할 때만 Luna/Max를 사용하고, 범위가 분명한 general 구현 작업은 Sol/Medium을 선택하며, 범위·권한·필수 입력이 불분명하면 안전 경로로 보냅니다. |
 
 Advisor의 읽기 전용 경계는 에이전트 지침에 따른 행동 규칙이며, 호스트 권한이
 차단된다는 보장은 아닙니다.
@@ -224,34 +223,34 @@ Advisor의 읽기 전용 경계는 에이전트 지침에 따른 행동 규칙�
 일반 Worker 관찰은 Orchestrator가 각 작업의 최신 cursor를 포함해 native
 `wait_threads`를 호출하고 완료, 도움이 필요한 상태, 이후 새 turn을 직접
 확인합니다. 한 Worker의 이벤트가 다른 작업의 관찰이나 issue 완료를 끝내지는
-않습니다. Orchestrator는 결과를 판단하고 교정과 인수 권한을 유지합니다. 별도
-Watcher가 배정되면 정확히 지정된 대상만 관찰하고 기존 보고 경로를 사용합니다.
-일반 Worker 관찰에 Watcher가 필수는 아닙니다. 메시지와 목표 전환 receipt는 기존
-권한과 수신 대상을 유지합니다.
+않습니다. Orchestrator는 결과를 판단하고 교정과 인수 권한을 유지합니다. Codexy는
+native Watcher 전문 역할을 더 이상 패키징하지 않습니다. core Watcher MCP와
+interrupt 훅은 별도로 설정한 reporter를 위해 유지하며, 일반 Worker 이벤트는
+Orchestrator가 직접 관찰합니다. 메시지와 목표 전환 receipt는 기존 권한과 수신
+대상을 유지합니다.
 
 목표도 분리됩니다. Orchestrator는 전체 작업 목표를 맡고 Worker는 유한한 실행
-목표를 맡습니다. 별도 Watcher가 배정되면 제한된 관찰만 맡으며 전체 목표를
-소유하거나 옮기지 않습니다. 이 설정은 Codexy에 포함된 구성이지 이미 실행 중인
-host가 실제로 사용한 모델의 증거는 아닙니다. `low`, `medium`, `high`, `xhigh`,
-`max`는 추론 수준입니다.
+목표를 맡습니다. 보존된 Watcher MCP는 보고 전송 수단이며 목표를 소유하거나
+옮기지 않습니다. 이 설정은 Codexy에 포함된 구성이지 이미 실행 중인 host가 실제로
+사용한 모델의 증거는 아닙니다. `low`, `medium`, `high`, `xhigh`, `max`는 추론
+수준입니다.
 
 ### 패키지 전문 에이전트
 
 패키지 catalog는 각 전문 에이전트에 고유한 모델과 추론 수준을 지정하며, 선택형
 `codexy-github` 플러그인이 Weaver를 제공합니다.
 
-| 컴포넌트 | 전문 에이전트         | 모델          | 추론 수준 | 담당 범위                                  |
-| -------- | --------------------- | ------------- | --------- | ------------------------------------------ |
-| core     | `codexy-architect`    | `gpt-6-astra` | `high`    | 아키텍처와 통합 경계                       |
-| core     | `codexy-advisor`      | `gpt-6-astra` | `medium`  | 지정된 질문의 제한된 분석과 조언           |
-| core     | `codexy-sentinel`     | `gpt-6-astra` | `xhigh`   | 엄격한 리뷰                                |
-| core     | `codexy-warden`       | `gpt-6-astra` | `xhigh`   | 안전·권한 경계                             |
-| core     | `codexy-inspector`    | `gpt-6.1-sol` | `medium`  | 표준 리뷰                                  |
-| core     | `codexy-auditor`      | `gpt-6.1-sol` | `medium`  | 인수 기준과 실제 동작 검증                 |
-| core     | `codexy-cartographer` | `gpt-6-luna`  | `low`     | 저장소 탐색                                |
-| core     | `codexy-shipwright`   | `gpt-6.1-sol` | `high`    | 릴리스와 패키징                            |
-| core     | `codexy-watcher`      | `gpt-6-luna`  | `max`     | core Watcher MCP를 통한 native Worker 관찰 |
-| github   | `codexy-weaver`       | `gpt-6.1-sol` | `medium`  | GitHub 통합; GitHub 컴포넌트 제공          |
+| 컴포넌트 | 전문 에이전트         | 모델          | 추론 수준 | 담당 범위                         |
+| -------- | --------------------- | ------------- | --------- | --------------------------------- |
+| core     | `codexy-architect`    | `gpt-6-astra` | `high`    | 아키텍처와 통합 경계              |
+| core     | `codexy-advisor`      | `gpt-6-astra` | `medium`  | 지정된 질문의 제한된 분석과 조언  |
+| core     | `codexy-sentinel`     | `gpt-6-astra` | `xhigh`   | 엄격한 리뷰                       |
+| core     | `codexy-warden`       | `gpt-6-astra` | `xhigh`   | 안전·권한 경계                    |
+| core     | `codexy-inspector`    | `gpt-6.1-sol` | `medium`  | 표준 리뷰                         |
+| core     | `codexy-auditor`      | `gpt-6.1-sol` | `medium`  | 인수 기준과 실제 동작 검증        |
+| core     | `codexy-cartographer` | `gpt-6-luna`  | `low`     | 저장소 탐색                       |
+| core     | `codexy-shipwright`   | `gpt-6.1-sol` | `high`    | 릴리스와 패키징                   |
+| github   | `codexy-weaver`       | `gpt-6.1-sol` | `medium`  | GitHub 통합; GitHub 컴포넌트 제공 |
 
 ### 실시간 음성 모드
 

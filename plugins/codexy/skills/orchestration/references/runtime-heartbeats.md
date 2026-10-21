@@ -69,38 +69,38 @@ registered` failure, the owner MUST treat the mismatch as
 host-transition exposure evidence, perform one fresh thread-tool discovery and
 one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded
 `read_thread`, and any bounded metadata fallback MUST consume the current
-Orchestrator-stage budget and record only returned size/token metadata. On a
-native Watcher route, the assigned Watcher owns the wait/retry for assigned
-targets; the Orchestrator MUST use `watcher_wait` and MUST NOT directly retry or
-poll those targets.
+Orchestrator-stage budget and record only returned size/token metadata. On an
+explicitly assigned external Watcher route, the Watcher owns the wait/retry for
+assigned targets; the Orchestrator MUST use `watcher_wait` and MUST NOT directly
+retry or poll those targets.
 
 For ordinary Orchestrator-owned Worker observation with a callable
 `wait_threads` handler, the Orchestrator MUST use the cursor-based wait while
 the assignment remains. A native reviewer's terminal delivery is its own surface
-and MUST NOT be confused with Worker observation. Native Watcher roles, their
-explicit report route, host limits, quiet waits, interruption/cancellation,
-deduplication, and return conditions are defined in
+and MUST NOT be confused with Worker observation. Separately supplied Watcher
+assignments, their explicit report route, host limits, quiet waits,
+interruption/cancellation, deduplication, and return conditions are defined in
 [parent-supervision.md](parent-supervision.md); MUST read that reference before
-assigning a Watcher. Only the assigned Watcher MAY wait on its Worker targets;
-the Orchestrator MUST await `watcher_wait` without directly waiting on them. The
-host's automatic continuation behavior is not implied and MUST be reported if
-observed. If a slingshot-host turn still returns `No handler registered` after
-the one fresh discovery and one host-aware retry, the owner MUST emit exactly
-one unavailable evidence receipt and require desktop-origin root re-entry; it
-MUST NOT repeat the wait call, schedule a heartbeat relay, use `read_thread`, or
-use `handoff_thread` for recovery. The slingshot recovery route is not an
-unavailable-wait fallback eligible for heartbeat registration; it ends in
-desktop-origin root re-entry.
+assigning an external Watcher. Only the assigned Watcher MAY wait on its Worker
+targets; the Orchestrator MUST await `watcher_wait` without directly waiting on
+them. The host's automatic continuation behavior is not implied and MUST be
+reported if observed. If a slingshot-host turn still returns
+`No handler registered` after the one fresh discovery and one host-aware retry,
+the owner MUST emit exactly one unavailable evidence receipt and require
+desktop-origin root re-entry; it MUST NOT repeat the wait call, schedule a
+heartbeat relay, use `read_thread`, or use `handoff_thread` for recovery. The
+slingshot recovery route is not an unavailable-wait fallback eligible for
+heartbeat registration; it ends in desktop-origin root re-entry.
 
-## Explicit Native Watcher boundary
+## Explicit external Watcher boundary
 
 When a separate Watcher assignment is explicit, its creation, targets, report
 routing, cursor waits, host and transport limits, quiet waiting,
 interruption/cancellation, deduplication, and Orchestrator/Worker ownership are
 defined in [parent-supervision.md](parent-supervision.md). MUST read that
-reference before using a native Watcher. A heartbeat MUST NOT replace that
+reference before using an external Watcher. A heartbeat MUST NOT replace that
 route, and the Watcher MUST remain observation-only. The Orchestrator MUST NOT
-directly poll Worker targets assigned to a native Watcher.
+directly poll Worker targets assigned to an external Watcher.
 
 ## Eligibility And Discovery
 

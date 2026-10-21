@@ -42,7 +42,7 @@ if [ -d "$agents_root" ]; then
 fi
 
 # Pin the package count so a missing specialist cannot pass against a smaller projection.
-if [ "$expected" -eq 9 ] && [ "$exact" -eq "$expected" ] && [ "$managed" -eq "$expected" ]; then
+if [ "$expected" -eq 8 ] && [ "$exact" -eq "$expected" ] && [ "$managed" -eq "$expected" ]; then
   printf '%s\n' "D bootstrap: READY"
   exit 0
 fi

@@ -49,10 +49,10 @@ transition key. Terminal handoffs MUST carry a stable event id. Repeated
 delivery evidence for one key MUST be represented as deduplicated; it MUST NOT
 imply a second goal call.
 
-## Explicit Native Watcher report route
+## Explicit external Watcher report route
 
 Worker-to-Watcher reporting, Watcher deduplication, and unavailable-route
-handling apply only when a native Watcher is explicitly assigned; they are
+handling apply only when an external Watcher is explicitly assigned; they are
 defined in [parent-supervision.md](parent-supervision.md). MUST read that
 reference for such an assignment. Blocked-goal recovery and terminal handoff
 receipts remain direct to the Orchestrator and follow this file. Initial

@@ -66,8 +66,7 @@
         "plugins/codexy/agents/codexy-inspector.toml",
         "plugins/codexy/agents/codexy-sentinel.toml",
         "plugins/codexy/agents/codexy-shipwright.toml",
-        "plugins/codexy/agents/codexy-warden.toml",
-        "plugins/codexy/agents/codexy-watcher.toml"
+        "plugins/codexy/agents/codexy-warden.toml"
       ],
       "target": "codexy",
       "disposition": "retain"

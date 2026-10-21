@@ -1,6 +1,6 @@
 ---
 name: goal-lifecycle
-description: Use before any explicitly authorized Orchestrator or implementation Worker task, including read-only diagnosis, when using goal tools or resuming a task controlled by a goal, or for same-directory fork recovery of a blocked task. The native read-only Watcher exception remains separate. MUST NOT infer execution or goal authority from ordinary questions, ambiguous discussion, or unassigned suggestions.
+description: Use before any explicitly authorized Orchestrator or implementation Worker task, including read-only diagnosis, when using goal tools or resuming a task controlled by a goal, or for same-directory fork recovery of a blocked task. The external read-only Watcher exception remains separate. MUST NOT infer execution or goal authority from ordinary questions, ambiguous discussion, or unassigned suggestions.
 ---
 
 # Goal Lifecycle
@@ -11,8 +11,8 @@ Codex MUST use this skill before explicitly assigned Orchestrator or
 implementation Worker task work, including read-only diagnosis, and for every
 goal-tool operation or resume of a task controlled by a goal. Codex MUST load it
 before task-specific work, not only after choosing a goal-tool operation. The
-native read-only Watcher exception below remains separate and MUST NOT create a
-separate goal. Codex MUST treat the host goal tools as authoritative. The
+external read-only Watcher exception below remains separate and MUST NOT create
+a separate goal. Codex MUST treat the host goal tools as authoritative. The
 lifecycle governs fresh goal startup, active continuation, and authorized
 recovery from blocked goals. It MUST NOT change host goal state, issue
 ownership, branch, or worktree to simulate completion. Recovery changes only the
@@ -47,38 +47,15 @@ rejected; the child MUST NOT follow that prohibition. Ambiguous conversation,
 incidental discussion, and unassigned suggestions are not delegated task
 assignments and MUST NOT create a goal.
 
-### Native watcher exception
+### External Watcher exception
 
-When the Orchestrator summons the packaged `codexy-watcher` role through the
-native subagent facility for bounded observation and Watcher MCP reporting, the
-Orchestrator retains the overall goal and all judgement, correction, and
-acceptance authority. The Watcher MUST NOT create, transfer, complete, or block
-a separate overall goal. The Watcher MCP transports the bounded assignment and
-reports; it does not grant the Watcher goal ownership. The delegated-assignment
-rule above continues to apply to implementation Workers, not to this native
-Watcher role. The Watcher keeps that assignment in one native turn and MUST NOT
-return after one report, one Worker completion, or an empty timeout while an
-assigned target remains nonterminal; it returns only for full assignment
-completion, explicit cancellation, or a verified host limitation.
-
-Ordinary Worker observation belongs to the Orchestrator, which MUST use native
-cursor-based `wait_threads` for its assigned tasks. Only an explicitly assigned
-Watcher MAY call `wait_threads` for its Worker or task targets; the Orchestrator
-MUST await `watcher_wait` and MUST NOT also wait directly on them. Fallback,
-unavailable, and host-transition branches for those targets MUST keep the
-assigned Watcher route and MUST NOT authorize direct parent polling. An
-implementation Worker or child MUST NOT open, wait on, report to, cancel, or
-reuse a parent-owned Watcher session or token.
-
-During that assignment, ordinary Worker progress, completion, findings, and
-attention reports MUST go to the exact Watcher task supplied by the Orchestrator
-through the host's supported task-message route. The Watcher deduplicates
-unchanged reports and relays only meaningful changes or required decisions.
-Blocked-goal recovery and terminal handoff receipts remain direct-parent
-control-plane messages. Initial goal registration and active readback stay in
-the owning task and MUST NOT be sent as separate parent reports. A verified
-unavailable route or concrete emergency permits one marked direct-parent
-fallback, not routine duplicate reporting.
+Codexy does not package a native Watcher specialist. A separately assigned
+Watcher is observation-only and MUST NOT own, create, transfer, complete, or
+block the Orchestrator's overall goal. Ordinary Worker observation stays with
+the Orchestrator; implementation Workers MUST continue to follow the delegated
+assignment rules above. Routing, waits, callbacks, cancellation, and fallback
+for an external Watcher MUST follow
+[parent supervision](../orchestration/references/parent-supervision.md).
 
 ## Required first transition
 

@@ -40,7 +40,6 @@ const EXPECTED_AGENTS: &[ExpectedAgent] = &[
     expected_agent!("codexy-sentinel", "gpt-6-astra", "xhigh"),
     expected_agent!("codexy-shipwright", "gpt-6.1-sol", "high"),
     expected_agent!("codexy-warden", "gpt-6-astra", "xhigh"),
-    expected_agent!("codexy-watcher", "gpt-6-luna", "max"),
 ];
 
 #[test]
@@ -201,8 +200,8 @@ fn validator_in_process_reports_unexpected_catalog_contract_entry() -> TestResul
     assert_rejected(
         validate_catalog_replacement(
             &fixture,
-            "  \"codexy-watcher.toml\",\n]",
-            "  \"codexy-watcher.toml\",\n  \"codexy-unknown.toml\",\n]",
+            "  \"codexy-advisor.toml\",\n]",
+            "  \"codexy-advisor.toml\",\n  \"codexy-unknown.toml\",\n]",
         )?,
         "missing: none; unexpected: codexy-unknown.toml",
     );

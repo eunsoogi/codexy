@@ -30,9 +30,6 @@ native location.
 | `codexy-shipwright`   | `gpt-6.1-sol` | `high`           | Prepares version, manifest, marketplace, artifact, tag, release, and rollback readiness.                                                            |
 | `codexy-warden`       | `gpt-6-astra` | `xhigh`          | Reviews workflows, shell commands, credentials, remote MCPs, untrusted input, permissions, and state mutation.                                      |
 
-| `codexy-watcher` | `gpt-6-luna` | `max` | Performs bounded native read-only
-Worker observation and reports material events through the core Watcher MCP. |
-
 These model assignments come directly from the packaged TOMLs, which are
 authoritative for a named custom agent's model and reasoning effort. Callers
 should not silently override them. The Advisor's read-only boundary is
