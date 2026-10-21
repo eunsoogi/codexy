@@ -12,22 +12,22 @@ no-change parent-turn savings remain unmeasured.
 
 ## Same-Turn Execution Default
 
-- While an authorized assignment still has actionable in-scope work or an
-  assigned supported observation obligation, MUST preserve the full objective,
-  goal owner, and next uncompleted action. A same-turn wait applies only while
-  the host keeps the existing supported route available; this instruction MUST
-  NOT imply that the runtime holds or suspends a parent turn.
-- Same-goal re-entry MUST resume the same Worker owner, active goal, Watcher
-  session, latest returned cursor, and next unfinished action. Advance only from
-  actual Watcher results; preserve confirmed cancellation. Handle user input at
-  re-entry; MUST NOT infer wait cancel/resume or restart unchanged work.
-- The Orchestrator MUST nest `watcher_wait(timeoutMs=295000)` in one
-  `functions.exec` with first-line `// @exec: {"yield_time_ms":300000}` on the
-  verified host. Two parent calls reached timeout with no cell yield or visible
-  model, tool, or commentary item; hidden inference and other hosts remain
-  unverified. An early yield is not proof. The owner MUST preserve the cell,
-  session, cursor, and cancellation; MUST NOT use `functions.wait` as proof,
-  reissue, advance the cursor, or emit unchanged status or reasoning.
+- While authorized work or observation remains actionable, preserve the full
+  assignment, active goal owner, and next action. Same-turn waiting applies only
+  while the host keeps its supported route; it does not imply runtime suspension
+  of a parent turn.
+- Same-goal re-entry MUST resume the Worker owner, active goal, per-target
+  `wait_threads` cursors, and next action. Advance only on actual results;
+  preserve Watcher state and cancellation only for an explicit assignment.
+  Handle input at re-entry; MUST NOT infer wait cancel/resume or repeat work.
+- For an explicitly assigned Watcher route, the Orchestrator MUST nest
+  `watcher_wait(timeoutMs=295000)` in one `functions.exec` with first-line
+  `// @exec: {"yield_time_ms":300000}` on the verified host. Two parent calls
+  reached timeout with no cell yield or visible model, tool, or commentary item;
+  hidden inference and other hosts remain unverified. An early yield is not
+  proof. The owner MUST preserve the cell, session, cursor, and cancellation;
+  MUST NOT use `functions.wait` as proof, reissue, advance the cursor, or emit
+  unchanged status or reasoning.
 - Outside a route-required quiet wait, MUST provide concise progress commentary
   at meaningful checkpoints during active work; commentary does not end the turn
   or prove completion. MUST reserve final handoff for the complete assigned
@@ -209,10 +209,9 @@ Heartbeat registration, bounded schedules, state fingerprints, cleanup, ordinary
 Worker lifecycle, and idle-wait handoffs are defined in
 [runtime-heartbeats.md](runtime-heartbeats.md). MUST read that reference before
 using a heartbeat or handling an ordinary Worker idle-wait handoff. A heartbeat
-MUST NOT replace the native Watcher route or the live Sentinel's event-driven
-no-poll boundary. The Orchestrator retains the active overall goal while the
-Watcher observes and MUST record those goal and bounded-assignment states
-separately.
+MUST NOT replace an explicitly assigned Watcher route or the live Sentinel's
+event-driven no-poll boundary. The Orchestrator retains the active overall goal
+during a separate Watcher assignment and MUST record both states separately.
 
 For repeat handoffs, copy [the delta-poll template](../templates/delta-poll.md)
 and fill only the current slots. MUST keep the template output in the thread or

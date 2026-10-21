@@ -35,11 +35,16 @@ override. Requested fields and source-level hook admission do not prove
 effective host state; missing observations MUST be recorded as unavailable/not
 observed, not claimed as observed.
 
-For bounded native observation of assigned Codex Workers, the Orchestrator MUST
-select the packaged `codexy-watcher` specialist and summon it through the host's
-native subagent facility. It MUST NOT substitute an unassigned subagent or treat
-a self-declared role name as specialist identity. The packaged Watcher declares
-`gpt-6-luna` at `max`; caller overrides remain forbidden.
+For ordinary observation of assigned Codex Workers, the Orchestrator MUST use
+the native event-driven `wait_threads` route with each task's latest cursor. It
+MUST NOT summon a Watcher solely to relay routine Worker events. A separately
+assigned bounded observation MAY use the packaged `codexy-watcher` specialist,
+summoned through the host's native subagent facility; only that Watcher may
+observe its exact assigned targets, and the Orchestrator MUST await
+`watcher_wait` without also waiting directly on them. It MUST NOT substitute an
+unassigned subagent or treat a self-declared role name as specialist identity.
+The packaged Watcher declares `gpt-6-luna` at `max`; caller overrides remain
+forbidden.
 
 When creating a Worker, Codex MUST bind the selected model and effort to the
 authenticated recipient. For existing tasks, Codex MUST send to the

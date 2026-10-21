@@ -243,30 +243,30 @@ Codexy separates task ownership from bundled specialist roles. These are the
 project's role settings; installation does not change a host's default model or
 opt a user into another repository's GitHub policy.
 
-| Role                       | Model                                            | Reasoning effort                     | Responsibility                                                                                                                                                                                                                                                             |
-| -------------------------- | ------------------------------------------------ | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Orchestrator / parent      | `gpt-6-luna`                                     | `max`                                | Assigns and follows Worker work, owns the overall task goal, corrects deviations, verifies reports, and accepts results.                                                                                                                                                   |
-| Advisor / `codexy-advisor` | `gpt-6-astra`                                    | `medium`                             | Instruction-bounded analysis and advice; does not edit, delegate, change ownership, or grant final approval.                                                                                                                                                               |
-| Watcher / `codexy-watcher` | `gpt-6-luna`                                     | `max`                                | Bounded native-subagent observation of assigned Workers through the core Watcher MCP; reports material events and never directs, edits, replaces, or accepts Worker work.                                                                                                  |
-| Worker / ordinary child    | `gpt-6-luna` (simple) or `gpt-6.1-sol` (general) | `max` (simple) or `medium` (general) | Separate app task that owns its implementation branch/worktree and reports through the assigned Watcher. Luna/Max requires all four simple predicates; clearly scoped general work uses Sol/Medium, while ambiguous scope, authority, or required inputs stay fail-closed. |
+| Role                       | Model                                            | Reasoning effort                     | Responsibility                                                                                                                                                                                                                                                                                                                       |
+| -------------------------- | ------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Orchestrator / parent      | `gpt-6-luna`                                     | `max`                                | Assigns and follows Worker work, owns the overall task goal, corrects deviations, verifies reports, and accepts results.                                                                                                                                                                                                             |
+| Advisor / `codexy-advisor` | `gpt-6-astra`                                    | `medium`                             | Instruction-bounded analysis and advice; does not edit, delegate, change ownership, or grant final approval.                                                                                                                                                                                                                         |
+| Watcher / `codexy-watcher` | `gpt-6-luna`                                     | `max`                                | Bounded native-subagent observation of assigned Workers through the core Watcher MCP; reports material events and never directs, edits, replaces, or accepts Worker work.                                                                                                                                                            |
+| Worker / ordinary child    | `gpt-6-luna` (simple) or `gpt-6.1-sol` (general) | `max` (simple) or `medium` (general) | Separate app task that owns its implementation branch/worktree. The Orchestrator observes ordinary events directly; a separately assigned Watcher remains bounded. Luna/Max requires all four simple predicates; clearly scoped general work uses Sol/Medium, while ambiguous scope, authority, or required inputs stay fail-closed. |
 
 The Advisor's read-only boundary is part of its instructions; it does not imply
 host-level permission enforcement.
 
-Reporting flow: the Orchestrator assigns or corrects the Worker through the
-native Watcher. Worker reports use the supported route to its exact task,
-preserving source Worker task and issue/PR lane; the Watcher suppresses
-unchanged reports and relays material events through `watcher_report`. The
-Orchestrator receives them through `watcher_wait`, judges and directs the
-Worker, and retains correction and acceptance authority. A verified unavailable
-route or concrete emergency permits one marked parent fallback; no duplicate
-reports; receipts stay direct-parent.
+Ordinary observation flow: the Orchestrator uses native `wait_threads` with each
+Worker's latest cursor to observe completion, attention, and later turns. One
+Worker event does not end observation of remaining tasks or complete the issue.
+The Orchestrator judges results and retains correction and acceptance authority.
+A separately assigned Watcher observes only its bounded targets and uses its
+existing report route; it is not required for ordinary Worker events. Message
+and goal-transition receipts keep their existing authorization and destination.
 
-Goal boundary: the Orchestrator owns the overall task goal, the Watcher owns
-only a bounded observation assignment, and the Worker owns its finite execution
-goal. The Watcher cannot own or transfer the overall goal. These settings are
-bundled configuration, not proof of the model used by an already-running host;
-`low`, `medium`, `high`, `xhigh`, and `max` are reasoning-effort settings.
+Goal boundary: the Orchestrator owns the overall task goal, the Worker owns its
+finite execution goal, and a Watcher, when separately assigned, owns only a
+bounded observation assignment. The Watcher cannot own or transfer the overall
+goal. These settings are bundled configuration, not proof of the model used by
+an already-running host; `low`, `medium`, `high`, `xhigh`, and `max` are
+reasoning-effort settings.
 
 ### Packaged specialists
 

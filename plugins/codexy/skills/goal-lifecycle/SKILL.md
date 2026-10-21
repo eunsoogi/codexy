@@ -61,11 +61,13 @@ return after one report, one Worker completion, or an empty timeout while an
 assigned target remains nonterminal; it returns only for full assignment
 completion, explicit cancellation, or a verified host limitation.
 
-Only the assigned Watcher MAY call `wait_threads` for its assigned Worker or
-task targets. The Orchestrator MUST await `watcher_wait` and MUST NOT directly
-wait on those targets. Fallback, unavailable, and host-transition branches MUST
-recover the supported Watcher route rather than authorize direct parent polling.
-An implementation Worker or child MUST NOT open, wait on, report to, cancel, or
+Ordinary Worker observation belongs to the Orchestrator, which MUST use native
+cursor-based `wait_threads` for its assigned tasks. Only an explicitly assigned
+Watcher MAY call `wait_threads` for its Worker or task targets; the Orchestrator
+MUST await `watcher_wait` and MUST NOT also wait directly on them. Fallback,
+unavailable, and host-transition branches for those targets MUST keep the
+assigned Watcher route and MUST NOT authorize direct parent polling. An
+implementation Worker or child MUST NOT open, wait on, report to, cancel, or
 reuse a parent-owned Watcher session or token.
 
 During that assignment, ordinary Worker progress, completion, findings, and
