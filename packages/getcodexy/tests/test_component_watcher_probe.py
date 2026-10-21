@@ -17,7 +17,6 @@ class WatcherProbeTests(unittest.TestCase):
             component_observations,
         )
         from codexy_runtime_tools.component_mcp_materialization import (
-            MCP_SPECS,
             materialize_component_mcp,
         )
         from packages.getcodexy.tests.component_lifecycle_support import fixture
@@ -29,11 +28,13 @@ class WatcherProbeTests(unittest.TestCase):
             manifest["version"] = "2.0.0"
             manifest.pop("mcpServers", None)
             manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-            for relative in MCP_SPECS["core"].surface_paths:
-                (plugin / relative).unlink(missing_ok=True)
+            (plugin / ".mcp.json").unlink(missing_ok=True)
 
             # Validate the selected no-MCP package before checking its probe path.
             self.assertEqual(materialize_component_mcp(plugin, "core", "2.0.0"), plugin)
+            self.assertTrue((plugin / "mcp/codexy_mcp_bootstrap.py").is_file())
+            self.assertTrue((plugin / "mcp/codexy-mcp-watcher.sh").is_file())
+            self.assertTrue((plugin / "mcp/codexy-mcp-watcher.cmd").is_file())
             if os.name == "nt":
                 hook_script = plugin / "hooks/codexy-thread-delivery.cmd"
                 failing_hook = b"@echo off\r\nexit /b 37\r\n"

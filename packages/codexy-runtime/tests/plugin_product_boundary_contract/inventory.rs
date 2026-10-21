@@ -15,7 +15,6 @@ pub(super) fn record_matrix() -> BTreeMap<&'static str, (&'static str, &'static 
         ("agents.github", ("codexy-github", "move")),
         ("agents.devtools", ("codexy-devtools", "retain")),
         ("mcp.codegraph", ("codexy-devtools", "move")),
-        ("mcp.watcher", ("codexy", "retain")),
         ("mcp.lsp", ("codexy-devtools", "move")),
         ("mcp.runtimes", ("codexy-devtools", "move")),
         ("mcp.core-runtimes", ("codexy", "retain")),

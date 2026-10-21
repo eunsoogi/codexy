@@ -23,7 +23,7 @@ CAPABILITIES = {
         "specialist:codexy-sentinel",
         "specialist:codexy-shipwright",
         "specialist:codexy-warden",
-        # The retained Watcher MCP remains distinct from native role registration.
+        # Legacy Watcher MCP health stays distinct from native role registration.
         "mcp:watcher",
     ),
     "github": ("hook:codexy-github-workflow-context", "specialist:codexy-weaver"),

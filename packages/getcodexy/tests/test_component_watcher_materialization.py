@@ -23,6 +23,9 @@ from codexy_runtime_tools.component_mcp_materialization import (
     valid_component_mcp,
     valid_component_mcp_cache,
 )
+from packages.getcodexy.tests.component_marketplace_fixture import (
+    copy_plugin_package as _copy_plugin,
+)
 
 
 REPOSITORY = Path(__file__).resolve().parents[3]
@@ -233,14 +236,6 @@ class WatcherMaterializationTests(unittest.TestCase):
                 ).read_bytes(),
                 canonical,
             )
-
-
-def _copy_plugin(root: Path, plugin_name: str) -> Path:
-    destination = root / "plugins" / plugin_name
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    return Path(
-        shutil.copytree(REPOSITORY / "plugins" / plugin_name, destination)
-    ).resolve()
 
 
 if __name__ == "__main__":

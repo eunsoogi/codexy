@@ -36,29 +36,18 @@ fn product_boundary_contract_owns_each_current_surface_once() -> TestResult {
 }
 
 #[test]
-// Keep developer tooling in the devtools package while the core plugin owns only its runtime-facing MCP surface.
+// Keep current registrations in devtools while core retains only dormant compatibility assets.
 fn core_and_devtools_packages_keep_developer_tool_surfaces_separate() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let core_manifest: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
         root.join("plugins/codexy/.codex-plugin/plugin.json"),
     )?)?;
-    assert_eq!(core_manifest["mcpServers"], "./.mcp.json");
-    let core = root.join("plugins/codexy");
-    let core_mcp: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
-        core.join(".mcp.json"),
-    )?)?;
-    assert_eq!(core_mcp["watcher"]["command"], "uv");
-    assert_eq!(
-        core_mcp["watcher"]["args"],
-        serde_json::json!([
-            "run",
-            "--no-project",
-            "--script",
-            "./mcp/codexy_mcp_bootstrap.py",
-            "watcher",
-            "--stdio"
-        ])
+    assert!(
+        core_manifest.get("mcpServers").is_none(),
+        "core must not register Watcher MCP"
     );
+    let core = root.join("plugins/codexy");
+    assert!(!core.join(".mcp.json").exists());
     assert!(core.join("mcp/codexy_mcp_bootstrap.py").is_file());
     assert!(core.join("mcp/codexy-mcp-watcher.sh").is_file());
     assert!(core.join("mcp/codexy-mcp-watcher.cmd").is_file());
@@ -79,6 +68,16 @@ fn core_and_devtools_packages_keep_developer_tool_surfaces_separate() -> TestRes
     )?)?;
     assert_eq!(devtools_manifest["name"], "codexy-devtools");
     assert_eq!(devtools_manifest["mcpServers"], "./.mcp.json");
+    let devtools_mcp: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+        devtools.join(".mcp.json"),
+    )?)?;
+    let devtools_servers = devtools_mcp
+        .as_object()
+        .ok_or("devtools MCP config object")?
+        .keys()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
+    assert_eq!(devtools_servers, BTreeSet::from(["codegraph", "lsp"]));
     assert!(devtools.join(".codex/lsp-client.json").is_file());
     assert!(devtools.join("lsp/server-catalog.toml").is_file());
     assert!(devtools.join("mcp/codexy-mcp-lsp").is_file());

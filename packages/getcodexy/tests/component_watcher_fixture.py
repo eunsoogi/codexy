@@ -70,4 +70,12 @@ def install_watcher_runtime(plugin: Path) -> None:
             "exit /b %ERRORLEVEL%\r\n",
             encoding="utf-8",
         )
-    materialize_component_mcp(plugin, "core")
+    manifest = json.loads(
+        (plugin / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
+    )
+    version = manifest.get("version")
+    if not isinstance(version, str):
+        raise RuntimeError("Watcher runtime fixture requires a package version")
+    # Validate against the copied package version so retained launchers do not
+    # recreate MCP registration for the intentional no-MCP core package.
+    materialize_component_mcp(plugin, "core", version)

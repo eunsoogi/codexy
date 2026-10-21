@@ -165,7 +165,7 @@ def valid_component_mcp(
         if version is None and not spec.servers:
             return False
         if not spec.servers:
-            return _valid_absent_surface(root, component)
+            return _valid_absent_surface(root)
         configuration = json.loads((root / ".mcp.json").read_text(encoding="utf-8"))
         if configuration != mcp_configuration(component, expected_version):
             return False
@@ -214,22 +214,25 @@ def _plugin_version(root: Path, component: str) -> str:
     return value
 
 
-def _valid_absent_surface(root: Path, component: str) -> bool:
-    """Require an undeclared MCP surface and reject unsafe legacy remnants."""
+def _valid_absent_surface(root: Path) -> bool:
+    """Reject registered MCP metadata while retaining compatibility launchers."""
     manifest = json.loads(
         (root / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
     )
-    if not isinstance(manifest, dict) or "mcpServers" in manifest:
+    if (
+        not isinstance(manifest, dict)
+        or "mcpServers" in manifest
+        or "mcp_servers" in manifest
+    ):
         return False
-    for path in MCP_SPECS[component].surface_paths:
-        candidate = root / path
-        try:
-            _validate_real_path(_absolute(candidate), require_exists=False)
-        except (OSError, ValueError):
-            return False
-        if os.path.lexists(candidate):
-            return False
-    return True
+    config = root / ".mcp.json"
+    try:
+        _validate_real_path(_absolute(config), require_exists=False)
+    except (OSError, ValueError):
+        return False
+    # The manifest/config pair controls host discovery; dormant launchers are
+    # compatibility assets for previously installed or explicitly configured hosts.
+    return not os.path.lexists(config)
 
 
 def _validate_version_component(version: str) -> None:

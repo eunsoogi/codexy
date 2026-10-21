@@ -13,6 +13,9 @@ from pathlib import Path
 
 from codexy_runtime_tools.component_lifecycle import inventory_path, run_operation
 from codexy_runtime_tools.component_manifest import load_component_manifest
+from packages.getcodexy.tests.component_marketplace_fixture import (
+    configure_core_package,
+)
 
 
 class LifecycleInterruptionTests(unittest.TestCase):
@@ -35,6 +38,9 @@ class LifecycleInterruptionTests(unittest.TestCase):
                     repository / "plugins" / plugin,
                     market / "plugins" / plugin,
                 )
+            configure_core_package(
+                market / "plugins/codexy", load_component_manifest().version
+            )
             state.write_text(json.dumps(["core"]), encoding="utf-8")
             inventory = inventory_path(home)
             inventory.parent.mkdir(parents=True)

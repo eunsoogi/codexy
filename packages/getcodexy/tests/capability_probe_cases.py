@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 import shutil
@@ -13,39 +12,24 @@ from unittest.mock import patch
 from codexy_runtime_tools.component_health import health
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.component_mcp_materialization import materialize_component_mcp
+from packages.getcodexy.tests.component_marketplace_fixture import (
+    PLUGIN_NAMES,
+    REPOSITORY,
+    configure_core_package,
+    materialize_plugins,
+)
 from packages.getcodexy.tests.component_distribution_support import (
     FAKE_MCP,
-    install_watcher_runtime,
 )
 
-REPOSITORY = Path(__file__).resolve().parents[3]
-PLUGIN_NAMES = {
-    "core": "codexy",
-    "github": "codexy-github",
-    "devtools": "codexy-devtools",
-}
 _HEALTH_FIELDS = ("installed", "configured", "started", "callable", "healthy")
 
 
 def materialize(
     state, *components: str, version: str = load_component_manifest().version
 ) -> None:
-    """Copy selected fixture plugins without running their launchers."""
-    for component in components:
-        root = state.marketplace / "plugins" / PLUGIN_NAMES[component]
-        if root.exists():
-            if component == "core":
-                install_watcher_runtime(root)
-            continue
-        source = REPOSITORY / "plugins" / PLUGIN_NAMES[component]
-        root.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(source, root)
-        manifest = root / ".codex-plugin/plugin.json"
-        contents = json.loads(manifest.read_text(encoding="utf-8"))
-        contents["version"] = version
-        manifest.write_text(json.dumps(contents), encoding="utf-8")
-        if component == "core":
-            install_watcher_runtime(root)
+    """Keep doctor cases on a version-consistent marketplace fixture."""
+    materialize_plugins(state, *components, plugin_names=PLUGIN_NAMES, version=version)
 
 
 class CapabilityProbeCases:
@@ -56,6 +40,7 @@ class CapabilityProbeCases:
         self.addCleanup(self._record_temporary.cleanup)
         self._record_core = Path(self._record_temporary.name) / "plugins/codexy"
         shutil.copytree(REPOSITORY / "plugins/codexy", self._record_core)
+        configure_core_package(self._record_core, self.manifest.version)
         materialize_component_mcp(self._record_core, "core")
         self.records = self._records(self.manifest)
         self._probe_patch = patch(

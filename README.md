@@ -256,16 +256,17 @@ Ordinary observation flow: the Orchestrator uses native `wait_threads` with each
 Worker's latest cursor to observe completion, attention, and later turns. One
 Worker event does not end observation of remaining tasks or complete the issue.
 The Orchestrator judges results and retains correction and acceptance authority.
-Codexy no longer packages a native Watcher specialist. The core Watcher MCP and
-interrupt hooks remain available to separately configured reporters, while
-ordinary Worker events are observed directly. Message and goal-transition
-receipts keep their existing authorization and destination.
+Codexy no longer packages a native Watcher specialist or registers Watcher MCP
+in the core plugin. Existing launchers, runtime, and interrupt hooks remain for
+hosts that explicitly configure the compatibility transport, while ordinary
+Worker events are observed directly. Message and goal-transition receipts keep
+their existing authorization and destination.
 
 Goal boundary: the Orchestrator owns the overall task goal and the Worker owns
-its finite execution goal. The retained Watcher MCP is a reporting transport and
-does not own or transfer goals. These settings are bundled configuration, not
-proof of the model used by an already-running host; `low`, `medium`, `high`,
-`xhigh`, and `max` are reasoning-effort settings.
+its finite execution goal. A separately configured Watcher MCP is a reporting
+transport and does not own or transfer goals. These settings are bundled
+configuration, not proof of the model used by an already-running host; `low`,
+`medium`, `high`, `xhigh`, and `max` are reasoning-effort settings.
 
 ### Packaged specialists
 

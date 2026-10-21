@@ -19,10 +19,9 @@ SURFACE_PATHS = {
         "agents/catalog.toml",
         "hooks/hooks.json",
         "skills/wiki/SKILL.md",
-        *(path.as_posix() for path in mcp_spec("core").surface_paths),
     ),
     "github": ("agents/catalog.toml", "hooks/hooks.json"),
-    "devtools": tuple(path.as_posix() for path in mcp_spec("devtools").surface_paths),
+    "devtools": (),
 }
 AUTHORITY_KEYS = ("authority", "artifact_authority", "artifactAuthority")
 
@@ -63,8 +62,21 @@ def _legacy_state(
 
 
 def _required_files(manifest, component, plugin, codex_home=None):
+    # MCP paths vary by component version: core 2.0 intentionally has no config.
+    mcp_paths = (
+        tuple(
+            path.as_posix()
+            for path in mcp_spec(
+                component, manifest.component(component).version
+            ).surface_paths
+        )
+        if component in MCP_COMPONENTS
+        else ()
+    )
     paths = (
-        manifest.component(component).asset.required_paths + SURFACE_PATHS[component]
+        manifest.component(component).asset.required_paths
+        + SURFACE_PATHS[component]
+        + mcp_paths
     )
     return all(
         (plugin / path).is_file() and not (plugin / path).is_symlink() for path in paths

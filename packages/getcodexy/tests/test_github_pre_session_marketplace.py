@@ -11,6 +11,7 @@ from pathlib import Path
 
 from codexy_runtime_tools.github_pre_session import run_github_pre_session
 from codexy_runtime_tools.updater import SyncResult
+from component_marketplace_fixture import configure_candidate_package
 
 
 REPOSITORY = Path(__file__).resolve().parents[3]
@@ -97,6 +98,7 @@ class GithubPreSessionMarketplaceTests(unittest.TestCase):
 def copy_plugin(marketplace_root: Path, name: str) -> Path:
     destination = marketplace_root / "plugins" / name
     shutil.copytree(REPOSITORY / "plugins" / name, destination)
+    configure_candidate_package(destination)
     return destination
 
 

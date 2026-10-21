@@ -68,15 +68,19 @@ MCP = mcp_configuration("devtools")
 CORE_MCP = mcp_configuration("core")
 
 
-def valid_registration(plugin: Path, component: str) -> bool:
+def valid_registration(
+    plugin: Path, component: str, version: str | None = None
+) -> bool:
     """Require exactly the packaged registration and its local launch targets."""
     try:
+        # Install flows pass their validated release; doctor uses its bundled manifest.
+        selected_version = (
+            load_component_manifest().version if version is None else version
+        )
         if component == "devtools":
-            return valid_component_mcp(
-                plugin, component, load_component_manifest().version
-            )
+            return valid_component_mcp(plugin, component, selected_version)
         core_mcp = component == "core" and valid_component_mcp(
-            plugin, component, load_component_manifest().version
+            plugin, component, selected_version
         )
         return (
             (component != "core" or core_mcp)

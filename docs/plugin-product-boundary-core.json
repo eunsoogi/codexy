@@ -93,15 +93,6 @@
       "disposition": "retain"
     },
     {
-      "id": "mcp.watcher",
-      "category": "mcp",
-      "sources": [
-        "plugins/codexy/.mcp.json#watcher"
-      ],
-      "target": "codexy",
-      "disposition": "retain"
-    },
-    {
       "id": "mcp.core-runtimes",
       "category": "mcp",
       "sources": [

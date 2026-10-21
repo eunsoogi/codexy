@@ -17,7 +17,6 @@ from codexy_runtime_tools.component_lifecycle_mcp import (
 )
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.component_mcp_materialization import (
-    MCP_SPECS,
     component_cache_plugin,
     materialize_component_mcp,
     valid_component_mcp_cache,
@@ -213,8 +212,7 @@ class LifecycleWatcherTests(unittest.TestCase):
             package["version"] = version
             package.pop("mcpServers", None)
             package_path.write_text(json.dumps(package), encoding="utf-8")
-            for relative in MCP_SPECS["core"].surface_paths:
-                (plugin / relative).unlink(missing_ok=True)
+            (plugin / ".mcp.json").unlink(missing_ok=True)
             current = load_component_manifest()
             manifest = replace(
                 current,
@@ -235,12 +233,12 @@ class LifecycleWatcherTests(unittest.TestCase):
 
             copy_file.assert_not_called()
             self.assertTrue(
-                all(
-                    not os.path.lexists(root / relative)
-                    for root in (plugin, cache)
-                    for relative in MCP_SPECS["core"].surface_paths
-                )
+                all(not os.path.lexists(root / ".mcp.json") for root in (plugin, cache))
             )
+            for root in (plugin, cache):
+                self.assertTrue((root / "mcp/codexy_mcp_bootstrap.py").is_file())
+                self.assertTrue((root / "mcp/codexy-mcp-watcher.sh").is_file())
+                self.assertTrue((root / "mcp/codexy-mcp-watcher.cmd").is_file())
             residual = cache / ".mcp.json"
             residual.write_text("{}", encoding="utf-8")
             self.assertFalse(valid_component_mcp_cache(state.home, "core", version))
