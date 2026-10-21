@@ -23,6 +23,26 @@ Current authoritative task/Git/GitHub state wins over inherited summaries and
 memory. Resolved feedback and superseded checks stay resolved; a stale head is
 demoted, while a current exact-head failure remains active.
 
+## Active failure-episode recovery
+
+When a repair flow has an open episode, MUST reconstruct it from the existing
+task or recovery record: distinct actual failures, affected original criteria,
+partial passes, and the last Advisor consultation boundary. MUST preserve that
+context in Remember or Fix; model changes, handoffs, and compaction MUST NOT
+reset it. MUST NOT count duplicate reports, rereads, unchanged waits, intended
+initial RED, or reproductions of the same defect without a new repair or
+verification attempt as new events. MUST NOT close the episode after a partial
+success; MUST close it only when all related original criteria pass.
+
+If the record cannot establish the event sequence or consultation boundary, MUST
+keep that state unknown and MUST stop before the next speculative repair. MUST
+recover the relevant existing record or refer the decision to the Orchestrator
+before proceeding. MUST use the canonical
+[Advisor consultation rule](../orchestration/references/advisor-consultation.md#repeated-and-chained-repair-failures)
+when due. If consultation is unavailable, MUST stop unsupported changes in that
+episode and report the limitation to the Orchestrator. MUST NOT create a runtime
+counter, permanent database, or new record format.
+
 ## Resuming Implementation
 
 After this recovery pass, when the refreshed state allows implementation to

@@ -17,6 +17,51 @@ ownership, the Worker MUST give the evidence and decision to the Orchestrator;
 the Worker MUST NOT make the cross-lane decision or use the Advisor to bypass
 that route.
 
+## Repeated and chained repair failures
+
+The Orchestrator and Workers MUST use one failure episode for actual failures in
+the same repair flow under the task's original completion criteria. A new
+affected criterion MUST join the episode when current evidence ties it to that
+repair flow. They MUST NOT combine unrelated failures merely because they
+occurred in one task. Each Worker MUST keep its own episode for its owned lane;
+the Orchestrator MUST handle cross-lane decisions under the existing ownership
+route.
+
+The Orchestrator and Workers MUST count the first actual failure or defect
+reproduction once. Each distinct new repair or verification attempt that fails
+MUST add one event, including an attempt that exposes a different criterion
+affected by the same repair flow. A single attempt MUST remain one event even if
+several criteria, tool outputs, or messages repeat its result. They MUST NOT
+count a reproduction of the same defect without a new repair or verification
+attempt, duplicate reports, rereads, unchanged waits, or an intended initial RED
+in TDD as new events.
+
+A→A→A and A→B→C each reach the trigger when every letter represents a distinct
+failed attempt in the same episode. The third event MUST trigger consultation
+before a fourth speculative repair.
+
+The Orchestrator and Workers MUST keep the episode open until all related
+original criteria pass. They MUST NOT reset or close it after a model change,
+context compaction, handoff, or partial success on one criterion. They MUST
+preserve enough existing task or recovery context to recover the observed
+failure sequence, affected criteria, partial passes, and last consultation
+boundary. They MUST NOT add a runtime counter, permanent database, semantic
+prompt parser, receipt schema, or new work-record format.
+
+After the third event, the Orchestrator or owning Worker MUST consult the
+Advisor before the next speculative repair, following this reference's question
+and advice contract. After each consultation, three further failure events in
+the still-open episode MUST trigger another consultation before another
+speculative repair; consultation MUST NOT close the episode. The caller MUST
+keep consultation and repair work within existing task and execution budgets. If
+no budget remains, it MUST stop under the existing budget.
+
+If the Advisor is unavailable when consultation is due, the caller MUST stop
+unsupported changes in that episode and report the observed sequence, affected
+criteria, and consultation failure to the Orchestrator. A Worker MAY continue
+unrelated authorized work; the Orchestrator MUST retain the blocker and report
+it to the actual parent or user when appropriate.
+
 ## Ask a bounded question
 
 The caller MUST state the pending decision and constraints, then give the

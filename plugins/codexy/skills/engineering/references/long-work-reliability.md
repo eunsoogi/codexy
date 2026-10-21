@@ -8,6 +8,17 @@ The existing
 [adaptive work budget](../../orchestration/references/adaptive-work.md) remains
 authoritative.
 
+## Preserve active repair episodes
+
+During live work, MUST use the shared
+[Advisor consultation rule](../../orchestration/references/advisor-consultation.md#repeated-and-chained-repair-failures)
+to count repeated or chained failures and decide when to consult. MUST keep an
+open episode in the existing task or recovery record so model changes, context
+compaction, and partial success do not erase it. MUST keep independent Worker
+episodes separate and close an episode only after all related original criteria
+pass. This is an execution-time escalation rule, not another reliability
+counter; the run denominators and dimensions below remain unchanged.
+
 ## Preserve the observation set
 
 Before aggregating, MUST identify the task scope, success criteria, run unit,

@@ -194,6 +194,7 @@ class CapabilityProcessTests(unittest.TestCase):
             [unittest.mock.call(11), unittest.mock.call(12), unittest.mock.call(13)],
         )
         self.assertTrue(all(stream.close_calls == 0 for stream in streams))
+        self.assertEqual(timing.expired_deadline_cancel_calls(probe), 0)
         process.kill.assert_called_once_with()
 
     @unittest.skipUnless(os.name == "nt", "Windows process-tree regression")
@@ -240,6 +241,7 @@ class CapabilityProcessTests(unittest.TestCase):
                 "timeout category": result.category == "timeout",
                 "timeout return code": result.returncode is None,
                 "time": result.elapsed_seconds < process._RUN_OPTIONS["timeout"] + 1.5,
+                "single cancellation phase": len(stage_seconds["reader_cancel"]) == 1,
                 "holder PID recorded": (pid_recorded := pid_file.is_file()),
                 "holder process stopped": pid_recorded
                 and not support.host_process_active(pid_file),

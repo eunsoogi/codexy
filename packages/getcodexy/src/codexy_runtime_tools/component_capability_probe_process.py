@@ -97,6 +97,7 @@ def _run_windows(argv, cwd, input_text, env, deadline):
     )
     cleanup_deadline = deadline
     abort_pipes = False
+    threads_stopped = True
     try:
         remaining = max(0.0, deadline - perf_counter())
         if not remaining:
@@ -107,16 +108,17 @@ def _run_windows(argv, cwd, input_text, env, deadline):
         abort_pipes = True
         cleanup_deadline = perf_counter() + _WINDOWS_CLEANUP_TIMEOUT
         _terminate_process_tree(process, cleanup_deadline)
-        _cancel_windows_pipe_threads(process, cleanup_deadline)
+        threads_stopped = _cancel_windows_pipe_threads(process, cleanup_deadline)
         remaining = max(0.0, cleanup_deadline - perf_counter())
         if remaining:
             try:
-                process.communicate(timeout=remaining)
+                _ = process.communicate(timeout=remaining)
+                threads_stopped = True
             except (OSError, ValueError, subprocess.TimeoutExpired):
                 pass
         raise
     finally:
-        _close_process_pipes(process, abort=abort_pipes, deadline=cleanup_deadline)
+        _close_process_pipes(process, abort_pipes, threads_stopped)
         _wait_for_exit(process, cleanup_deadline)
 
 
@@ -145,10 +147,8 @@ def _terminate_process_tree(process, deadline):
             pass
 
 
-def _close_process_pipes(process, abort=False, deadline=None):
-    threads_stopped = True
-    if abort:
-        threads_stopped = _cancel_windows_pipe_threads(process, deadline)
+def _close_process_pipes(process, abort=False, threads_stopped: bool = False):
+    # Timeout handling owns cancellation; repeating it here can outlive the deadline.
     for attribute in ("stdin", "stdout", "stderr"):
         stream = getattr(process, attribute, None)
         if stream is None:
@@ -177,7 +177,7 @@ def _abort_process_pipe(process, attribute, stream):
         setattr(process, attribute, None)
 
 
-def _cancel_windows_pipe_threads(process, deadline):
+def _cancel_windows_pipe_threads(process, deadline) -> bool:
     threads = [
         getattr(process, attribute, None)
         for attribute in ("stdin_thread", "stdout_thread", "stderr_thread")
@@ -186,7 +186,7 @@ def _cancel_windows_pipe_threads(process, deadline):
     if not threads:
         return False
     for thread in threads:
-        if thread.is_alive():
+        if thread.is_alive() and deadline > perf_counter():
             _cancel_synchronous_io(thread)
     for thread in threads:
         if not thread.is_alive():
