@@ -74,16 +74,18 @@ and cancellation, drift correction, and supervision evaluation.
 
 The route has these mandatory boundaries: the Orchestrator owns the overall
 goal, judgement, correction, and acceptance; the Worker owns its implementation
-and finite goal; the Watcher is read-only and observes only its assigned
-Workers; only the assigned Watcher MAY call `wait_threads` for those Worker
-targets; and the Orchestrator MUST await `watcher_wait` and MUST NOT wait on
-those targets directly. Workers MUST NOT use an Orchestrator-owned Watcher
+and finite goal; ordinary Worker observation is owned directly by the Orchestrator.
+Routine observation MUST NOT require a Watcher or a Worker-to-Watcher relay. A
+separately assigned Watcher is read-only and observes only its exact bounded
+targets; only that Watcher MAY call `wait_threads` for those targets, and the
+Orchestrator MUST await `watcher_wait` without also waiting directly on them.
+Workers MUST NOT use an Orchestrator-owned Watcher
 session or token. A Watcher report or finite goal MUST NOT transfer ownership or
 prove issue completion. A native reviewer's own terminal delivery follows its
-review route and MUST NOT be treated as Worker observation or permission for
-direct Orchestrator polling. MUST read `parent-supervision.md` for exact wait
-values, host-limit, quiet-wait, fallback, report, interruption, cancellation,
-and non-Watcher conditions before execution.
+review route and MUST NOT be confused with Worker observation. MUST read
+`parent-supervision.md` for target/cursor handling, host limits, quiet waits,
+interruption, cancellation, message authority, and the explicit Watcher route
+before execution.
 
 Before dispatching a Worker, the Orchestrator MUST have an active `get_goal`
 readback for its exact overall assignment. Each Worker prompt MUST contain one

@@ -5,10 +5,11 @@
 This is the receipt contract for blocked-goal recovery and terminal child
 handoffs. Native goal startup is governed by `goal-lifecycle`: the owner uses
 the native `get_goal`/`create_goal`/active-readback sequence without parent
-registration receipts. Issue #1036 owns native-Watcher-first ordinary report
-routing; Issue #367 owns runtime task delivery and transition receipt mechanics;
-Issue #373 owns runtime deduplication, restart recovery, worktree preservation,
-and replacement.
+registration receipts. Issue #1036 defines report routing for an explicitly
+assigned Watcher; ordinary Orchestrator observation uses the direct native
+route from #1342. Issue #367 owns runtime task delivery and transition receipt
+mechanics; Issue #373 owns runtime deduplication, restart recovery, worktree
+preservation, and replacement.
 
 ## Source Parent Binding
 
@@ -48,17 +49,18 @@ transition key. Terminal handoffs MUST carry a stable event id. Repeated
 delivery evidence for one key MUST be represented as deduplicated; it MUST NOT
 imply a second goal call.
 
-## Native Watcher report route
+## Explicit Native Watcher report route
 
-Ordinary Worker-to-Watcher reporting, Watcher deduplication, and unavailable
-route handling are defined in [parent-supervision.md](parent-supervision.md).
-MUST read that reference when a native Watcher assignment exists. Blocked-goal
-recovery and terminal handoff receipts remain direct to the Orchestrator and
-follow this file. Initial `get_goal`, `create_goal`, and active readback remain
-inside the owning task and MUST NOT be sent as registration reports. The Worker
-MUST NOT receive or use a Watcher session token or call Watcher MCP transport
-tools. A verified unavailable route or concrete emergency permits one marked
-direct Orchestrator fallback, not routine duplicate reporting.
+Worker-to-Watcher reporting, Watcher deduplication, and unavailable-route
+handling apply only when a native Watcher is explicitly assigned; they are
+defined in [parent-supervision.md](parent-supervision.md). MUST read that
+reference for such an assignment. Blocked-goal recovery and terminal handoff
+receipts remain direct to the Orchestrator and follow this file. Initial
+`get_goal`, `create_goal`, and active readback remain inside the owning task and
+MUST NOT be sent as registration reports. The Worker MUST NOT receive or use a
+Watcher session token or call Watcher MCP transport tools. A verified
+unavailable route or concrete emergency permits one marked direct Orchestrator
+fallback, not routine duplicate reporting.
 
 ## Callback evidence boundary
 

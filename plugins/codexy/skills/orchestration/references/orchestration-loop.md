@@ -78,15 +78,15 @@
      or ambiguous, implementation MUST remain pending while the parent resolves
      the intended topology; a selected child-owned lane MUST NOT be silently
      relabeled for parent implementation.
-   - Native Watcher creation, exact Worker targets, report delivery, wait
-     ownership, quiet waiting, deduplication, host limits, interruption, and
-     fallback MUST follow [parent-supervision.md](parent-supervision.md). The
-     Orchestrator MUST use the packaged native Watcher route; only the assigned
-     Watcher MAY wait on its Worker/task targets, and the Orchestrator MUST
-     await `watcher_wait` without directly polling them. The Worker MUST use the
-     supplied task-message route for ordinary reports. The Watcher MUST remain
-     read-only and MUST NOT direct the Worker. A native reviewer's own terminal
-     delivery is a separate surface and MUST NOT authorize Worker observation.
+   - Ordinary Worker observation belongs to the Orchestrator, which MUST use
+     native cursor-based `wait_threads` for its assigned targets. Routine
+     observation MUST NOT require a Watcher relay. A separately assigned
+     Watcher remains read-only and waits only on its exact targets; the
+     Orchestrator awaits `watcher_wait` without double-waiting. The Worker MUST
+     use only already-authorized task-message routes. A native reviewer's own
+     terminal delivery is separate and MUST NOT authorize Worker observation.
+     All wait ownership, deduplication, host limits, interruption, and fallback
+     MUST follow [parent-supervision.md](parent-supervision.md).
    - MUST complete lane assignment before implementation edits begin. An
      Orchestrator may prepare issue text, branch name, worktree path, and
      handoff text, but MUST NOT patch implementation files for the child-owned
@@ -136,11 +136,12 @@
      substitute for that evidence. If a required native goal or host route is
      unavailable, MUST report the exact limitation and required action without
      claiming execution progress or completion from text alone.
-   - For supervision, MUST exercise the actual subagent creation, Worker-to-
-     Watcher task-message delivery, MCP `watcher_report`/`watcher_wait`
-     delivery, Worker readback, and Orchestrator-goal path. Report the
-     Orchestrator's overall goal and the Watcher's bounded observation
-     assignment separately; a Watcher report does not prove issue completion.
+   - Direct observation claims MUST use the actual `wait_threads` surface with
+     assigned targets and current cursors. When a separate Watcher assignment
+     is in scope, exercise its real subagent creation, Worker message route,
+     `watcher_report`/`watcher_wait`, and Worker readback. Keep the Orchestrator
+     goal separate from any bounded Watcher assignment; no event proves issue
+     completion.
 6. Finish:
    - MUST confirm no running sessions, open child lanes, untracked required
      files, or unverified claims remain.

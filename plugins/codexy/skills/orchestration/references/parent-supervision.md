@@ -47,14 +47,13 @@ alter protected technical text.
   Orchestrator keeps outcome, correction, and final-acceptance responsibility;
   the Worker owns its branch, files, local verification, and review-response
   fixes.
-- Workers MUST remain independent Codex app tasks in the same saved project. The
-  Watcher MUST be created through the host's callable native-subagent API
-  (`spawn_agent` or its versioned multi-agent equivalent) from the Orchestrator
-  with the packaged `codexy-watcher` role; it is not a second app task or an
-  automation. Codex MUST record the Worker project id, specialist identity, and
-  actual Watcher creating tool. A projectless task, a standalone app watcher, a
-  unpackaged subagent, or an app API that merely accepts a UUID is not a
-  substitute for this subagent route.
+- Workers MUST remain independent Codex app tasks in the same saved project. A
+  separately assigned Watcher MUST use the host's callable native-subagent API
+  (`spawn_agent` or its versioned equivalent) from the Orchestrator with the
+  packaged `codexy-watcher` role; it is not an app task or automation. For that
+  assignment, record the Worker project id, Watcher identity, and creating
+  tool. A projectless task, standalone app watcher, unpackaged subagent, or
+  UUID-only API is not a substitute for this subagent route.
 - The Watcher MUST remain read-only observation. It MAY report a material
   failure, drift, contradiction, scope expansion, missing callback, or
   unavailable channel. It MUST NOT edit worker files, direct or message a Worker
@@ -67,22 +66,23 @@ alter protected technical text.
   preserve native BLOCK, PASS, UNOBSERVABLE, and closed-handle history and MUST
   NOT fabricate a verdict or reset a review count to fit a newer surface.
 
-## Two observation channels
+## Direct observation and explicit Watcher assignments
 
-- Native Watcher assignments route each ordinary Worker report to its exact
-  Watcher task. Reports MUST carry source Worker task and issue/PR lane (or an
-  explicit no-PR marker); Workers MUST NOT infer targets from transcript
-  visibility. The Watcher MUST validate assignment, separate tasks/lanes,
-  deduplicate identities, and relay action-required deltas through
-  `watcher_report`; blocked/terminal receipts go to the Orchestrator. Initial
-  goal calls MUST stay local and unreported; reports are not acceptance.
-- A verified-unavailable route or emergency permits one marked direct-parent
-  fallback. Worker MUST report one limitation and MUST NOT resume or duplicate
-  routine direct reports. Reads and liveness-only goal state MUST stay internal.
+- Ordinary Worker observation belongs to the Orchestrator, which MUST use
+  `wait_threads` with exact task/host IDs and the latest cursor per target.
+  Keep targets across turns; one completion or attention event MUST NOT end
+  other targets or the issue. Routine progress MUST NOT use a Watcher relay.
+  Read a target only for missing, truncated, contradictory, or unbound evidence.
+- A Watcher route applies only to an explicitly bounded assignment. Workers
+  report to that exact Watcher; its wait and non-duplication rules are defined
+  below. Initial goal calls stay local; blocked/terminal receipts remain
+  direct-parent.
+- A verified-unavailable Watcher route or emergency permits one marked
+  direct-parent fallback in that assignment; the Worker reports the limitation
+  once and MUST NOT duplicate routine messages.
 - Bundled `codexy-watcher` owns lifecycle criteria, stale-gate suppression,
-  current-action summaries, and `watcher_report` arguments. Its ordered emission
-  sequence governs reports; packaged `tools/list` bounds and descriptions MUST
-  reflect parser limits, even with a generic host schema.
+  current-action summaries, and `watcher_report` arguments. Its emission order
+  and `tools/list` descriptions MUST honor parser limits on generic hosts.
 - Codex MUST deduplicate one event using a stable event identity before changing
   counters, plan state, or next action. A missed callback, Worker failure,
   Watcher failure, or loss of both channels is an observable limitation; it is
@@ -111,12 +111,13 @@ alter protected technical text.
 
 ## Waiting and direct correction
 
-- For ordinary non-Watcher app-task waits, the observation owner MUST prefer
-  cursor-based `wait_threads` with batched targets. Unchanged cursors, bounded
-  timeouts, and long commands are not stalls; Codex MUST NOT poll, repeat
-  status, read transcripts, rerun tests, or interrupt reviewers solely for
-  elapsed time. A native reviewer's terminal delivery is a non-Watcher target;
-  the Orchestrator MUST NOT observe Worker targets assigned to a native Watcher.
+- For ordinary Orchestrator-owned Worker waits, the owner MUST use
+  cursor-based `wait_threads` with batched targets and the latest cursor for
+  each target. An unchanged cursor, bounded timeout, or long command is not a
+  stall; continue through the supported wait without routine status messages or
+  transcript reads. A first result MUST NOT close other active targets or a
+  later turn on the same task. Native reviewer delivery remains a separate
+  surface, and targets assigned to a Watcher stay on its explicit route.
 - Native Watcher routes: only the assigned Watcher MAY call `wait_threads`; the
   Orchestrator MUST await `watcher_wait`. This verified host's quiet route nests
   `watcher_wait(timeoutMs=295000)` in one `functions.exec` with first-line
@@ -130,22 +131,20 @@ alter protected technical text.
   yields, shorter/empty waits, and fallback handling.
 - Implementation Workers MUST NOT use Orchestrator-owned Watcher session/token.
   One bounded readback after an actionable report is judgement-only.
-- The native Watcher loop is defined in "Watcher MCP flow"; its report, Worker
-  completion, empty timeout, or unchanged progress MUST NOT end the turn.
 - When an actionable signal arrives, the Orchestrator MUST send one grouped,
   actionable correction to the existing worker: observed deviation, smallest
   repair, required evidence, and next permitted step. An acknowledgement is not
   proof. The Orchestrator MUST read back the next relevant actual tool call,
   diff, or result. A cooperative freeze-and-report instruction does not cancel
   an in-flight tool unless the host proves a hard stop.
-- Orchestrator fallback inspection MUST require a concrete signal or checkpoint.
-  It MUST NOT become continuous transcript polling or direct polling of assigned
-  targets in a native Watcher route. While assigned targets remain nonterminal,
-  the Orchestrator MUST keep the same assistant turn via `watcher_wait` under
-  host limits and quiet-wait rules. An empty wait result or tool output yield
-  MUST NOT end the turn, narrow the objective, or trigger a final status.
+- On an explicit Watcher route, fallback inspection MUST require a concrete
+  signal or checkpoint. It MUST NOT become continuous transcript polling or
+  direct polling of assigned targets; while they remain nonterminal, the
+  Orchestrator MUST keep the same assistant turn via `watcher_wait` under host
+  limits and quiet-wait rules. An empty wait result or tool output yield MUST
+  NOT end the turn, narrow the objective, or trigger a final status.
 
-## Watcher MCP flow
+## Explicit Watcher MCP flow
 
 - The Orchestrator creates one native Watcher subagent for a bounded assignment,
   then opens one scoped `watcher_open` session for the Orchestrator, Watcher,

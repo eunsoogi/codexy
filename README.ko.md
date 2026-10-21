@@ -216,25 +216,22 @@ GitHub 정책에 동의한 것으로 해석되지 않습니다.
 | Orchestrator / parent      | `gpt-6-luna`                                       | `max`                                  | Worker 작업을 배정·추적하고 전체 작업 목표를 맡아 이탈을 교정하며 보고를 검증하고 결과를 인수합니다.                                                                                                                                                         |
 | Advisor / `codexy-advisor` | `gpt-6-astra`                                      | `medium`                               | 지정된 질문을 읽고 분석해 조언하며 파일 수정·위임·담당 변경·최종 인수를 하지 않습니다.                                                                                                                                                                       |
 | Watcher / `codexy-watcher` | `gpt-6-luna`                                       | `max`                                  | 할당된 Worker를 native subagent로 읽기 전용 관찰하고 core Watcher MCP로 중요한 사건을 보고하며, 지시·수정·교체·인수는 하지 않습니다.                                                                                                                         |
-| Worker / ordinary child    | `gpt-6-luna` (simple) 또는 `gpt-6.1-sol` (general) | `max` (simple) 또는 `medium` (general) | 별도 app task에서 이슈를 구현·검증하고 지정된 Watcher를 통해 보고합니다. 네 가지 `simple_predicates`를 모두 충족할 때만 Luna/Max를 사용하고, 범위가 분명한 general 구현 작업은 Sol/Medium을 선택하며, 범위·권한·필수 입력이 불분명하면 안전 경로로 보냅니다. |
+| Worker / ordinary child    | `gpt-6-luna` (simple) 또는 `gpt-6.1-sol` (general) | `max` (simple) 또는 `medium` (general) | 별도 app task에서 이슈를 구현·검증합니다. 일반 Worker 이벤트는 Orchestrator가 직접 관찰하고, 별도 Watcher 배정은 대상 범위를 제한합니다. 네 가지 `simple_predicates`를 모두 충족할 때만 Luna/Max를 사용하고, 범위가 분명한 general 구현 작업은 Sol/Medium을 선택하며, 범위·권한·필수 입력이 불분명하면 안전 경로로 보냅니다. |
 
 Advisor의 읽기 전용 경계는 에이전트 지침에 따른 행동 규칙이며, 호스트 권한이
 차단된다는 보장은 아닙니다.
 
-보고 흐름은 Orchestrator가 native Watcher를 호출하고 Worker에게 작업을
-배정·교정하면, 해당 경로에서 Worker가 host가 지원하는 task-message 경로로 source
-Worker task와 issue/PR 대응을 보존한 채 정확히 지정된 Watcher task에 일반 보고를
-보냅니다. Luna/max Watcher는 변경 없는 보고를 억제하고 중요한 사건을
-`watcher_report`로 중계하며, Luna/max Orchestrator는 `watcher_wait`로 받습니다.
-Orchestrator는 보고를 판단하고 Worker를 지시하며 교정과 결과 인수 권한을
-유지합니다. 부모는 Worker에게 구현 지시를 직접 보냅니다. 확인된 메시지 경로
-부재나 구체적인 긴급 상황일 때만 한 번 표시된 parent fallback을 허용하며,
-일상적인 중복 보고를 되살리지는 않습니다. 목표 전환 receipt는 계속 parent에 직접
-보냅니다.
+일반 Worker 관찰은 Orchestrator가 각 작업의 최신 cursor를 포함해 native
+`wait_threads`를 호출하고 완료, 도움이 필요한 상태, 이후 새 turn을 직접 확인합니다.
+한 Worker의 이벤트가 다른 작업의 관찰이나 issue 완료를 끝내지는 않습니다.
+Orchestrator는 결과를 판단하고 교정과 인수 권한을 유지합니다. 별도 Watcher가
+배정되면 정확히 지정된 대상만 관찰하고 기존 보고 경로를 사용합니다. 일반 Worker
+관찰에 Watcher가 필수는 아닙니다. 메시지와 목표 전환 receipt는 기존 권한과
+수신 대상을 유지합니다.
 
-목표도 분리됩니다. Orchestrator는 전체 작업 목표, Watcher는 유한한 관찰 배정,
-Worker는 유한한 실행 목표를 맡습니다. Watcher는 전체 목표를 소유하거나 옮기지
-않습니다. 이 설정은 Codexy에 포함된 구성이지 이미 실행 중인 host가 실제로 사용한
+목표도 분리됩니다. Orchestrator는 전체 작업 목표를 맡고 Worker는 유한한 실행
+목표를 맡습니다. 별도 Watcher가 배정되면 제한된 관찰만 맡으며 전체 목표를 소유하거나
+옮기지 않습니다. 이 설정은 Codexy에 포함된 구성이지 이미 실행 중인 host가 실제로 사용한
 모델의 증거는 아닙니다. `low`, `medium`, `high`, `xhigh`, `max`는 추론
 수준입니다.
 
