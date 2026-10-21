@@ -22,11 +22,11 @@ or automatic scheduler.
   replace cursor waits with repeated polling. If an outer `functions.exec` cell
   is pending, resume it rather than issue another wait. A target assigned to a
   Watcher remains on that explicit route.
-- For an explicitly assigned Watcher, the current host exposes
-  `watcher_wait` inside `functions.exec`, with no standalone top-level action.
-  Its verified 295,000 ms route sets the first-line
-  `yield_time_ms=300000` pragma; two parent production waits returned timeout in
-  one call each. The results and limits are recorded in
+- For an explicitly assigned Watcher, the current host exposes `watcher_wait`
+  inside `functions.exec`, with no standalone top-level action. Its verified
+  295,000 ms route sets the first-line `yield_time_ms=300000` pragma; two parent
+  production waits returned timeout in one call each. The results and limits are
+  recorded in
   [host wait-path coverage](../../../../../docs/watcher-test-coverage.md). The
   earlier 60-second `functions.wait` observation is session-specific, not a
   universal cap or synchronous fix. If the outer call yields early, the owner
@@ -46,8 +46,8 @@ or automatic scheduler.
   wait. Handle input at actual host re-entry, but input or caller re-entry alone
   MUST NOT prove that a pending wait was cancelled or resumed. Keep host
   interruption distinct from user input; neither proves a Worker event. If the
-  host cannot continue the existing cell or deliver input, record that limit;
-  do not claim runtime-owned suspension or create an unverified loop.
+  host cannot continue the existing cell or deliver input, record that limit; do
+  not claim runtime-owned suspension or create an unverified loop.
 - An output-yield cadence alone MUST NOT be treated as shortening the semantic
   wait; applicable higher-priority instructions and actual host limits still
   govern every blocking call. MUST NOT bypass cursor waits. A target assigned to
@@ -76,15 +76,15 @@ poll those targets.
 
 For ordinary Orchestrator-owned Worker observation with a callable
 `wait_threads` handler, the Orchestrator MUST use the cursor-based wait while
-the assignment remains. A native reviewer's terminal delivery is its own
-surface and MUST NOT be confused with Worker observation. Native Watcher roles,
-their explicit report route, host limits, quiet waits, interruption/cancellation,
+the assignment remains. A native reviewer's terminal delivery is its own surface
+and MUST NOT be confused with Worker observation. Native Watcher roles, their
+explicit report route, host limits, quiet waits, interruption/cancellation,
 deduplication, and return conditions are defined in
 [parent-supervision.md](parent-supervision.md); MUST read that reference before
 assigning a Watcher. Only the assigned Watcher MAY wait on its Worker targets;
-the Orchestrator MUST await `watcher_wait` without directly waiting on them.
-The host's automatic continuation behavior is not implied and MUST be reported
-if observed. If a slingshot-host turn still returns `No handler registered` after
+the Orchestrator MUST await `watcher_wait` without directly waiting on them. The
+host's automatic continuation behavior is not implied and MUST be reported if
+observed. If a slingshot-host turn still returns `No handler registered` after
 the one fresh discovery and one host-aware retry, the owner MUST emit exactly
 one unavailable evidence receipt and require desktop-origin root re-entry; it
 MUST NOT repeat the wait call, schedule a heartbeat relay, use `read_thread`, or
@@ -97,10 +97,10 @@ desktop-origin root re-entry.
 When a separate Watcher assignment is explicit, its creation, targets, report
 routing, cursor waits, host and transport limits, quiet waiting,
 interruption/cancellation, deduplication, and Orchestrator/Worker ownership are
-defined in [parent-supervision.md](parent-supervision.md). MUST read that reference before
-using a native Watcher. A heartbeat MUST NOT replace that route, and the Watcher
-MUST remain observation-only. The Orchestrator MUST NOT directly poll Worker
-targets assigned to a native Watcher.
+defined in [parent-supervision.md](parent-supervision.md). MUST read that
+reference before using a native Watcher. A heartbeat MUST NOT replace that
+route, and the Watcher MUST remain observation-only. The Orchestrator MUST NOT
+directly poll Worker targets assigned to a native Watcher.
 
 ## Eligibility And Discovery
 

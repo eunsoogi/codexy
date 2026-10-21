@@ -62,18 +62,20 @@ branch, worktree, PR, durable child context, or review-response ownership:
     implementation and its finite goal. The Orchestrator MUST use direct
     cursor-based observation for ordinary Worker targets. A separately assigned
     Watcher MAY receive only a bounded observation assignment. Keep these
-    surfaces separate and use [goal-transition-reporting.md](goal-transition-reporting.md)
-    for blocked-goal recovery and terminal transition receipts.
+    surfaces separate and use
+    [goal-transition-reporting.md](goal-transition-reporting.md) for
+    blocked-goal recovery and terminal transition receipts.
 11. For ordinary Worker observation, the Orchestrator MUST use native
     `wait_threads` with each target's latest cursor. Only an explicitly assigned
     Watcher MAY call `wait_threads` for its targets; the Orchestrator awaits
-    `watcher_wait` without waiting directly on them. A native reviewer's terminal
-    delivery is separate and MUST NOT authorize Worker observation. MUST read
-    [parent-supervision.md](parent-supervision.md) for host limits, quiet waits,
-    interruption, cancellation, and fallback details.
+    `watcher_wait` without waiting directly on them. A native reviewer's
+    terminal delivery is separate and MUST NOT authorize Worker observation.
+    MUST read [parent-supervision.md](parent-supervision.md) for host limits,
+    quiet waits, interruption, cancellation, and fallback details.
 12. Before implementation starts, the Orchestrator MUST give the Worker its
     exact task identity and existing authorized task-message route for required
     callbacks. Routine events are observed directly; no Watcher relay is
     required. If a Watcher is separately assigned, the Worker receives only its
-    exact task-message route and MUST NOT receive a Watcher session token or call
-    Watcher MCP transport tools. A direct event does not expand message authority.
+    exact task-message route and MUST NOT receive a Watcher session token or
+    call Watcher MCP transport tools. A direct event does not expand message
+    authority.

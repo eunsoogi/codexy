@@ -74,12 +74,12 @@ and cancellation, drift correction, and supervision evaluation.
 
 The route has these mandatory boundaries: the Orchestrator owns the overall
 goal, judgement, correction, and acceptance; the Worker owns its implementation
-and finite goal; ordinary Worker observation is owned directly by the Orchestrator.
-Routine observation MUST NOT require a Watcher or a Worker-to-Watcher relay. A
-separately assigned Watcher is read-only and observes only its exact bounded
-targets; only that Watcher MAY call `wait_threads` for those targets, and the
-Orchestrator MUST await `watcher_wait` without also waiting directly on them.
-Workers MUST NOT use an Orchestrator-owned Watcher
+and finite goal; ordinary Worker observation is owned directly by the
+Orchestrator. Routine observation MUST NOT require a Watcher or a
+Worker-to-Watcher relay. A separately assigned Watcher is read-only and observes
+only its exact bounded targets; only that Watcher MAY call `wait_threads` for
+those targets, and the Orchestrator MUST await `watcher_wait` without also
+waiting directly on them. Workers MUST NOT use an Orchestrator-owned Watcher
 session or token. A Watcher report or finite goal MUST NOT transfer ownership or
 prove issue completion. A native reviewer's own terminal delivery follows its
 review route and MUST NOT be confused with Worker observation. MUST read

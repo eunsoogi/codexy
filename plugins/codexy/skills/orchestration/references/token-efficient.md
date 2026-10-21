@@ -21,13 +21,13 @@ no-change parent-turn savings remain unmeasured.
   preserve Watcher state and cancellation only for an explicit assignment.
   Handle input at re-entry; MUST NOT infer wait cancel/resume or repeat work.
 - For an explicitly assigned Watcher route, the Orchestrator MUST nest
-  `watcher_wait(timeoutMs=295000)` in one
-  `functions.exec` with first-line `// @exec: {"yield_time_ms":300000}` on the
-  verified host. Two parent calls reached timeout with no cell yield or visible
-  model, tool, or commentary item; hidden inference and other hosts remain
-  unverified. An early yield is not proof. The owner MUST preserve the cell,
-  session, cursor, and cancellation; MUST NOT use `functions.wait` as proof,
-  reissue, advance the cursor, or emit unchanged status or reasoning.
+  `watcher_wait(timeoutMs=295000)` in one `functions.exec` with first-line
+  `// @exec: {"yield_time_ms":300000}` on the verified host. Two parent calls
+  reached timeout with no cell yield or visible model, tool, or commentary item;
+  hidden inference and other hosts remain unverified. An early yield is not
+  proof. The owner MUST preserve the cell, session, cursor, and cancellation;
+  MUST NOT use `functions.wait` as proof, reissue, advance the cursor, or emit
+  unchanged status or reasoning.
 - Outside a route-required quiet wait, MUST provide concise progress commentary
   at meaningful checkpoints during active work; commentary does not end the turn
   or prove completion. MUST reserve final handoff for the complete assigned

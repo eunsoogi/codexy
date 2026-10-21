@@ -51,9 +51,9 @@ alter protected technical text.
   separately assigned Watcher MUST use the host's callable native-subagent API
   (`spawn_agent` or its versioned equivalent) from the Orchestrator with the
   packaged `codexy-watcher` role; it is not an app task or automation. For that
-  assignment, record the Worker project id, Watcher identity, and creating
-  tool. A projectless task, standalone app watcher, unpackaged subagent, or
-  UUID-only API is not a substitute for this subagent route.
+  assignment, record the Worker project id, Watcher identity, and creating tool.
+  A projectless task, standalone app watcher, unpackaged subagent, or UUID-only
+  API is not a substitute for this subagent route.
 - The Watcher MUST remain read-only observation. It MAY report a material
   failure, drift, contradiction, scope expansion, missing callback, or
   unavailable channel. It MUST NOT edit worker files, direct or message a Worker
@@ -69,10 +69,10 @@ alter protected technical text.
 ## Direct observation and explicit Watcher assignments
 
 - Ordinary Worker observation belongs to the Orchestrator, which MUST use
-  `wait_threads` with exact task/host IDs and the latest cursor per target.
-  Keep targets across turns; one completion or attention event MUST NOT end
-  other targets or the issue. Routine progress MUST NOT use a Watcher relay.
-  Read a target only for missing, truncated, contradictory, or unbound evidence.
+  `wait_threads` with exact task/host IDs and the latest cursor per target. Keep
+  targets across turns; one completion or attention event MUST NOT end other
+  targets or the issue. Routine progress MUST NOT use a Watcher relay. Read a
+  target only for missing, truncated, contradictory, or unbound evidence.
 - A Watcher route applies only to an explicitly bounded assignment. Workers
   report to that exact Watcher; its wait and non-duplication rules are defined
   below. Initial goal calls stay local; blocked/terminal receipts remain
@@ -111,13 +111,13 @@ alter protected technical text.
 
 ## Waiting and direct correction
 
-- For ordinary Orchestrator-owned Worker waits, the owner MUST use
-  cursor-based `wait_threads` with batched targets and the latest cursor for
-  each target. An unchanged cursor, bounded timeout, or long command is not a
-  stall; continue through the supported wait without routine status messages or
-  transcript reads. A first result MUST NOT close other active targets or a
-  later turn on the same task. Native reviewer delivery remains a separate
-  surface, and targets assigned to a Watcher stay on its explicit route.
+- For ordinary Orchestrator-owned Worker waits, the owner MUST use cursor-based
+  `wait_threads` with batched targets and the latest cursor for each target. An
+  unchanged cursor, bounded timeout, or long command is not a stall; continue
+  through the supported wait without routine status messages or transcript
+  reads. A first result MUST NOT close other active targets or a later turn on
+  the same task. Native reviewer delivery remains a separate surface, and
+  targets assigned to a Watcher stay on its explicit route.
 - Native Watcher routes: only the assigned Watcher MAY call `wait_threads`; the
   Orchestrator MUST await `watcher_wait`. This verified host's quiet route nests
   `watcher_wait(timeoutMs=295000)` in one `functions.exec` with first-line

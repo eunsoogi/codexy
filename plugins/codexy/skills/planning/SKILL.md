@@ -26,11 +26,11 @@ verify its current state and transitions through the existing goal authority.
 MUST NOT replace it with a text goal or bypass its API. If a plan includes
 Workers or event waits, the Orchestrator MUST use native cursor-based
 `wait_threads` for ordinary Worker observation and preserve event deduplication,
-parent judgment, and ownership. A separately assigned Watcher remains
-read-only; only it waits on its exact targets, and the parent awaits
-`watcher_wait` without also waiting directly on them. The plan MUST preserve the
-assigned model, reasoning, host, and permission policy, and report a missing
-capability; it MUST NOT silently fall back.
+parent judgment, and ownership. A separately assigned Watcher remains read-only;
+only it waits on its exact targets, and the parent awaits `watcher_wait` without
+also waiting directly on them. The plan MUST preserve the assigned model,
+reasoning, host, and permission policy, and report a missing capability; it MUST
+NOT silently fall back.
 
 ## Prepare the plan
 
