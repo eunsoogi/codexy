@@ -15,7 +15,6 @@ pub(super) fn record_matrix() -> BTreeMap<&'static str, (&'static str, &'static 
         ("agents.github", ("codexy-github", "move")),
         ("agents.devtools", ("codexy-devtools", "retain")),
         ("mcp.codegraph", ("codexy-devtools", "move")),
-        ("mcp.watcher", ("codexy", "retain")),
         ("mcp.lsp", ("codexy-devtools", "move")),
         ("mcp.runtimes", ("codexy-devtools", "move")),
         ("mcp.core-runtimes", ("codexy", "retain")),
@@ -85,6 +84,8 @@ pub(super) fn governed_universe(
         "plugins/codexy-devtools/runtime-release.json",
         "plugins/codexy-devtools/.codex/lsp-client.json",
         "plugins/codexy/.codex-plugin/plugin.json",
+        // Keep the package's no-MCP contract in the same governed inventory.
+        "plugins/codexy/.codex-plugin/mcp-capability.json",
         "plugins/codexy/agents/openai.yaml",
         "plugins/codexy-devtools/.codex-plugin/plugin.json",
         "plugins/codexy-devtools/agents/openai.yaml",

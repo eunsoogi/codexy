@@ -13,7 +13,7 @@ from .component_capability_probe_process import (
     _probe_diagnostics,
     _run,
 )
-from .component_mcp_materialization import mcp_spec, valid_component_mcp
+from .component_mcp_materialization import selected_mcp_spec, valid_component_mcp
 from .component_watcher_probe import probe_watcher as _probe_watcher
 from .version_lock import default_package_version
 
@@ -100,7 +100,7 @@ def _core_declares_watcher(plugin):
     version = manifest.get("version") if isinstance(manifest, dict) else None
     if not isinstance(version, str) or not valid_component_mcp(plugin, "core", version):
         return None
-    return "watcher" in mcp_spec("core", version).servers
+    return "watcher" in selected_mcp_spec(plugin, "core").servers
 
 
 def _probe_hook(component, plugin, base):

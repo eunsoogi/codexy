@@ -17,13 +17,15 @@ from codexy_runtime_tools.component_lifecycle_mcp import (
 )
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.component_mcp_materialization import (
-    MCP_SPECS,
     component_cache_plugin,
     materialize_component_mcp,
     valid_component_mcp_cache,
 )
 from packages.getcodexy.tests.component_lifecycle_records import record
 from packages.getcodexy.tests.component_lifecycle_support import VERSION, fixture
+from packages.getcodexy.tests.component_marketplace_fixture import (
+    configure_no_mcp_core_package,
+)
 from packages.getcodexy.tests.component_hook_registration_fixture import (
     completed_registration,
     fixture_hook_rows,
@@ -208,13 +210,7 @@ class LifecycleWatcherTests(unittest.TestCase):
         with fixture({"core"}) as state:
             plugin = state.marketplace / "plugins/codexy"
             version = "2.0.0"
-            package_path = plugin / ".codex-plugin/plugin.json"
-            package = json.loads(package_path.read_text(encoding="utf-8"))
-            package["version"] = version
-            package.pop("mcpServers", None)
-            package_path.write_text(json.dumps(package), encoding="utf-8")
-            for relative in MCP_SPECS["core"].surface_paths:
-                (plugin / relative).unlink(missing_ok=True)
+            configure_no_mcp_core_package(plugin, version)
             current = load_component_manifest()
             manifest = replace(
                 current,
@@ -235,12 +231,12 @@ class LifecycleWatcherTests(unittest.TestCase):
 
             copy_file.assert_not_called()
             self.assertTrue(
-                all(
-                    not os.path.lexists(root / relative)
-                    for root in (plugin, cache)
-                    for relative in MCP_SPECS["core"].surface_paths
-                )
+                all(not os.path.lexists(root / ".mcp.json") for root in (plugin, cache))
             )
+            for root in (plugin, cache):
+                self.assertTrue((root / "mcp/codexy_mcp_bootstrap.py").is_file())
+                self.assertTrue((root / "mcp/codexy-mcp-watcher.sh").is_file())
+                self.assertTrue((root / "mcp/codexy-mcp-watcher.cmd").is_file())
             residual = cache / ".mcp.json"
             residual.write_text("{}", encoding="utf-8")
             self.assertFalse(valid_component_mcp_cache(state.home, "core", version))

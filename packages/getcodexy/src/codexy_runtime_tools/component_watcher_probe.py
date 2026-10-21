@@ -1,4 +1,4 @@
-"""The core Watcher MCP capability probe."""
+"""Probe the legacy core Watcher MCP capability when that package declares it."""
 
 import json
 import os

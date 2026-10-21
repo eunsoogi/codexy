@@ -139,7 +139,6 @@ pub(super) fn validate_records(root: &Path, records: &[SurfaceRecord]) -> TestRe
         ("hooks.policy-core", "codexy"),
         ("skills.github", "codexy-github"),
         ("mcp.codegraph", "codexy-devtools"),
-        ("mcp.watcher", "codexy"),
         ("mcp.lsp", "codexy-devtools"),
         ("runtime.codegraph", "codexy-devtools"),
         ("runtime.lsp", "codexy-devtools"),

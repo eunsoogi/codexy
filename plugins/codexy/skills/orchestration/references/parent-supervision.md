@@ -6,11 +6,11 @@ long-lived release goal. It is the canonical detailed source for delegated
 supervision, evidence, and authority boundaries; it does not create a scheduler,
 replace goal-lifecycle, or choose a repository's GitHub policy.
 
-Codexy no longer packages a native Watcher specialist. Watcher-specific flows
-below apply only when a Watcher is supplied and assigned outside the packaged
-specialist catalog; ordinary Worker observation remains direct. The core Watcher
-MCP and interrupt hooks remain available as reporting and cancellation
-transports.
+Codexy no longer packages a native Watcher specialist or registers Watcher MCP
+in the core plugin. Watcher-specific flows below apply only when a Watcher is
+supplied and assigned outside the packaged specialist catalog; ordinary Worker
+observation remains direct. Existing launchers, runtime, and interrupt hooks
+remain for hosts that explicitly configure the compatibility transport.
 
 ## Canonical role mapping
 
@@ -153,9 +153,8 @@ alter protected technical text.
 
 The [external Watcher MCP flow](external-watcher-mcp-flow.md) defines the
 bounded transport, lifecycle, callback, cancellation, and fallback rules for a
-separately assigned Watcher. The core Watcher MCP and interrupt hooks remain
-available as transports; this reference does not register a native Watcher
-specialist.
+separately assigned Watcher when its host explicitly configures the retained
+transport. This reference does not register a native Watcher specialist.
 
 ## Recovery, evaluation, and handoff
 

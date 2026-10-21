@@ -185,7 +185,7 @@ pub(super) fn validate_selector(root: &Path, path: &str, selector: &str) -> Test
     if selector.is_empty()
         || !matches!(
             path,
-            "plugins/codexy-devtools/.mcp.json" | "plugins/codexy/.mcp.json"
+            "plugins/codexy-devtools/.mcp.json"
         )
         || registrations[selector].is_null()
     {
@@ -197,13 +197,9 @@ pub(super) fn registration_selectors(
     root: &Path,
 ) -> Result<BTreeSet<String>, Box<dyn std::error::Error>> {
     let mut selectors = BTreeSet::new();
-    for path in [
-        "plugins/codexy-devtools/.mcp.json",
-        "plugins/codexy/.mcp.json",
-    ] {
-        let registrations: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
-            root.join(path),
-        )?)?;
+    for path in ["plugins/codexy-devtools/.mcp.json"] {
+        let registrations: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(root.join(path))?)?;
         selectors.extend(
             registrations
                 .as_object()

@@ -38,9 +38,10 @@ unavailable, registration is not the defect. MUST record the active tool-schema
 or host-exposure mismatch and fail closed. MUST NOT substitute `default`,
 `worker`, or `explorer` for a Codexy specialist or Sentinel.
 
-Codexy no longer packages a native Watcher specialist. The core Watcher MCP and
-its interrupt hooks remain available as a reporting transport, but their
-presence does not register or prove a Watcher role in a fresh task.
+Codexy no longer packages a native Watcher specialist or registers Watcher MCP
+in the core plugin. Its launcher, runtime, and interrupt hooks remain for hosts
+that explicitly configure the compatibility transport; their presence does not
+register or prove a Watcher role in a fresh task.
 
 The registration bridge and update checker MUST NOT run from SessionStart,
 UserPromptSubmit, or another lifecycle hook. Codexy MUST NOT commit generated

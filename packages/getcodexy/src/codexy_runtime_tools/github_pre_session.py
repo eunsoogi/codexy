@@ -98,11 +98,12 @@ def run_github_pre_session(
                 github_root, "codexy-github", github_version
             ) as trusted_github,
         ):
-            for root, component in (
-                (trusted_core, "core"),
-                (trusted_github, "github"),
+            # Cache repair can install a release newer than this bootstrap's bundled manifest.
+            for root, component, version in (
+                (trusted_core, "core", core_version),
+                (trusted_github, "github", github_version),
             ):
-                if not valid_registration(root, component):
+                if not valid_registration(root, component, version):
                     raise ValueError(f"{component} component registration is invalid")
             core_changed = activate_core(trusted_core, home, synchronize)
             activate = activate_github or sync_github_agent

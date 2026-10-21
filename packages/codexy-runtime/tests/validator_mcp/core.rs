@@ -183,11 +183,12 @@ fn read_manifest(plugin_root: &Path) -> TestResult<Value> {
 fn core_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
     let mutable_files = [
         Path::new(".codex-plugin/plugin.json"),
-        Path::new(".mcp.json"),
         Path::new("mcp/codexy-mcp-watcher.sh"),
     ];
-    // Windows fixture copies are read-only unless every test-mutated file is declared here.
+    // The current candidate omits .mcp.json; the helper writes the legacy fixture after copying.
+    // Windows copies remain read-only unless each mutable source file is declared here.
     let (temp, plugin_root) = support::copy_plugin_fixture_with_mutable_files(&mutable_files)?;
+    install_legacy_core_mcp(&plugin_root)?;
     let devtools_root = plugin_root
         .parent()
         .ok_or("core fixture parent")?
@@ -197,6 +198,32 @@ fn core_fixture() -> TestResult<(tempfile::TempDir, PathBuf)> {
     assert_eq!(read_manifest(&plugin_root)?["name"], "codexy");
     assert_eq!(read_manifest(&devtools_root)?["name"], "codexy-devtools");
     Ok((temp, plugin_root))
+}
+
+fn install_legacy_core_mcp(plugin_root: &Path) -> TestResult {
+    // Validator compatibility coverage uses an explicit 1.13.x registration fixture.
+    let mut manifest = read_manifest(plugin_root)?;
+    manifest["mcpServers"] = json!("./.mcp.json");
+    write_manifest(plugin_root, &manifest)?;
+    let configuration = json!({
+        "watcher": {
+            "command": "uv",
+            "args": [
+                "run",
+                "--no-project",
+                "--script",
+                "./mcp/codexy_mcp_bootstrap.py",
+                "watcher",
+                "--stdio"
+            ],
+            "cwd": "."
+        }
+    });
+    fs::write(
+        plugin_root.join(".mcp.json"),
+        serde_json::to_vec_pretty(&configuration)?,
+    )?;
+    Ok(())
 }
 
 fn write_manifest(plugin_root: &Path, manifest: &Value) -> TestResult {

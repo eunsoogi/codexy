@@ -2,7 +2,9 @@
 
 This reference applies only when the Orchestrator explicitly assigns a Watcher
 outside Codexy's packaged specialist catalog. It defines the bounded transport
-and supervision flow; it does not register or select a native Watcher role.
+and supervision flow; it does not register or select a native Watcher role. The
+core package no longer registers Watcher MCP; an assigned host must explicitly
+configure the retained compatibility launcher and runtime.
 
 - When an external Watcher is assigned, the Orchestrator opens one scoped
   `watcher_open` session for the Orchestrator, Watcher, and exact Worker
@@ -21,10 +23,10 @@ and supervision flow; it does not register or select a native Watcher role.
   context for removed identity/transport; MUST call `watcher_health` only for
   concrete unresolved diagnostics. Its timestamp is not acceptance proof; MUST
   read Worker/app state only as needed.
-- Same-connection `notifications/cancelled` or Codexy's retained Watcher
-  `PreToolUse`/`Interrupt`/`UserPromptSubmit` releases only that wait when the
-  host delivers the event and preserves the durable session. `watcher_cancel`
-  instead ends the session and requires a fresh assignment. See
+- Same-connection `notifications/cancelled` or the retained Watcher
+  `PreToolUse`/`Interrupt`/`UserPromptSubmit` hooks releases only that wait when
+  the host delivers the event and preserves the durable session.
+  `watcher_cancel` instead ends the session and requires a fresh assignment. See
   [Watcher wait cancellation](watcher-wait-cancellation.md) for event matching,
   fail-closed cases, and host-propagation proof boundaries. A cancelled
   queue/cursor is readback only, never continuity; the assignment MUST NOT

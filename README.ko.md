@@ -224,16 +224,17 @@ Advisor의 읽기 전용 경계는 에이전트 지침에 따른 행동 규칙�
 `wait_threads`를 호출하고 완료, 도움이 필요한 상태, 이후 새 turn을 직접
 확인합니다. 한 Worker의 이벤트가 다른 작업의 관찰이나 issue 완료를 끝내지는
 않습니다. Orchestrator는 결과를 판단하고 교정과 인수 권한을 유지합니다. Codexy는
-native Watcher 전문 역할을 더 이상 패키징하지 않습니다. core Watcher MCP와
-interrupt 훅은 별도로 설정한 reporter를 위해 유지하며, 일반 Worker 이벤트는
-Orchestrator가 직접 관찰합니다. 메시지와 목표 전환 receipt는 기존 권한과 수신
-대상을 유지합니다.
+native Watcher 전문 역할을 더 이상 패키징하지 않으며 core 플러그인에 Watcher
+MCP를 등록하지 않습니다. 기존 launcher, runtime, interrupt 훅은 별도로 호환
+transport를 설정한 host를 위해 유지하고, 일반 Worker 이벤트는 Orchestrator가
+직접 관찰합니다. 메시지와 목표 전환 receipt는 기존 권한과 수신 대상을
+유지합니다.
 
 목표도 분리됩니다. Orchestrator는 전체 작업 목표를 맡고 Worker는 유한한 실행
-목표를 맡습니다. 보존된 Watcher MCP는 보고 전송 수단이며 목표를 소유하거나
-옮기지 않습니다. 이 설정은 Codexy에 포함된 구성이지 이미 실행 중인 host가 실제로
-사용한 모델의 증거는 아닙니다. `low`, `medium`, `high`, `xhigh`, `max`는 추론
-수준입니다.
+목표를 맡습니다. 별도로 설정한 Watcher MCP는 보고 전송 수단이며 목표를
+소유하거나 옮기지 않습니다. 이 설정은 Codexy에 포함된 구성이지 이미 실행 중인
+host가 실제로 사용한 모델의 증거는 아닙니다. `low`, `medium`, `high`, `xhigh`,
+`max`는 추론 수준입니다.
 
 ### 패키지 전문 에이전트
 

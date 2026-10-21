@@ -10,10 +10,7 @@ pub(super) struct Registration {
 
 pub(super) fn packaged(root: &Path) -> Result<BTreeMap<String, Registration>, String> {
     let mut packaged = BTreeMap::new();
-    for relative in [
-        "plugins/codexy/.mcp.json",
-        "plugins/codexy-devtools/.mcp.json",
-    ] {
+    for relative in ["plugins/codexy-devtools/.mcp.json"] {
         let path = root.join(relative);
         if !path.is_file() {
             continue;

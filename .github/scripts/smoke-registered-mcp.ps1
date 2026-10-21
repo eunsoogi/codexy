@@ -32,8 +32,31 @@ function Invoke-McpRegistration {
   )
   $resolvedRoot = (Resolve-Path -LiteralPath $PluginRoot).Path
   $manifest = Get-Content -Raw -LiteralPath (Join-Path $resolvedRoot ".codex-plugin/plugin.json") | ConvertFrom-Json
+  $hasMcpDeclaration = $null -ne $manifest.PSObject.Properties["mcpServers"] -or $null -ne $manifest.PSObject.Properties["mcp_servers"]
+  if ($PluginRoot -eq "plugins/codexy" -and -not $hasMcpDeclaration) {
+    $capabilityPath = Join-Path $resolvedRoot ".codex-plugin/mcp-capability.json"
+    if (-not (Test-Path -LiteralPath $capabilityPath -PathType Leaf)) { throw "core package is missing its explicit no-MCP capability contract: $capabilityPath" }
+    $capability = Get-Content -Raw -LiteralPath $capabilityPath | ConvertFrom-Json
+    $propertyNames = @($capability.PSObject.Properties.Name | Sort-Object)
+    if ($propertyNames.Count -ne 3 -or [string]::Join(",", $propertyNames) -cne "component,schema,servers" -or $capability.schema -cne "codexy.mcp-capability.v1" -or $capability.component -cne "core" -or @($capability.servers).Count -ne 0) {
+      throw "core package has an invalid no-MCP capability contract: $capabilityPath"
+    }
+    $configPath = Join-Path $resolvedRoot ".mcp.json"
+    if (Test-Path -LiteralPath $configPath) { throw "core package has residual MCP configuration without a manifest declaration: $configPath" }
+    # A core package without MCP metadata must be checked for absence, not started as Watcher.
+    Write-Output (@{
+        plugin = $manifest.name
+        server = $Server
+        status = "not-registered"
+        reason = "core manifest and configuration omit Watcher MCP"
+      } | ConvertTo-Json -Compress)
+    return
+  }
+  if ($PluginRoot -eq "plugins/codexy" -and (Test-Path -LiteralPath (Join-Path $resolvedRoot ".codex-plugin/mcp-capability.json"))) {
+    throw "core package cannot declare both a no-MCP capability and MCP registration"
+  }
   if (@($manifest.supportedPlatforms) -notcontains $platform) {
-    Write-Host (@{
+    Write-Output (@{
         plugin = $manifest.name
         server = $Server
         status = "unsupported"
@@ -55,7 +78,7 @@ function Invoke-McpRegistration {
     $environment["CODEXY_RUNTIME_DIR"] = $runtimeDir
   }
   $result = Invoke-McpProtocol -FileName $command -Arguments @($entry.args) -WorkingDirectory $resolvedRoot -Server $Server -ExpectedTools $ExpectedTools -Environment $environment -ClientName "registered-mcp-smoke"
-  Write-Host (@{ plugin = $manifest.name; server = $Server; platform = $platform; command = $command; args = @($entry.args); initialize = "ok"; tools = @($result.Tools).Count } | ConvertTo-Json -Compress -Depth 20)
+  Write-Output (@{ plugin = $manifest.name; server = $Server; platform = $platform; command = $command; args = @($entry.args); initialize = "ok"; tools = @($result.Tools).Count } | ConvertTo-Json -Compress -Depth 20)
 }
 
 Invoke-McpRegistration "plugins/codexy" watcher 5

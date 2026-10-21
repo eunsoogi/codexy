@@ -135,9 +135,10 @@ events are a terminal child result, a Sentinel verdict, a new HEAD, a GitHub
 check-state change, actionable review feedback, review-thread resolution, or an
 explicit user/Orchestrator message. The prompt MUST suppress unchanged
 observations and MUST wake the owner only for a material gate change or an
-explicit user/Orchestrator message. Watcher reports use the core MCP path
-defined in [parent-supervision.md](parent-supervision.md) and are not heartbeat
-events or a reason to create a heartbeat.
+explicit user/Orchestrator message. A separately configured Watcher reports
+through its assigned MCP path, as defined in
+[parent-supervision.md](parent-supervision.md); reports are not heartbeat events
+or a reason to create a heartbeat.
 
 A live Sentinel, pending Worker, queued CI, pending connector review,
 Orchestrator authorization, dependency integration, or resource slot is a

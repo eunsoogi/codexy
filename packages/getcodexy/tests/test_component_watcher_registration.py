@@ -6,7 +6,6 @@ import json
 import os
 import shutil
 import unittest
-from dataclasses import replace
 from unittest.mock import patch
 
 from codexy_runtime_tools import (
@@ -15,7 +14,6 @@ from codexy_runtime_tools import (
 )
 from codexy_runtime_tools.component_inspection import doctor
 from codexy_runtime_tools.component_lifecycle import run_operation
-from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.component_registration_catalog import _catalog_agent_files
 from codexy_runtime_tools.component_registration_files import _text
 from codexy_runtime_tools.component_registration_health import (
@@ -23,8 +21,8 @@ from codexy_runtime_tools.component_registration_health import (
     valid_registration,
 )
 from codexy_runtime_tools.component_mcp_materialization import (
-    MCP_SPECS,
     materialize_component_mcp,
+    mcp_configuration,
     valid_component_mcp,
 )
 from packages.getcodexy.tests.component_lifecycle_support import fixture
@@ -33,6 +31,9 @@ from packages.getcodexy.tests.component_hook_registration_fixture import (
     fixture_hook_rows,
 )
 from packages.getcodexy.tests.component_inspection_host_cases import _register_core
+from packages.getcodexy.tests.component_marketplace_fixture import (
+    make_no_mcp_core_package,
+)
 
 
 def _write_core_roles(home, plugin) -> None:
@@ -44,31 +45,22 @@ def _write_core_roles(home, plugin) -> None:
         (root / name).write_text(contents, encoding="utf-8")
 
 
-def _make_no_mcp_core(plugin) -> tuple[str, object]:
-    version = "2.0.0"
-    path = plugin / ".codex-plugin/plugin.json"
-    package = json.loads(path.read_text(encoding="utf-8"))
-    package["version"] = version
-    package.pop("mcpServers", None)
-    path.write_text(json.dumps(package), encoding="utf-8")
-    for relative in MCP_SPECS["core"].surface_paths:
-        (plugin / relative).unlink(missing_ok=True)
-    base = load_component_manifest()
-    manifest = replace(
-        base,
-        version=version,
-        components=tuple(
-            replace(component, version=version) for component in base.components
-        ),
-    )
-    return version, manifest
-
-
 class WatcherRegistrationTests(unittest.TestCase):
+    def test_absent_registration_requires_an_explicit_no_mcp_contract(self) -> None:
+        with fixture() as state:
+            plugin = state.marketplace / "plugins/codexy"
+            version, _manifest = make_no_mcp_core_package(plugin)
+            capability = plugin / ".codex-plugin/mcp-capability.json"
+            capability.unlink(missing_ok=True)
+
+            self.assertFalse(valid_component_mcp(plugin, "core", version))
+            with self.assertRaisesRegex(RuntimeError, "surface is invalid"):
+                materialize_component_mcp(plugin, "core", version)
+
     def test_versioned_no_mcp_core_materializes_and_registers(self) -> None:
         with fixture({"core"}) as state:
             plugin = state.marketplace / "plugins/codexy"
-            version, manifest = _make_no_mcp_core(plugin)
+            version, manifest = make_no_mcp_core_package(plugin)
             package_path = plugin / ".codex-plugin/plugin.json"
             package = json.loads(package_path.read_text(encoding="utf-8"))
 
@@ -88,9 +80,11 @@ class WatcherRegistrationTests(unittest.TestCase):
                 ),
             ):
                 self.assertTrue(valid_registration(plugin, "core"))
+                # Only None selects the bundled release; an empty value stays invalid.
+                self.assertFalse(valid_registration(plugin, "core", ""))
                 if os.name != "nt":
-                    residual = plugin / "mcp/codexy-mcp-watcher.sh"
-                    residual.symlink_to(plugin.parent / "missing-target")
+                    residual = plugin / ".mcp.json"
+                    residual.symlink_to(plugin.parent / "missing-mcp-config")
                     self.assertFalse(valid_component_mcp(plugin, "core", version))
                     residual.unlink()
                 for declaration in ("./.mcp.json", "../outside/mcp.json"):
@@ -103,8 +97,13 @@ class WatcherRegistrationTests(unittest.TestCase):
 
             package["version"] = VERSION
             package["mcpServers"] = "./.mcp.json"
+            (plugin / ".codex-plugin/mcp-capability.json").unlink(missing_ok=True)
             package_path.write_text(json.dumps(package), encoding="utf-8")
-            self.assertFalse(valid_component_mcp(plugin, "core", VERSION))
+            (plugin / ".mcp.json").write_text(
+                json.dumps(mcp_configuration("core", VERSION), indent=2),
+                encoding="utf-8",
+            )
+            self.assertTrue(valid_component_mcp(plugin, "core", VERSION))
 
     @unittest.skipIf(os.name == "nt", "creating a symlink requires Windows privileges")
     def test_install_rejects_a_symlinked_mcp_parent_before_materialization(

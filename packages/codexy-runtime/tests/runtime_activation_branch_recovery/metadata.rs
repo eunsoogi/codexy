@@ -8,6 +8,9 @@ use serde_json::{Value, json};
 
 use crate::support::copy_dir;
 
+mod version_support;
+pub(super) use version_support::{make_uv_lock_stale, next_patch_version};
+
 pub(super) fn synchronize_current_plugin_validation_inputs(
     repo: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -38,6 +41,23 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
         root.join("plugins/codexy/.codex-plugin/plugin.json"),
     )?)?;
     manifest["interface"]["defaultPrompt"] = core_candidate["interface"]["defaultPrompt"].clone();
+    if core_candidate.get("mcpServers").is_none() {
+        // Keep the copied candidate manifest and config pair in the same no-MCP shape.
+        manifest
+            .as_object_mut()
+            .ok_or("fixture core manifest object")?
+            .remove("mcpServers");
+        let stale_config = core_plugin.join(".mcp.json");
+        if stale_config.exists() {
+            fs::remove_file(stale_config)?;
+        }
+    } else {
+        manifest["mcpServers"] = core_candidate["mcpServers"].clone();
+        fs::copy(
+            root.join("plugins/codexy/.mcp.json"),
+            core_plugin.join(".mcp.json"),
+        )?;
+    }
     fs::write(core_plugin.join(".codex-plugin/plugin.json"), format!("{}\n", serde_json::to_string_pretty(&manifest)?))?;
     copy_dir(root.join("plugins/codexy-github"), &repo.join("plugins/codexy-github"))?;
     for relative in [
@@ -47,7 +67,6 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
         "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
         "packages/getcodexy/uv.lock",
         "packages/getcodexy/tests/fixtures/component-installation-cases.json",
-        "plugins/codexy/.mcp.json",
         "plugins/codexy/mcp/codexy_mcp_bootstrap.py",
         "scripts/download-selected-runtime-package.sh",
     ] {
@@ -65,30 +84,6 @@ pub(super) fn synchronize_current_plugin_validation_inputs(
     fs::write(&contract_path, format!("{}\n", serde_json::to_string_pretty(&contract)?))?;
     reset_github_version(repo, &baseline_version)?;
     Ok(())
-}
-
-pub(super) fn make_uv_lock_stale(repo: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let lock = repo.join("packages/getcodexy/uv.lock");
-    let lock_text = fs::read_to_string(&lock)?;
-    let current_version = lock_text
-        .lines()
-        .find_map(|line| line.trim().strip_prefix("version = \"")?.strip_suffix('"'))
-        .ok_or("getcodexy lock version")?;
-    let stale_version = next_patch_version(current_version)?;
-    let stale_lock = lock_text.replacen(
-        &format!("version = \"{current_version}\""),
-        &format!("version = \"{stale_version}\""),
-        1,
-    );
-    fs::write(lock, stale_lock)?;
-    Ok(())
-}
-
-pub(super) fn next_patch_version(version: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let (major, remainder) = version.split_once('.').ok_or("major version")?;
-    let (minor, patch) = remainder.split_once('.').ok_or("minor version")?;
-    let patch = patch.parse::<u64>()?.checked_add(1).ok_or("patch overflow")?;
-    Ok(format!("{major}.{minor}.{patch}"))
 }
 
 fn reset_github_version(repo: &Path, version: &str) -> Result<(), Box<dyn std::error::Error>> {

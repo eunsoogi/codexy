@@ -10,7 +10,6 @@ pub(super) const REPLACED_FILES: &[&str] = &[
     ".agents/plugins/marketplace.json",
     "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
     "packages/codexy-runtime/src/version/mcp_config.rs",
-    "plugins/codexy/.mcp.json",
     "plugins/codexy/mcp/codexy_mcp_bootstrap.py",
     "plugins/codexy-devtools/.mcp.json",
     "plugins/codexy-devtools/mcp/codexy_mcp_bootstrap.py",

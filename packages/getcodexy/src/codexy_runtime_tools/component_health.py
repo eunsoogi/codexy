@@ -8,20 +8,26 @@ from pathlib import Path
 from . import component_capability_probe as _probe
 from .component_capability_observation import component_observations
 from .component_hook_activation import ACTIVATION_STATES
-from .component_mcp_materialization import MCP_COMPONENTS, valid_component_mcp_cache
+from .component_mcp_materialization import (
+    MCP_COMPONENTS,
+    mcp_spec_for_plugin,
+    valid_component_mcp_cache,
+)
 from .component_health_support import (
     _authority_valid,
     _health_plugin,
     _legacy_state,
     _observed,
+    _plugin_root,
+    _selected_registration_valid,
     manifest_is_valid,
     record_version,
     version_relation,
 )
 from .component_manifest import ComponentManifest
 from .component_registration_health import (
+    _registered_role,
     registration_role as _registration_role,
-    valid_registration,
 )
 from .updater import compare_managed_files
 
@@ -64,6 +70,17 @@ def _component_health(context, component):
     )
     record = records.get(component)
     installed = component in actual
+    expected_mcp_spec = None
+    if component in MCP_COMPONENTS:
+        source_plugin = _plugin_root(record)
+        if source_plugin is not None:
+            try:
+                # Check package shape separately; authority remains a later health check.
+                expected_mcp_spec = mcp_spec_for_plugin(
+                    source_plugin, component, record_version(record)
+                )
+            except (OSError, RuntimeError, ValueError):
+                expected_mcp_spec = None
     plugin = _health_plugin(manifest, component, record, codex_home)
     registration = (
         compare_managed_files(plugin, codex_home, component)
@@ -76,7 +93,9 @@ def _component_health(context, component):
         and manifest_is_valid(
             plugin, manifest.component(component).plugin, record_version(record)
         )
-        and valid_registration(plugin, component)
+        and _selected_registration_valid(
+            plugin, component, record_version(record), expected_mcp_spec
+        )
         and (
             not registration
             or not registration["observed"]
@@ -84,11 +103,26 @@ def _component_health(context, component):
         )
         and (
             component not in MCP_COMPONENTS
-            or valid_component_mcp_cache(codex_home, component, manifest.version)
+            or (
+                expected_mcp_spec is not None
+                and valid_component_mcp_cache(
+                    codex_home,
+                    component,
+                    manifest.version,
+                    expected_spec=expected_mcp_spec,
+                )
+            )
         )
     )
     state = _legacy_state(
-        manifest, component, actual, records, admission_error, host_error, codex_home
+        manifest,
+        component,
+        actual,
+        records,
+        admission_error,
+        host_error,
+        codex_home,
+        expected_mcp_spec,
     )
     registration_state = registration["state"] if registration else "exact"
     if state in {"healthy", "stale"} and registration_state != "exact":
@@ -208,43 +242,3 @@ def _registration_roles(home, root, marker, expected, read_regular, max_bytes):
         "exact",
     )
     return roles, tuple(sorted(managed)), tuple(sorted(unmanaged)), state
-
-
-def _registered_role(
-    home: Path,
-    root: Path,
-    name: str,
-    expected: bytes,
-    marker: str,
-    read_regular,
-    max_bytes: int,
-) -> dict[str, object]:
-    try:  # Inspect the marker-owned role file as a bounded regular input.
-        current = (
-            read_regular(home, root.relative_to(home) / name, max_bytes)
-            .decode()
-            .replace("\r\n", "\n")
-            .replace("\r", "\n")
-        )
-    except FileNotFoundError:
-        return _registration_role(name, "missing", "managed role file is missing")
-    except (OSError, UnicodeDecodeError, ValueError):
-        return _registration_role(
-            name,
-            "unmanaged-conflict",
-            "managed role file is unreadable or not a regular file",
-            True,
-        )
-    if not current.startswith(marker):
-        return _registration_role(
-            name,
-            "unmanaged-conflict",
-            "existing role file is not marker-owned by Codexy",
-            True,
-        )
-    exact = current.encode() == expected
-    return _registration_role(
-        name,
-        "exact" if exact else "stale",
-        None if exact else "registered role differs from the package",
-    )

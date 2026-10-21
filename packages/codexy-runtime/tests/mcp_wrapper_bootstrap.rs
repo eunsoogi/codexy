@@ -158,10 +158,34 @@ fn core_mcp_validator_windows_launcher_accepts_annotations_and_rejects_comment_d
     let temp = tempfile::tempdir()?;
     let plugin_root = temp.path().join("core plugin");
     support::copy_dir(root.join("plugins/codexy"), &plugin_root)?;
-    let manifest: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
-        plugin_root.join(".codex-plugin/plugin.json"),
-    )?)?;
-    let version = manifest["version"].as_str().ok_or("core version must be a string")?;
+    let manifest_path = plugin_root.join(".codex-plugin/plugin.json");
+    let mut manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&manifest_path)?)?;
+    let version = manifest["version"]
+        .as_str()
+        .ok_or("core version must be a string")?
+        .to_owned();
+    // Keep the validator fixture on the declared pre-2.0 contract so it checks the launcher.
+    manifest["mcpServers"] = serde_json::json!("./.mcp.json");
+    std::fs::write(&manifest_path, serde_json::to_vec_pretty(&manifest)?)?;
+    let mcp_config = serde_json::json!({
+        "watcher": {
+            "command": "uv",
+            "args": [
+                "run",
+                "--no-project",
+                "--script",
+                "./mcp/codexy_mcp_bootstrap.py",
+                "watcher",
+                "--stdio"
+            ],
+            "cwd": "."
+        }
+    });
+    std::fs::write(
+        plugin_root.join(".mcp.json"),
+        serde_json::to_vec_pretty(&mcp_config)?,
+    )?;
     let expected = format!(
         concat!(
             "@echo off\n",
