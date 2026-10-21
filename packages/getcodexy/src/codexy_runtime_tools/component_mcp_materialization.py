@@ -4,122 +4,55 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass
 from pathlib import Path
 
-from .component_mcp_cache import (
-    _needs_executable,
-    _require_directory,
-    _sync_surface,
-    _valid_surface_file,
+from .component_mcp_cache import _require_directory
+from .component_mcp_capability import (
+    MCP_SPECS,
+    McpSpec,
+    mcp_configuration,
+    mcp_spec,
+    selected_mcp_spec,
+    sync_mcp_surface,
+    valid_mcp_surface,
 )
-from .component_manifest import valid_semver
 from .updater import _absolute, _validate_real_path
 
 
-RUNTIME_COMMAND = "uv"
 REPOSITORY = "https://github.com/eunsoogi/codexy"
-BOOTSTRAP_ARGS = (
-    "run",
-    "--no-project",
-    "--script",
-    "./mcp/codexy_mcp_bootstrap.py",
-)
 CACHE_ROOT = Path("plugins/cache/codexy")
-NO_MCP_CORE_VERSION = "2.0.0"
-
-
-@dataclass(frozen=True)
-class McpSpec:
-    component: str
-    plugin: str
-    servers: tuple[str, ...]
-    surface_paths: tuple[Path, ...]
-
-
-MCP_SPECS = {
-    "core": McpSpec(
-        "core",
-        "codexy",
-        ("watcher",),
-        (
-            Path(".mcp.json"),
-            Path("mcp/codexy_mcp_bootstrap.py"),
-            Path("mcp/codexy-mcp-watcher.sh"),
-            Path("mcp/codexy-mcp-watcher.cmd"),
-        ),
-    ),
-    "devtools": McpSpec(
-        "devtools",
-        "codexy-devtools",
-        ("lsp", "codegraph"),
-        (
-            Path(".mcp.json"),
-            Path("mcp/codexy_mcp_bootstrap.py"),
-            Path("mcp/codexy-mcp-devtools"),
-            Path("mcp/codexy-mcp-codegraph"),
-            Path("mcp/codexy-mcp-codegraph.cmd"),
-            Path("mcp/codexy-mcp-lsp"),
-            Path("mcp/codexy-mcp-lsp.cmd"),
-            Path("mcp/runtime-platform.sh"),
-        ),
-    ),
-}
 MCP_COMPONENTS = frozenset(MCP_SPECS)
-
-
-def mcp_spec(component: str, version: str | None = None) -> McpSpec:
-    try:
-        spec = MCP_SPECS[component]
-    except KeyError as error:
-        raise ValueError(
-            f"component has no MCP installation contract: {component}"
-        ) from error
-    if (
-        component == "core"
-        and version is not None
-        and valid_semver(version)
-        and tuple(int(part) for part in version.split("."))
-        >= tuple(int(part) for part in NO_MCP_CORE_VERSION.split("."))
-    ):
-        # Core 2.0 and later intentionally omit Watcher; earlier packages stay strict.
-        return McpSpec(spec.component, spec.plugin, (), ())
-    return spec
-
-
-def mcp_server_config(server: str) -> dict[str, object]:
-    return {
-        "command": RUNTIME_COMMAND,
-        "args": [*BOOTSTRAP_ARGS, server, "--stdio"],
-        "cwd": ".",
-    }
-
-
-def mcp_configuration(
-    component: str, version: str | None = None
-) -> dict[str, dict[str, object]]:
-    return {
-        server: mcp_server_config(server)
-        for server in mcp_spec(component, version).servers
-    }
 
 
 def materialize_component_mcp(
     plugin: Path, component: str, version: str | None = None
 ) -> Path:
-    """Validate one plugin's source MCP surface before its host installation."""
+    """Validate the selected package contract before its host installation."""
     root = _plugin_root(plugin)
     selected_version = _plugin_version(root, component)
     if version is not None and selected_version != version:
         raise RuntimeError(
             f"MCP plugin version {selected_version!r} does not match {version!r}: {root}"
         )
-    expected_version = version or selected_version
-    if version is None and not mcp_spec(component, selected_version).servers:
+    spec = selected_mcp_spec(root, component)
+    if version is None and not spec.servers:
         raise RuntimeError("no-MCP validation requires the selected package version")
-    if not valid_component_mcp(root, component, expected_version):
+    if not valid_mcp_surface(root, component, spec):
         raise RuntimeError(f"{component} MCP installation surface is invalid: {root}")
     return root
+
+
+def mcp_spec_for_plugin(
+    plugin: Path, component: str, version: str | None = None
+) -> McpSpec:
+    """Read a capability only from an identity- and version-checked source package."""
+    root = _plugin_root(plugin)
+    selected_version = _plugin_version(root, component)
+    if version is not None and selected_version != version:
+        raise ValueError(
+            f"MCP plugin version {selected_version!r} does not match {version!r}: {root}"
+        )
+    return selected_mcp_spec(root, component)
 
 
 def component_cache_plugin(home: Path, component: str, version: str) -> Path:
@@ -135,7 +68,7 @@ def materialize_component_mcp_cache(
     *,
     source_plugin: Path | None = None,
 ) -> Path | None:
-    """Repair one installed plugin's MCP files in an existing Codex cache."""
+    """Repair a cache against the selected source's capability, not the cache's claim."""
     cache_root = _absolute(home) / "plugins" / "cache"
     if not os.path.lexists(cache_root):
         return None
@@ -144,40 +77,47 @@ def materialize_component_mcp_cache(
     if not os.path.lexists(target):
         raise RuntimeError(f"MCP cache plugin is missing: {target}")
     target = _plugin_root(target)
+    expected_spec = mcp_spec(component, version)
     if source_plugin is not None:
         source = materialize_component_mcp(source_plugin, component, version)
-        _sync_surface(source, target, mcp_spec(component, version).surface_paths)
-    if not valid_component_mcp(target, component, version):
+        expected_spec = mcp_spec_for_plugin(source, component, version)
+        sync_mcp_surface(source, target, component, expected_spec)
+    if not valid_component_mcp(target, component, version, expected_spec=expected_spec):
         raise RuntimeError(f"{component} MCP cache surface is invalid: {target}")
     return target
 
 
 def valid_component_mcp(
-    plugin: Path, component: str, version: str | None = None
+    plugin: Path,
+    component: str,
+    version: str | None = None,
+    *,
+    expected_spec: McpSpec | None = None,
 ) -> bool:
     try:
         root = _plugin_root(plugin)
         selected_version = _plugin_version(root, component)
         if version is not None and selected_version != version:
             return False
-        expected_version = version or selected_version
-        spec = mcp_spec(component, expected_version)
+        spec = selected_mcp_spec(root, component)
+        if expected_spec is not None and spec != expected_spec:
+            return False
+        spec = expected_spec or spec
         if version is None and not spec.servers:
             return False
-        if not spec.servers:
-            return _valid_absent_surface(root)
-        configuration = json.loads((root / ".mcp.json").read_text(encoding="utf-8"))
-        if configuration != mcp_configuration(component, expected_version):
-            return False
-        return all(
-            _valid_surface_file(root / path, executable=_needs_executable(path))
-            for path in spec.surface_paths
-        )
+        return valid_mcp_surface(root, component, spec)
     except (OSError, RuntimeError, UnicodeError, ValueError, json.JSONDecodeError):
         return False
 
 
-def valid_component_mcp_cache(home: Path | None, component: str, version: str) -> bool:
+def valid_component_mcp_cache(
+    home: Path | None,
+    component: str,
+    version: str,
+    *,
+    source_plugin: Path | None = None,
+    expected_spec: McpSpec | None = None,
+) -> bool:
     if home is None:
         return True
     cache_root = _absolute(home) / "plugins" / "cache"
@@ -185,8 +125,14 @@ def valid_component_mcp_cache(home: Path | None, component: str, version: str) -
         return True
     try:
         _require_directory(cache_root, "Codex plugin cache root")
+        if source_plugin is not None:
+            expected_spec = mcp_spec_for_plugin(source_plugin, component, version)
+        expected_spec = expected_spec or mcp_spec(component, version)
         return valid_component_mcp(
-            component_cache_plugin(home, component, version), component, version
+            component_cache_plugin(home, component, version),
+            component,
+            version,
+            expected_spec=expected_spec,
         )
     except (OSError, ValueError, RuntimeError):
         return False
@@ -212,27 +158,6 @@ def _plugin_version(root: Path, component: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"MCP plugin manifest has no version: {root}")
     return value
-
-
-def _valid_absent_surface(root: Path) -> bool:
-    """Reject registered MCP metadata while retaining compatibility launchers."""
-    manifest = json.loads(
-        (root / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
-    )
-    if (
-        not isinstance(manifest, dict)
-        or "mcpServers" in manifest
-        or "mcp_servers" in manifest
-    ):
-        return False
-    config = root / ".mcp.json"
-    try:
-        _validate_real_path(_absolute(config), require_exists=False)
-    except (OSError, ValueError):
-        return False
-    # The manifest/config pair controls host discovery; dormant launchers are
-    # compatibility assets for previously installed or explicitly configured hosts.
-    return not os.path.lexists(config)
 
 
 def _validate_version_component(version: str) -> None:

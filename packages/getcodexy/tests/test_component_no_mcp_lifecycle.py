@@ -1,124 +1,87 @@
-"""Exercise install, doctor, and cache repair for the no-MCP core package."""
+"""Exercise the checked-in no-MCP candidate through a local package lifecycle."""
 
 from __future__ import annotations
 
 import json
 import shutil
 import unittest
-from contextlib import ExitStack
-from dataclasses import replace
-from unittest.mock import patch
+from pathlib import Path
 
-from codexy_runtime_tools import (
-    component_inspection,
-    component_registration_files,
-    component_registration_health,
-)
-from codexy_runtime_tools import component_lifecycle_operation
 from codexy_runtime_tools.component_inspection import doctor
-from codexy_runtime_tools.component_lifecycle import run_operation
 from codexy_runtime_tools.component_lifecycle_mcp import materialize_mcp_caches
 from codexy_runtime_tools.component_manifest import load_component_manifest
 from codexy_runtime_tools.component_mcp_materialization import (
     component_cache_plugin,
-    valid_component_mcp,
+    materialize_component_mcp,
+    mcp_configuration,
     valid_component_mcp_cache,
 )
-from packages.getcodexy.tests import component_lifecycle_support
-from packages.getcodexy.tests.component_hook_registration_fixture import (
-    fixture_hook_rows,
-)
-from packages.getcodexy.tests.component_lifecycle_support import fixture
+from packages.getcodexy.tests.local_marketplace_identity_fixture import LocalHost
+
+REPOSITORY = Path(__file__).resolve().parents[3]
 
 
 class NoMcpLifecycleTests(unittest.TestCase):
-    def test_install_doctor_and_cache_repair_keep_core_unregistered(self) -> None:
-        version = "2.0.0"
-        # An isolated candidate version selects the intentional no-MCP contract.
-        current = load_component_manifest()
-        manifest = replace(
-            current,
-            version=version,
-            components=tuple(
-                replace(component, version=version) for component in current.components
-            ),
-        )
+    def test_install_doctor_and_cache_repair_use_the_checked_in_candidate(self) -> None:
+        version = load_component_manifest().version
+        with LocalHost() as host:
+            plugin = host.marketplace / "plugins/codexy"
+            # The default local-host fixture models an older release; replace only its
+            # temporary package with the exact candidate source under test.
+            shutil.rmtree(plugin)
+            shutil.copytree(REPOSITORY / "plugins/codexy", plugin)
+            package_path = plugin / ".codex-plugin/plugin.json"
+            package = json.loads(package_path.read_text(encoding="utf-8"))
+            self.assertEqual(package["version"], version)
+            self.assertNotIn("mcpServers", package)
+            self.assertNotIn("mcp_servers", package)
+            self.assertFalse((plugin / ".mcp.json").exists())
+            self.assertEqual(materialize_component_mcp(plugin, "core", version), plugin)
 
-        with patch.object(component_lifecycle_support, "VERSION", version):
-            with fixture(real_registration=True) as state:
-                plugin = state.marketplace / "plugins/codexy"
-                package_path = plugin / ".codex-plugin/plugin.json"
-                package = json.loads(package_path.read_text(encoding="utf-8"))
-                package["version"] = version
-                package.pop("mcpServers", None)
-                package_path.write_text(json.dumps(package), encoding="utf-8")
-                (plugin / ".mcp.json").unlink(missing_ok=True)
+            receipt = host.operate("install", "op-install-no-mcp-core")
+            self.assertEqual(receipt["outcome"], "completed", receipt)
 
-                loaders = (
-                    component_lifecycle_operation,
-                    component_inspection,
-                    component_registration_health,
-                    component_registration_files,
+            cache = component_cache_plugin(host.home, "core", version)
+            cache.parent.mkdir(parents=True)
+            shutil.copytree(plugin, cache)
+            # Model a same-version stale cache left by an earlier registered package.
+            cached_manifest_path = cache / ".codex-plugin/plugin.json"
+            cached_manifest = json.loads(
+                cached_manifest_path.read_text(encoding="utf-8")
+            )
+            cached_manifest["mcpServers"] = "./.mcp.json"
+            cached_manifest_path.write_text(
+                json.dumps(cached_manifest), encoding="utf-8"
+            )
+            (cache / ".mcp.json").write_text(
+                json.dumps(mcp_configuration("core", version)), encoding="utf-8"
+            )
+            before_repair = doctor(host.home, codex=host.codex, runner=host.run)
+            self.assertFalse(before_repair["component_health"][0]["configured"])
+
+            materialize_mcp_caches(
+                host.home,
+                host.marketplace,
+                load_component_manifest(),
+                ("core",),
+            )
+            self.assertTrue(
+                valid_component_mcp_cache(
+                    host.home, "core", version, source_plugin=plugin
                 )
-                with ExitStack() as stack:
-                    for module in loaders:
-                        stack.enter_context(
-                            patch.object(
-                                module,
-                                "load_component_manifest",
-                                return_value=manifest,
-                            )
-                        )
-                    receipt = run_operation(
-                        "install",
-                        ("core",),
-                        state.home,
-                        state.codex,
-                        state.run,
-                        operation_id="op-install-no-mcp-core",
-                        hook_lister=lambda _executable, _home: fixture_hook_rows(
-                            state.marketplace
-                        ),
-                    )
-                    self.assertEqual(receipt["outcome"], "completed", receipt)
-                    self.assertTrue(valid_component_mcp(plugin, "core", version))
-                    self.assertTrue(
-                        component_registration_health.valid_registration(plugin, "core")
-                    )
-
-                    cache = component_cache_plugin(state.home, "core", version)
-                    cache.parent.mkdir(parents=True)
-                    shutil.copytree(plugin, cache)
-                    materialize_mcp_caches(
-                        state.home, state.marketplace, manifest, ("core",)
-                    )
-
-                    result = doctor(
-                        state.home,
-                        codex=state.codex,
-                        runner=state.run,
-                        hook_lister=lambda _executable, _home: fixture_hook_rows(
-                            state.marketplace
-                        ),
-                    )
-                    health = result["component_health"][0]
-                    self.assertTrue(health["configured"])
-                    self.assertEqual(health["state"], "healthy", health)
-                    self.assertNotIn("mcp:watcher", health["observed"]["capabilities"])
-                    for root in (plugin, cache):
-                        self.assertFalse((root / ".mcp.json").exists())
-                        self.assertTrue(
-                            (root / "mcp/codexy_mcp_bootstrap.py").is_file(), root
-                        )
-                        self.assertTrue(
-                            (root / "mcp/codexy-mcp-watcher.sh").is_file(), root
-                        )
-                        self.assertTrue(
-                            (root / "mcp/codexy-mcp-watcher.cmd").is_file(), root
-                        )
-                    self.assertTrue(
-                        valid_component_mcp_cache(state.home, "core", version)
-                    )
+            )
+            after_repair = doctor(host.home, codex=host.codex, runner=host.run)
+            health = after_repair["component_health"][0]
+            self.assertTrue(health["configured"], health)
+            self.assertEqual(health["state"], "healthy", health)
+            self.assertNotIn("mcp:watcher", health["observed"]["capabilities"])
+            for root in (plugin, cache):
+                self.assertFalse((root / ".mcp.json").exists())
+                self.assertNotIn(
+                    "mcpServers",
+                    json.loads((root / ".codex-plugin/plugin.json").read_text()),
+                )
+                self.assertTrue((root / ".codex-plugin/mcp-capability.json").is_file())
 
 
 if __name__ == "__main__":

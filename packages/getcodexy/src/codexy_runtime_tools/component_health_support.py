@@ -7,7 +7,7 @@ from pathlib import Path
 from .component_mcp_materialization import (
     MCP_COMPONENTS,
     component_cache_plugin,
-    mcp_spec,
+    McpSpec,
 )
 from .component_manifest import ComponentManifest
 from .component_registration_health import valid_registration
@@ -34,6 +34,7 @@ def _legacy_state(
     admission_error,
     host_error,
     codex_home=None,
+    expected_mcp_spec: McpSpec | None = None,
 ):
     """Preserve the coarse state contract while checking installed package integrity."""
     record = records.get(component)
@@ -45,11 +46,18 @@ def _legacy_state(
     if relation != 0:
         return "stale" if relation < 0 else "incompatible"
     plugin = _health_plugin(manifest, component, record, codex_home)
-    if plugin is None or not _required_files(manifest, component, plugin, codex_home):
+    if plugin is None or not _required_files(
+        manifest, component, plugin, codex_home, expected_mcp_spec
+    ):
         return "stale"
     if not manifest_is_valid(
         plugin, manifest.component(component).plugin, record_version(record)
-    ) or not valid_registration(plugin, component):
+    ) or not valid_registration(
+        plugin,
+        component,
+        record_version(record),
+        expected_mcp_spec=expected_mcp_spec,
+    ):
         return "incompatible"
     if component == "core" and any(
         os.path.lexists(plugin / path)
@@ -61,15 +69,14 @@ def _legacy_state(
     return "healthy"
 
 
-def _required_files(manifest, component, plugin, codex_home=None):
-    # MCP paths vary by component version: core 2.0 intentionally has no config.
+def _required_files(
+    manifest, component, plugin, codex_home=None, expected_mcp_spec=None
+):
+    # The selected source contract controls whether doctor expects registration files.
+    if component in MCP_COMPONENTS and expected_mcp_spec is None:
+        return False
     mcp_paths = (
-        tuple(
-            path.as_posix()
-            for path in mcp_spec(
-                component, manifest.component(component).version
-            ).surface_paths
-        )
+        tuple(path.as_posix() for path in expected_mcp_spec.surface_paths)
         if component in MCP_COMPONENTS
         else ()
     )

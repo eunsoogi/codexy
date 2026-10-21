@@ -127,12 +127,13 @@ def installed(root: Path) -> dict[str, object]:
 
 
 def make_plugin(root: Path) -> Path:
-    """Create a minimal v1.2.2 plugin and matching detached release checkout."""
+    """Create a strict legacy v1.2.2 plugin and matching release checkout."""
     manifest = root / ".codex-plugin" / "plugin.json"
     manifest.parent.mkdir(parents=True)
+    # The legacy package must declare its MCP config as well as ship the file.
     manifest.write_text(
         '{"name":"codexy","repository":"https://github.com/eunsoogi/codexy",'
-        '"version":"1.2.2"}',
+        '"version":"1.2.2","mcpServers":"./.mcp.json"}',
         encoding="utf-8",
     )
     launcher = root / "mcp/codexy-mcp-watcher.sh"

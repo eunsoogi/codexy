@@ -9,7 +9,6 @@ from pathlib import Path
 from .component_core_hooks import DEPENDENCIES as CORE_HOOK_DEPENDENCIES
 from .component_integrity import MAX_COMPONENT_BYTES, _read_regular, valid_agent_toml
 from .component_manifest import load_component_manifest
-from .component_mcp_materialization import mcp_spec
 
 
 def _text(path: Path, root: Path) -> str:
@@ -37,11 +36,8 @@ def _skill(plugin: Path, component: str) -> bool:
     manifest = load_component_manifest()
     required = manifest.component(component).asset.required_paths
     if component == "core":
-        # Core hook files are runtime dependencies beyond the plugin asset list.
+        # MCP files are validated from the selected package contract separately.
         required += CORE_HOOK_DEPENDENCIES
-        if not mcp_spec(component, manifest.version).servers:
-            # No-MCP packages omit config only; compatibility launchers remain required.
-            required = tuple(path for path in required if path != ".mcp.json")
     name = "wiki" if component == "core" else "git-workflow"
     contents = _text(plugin / f"skills/{name}/SKILL.md", plugin)
     return all(_regular(plugin / path, plugin) for path in required) and (

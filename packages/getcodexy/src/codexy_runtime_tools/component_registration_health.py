@@ -11,7 +11,10 @@ from .component_core_hooks import (
 )
 from .component_hook_registration import HOOKS, LAUNCHERS
 from .component_mcp_materialization import (
+    MCP_COMPONENTS,
+    McpSpec,
     mcp_configuration,
+    mcp_spec_for_plugin,
     valid_component_mcp,
 )
 from .component_manifest import load_component_manifest
@@ -69,7 +72,11 @@ CORE_MCP = mcp_configuration("core")
 
 
 def valid_registration(
-    plugin: Path, component: str, version: str | None = None
+    plugin: Path,
+    component: str,
+    version: str | None = None,
+    *,
+    expected_mcp_spec: McpSpec | None = None,
 ) -> bool:
     """Require exactly the packaged registration and its local launch targets."""
     try:
@@ -77,10 +84,24 @@ def valid_registration(
         selected_version = (
             load_component_manifest().version if version is None else version
         )
+        package_mcp_spec = None
+        if component in MCP_COMPONENTS:
+            package_mcp_spec = mcp_spec_for_plugin(plugin, component, selected_version)
+            if expected_mcp_spec is not None and package_mcp_spec != expected_mcp_spec:
+                return False
+            package_mcp_spec = expected_mcp_spec or package_mcp_spec
         if component == "devtools":
-            return valid_component_mcp(plugin, component, selected_version)
+            return valid_component_mcp(
+                plugin,
+                component,
+                selected_version,
+                expected_spec=package_mcp_spec,
+            )
         core_mcp = component == "core" and valid_component_mcp(
-            plugin, component, selected_version
+            plugin,
+            component,
+            selected_version,
+            expected_spec=package_mcp_spec,
         )
         return (
             (component != "core" or core_mcp)
@@ -112,6 +133,46 @@ def registration_role(
         else None
     )
     return {"file": name, "state": state, "cause": cause, "recovery": recovery}
+
+
+def _registered_role(
+    home: Path,
+    root: Path,
+    name: str,
+    expected: bytes,
+    marker: str,
+    read_regular,
+    max_bytes: int,
+) -> dict[str, object]:
+    try:  # Inspect the marker-owned role file as a bounded regular input.
+        current = (
+            read_regular(home, root.relative_to(home) / name, max_bytes)
+            .decode()
+            .replace("\r\n", "\n")
+            .replace("\r", "\n")
+        )
+    except FileNotFoundError:
+        return registration_role(name, "missing", "managed role file is missing")
+    except (OSError, UnicodeDecodeError, ValueError):
+        return registration_role(
+            name,
+            "unmanaged-conflict",
+            "managed role file is unreadable or not a regular file",
+            True,
+        )
+    if not current.startswith(marker):
+        return registration_role(
+            name,
+            "unmanaged-conflict",
+            "existing role file is not marker-owned by Codexy",
+            True,
+        )
+    exact = current.encode() == expected
+    return registration_role(
+        name,
+        "exact" if exact else "stale",
+        None if exact else "registered role differs from the package",
+    )
 
 
 def registration_report(

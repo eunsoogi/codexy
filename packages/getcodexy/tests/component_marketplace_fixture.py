@@ -6,8 +6,8 @@ import shutil
 from dataclasses import replace
 from pathlib import Path
 
-from codexy_runtime_tools.component_mcp_materialization import (
-    NO_MCP_CORE_VERSION,
+from codexy_runtime_tools.component_mcp_capability import (
+    NO_MCP_CAPABILITY,
     mcp_configuration,
 )
 from codexy_runtime_tools.component_manifest import load_component_manifest
@@ -51,37 +51,40 @@ def configure_legacy_core_package(plugin: Path, version: str = "1.13.4") -> None
     manifest["version"] = version
     manifest["mcpServers"] = "./.mcp.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    (plugin / ".codex-plugin/mcp-capability.json").unlink(missing_ok=True)
     (plugin / ".mcp.json").write_text(
         json.dumps(mcp_configuration("core", version), indent=2) + "\n",
         encoding="utf-8",
     )
 
 
-def configure_no_mcp_core_package(
-    plugin: Path, version: str = NO_MCP_CORE_VERSION
-) -> None:
-    """Give a copied candidate the versioned no-MCP contract used by the host."""
+def configure_no_mcp_core_package(plugin: Path, version: str | None = None) -> None:
+    """Give a copied candidate the explicit no-MCP package contract."""
+    selected_version = load_component_manifest().version if version is None else version
     manifest_path = plugin / ".codex-plugin/plugin.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    manifest["version"] = version
+    manifest["version"] = selected_version
     manifest.pop("mcpServers", None)
     manifest.pop("mcp_servers", None)
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     (plugin / ".mcp.json").unlink(missing_ok=True)
+    capability_path = plugin / ".codex-plugin/mcp-capability.json"
+    capability_path.write_text(
+        json.dumps(NO_MCP_CAPABILITY, indent=2) + "\n", encoding="utf-8"
+    )
 
 
-def configure_candidate_package(
-    plugin: Path, version: str = NO_MCP_CORE_VERSION
-) -> None:
+def configure_candidate_package(plugin: Path, version: str | None = None) -> None:
     """Keep each copied candidate component on one package release version."""
+    selected_version = load_component_manifest().version if version is None else version
     if plugin.name == "codexy":
-        configure_no_mcp_core_package(plugin, version)
+        configure_no_mcp_core_package(plugin, selected_version)
     else:
-        configure_plugin_version(plugin, version)
+        configure_plugin_version(plugin, selected_version)
 
 
 def configure_core_package(plugin: Path, version: str) -> None:
-    """Select the fixture contract that the package version declares."""
+    """Build legacy or no-MCP test fixtures with explicit package metadata."""
     if tuple(int(part) for part in version.split(".")) >= (2, 0, 0):
         configure_no_mcp_core_package(plugin, version)
     else:
@@ -89,10 +92,11 @@ def configure_core_package(plugin: Path, version: str) -> None:
 
 
 def make_no_mcp_core_package(
-    plugin: Path, version: str = NO_MCP_CORE_VERSION
+    plugin: Path, version: str | None = None
 ) -> tuple[str, object]:
     """Prepare a no-MCP package fixture while retaining its compatibility assets."""
-    configure_no_mcp_core_package(plugin, version)
+    selected_version = load_component_manifest().version if version is None else version
+    configure_no_mcp_core_package(plugin, selected_version)
     for relative in (
         "mcp/codexy_mcp_bootstrap.py",
         "mcp/codexy-mcp-watcher.sh",
@@ -103,12 +107,13 @@ def make_no_mcp_core_package(
     base = load_component_manifest()
     manifest = replace(
         base,
-        version=version,
+        version=selected_version,
         components=tuple(
-            replace(component, version=version) for component in base.components
+            replace(component, version=selected_version)
+            for component in base.components
         ),
     )
-    return version, manifest
+    return selected_version, manifest
 
 
 def materialize_plugins(

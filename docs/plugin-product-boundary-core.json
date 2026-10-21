@@ -84,6 +84,7 @@
       "id": "public.core",
       "category": "public-entrypoints",
       "sources": [
+        "plugins/codexy/.codex-plugin/mcp-capability.json",
         "plugins/codexy/.codex-plugin/plugin.json",
         "plugins/codexy/agents/openai.yaml",
         "plugins/codexy/bootstrap-codexy-agents",

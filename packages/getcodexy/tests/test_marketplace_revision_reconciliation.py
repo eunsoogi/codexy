@@ -76,12 +76,15 @@ def _fixture(
     marketplace = root / "marketplace"
     plugin = marketplace / "plugins/codexy/.codex-plugin/plugin.json"
     plugin.parent.mkdir(parents=True)
+    # These tests exercise an old pinned release, which must retain its declared
+    # Watcher registration contract under the stricter package validator.
     plugin.write_text(
         json.dumps(
             {
                 "name": "codexy",
                 "repository": "https://github.com/eunsoogi/codexy",
                 "version": VERSION,
+                "mcpServers": "./.mcp.json",
             }
         ),
         encoding="utf-8",

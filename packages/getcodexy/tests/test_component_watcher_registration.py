@@ -46,6 +46,17 @@ def _write_core_roles(home, plugin) -> None:
 
 
 class WatcherRegistrationTests(unittest.TestCase):
+    def test_absent_registration_requires_an_explicit_no_mcp_contract(self) -> None:
+        with fixture() as state:
+            plugin = state.marketplace / "plugins/codexy"
+            version, _manifest = make_no_mcp_core_package(plugin)
+            capability = plugin / ".codex-plugin/mcp-capability.json"
+            capability.unlink(missing_ok=True)
+
+            self.assertFalse(valid_component_mcp(plugin, "core", version))
+            with self.assertRaisesRegex(RuntimeError, "surface is invalid"):
+                materialize_component_mcp(plugin, "core", version)
+
     def test_versioned_no_mcp_core_materializes_and_registers(self) -> None:
         with fixture({"core"}) as state:
             plugin = state.marketplace / "plugins/codexy"
@@ -86,6 +97,7 @@ class WatcherRegistrationTests(unittest.TestCase):
 
             package["version"] = VERSION
             package["mcpServers"] = "./.mcp.json"
+            (plugin / ".codex-plugin/mcp-capability.json").unlink(missing_ok=True)
             package_path.write_text(json.dumps(package), encoding="utf-8")
             (plugin / ".mcp.json").write_text(
                 json.dumps(mcp_configuration("core", VERSION), indent=2),
