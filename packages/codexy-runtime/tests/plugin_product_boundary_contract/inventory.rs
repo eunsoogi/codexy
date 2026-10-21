@@ -84,6 +84,8 @@ pub(super) fn governed_universe(
         "plugins/codexy-devtools/runtime-release.json",
         "plugins/codexy-devtools/.codex/lsp-client.json",
         "plugins/codexy/.codex-plugin/plugin.json",
+        // Keep the package's no-MCP contract in the same governed inventory.
+        "plugins/codexy/.codex-plugin/mcp-capability.json",
         "plugins/codexy/agents/openai.yaml",
         "plugins/codexy-devtools/.codex-plugin/plugin.json",
         "plugins/codexy-devtools/agents/openai.yaml",

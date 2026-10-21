@@ -26,6 +26,18 @@ SURFACE_PATHS = {
 AUTHORITY_KEYS = ("authority", "artifact_authority", "artifactAuthority")
 
 
+def _selected_registration_valid(plugin, component, version, expected_mcp_spec):
+    """Require a verified source MCP contract before accepting cached registration."""
+    if component in MCP_COMPONENTS and expected_mcp_spec is None:
+        return False
+    return valid_registration(
+        plugin,
+        component,
+        version,
+        expected_mcp_spec=expected_mcp_spec,
+    )
+
+
 def _legacy_state(
     manifest,
     component,
@@ -52,11 +64,8 @@ def _legacy_state(
         return "stale"
     if not manifest_is_valid(
         plugin, manifest.component(component).plugin, record_version(record)
-    ) or not valid_registration(
-        plugin,
-        component,
-        record_version(record),
-        expected_mcp_spec=expected_mcp_spec,
+    ) or not _selected_registration_valid(
+        plugin, component, record_version(record), expected_mcp_spec
     ):
         return "incompatible"
     if component == "core" and any(

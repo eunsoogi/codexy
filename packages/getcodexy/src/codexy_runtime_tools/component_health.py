@@ -19,6 +19,7 @@ from .component_health_support import (
     _legacy_state,
     _observed,
     _plugin_root,
+    _selected_registration_valid,
     manifest_is_valid,
     record_version,
     version_relation,
@@ -27,7 +28,6 @@ from .component_manifest import ComponentManifest
 from .component_registration_health import (
     _registered_role,
     registration_role as _registration_role,
-    valid_registration,
 )
 from .updater import compare_managed_files
 
@@ -71,10 +71,11 @@ def _component_health(context, component):
     record = records.get(component)
     installed = component in actual
     expected_mcp_spec = None
-    if component in MCP_COMPONENTS and _authority_valid(record):
+    if component in MCP_COMPONENTS:
         source_plugin = _plugin_root(record)
         if source_plugin is not None:
             try:
+                # Check package shape separately; authority remains a later health check.
                 expected_mcp_spec = mcp_spec_for_plugin(
                     source_plugin, component, record_version(record)
                 )
@@ -92,14 +93,8 @@ def _component_health(context, component):
         and manifest_is_valid(
             plugin, manifest.component(component).plugin, record_version(record)
         )
-        and (
-            component not in MCP_COMPONENTS
-            or valid_registration(
-                plugin,
-                component,
-                record_version(record),
-                expected_mcp_spec=expected_mcp_spec,
-            )
+        and _selected_registration_valid(
+            plugin, component, record_version(record), expected_mcp_spec
         )
         and (
             not registration
@@ -108,11 +103,14 @@ def _component_health(context, component):
         )
         and (
             component not in MCP_COMPONENTS
-            or valid_component_mcp_cache(
-                codex_home,
-                component,
-                manifest.version,
-                expected_spec=expected_mcp_spec,
+            or (
+                expected_mcp_spec is not None
+                and valid_component_mcp_cache(
+                    codex_home,
+                    component,
+                    manifest.version,
+                    expected_spec=expected_mcp_spec,
+                )
             )
         )
     )
