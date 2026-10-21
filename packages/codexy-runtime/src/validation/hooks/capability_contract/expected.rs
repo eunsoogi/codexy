@@ -2,13 +2,7 @@
 
 const PREVENTIVE_EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
 
-pub(super) const EVENT_ORDER: &[&str] = &[
-    "PermissionRequest",
-    "PreToolUse",
-    "PostToolUse",
-    "Interrupt",
-    "UserPromptSubmit",
-];
+pub(super) const EVENT_ORDER: &[&str] = &["PermissionRequest", "PreToolUse"];
 
 pub(super) struct Expected {
     pub(super) id: &'static str,
@@ -48,23 +42,5 @@ pub(super) const CONCERNS: &[Expected] = &[
         diagnostic: "CODEXY_SUBAGENT_OWNERSHIP_",
         events: PREVENTIVE_EVENTS,
         preventive: true,
-    },
-    Expected {
-        id: "watcher-wait-interruption",
-        trigger: "^(?:mcp__[^ ]+__)?watcher_wait$",
-        input: "codexy.hooks.watcher-wait-interruption.v2",
-        launcher: "codexy-watcher-interrupt",
-        diagnostic: "CODEXY_WATCHER_INTERRUPT_",
-        events: &["PreToolUse", "Interrupt", "UserPromptSubmit"],
-        preventive: false,
-    },
-    Expected {
-        id: "watcher-message-cancellation",
-        trigger: "^mcp__codex_app__send_message_to_thread$",
-        input: "codexy.hooks.watcher-message-cancellation.v1",
-        launcher: "codexy-watcher-interrupt",
-        diagnostic: "CODEXY_WATCHER_MESSAGE_CANCELLATION_",
-        events: &["PostToolUse"],
-        preventive: false,
     },
 ];

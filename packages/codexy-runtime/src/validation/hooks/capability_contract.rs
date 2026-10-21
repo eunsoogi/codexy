@@ -147,13 +147,12 @@ pub(super) fn check_topology(path: &Path, events: &Map<String, Value>) -> Result
 }
 
 fn entrypoints(launcher: &str) -> Vec<String> {
-    // Only the watcher maps to an underscore-named Python file; others use `<launcher>.py`.
-    let python = if launcher == "codexy-watcher-interrupt" {
-        "codexy_watcher_interrupt.py".to_owned()
-    } else {
-        format!("{launcher}.py")
-    };
-    vec![format!("{launcher}.sh"), format!("{launcher}.cmd"), python]
+    // Retained concerns use their launcher stem for each runtime entrypoint.
+    vec![
+        format!("{launcher}.sh"),
+        format!("{launcher}.cmd"),
+        format!("{launcher}.py"),
+    ]
 }
 
 fn concern_digest(concern: &Expected) -> String {

@@ -11,11 +11,10 @@ acceptable or add a client retry policy.
 
 Existing cancellation, process-death, interrupted-write recovery, bounded
 quarantine recovery and unknown-data preservation tests remain in the default
-suite. Sender `PostToolUse` tests require a successful exact send result with
-matching input and output `threadId`, cancel only a unique armed or active
-recipient binding, preserve session/cursor continuity, and cover failure,
-malformed, mismatch, missing, ambiguous and unrelated-binding cases. Actual app
-delivery remains a separate proof surface.
+suite. The Codexy core package no longer registers a sender `PostToolUse`
+cancellation hook. Same-connection MCP cancellation and durable `watcher_cancel`
+remain separate runtime contracts, while actual app delivery remains a separate
+proof surface.
 
 ## Single wait response envelope
 

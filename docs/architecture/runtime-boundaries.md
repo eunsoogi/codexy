@@ -103,20 +103,16 @@ as permission to claim the server worked.
   only the pending request when the host propagates it and preserves the durable
   session; `watcher_cancel` separately ends that session and requires a fresh
   assignment.
-- The core hook contract binds an authenticated Orchestrator `watcher_wait` in
-  `PreToolUse` with an opaque `requestBinding`; the synchronous `Interrupt` hook
-  cancels the exact host session and turn, while `UserPromptSubmit` cancels only
-  one unique pending binding for that host session. Both write a request-only
-  marker consumed by the existing native 25 ms wait check. The prompt body is
-  not forwarded to the runtime. Direct callers remain binding-free compatible,
-  and ambiguous matches fail closed.
-- The source contract does not prove every host behavior. The verified host
-  observation behind this contract showed that the one-hour request was bounded
-  by an observed 300-second `tools/call` transport deadline; a delegated task
-  message or outer wait termination may leave the native wait active when the
-  host does not deliver a matching `Interrupt` or `UserPromptSubmit` hook.
-  Candidate installation and actual human-input propagation remain separate
-  acceptance evidence.
+- Core hooks now cover only thread delivery, child-thread creation, and subagent
+  ownership. They do not bind `watcher_wait`, add a sender `PostToolUse`
+  handler, or register custom `Interrupt` or `UserPromptSubmit` cancellation
+  handlers. This retirement leaves native host `Interrupt` semantics and the MCP
+  cancellation/session contracts above unchanged.
+- Package configuration does not prove host cancellation propagation. A
+  delivered same-connection MCP cancellation or an explicit `watcher_cancel`
+  still affects its own request or durable session; task delivery and outer wait
+  termination alone do not prove either effect. Candidate hook-list and runtime
+  observations remain separate evidence.
 
 ## Plugin and runtime discovery
 

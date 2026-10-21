@@ -1,16 +1,13 @@
 #!/bin/sh
 entrypoint=${1-}
 event=${2-}
-# Admit packaged hook adapters and keep PostToolUse scoped to Watcher cancellation.
+# Admit only packaged core hook adapters on their preventive event surface.
 case "$entrypoint" in
-codexy-child-thread-creation.py | codexy-subagent-ownership.py | codexy-thread-delivery.py | codexy_watcher_interrupt.py) ;;
+codexy-child-thread-creation.py | codexy-subagent-ownership.py | codexy-thread-delivery.py) ;;
 *) exit 1 ;;
 esac
 case "$event" in
-PreToolUse | PermissionRequest | Interrupt | UserPromptSubmit) ;;
-PostToolUse)
-	[ "$entrypoint" = codexy_watcher_interrupt.py ] || exit 1
-	;;
+PreToolUse | PermissionRequest) ;;
 *) exit 1 ;;
 esac
 
@@ -19,12 +16,10 @@ plugin_root=${PLUGIN_ROOT-}
 runtime_home=${HOME-}
 runtime_user=${USER-}
 timing_file=${CODEXY_CORE_HOOK_TIMING_FILE-}
-watcher_state_dir=${CODEXY_WATCHER_STATE_DIR-}
 xdg_state_home=${XDG_STATE_HOME-}
 xdg_cache_home=${XDG_CACHE_HOME-}
 runtime_dir=${CODEXY_RUNTIME_DIR-}
 runtime_cache_dir=${CODEXY_RUNTIME_CACHE_DIR-}
-watcher_trace_dir=${CODEXY_WATCHER_TRACE_DIR-}
 runtime_platform=${CODEXY_RUNTIME_PLATFORM-}
 runtime_package_sha256=${CODEXY_RUNTIME_PACKAGE_SHA256-}
 runtime_git_repository=${CODEXY_RUNTIME_GIT_REPOSITORY-}
@@ -43,14 +38,10 @@ set -- \
 	"USER=$runtime_user" \
 	"PLUGIN_ROOT=$plugin_root"
 [ -n "$timing_file" ] && set -- "$@" "CODEXY_CORE_HOOK_TIMING_FILE=$timing_file"
-[ -n "$watcher_state_dir" ] && set -- "$@" "CODEXY_WATCHER_STATE_DIR=$watcher_state_dir"
 [ -n "$xdg_state_home" ] && set -- "$@" "XDG_STATE_HOME=$xdg_state_home"
 [ -n "$xdg_cache_home" ] && set -- "$@" "XDG_CACHE_HOME=$xdg_cache_home"
 [ -n "$runtime_dir" ] && set -- "$@" "CODEXY_RUNTIME_DIR=$runtime_dir"
 [ -n "$runtime_cache_dir" ] && set -- "$@" "CODEXY_RUNTIME_CACHE_DIR=$runtime_cache_dir"
-# Keep the opt-in diagnostic path limited to the Watcher adapter; all other hooks retain the old allowlist.
-[ "$entrypoint" != codexy_watcher_interrupt.py ] || [ -z "$watcher_trace_dir" ] ||
-	set -- "$@" "CODEXY_WATCHER_TRACE_DIR=$watcher_trace_dir"
 [ -n "$runtime_platform" ] && set -- "$@" "CODEXY_RUNTIME_PLATFORM=$runtime_platform"
 [ -n "$runtime_package_sha256" ] && set -- "$@" "CODEXY_RUNTIME_PACKAGE_SHA256=$runtime_package_sha256"
 [ -n "$runtime_git_repository" ] && set -- "$@" "CODEXY_RUNTIME_GIT_REPOSITORY=$runtime_git_repository"
