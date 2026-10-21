@@ -62,6 +62,44 @@ criteria, and consultation failure to the Orchestrator. A Worker MAY continue
 unrelated authorized work; the Orchestrator MUST retain the blocker and report
 it to the actual parent or user when appropriate.
 
+## Reuse an Advisor for a related follow-up
+
+When a follow-up concerns the same pending decision or still-open failure
+episode, the caller MUST reuse the same accessible Advisor identity if its
+context and authority remain applicable. An idle or completed response does not
+by itself make that identity unavailable or justify starting a duplicate
+Advisor. A later consultation trigger in the same open episode follows this
+reuse rule too.
+
+The caller MUST send a bounded update containing new evidence, actions and
+results since the last consultation, whether and how its basis changed, and the
+next question. It MUST retain applicable constraints and context without
+replaying the full transcript or unchanged evidence. The caller MUST identify
+new observations separately from prior advice and its own inferences.
+
+The caller MUST start a fresh consultation when the question has materially
+different scope, the existing context is stale or conflicts with current
+evidence, independent judgment is required, or the existing identity cannot be
+reached. When only the handle is unavailable and the Advisor role remains
+available, the caller MUST carry relevant current evidence and constraints into
+the fresh consultation and identify any prior recommendation as historical. If
+the Advisor itself cannot be called, the caller MUST follow the existing
+unavailable-Advisor fallback above and stop unsupported changes.
+
+A historical recommendation remains consultation history, not current proof.
+Terminal delivery alone MUST NOT trigger a duplicate consultation; the caller
+MUST use the existing identity for a related follow-up when it remains
+accessible. Reuse MUST preserve the open failure episode, caller ownership, and
+selected review. It MUST NOT relax the Advisor's read-only and no-implementation
+boundary: the Advisor MUST NOT create, edit, delete, rename, or stage files, run
+commands that mutate repository state, take implementation ownership, or
+redelegate work. An Advisor consultation remains separate from the selected
+reviewer and MUST NOT waive verification or review findings.
+
+This reuse rule describes bounded context sharing by the caller; it does not
+prove provider-side caching or reduced prefill, token use, or cost. Such claims
+MUST be based on actual provider measurements.
+
 ## Ask a bounded question
 
 The caller MUST state the pending decision and constraints, then give the
