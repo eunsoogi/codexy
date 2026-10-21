@@ -8,9 +8,10 @@ from .envelope import Diagnostic, Request
 
 FIELDS = ("model", "thinking")
 WORKER_ROUTE = ("gpt-6-luna", "max")
-# Keep WORKER_ROUTE as the creation default while admissions accept either assigned pair.
+# The main route shares Luna/Max with simple Workers; authenticated direction and
+# target identity, not the model pair alone, distinguish the two recipients.
 WORKER_ROUTES = frozenset({WORKER_ROUTE, ("gpt-6.1-sol", "medium")})
-ORCHESTRATOR_ROUTE = ("gpt-6-astra", "medium")
+ORCHESTRATOR_ROUTE = WORKER_ROUTE
 ROUTING_SCHEMA = "codexy.thread-delivery.v2"
 ROUTING_FIELDS = frozenset(
     {
@@ -141,7 +142,8 @@ def _route(direction: str | None) -> str:
 
 
 _ORCHESTRATOR_ROUTE = (
-    "threadId=<authenticated Orchestrator>, model='gpt-6-astra', and thinking='medium'"
+    f"threadId=<authenticated Orchestrator>, model='{ORCHESTRATOR_ROUTE[0]}', "
+    f"and thinking='{ORCHESTRATOR_ROUTE[1]}'"
 )
 _WORKER_ROUTE = (
     "threadId=<authenticated Worker> with either model='gpt-6-luna' and thinking='max' "

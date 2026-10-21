@@ -22,7 +22,7 @@ CASES = (
     (
         "codexy-thread-delivery",
         "mcp__codex_app__send_message_to_thread",
-        {"threadId": "parent", "model": "gpt-6-astra", "thinking": "medium"},
+        {"threadId": "parent", "model": "gpt-6-luna", "thinking": "max"},
         "thread-delivery",
     ),
     (

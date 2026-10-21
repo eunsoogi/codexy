@@ -79,8 +79,8 @@ fn worker_missing_fields_use_orchestrator_remedy() -> TestResult {
     for event in EVENTS {
         for root in &roots {
             for input in [
-                json!({"threadId":ORCHESTRATOR_ID,"thinking":"medium"}),
-                json!({"threadId":ORCHESTRATOR_ID,"model":"gpt-6-astra"}),
+                json!({"threadId":ORCHESTRATOR_ID,"thinking":"max"}),
+                json!({"threadId":ORCHESTRATOR_ID,"model":"gpt-6-luna"}),
             ] {
                 let reason = reason(
                     run(
@@ -93,16 +93,16 @@ fn worker_missing_fields_use_orchestrator_remedy() -> TestResult {
                             "child_to_parent",
                             WORKER_ID,
                             ORCHESTRATOR_ID,
-                            "gpt-6-astra",
-                            "medium",
+                            "gpt-6-luna",
+                            "max",
                         )),
                     )?,
                     event,
                 )?;
                 assert!(reason.contains("MISSING_"), "{event}: {reason}");
                 assert!(reason.contains("Worker-to-Orchestrator"), "{event}: {reason}");
-                assert!(reason.contains("gpt-6-astra"), "{event}: {reason}");
-                assert!(reason.contains("medium"), "{event}: {reason}");
+                assert!(reason.contains("gpt-6-luna"), "{event}: {reason}");
+                assert!(reason.contains("max"), "{event}: {reason}");
                 assert!(reason.contains("MUST"), "{event}: {reason}");
             }
         }
@@ -126,8 +126,8 @@ fn malformed_metadata_uses_mandatory_non_retry_wording() -> TestResult {
                     Some(WORKER_ID),
                     json!({
                         "threadId":ORCHESTRATOR_ID,
-                        "model":"gpt-6-astra",
-                        "thinking":"medium"
+                        "model":"gpt-6-luna",
+                        "thinking":"max"
                     }),
                     Some(json!({"authenticated":true})),
                 )?,

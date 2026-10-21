@@ -47,7 +47,7 @@ pub(super) fn parent_to_generic_route(
     schema: &str,
     operation: &str,
 ) -> Value {
-    // Missing or mismatched assignments stay pending; sender defaults never identify the recipient.
+    // Role comes from the route direction; a Worker pair may also match the parent pair.
     let Some(assignment) = assignment else {
         let reason = if schema == "codexy.child-routing-request.v1" {
             "Version 1 cannot identify a follow-up recipient; use schema v2 with recipient_assignment."
@@ -56,11 +56,6 @@ pub(super) fn parent_to_generic_route(
         };
         return json!({"route":policy.fallback,"reason":reason});
     };
-    if assignment.model == policy.delivery.child_to_root.model
-        && assignment.thinking == policy.delivery.child_to_root.thinking
-    {
-        return json!({"route":policy.fallback,"reason":"Assigned recipient pair matches Orchestrator sender settings, not a supported Worker pair."});
-    }
     if !policy
         .delivery
         .parent_to_generic

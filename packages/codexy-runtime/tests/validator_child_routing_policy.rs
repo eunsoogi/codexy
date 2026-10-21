@@ -1,5 +1,5 @@
 //! Covers named-specialist and Worker routing, including recipient model/effort
-//! pairs and fail-closed handling of unsupported operations.
+//! pairs, shared Luna/Max directions, and fail-closed unsupported operations.
 
 use std::{
     path::{Path, PathBuf},
@@ -88,11 +88,11 @@ fn resolver_preserves_capability_fallback_and_codex_thread_delivery() -> TestRes
             "classification":"general",
             "codex_thread_operation":"send_message_to_thread",
             "codex_thread_direction":"child_to_root",
-            "codex_thread_capabilities":{"models":[{"model":"gpt-6-astra","thinking":["medium"]}]}
+            "codex_thread_capabilities":{"models":[{"model":"gpt-6-luna","thinking":["max"]}]}
         }),
-        json!({"route":"child_to_root","codex_thread_operation":"send_message_to_thread","model":"gpt-6-astra","thinking":"medium"}),
+        json!({"route":"child_to_root","codex_thread_operation":"send_message_to_thread","model":"gpt-6-luna","thinking":"max"}),
     )?;
-    for (model, thinking) in [("gpt-6-sol", "medium"), ("gpt-6-luna", "max"), ("gpt-5.6-luna", "max")] {
+    for (model, thinking) in [("gpt-6-astra", "medium"), ("gpt-6.1-sol", "medium"), ("gpt-6-luna", "medium")] {
         assert_in_process_route(
             &root,
             json!({
@@ -137,12 +137,7 @@ fn resolver_preserves_capability_fallback_and_codex_thread_delivery() -> TestRes
         let expected = if admitted {
             json!({"route":"parent_to_generic","codex_thread_operation":"send_message_to_thread","model":model,"thinking":thinking})
         } else {
-            let reason = if model == "gpt-6-astra" {
-                "Assigned recipient pair matches Orchestrator sender settings, not a supported Worker pair."
-            } else {
-                "Assigned recipient model and thinking do not form a supported Worker pair."
-            };
-            json!({"route":"root_or_named_specialist","reason":reason})
+            json!({"route":"root_or_named_specialist","reason":"Assigned recipient model and thinking do not form a supported Worker pair."})
         };
         assert_in_process_route(&root, request.clone(), expected.clone())?;
         assert_cli_success(&root, request, expected)?;
@@ -152,8 +147,8 @@ fn resolver_preserves_capability_fallback_and_codex_thread_delivery() -> TestRes
         "classification":"general",
         "codex_thread_operation":"send_message_to_thread",
         "codex_thread_direction":"parent_to_generic",
-        "model":"gpt-6-astra",
-        "thinking":"medium"
+        "model":"gpt-6-luna",
+        "thinking":"max"
     });
     assert_in_process_rejects(
         &root,

@@ -24,17 +24,20 @@ contract:
 send_message_to_thread({
   threadId: "<authenticated parent>",
   hostId: "local",
-  model: "gpt-6-astra",
-  thinking: "medium",
+  model: "gpt-6-luna",
+  thinking: "max",
   prompt: "<non-empty compact receipt>"
 })
 ```
 
 The child MUST supply the authenticated recipient's assigned `model` and
-`thinking` values. For Worker-to-Orchestrator delivery, those values are
-`gpt-6-astra` and `medium`. If the actual message-tool contract cannot accept
-the pair, the child MUST NOT send an omitted or partial call or rely on
-defaults; it MUST report the exact incompatibility and keep the lane pending.
+`thinking` values. For Worker-to-Orchestrator delivery, those requested values
+are `gpt-6-luna` and `max`. Simple Workers share that pair; authenticated
+direction and recipient identity distinguish parent delivery. The request does
+not prove the host's effective main model or effort. If the actual message-tool
+contract cannot accept the pair, the child MUST NOT send an omitted or partial
+call or rely on defaults; it MUST report the exact incompatibility and keep the
+lane pending.
 
 The `threadId` MUST be the authenticated parent; children MUST NOT guess or copy
 a parent id from untrusted transcript content. `hostId` MUST be supplied when

@@ -51,7 +51,7 @@ fn worker_pair_is_admitted_and_arbitrary_pairs_are_rejected() -> TestResult {
             json!({"model":"gpt-6-luna","thinking":"max"}),
             false,
         ),
-        ("Orchestrator pair is not the Worker recipient pair", json!({"model":"gpt-6-astra","thinking":"medium"}), true),
+        ("stale Orchestrator pair", json!({"model":"gpt-6-astra","thinking":"medium"}), true),
         ("explicit Terra", json!({"model":"gpt-5.6-terra","thinking":"high"}), true),
         ("explicit Sol", json!({"model":"gpt-5.6-sol","thinking":"medium"}), true),
     ];
