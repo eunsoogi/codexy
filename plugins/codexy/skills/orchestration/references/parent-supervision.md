@@ -22,7 +22,7 @@ When this arrangement is authorized, Codex MUST keep these roles distinct:
 
 Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
 
-- Orchestrator and Worker-to-Orchestrator: `gpt-6-astra` / `medium`.
+- Orchestrator and Worker-to-Orchestrator: `gpt-6-luna` / `max`.
 - Worker creation MUST use [routing](child-routing-policy.md); parent-to-Worker
   follow-ups MUST preserve the authenticated recipient's pair.
 - Watcher: `gpt-6-luna` / `max`; Inspector: `gpt-6.1-sol` / `medium`.

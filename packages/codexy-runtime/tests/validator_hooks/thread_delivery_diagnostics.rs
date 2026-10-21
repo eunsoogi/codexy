@@ -19,27 +19,27 @@ fn field_denials_are_actionable_on_authoritative_and_installed_hooks() -> TestRe
     let cases = [
         (
             "missing model",
-            json!({"threadId":ORCHESTRATOR_ID,"thinking":"medium"}),
+            json!({"threadId":ORCHESTRATOR_ID,"thinking":"max"}),
             "MISSING_MODEL",
         ),
         (
             "missing thinking",
-            json!({"threadId":ORCHESTRATOR_ID,"model":"gpt-6-astra"}),
+            json!({"threadId":ORCHESTRATOR_ID,"model":"gpt-6-luna"}),
             "MISSING_THINKING",
         ),
         (
             "unsupported model",
-            json!({"threadId":ORCHESTRATOR_ID,"model":"gpt-5.6-terra","thinking":"medium"}),
+            json!({"threadId":ORCHESTRATOR_ID,"model":"gpt-5.6-terra","thinking":"max"}),
             "UNSUPPORTED_MODEL",
         ),
         (
             "unsupported thinking",
-            json!({"threadId":ORCHESTRATOR_ID,"model":"gpt-6-astra","thinking":"high"}),
+            json!({"threadId":ORCHESTRATOR_ID,"model":"gpt-6-luna","thinking":"high"}),
             "UNSUPPORTED_THINKING",
         ),
         (
             "wrong recipient",
-            json!({"threadId":OTHER,"model":"gpt-6-astra","thinking":"medium"}),
+            json!({"threadId":OTHER,"model":"gpt-6-luna","thinking":"max"}),
             "WRONG_RECIPIENT",
         ),
     ];
@@ -57,8 +57,8 @@ fn field_denials_are_actionable_on_authoritative_and_installed_hooks() -> TestRe
                             "child_to_parent",
                             WORKER_ID,
                             ORCHESTRATOR_ID,
-                            "gpt-6-astra",
-                            "medium",
+                            "gpt-6-luna",
+                            "max",
                         )),
                     )?,
                     event,
@@ -89,8 +89,8 @@ fn identity_and_present_routing_denials_are_distinct_and_non_leaking() -> TestRe
         for root in &roots {
             let input = json!({
                 "threadId":ORCHESTRATOR_ID,
-                "model":"gpt-6-astra",
-                "thinking":"medium"
+                "model":"gpt-6-luna",
+                "thinking":"max"
             });
             let missing_identity = reason(
                 run(
@@ -103,8 +103,8 @@ fn identity_and_present_routing_denials_are_distinct_and_non_leaking() -> TestRe
                         "child_to_parent",
                         WORKER_ID,
                         ORCHESTRATOR_ID,
-                        "gpt-6-astra",
-                        "medium",
+                        "gpt-6-luna",
+                        "max",
                     )),
                 )?,
                 event,
@@ -155,8 +155,8 @@ fn authenticated_worker_and_orchestrator_routes_remain_admitted_for_both_events(
                     "child_to_parent",
                     WORKER_ID,
                     ORCHESTRATOR_ID,
-                    "gpt-6-astra",
-                    "medium",
+                    "gpt-6-luna",
+                    "max",
                 ),
                 (
                     "root_to_child",

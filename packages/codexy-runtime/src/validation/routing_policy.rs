@@ -21,8 +21,9 @@ const ASSIGNED_WORKER_ROUTES: [(&str, &str); 2] = [
     (SIMPLE_WORKER_MODEL, SIMPLE_WORKER_THINKING),
     (GENERAL_WORKER_MODEL, GENERAL_WORKER_THINKING),
 ];
-const ORCHESTRATOR_MODEL: &str = "gpt-6-astra";
-const ORCHESTRATOR_THINKING: &str = "medium";
+// The authenticated direction distinguishes the main recipient from a simple Worker.
+const ORCHESTRATOR_MODEL: &str = SIMPLE_WORKER_MODEL;
+const ORCHESTRATOR_THINKING: &str = SIMPLE_WORKER_THINKING;
 
 pub(super) struct Policy {
     pub(super) schema: String,

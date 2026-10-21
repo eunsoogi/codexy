@@ -60,7 +60,7 @@ class CoreHookStartupTests(unittest.TestCase):
             (
                 "codexy-thread-delivery.sh",
                 "mcp__codex_app__send_message_to_thread",
-                {"threadId": "parent", "model": "gpt-6-astra", "thinking": "medium"},
+                {"threadId": "parent", "model": "gpt-6-luna", "thinking": "max"},
             ),
             (
                 "codexy-child-thread-creation.sh",
