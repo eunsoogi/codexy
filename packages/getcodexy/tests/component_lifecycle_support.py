@@ -9,7 +9,7 @@ from pathlib import Path
 
 from component_hook_host_fixture import HOOK_LIST_HOST, write_host
 from component_hook_registration_fixture import registration_context
-from component_marketplace_fixture import populate_plugins
+from component_marketplace_fixture import configure_candidate_package, populate_plugins
 from codexy_runtime_tools.component_manifest import load_component_manifest
 
 
@@ -35,29 +35,17 @@ class fixture:
         versions: dict[str, str] | None = None,
         real_registration: bool = False,
     ) -> None:
-        (
-            self.selection,
-            self.fail_add,
-            self.fail_marketplace_add,
-            self.fail_remove,
-            self.fail_upgrade,
-            self.interrupt_add,
-            self.marketplace_present,
-            self.inventory_override,
-            self.inventory_responses,
-            self.versions,
-        ) = (
-            selection or set(),
-            fail_add,
-            fail_marketplace_add,
-            fail_remove,
-            fail_upgrade,
-            interrupt_add,
-            marketplace_present,
-            inventory_override,
-            list(inventory_responses or ()),
-            versions or {},
-        )
+        self.selection = selection or set()
+        self.fail_add = fail_add
+        self.fail_marketplace_add = fail_marketplace_add
+        self.fail_remove = fail_remove
+        self.fail_upgrade = fail_upgrade
+        self.interrupt_add = interrupt_add
+        self.marketplace_present = marketplace_present
+        self.inventory_override = inventory_override
+        # Copy response queues so lifecycle fixtures cannot consume each other's inputs.
+        self.inventory_responses = list(inventory_responses or ())
+        self.versions = versions or {}
         self.registration_context = registration_context(real_registration)
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name).resolve()
@@ -72,6 +60,9 @@ class fixture:
         self.home.mkdir()
         self.marketplace.mkdir()
         populate_plugins(self.marketplace)
+        # Lifecycle cases exercise the selected version; legacy upgrades use a
+        # separate fixture.
+        configure_candidate_package(self.marketplace / "plugins" / "codexy")
         (self.home / "config.toml").write_text(
             f'[marketplaces.codexy]\nref = "v{VERSION}"\n', encoding="utf-8"
         )

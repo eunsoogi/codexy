@@ -141,14 +141,16 @@ class LifecycleWatcherTests(unittest.TestCase):
             )
 
     def test_update_repairs_a_stale_host_cache_surface(self) -> None:
+        # Core 2.0 syncs its no-MCP contract without repairing dormant launchers.
         with fixture({"core"}) as state:
             record(state.home, ["core"])
             source_plugin = state.marketplace / "plugins/codexy"
             materialize_component_mcp(source_plugin, "core", VERSION)
-            cache = state.home / "plugins/cache/codexy/codexy" / VERSION
+            cache = component_cache_plugin(state.home, "core", VERSION)
             shutil.copytree(source_plugin, cache)
             cache_bootstrap = cache / "mcp/codexy_mcp_bootstrap.py"
             cache_bootstrap.write_text("stale cache surface\n", encoding="utf-8")
+            (cache / ".mcp.json").write_text('{"watcher": {}}\n', encoding="utf-8")
 
             with (
                 patch.object(
@@ -182,10 +184,12 @@ class LifecycleWatcherTests(unittest.TestCase):
                     "mutations": state.mutations,
                 },
             )
+            self.assertFalse((cache / ".mcp.json").exists())
             self.assertEqual(
-                cache_bootstrap.read_bytes(),
-                (source_plugin / "mcp/codexy_mcp_bootstrap.py").read_bytes(),
+                (cache / ".codex-plugin/mcp-capability.json").read_bytes(),
+                (source_plugin / ".codex-plugin/mcp-capability.json").read_bytes(),
             )
+            self.assertEqual(cache_bootstrap.read_bytes(), b"stale cache surface\n")
 
     def test_install_rolls_back_when_selected_host_cache_is_missing(self) -> None:
         with fixture() as state:

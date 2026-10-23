@@ -78,13 +78,20 @@ class WatcherProbeTests(unittest.TestCase):
             materialize_component_mcp,
         )
         from packages.getcodexy.tests.component_lifecycle_support import fixture
+        from packages.getcodexy.tests.component_marketplace_fixture import (
+            configure_legacy_core_package,
+        )
+        from packages.getcodexy.tests.component_watcher_fixture import LEGACY_VERSION
 
         with fixture({"core"}) as state:
             plugin = state.marketplace / "plugins/codexy"
+            # This probe assertion covers the registered legacy compatibility contract.
+            configure_legacy_core_package(plugin, LEGACY_VERSION)
             manifest = json.loads(
                 (plugin / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
             )
-            version = manifest["version"]
+            version = LEGACY_VERSION
+            self.assertEqual(manifest["version"], version)
             self.assertEqual(materialize_component_mcp(plugin, "core", version), plugin)
             hook = {
                 "started": True,

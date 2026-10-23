@@ -41,7 +41,7 @@ class CapabilityProbeCases:
         self._record_core = Path(self._record_temporary.name) / "plugins/codexy"
         shutil.copytree(REPOSITORY / "plugins/codexy", self._record_core)
         configure_core_package(self._record_core, self.manifest.version)
-        materialize_component_mcp(self._record_core, "core")
+        materialize_component_mcp(self._record_core, "core", self.manifest.version)
         self.records = self._records(self.manifest)
         self._probe_patch = patch(
             "codexy_runtime_tools.component_health._probe_component",
@@ -214,12 +214,16 @@ class CapabilityProbeCases:
         return health(self.manifest, installed, selected, self.records, None, False)
 
     def _successful_probe(self, component, plugin, record):
-        return {
+        result = {
             "started": True,
             "callable": True,
             "runtime_name": f"codexy-{component}",
             "runtime_version": record["version"],
         }
+        # The selected 2.0 core reports its no-MCP contract in direct health.
+        if component == "core":
+            result["_capability_contract"] = {"mcp:watcher": False}
+        return result
 
     def _probe_with(self, component, override):
         def probe(current, plugin, record):
