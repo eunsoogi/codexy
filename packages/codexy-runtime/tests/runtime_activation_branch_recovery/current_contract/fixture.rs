@@ -4,10 +4,7 @@ use std::{
     process::{Command, Output},
 };
 
-use crate::support::{
-    FixtureCommand, make_executable, write_posix_fixture_command,
-    write_posix_fixture_shell_runner,
-};
+use crate::support::{self, FixtureCommand, write_posix_fixture_command, write_posix_fixture_shell_runner};
 
 const CANDIDATE_VERSION: &str = "1.7.0";
 const SYNC_PATHS: &[&str] = &["README.md", "README.ko.md"];
@@ -29,7 +26,9 @@ const STATIC_PATHS: &[&str] = &[
     "plugins/codexy-github/.codex-plugin/plugin.json",
     "plugins/codexy/.codex-plugin/plugin.json",
 ];
-const WATCHER_PATHS: &[&str] = &[
+// The base snapshot represents older registrations; the selected 2.0.0 package removes these.
+const RETIRED_CORE_PATHS: &[&str] = &[
+    "plugins/codexy/mcp/codexy_mcp_bootstrap.py",
     "plugins/codexy/mcp/codexy-mcp-watcher.cmd",
     "plugins/codexy/mcp/codexy-mcp-watcher.sh",
 ];
@@ -39,30 +38,29 @@ const PRESERVED_PATHS: &[&str] = &[
 ];
 
 #[derive(Clone, Copy)]
-pub(super) enum WatcherCase {
-    Expected,
-    Missing,
-    Tampered,
+pub(super) enum CandidateCase {
+    NoRetiredPaths,
+    StaleLauncher,
     Unexpected,
 }
 
 pub(super) fn run_case(
     base_version: &str,
-    watcher_case: WatcherCase,
+    candidate_case: CandidateCase,
 ) -> Result<Output, Box<dyn std::error::Error>> {
-    run_case_with_state(base_version, watcher_case, false)
+    run_case_with_state(base_version, candidate_case, false)
 }
 
 pub(super) fn run_staged_case(
     base_version: &str,
-    watcher_case: WatcherCase,
+    candidate_case: CandidateCase,
 ) -> Result<Output, Box<dyn std::error::Error>> {
-    run_case_with_state(base_version, watcher_case, true)
+    run_case_with_state(base_version, candidate_case, true)
 }
 
 fn run_case_with_state(
     base_version: &str,
-    watcher_case: WatcherCase,
+    candidate_case: CandidateCase,
     staged: bool,
 ) -> Result<Output, Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
@@ -72,7 +70,7 @@ fn run_case_with_state(
     fs::create_dir_all(&repo)?;
     fs::create_dir_all(&expected)?;
     fs::create_dir_all(&bin)?;
-    initialize_repository(&repo, &expected, base_version, watcher_case)?;
+    initialize_repository(&repo, &expected, base_version, candidate_case)?;
     if staged {
         // Soft-reset the activation commit so its derived files stay in the index.
         git(&repo, &["reset", "--soft", "main"])?;
@@ -113,7 +111,7 @@ fn initialize_repository(
     repo: &Path,
     expected: &Path,
     base_version: &str,
-    watcher_case: WatcherCase,
+    candidate_case: CandidateCase,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Keep baseline and expected branch contents separate for exact tree comparison.
     git(repo, &["init", "-b", "main"])?;
@@ -138,17 +136,15 @@ fn initialize_repository(
         }
     }
     for relative in PRESERVED_PATHS {
-        write_executable(repo, relative, format!("base:{relative}\n"))?;
-        write_executable(expected, relative, format!("base:{relative}\n"))?;
+        support::write_executable_fixture(&repo.join(relative), format!("base:{relative}\n"))?;
+        support::write_executable_fixture(&expected.join(relative), format!("base:{relative}\n"))?;
     }
-    if !matches!(watcher_case, WatcherCase::Missing) {
-        for relative in WATCHER_PATHS {
-            write_executable(repo, relative, format!("base:{relative}\n"))?;
-            write_executable(expected, relative, format!("derived:{relative}\n"))?;
-        }
+    for relative in RETIRED_CORE_PATHS {
+        // Keep these source files only in the old base so the candidate deletion is observable.
+        support::write_executable_fixture(&repo.join(relative), format!("legacy:{relative}\n"))?;
     }
-    write_executable(repo, "scripts/activate-runtime-contract.sh", "#!/bin/sh\n")?;
-    write_executable(repo, "scripts/sync-plugin-version.sh", "#!/bin/sh\n")?;
+    support::write_executable_fixture(&repo.join("scripts/activate-runtime-contract.sh"), "#!/bin/sh\n")?;
+    support::write_executable_fixture(&repo.join("scripts/sync-plugin-version.sh"), "#!/bin/sh\n")?;
     git(repo, &["add", "."])?;
     git(
         repo,
@@ -166,16 +162,23 @@ fn initialize_repository(
         .iter()
         .chain(PACKAGE_PATHS.iter())
         .chain(SYNC_PATHS.iter())
-        .chain(WATCHER_PATHS.iter())
     {
         if expected.join(relative).is_file() {
             fs::copy(expected.join(relative), repo.join(relative))?;
         }
     }
-    match watcher_case {
-        WatcherCase::Tampered => write(repo, WATCHER_PATHS[1], "tampered\n")?,
-        WatcherCase::Unexpected => write(repo, "docs/unexpected.txt", "unexpected\n")?,
-        WatcherCase::Expected | WatcherCase::Missing => {}
+    for relative in RETIRED_CORE_PATHS {
+        let path = repo.join(relative);
+        if path.exists() {
+            fs::remove_file(path)?;
+        }
+    }
+    match candidate_case {
+        CandidateCase::StaleLauncher => {
+            write(repo, RETIRED_CORE_PATHS[2], "stale launcher\n")?
+        }
+        CandidateCase::Unexpected => write(repo, "docs/unexpected.txt", "unexpected\n")?,
+        CandidateCase::NoRetiredPaths => {}
     }
     git(repo, &["add", "."])?;
     git(
@@ -213,11 +216,14 @@ fn copy_fixture_script(sync: bool) -> String {
         .iter()
         .chain(PACKAGE_PATHS.iter())
         .chain(SYNC_PATHS.iter())
-        .chain(WATCHER_PATHS.iter())
+        .chain(RETIRED_CORE_PATHS.iter())
     {
         source.push_str(&format!(
             "if test -f \"$EXPECTED_ROOT/{relative}\"; then mkdir -p \"$root/$(dirname '{relative}')\"; cp \"$EXPECTED_ROOT/{relative}\" \"$root/{relative}\"; fi\n"
         ));
+    }
+    for relative in RETIRED_CORE_PATHS {
+        source.push_str(&format!("rm -f \"$root/{relative}\"\n"));
     }
     source
 }
@@ -228,16 +234,6 @@ fn write(root: &Path, relative: &str, contents: impl AsRef<[u8]>) -> std::io::Re
         fs::create_dir_all(parent)?;
     }
     fs::write(path, contents)
-}
-
-fn write_executable(
-    root: &Path,
-    relative: &str,
-    contents: impl AsRef<[u8]>,
-) -> std::io::Result<()> {
-    let path = root.join(relative);
-    write(root, relative, contents)?;
-    make_executable(&path)
 }
 
 fn git(root: &Path, args: &[&str]) -> Result<(), Box<dyn std::error::Error>> {

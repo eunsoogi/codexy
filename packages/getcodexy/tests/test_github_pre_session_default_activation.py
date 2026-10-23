@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 import tempfile
 import unittest
@@ -11,13 +10,14 @@ from pathlib import Path
 
 from codexy_runtime_tools.component_integrity import frozen_component
 from codexy_runtime_tools.github_pre_session import run_github_pre_session
-from packages.getcodexy.tests.component_marketplace_fixture import (
-    configure_candidate_package,
+from github_pre_session_default_activation_support import (
+    activation_fixture,
+    copy_plugin,
+    executable,
+    installed,
+    marketplace_entry,
+    version,
 )
-
-
-REPOSITORY = Path(__file__).resolve().parents[3]
-OFFICIAL = "https://github.com/eunsoogi/codexy.git"
 
 
 class GithubPreSessionDefaultActivationTests(unittest.TestCase):
@@ -96,7 +96,7 @@ class GithubPreSessionDefaultActivationTests(unittest.TestCase):
 
     def test_symlinked_watcher_parent_is_rejected_before_materialization(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            root, core, github = activation_fixture(Path(temporary))
+            root, core, github = activation_fixture(Path(temporary), legacy_core=True)
             outside = root / "outside"
             outside.mkdir()
             moved = outside / "mcp"
@@ -193,56 +193,6 @@ class GithubPreSessionDefaultActivationTests(unittest.TestCase):
                 ("plugin", "remove", "codexy@codexy"),
             ],
         )
-
-
-def copy_plugin(marketplace: Path, name: str) -> Path:
-    destination = marketplace / "plugins" / name
-    shutil.copytree(REPOSITORY / "plugins" / name, destination)
-    configure_candidate_package(destination)
-    return destination
-
-
-def activation_fixture(root: Path) -> tuple[Path, Path, Path]:
-    marketplace = root / "marketplace"
-    return (
-        root,
-        copy_plugin(marketplace, "codexy"),
-        copy_plugin(marketplace, "codexy-github"),
-    )
-
-
-def executable(root: Path) -> Path:
-    path = root / "trusted/codex"
-    path.parent.mkdir(parents=True)
-    path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    path.chmod(0o700)
-    return path.resolve()
-
-
-def marketplace_entry(root: Path) -> dict[str, object]:
-    return {
-        "name": "codexy",
-        "root": str(root),
-        "marketplaceSource": {"sourceType": "git", "source": OFFICIAL},
-    }
-
-
-def installed(root: Path, name: str) -> dict[str, object]:
-    return {
-        "pluginId": f"{name}@codexy",
-        "name": name,
-        "marketplaceName": "codexy",
-        "version": version(root),
-        "installed": True,
-        "enabled": True,
-        "source": {"source": "local", "path": str(root)},
-        "marketplaceSource": {"sourceType": "git", "source": OFFICIAL},
-    }
-
-
-def version(root: Path) -> str:
-    manifest = root / ".codex-plugin/plugin.json"
-    return str(json.loads(manifest.read_text(encoding="utf-8"))["version"])
 
 
 if __name__ == "__main__":

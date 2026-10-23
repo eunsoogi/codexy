@@ -48,7 +48,7 @@ def copy_plugin_package(
 
 
 def configure_legacy_core_package(plugin: Path, version: str = "1.13.4") -> None:
-    """Make a copied pre-2.0 fixture explicit about its legacy MCP contract."""
+    """Build a synthetic registered-core package for legacy validation coverage."""
     manifest_path = plugin / ".codex-plugin/plugin.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest["version"] = version
@@ -59,6 +59,15 @@ def configure_legacy_core_package(plugin: Path, version: str = "1.13.4") -> None
         json.dumps(mcp_configuration("core", version), indent=2) + "\n",
         encoding="utf-8",
     )
+    mcp = plugin / "mcp"
+    mcp.mkdir(parents=True, exist_ok=True)
+    launcher = mcp / "codexy-mcp-watcher.sh"
+    launcher.write_text("#!/bin/sh\n", encoding="utf-8")
+    launcher.chmod(0o755)
+    (mcp / "codexy_mcp_bootstrap.py").write_text(
+        "#!/usr/bin/env python3\n", encoding="utf-8"
+    )
+    (mcp / "codexy-mcp-watcher.cmd").write_text("@echo off\n", encoding="utf-8")
 
 
 def configure_no_mcp_core_package(plugin: Path, version: str | None = None) -> None:
@@ -75,6 +84,16 @@ def configure_no_mcp_core_package(plugin: Path, version: str | None = None) -> N
     capability_path.write_text(
         json.dumps(NO_MCP_CAPABILITY, indent=2) + "\n", encoding="utf-8"
     )
+    # Current source fixtures must not carry retired launchers from older inputs.
+    mcp = plugin / "mcp"
+    for name in (
+        "codexy_mcp_bootstrap.py",
+        "codexy-mcp-watcher.sh",
+        "codexy-mcp-watcher.cmd",
+    ):
+        (mcp / name).unlink(missing_ok=True)
+    if mcp.is_dir() and not any(mcp.iterdir()):
+        mcp.rmdir()
 
 
 def configure_candidate_package(plugin: Path, version: str | None = None) -> None:
@@ -97,7 +116,7 @@ def configure_core_package(plugin: Path, version: str) -> None:
 def make_no_mcp_core_package(
     plugin: Path, version: str | None = None
 ) -> tuple[str, object]:
-    """Prepare a no-MCP package fixture while retaining its compatibility assets."""
+    """Prepare a no-MCP package fixture without retired Watcher entrypoints."""
     selected_version = load_component_manifest().version if version is None else version
     configure_no_mcp_core_package(plugin, selected_version)
     for relative in (
@@ -105,8 +124,8 @@ def make_no_mcp_core_package(
         "mcp/codexy-mcp-watcher.sh",
         "mcp/codexy-mcp-watcher.cmd",
     ):
-        if not (plugin / relative).is_file():
-            raise AssertionError(f"compatibility asset is missing: {relative}")
+        if (plugin / relative).exists():
+            raise AssertionError(f"retired entrypoint is present: {relative}")
     base = load_component_manifest()
     manifest = replace(
         base,

@@ -4,8 +4,7 @@ use std::{
     process::{Command, Output},
 };
 
-use crate::support::FixtureCommand;
-use serde_json::json;
+use crate::support::{FixtureCommand, install_legacy_core_watcher_package};
 
 // The submodules exercise separate version transitions against disposable repository snapshots.
 #[path = "sync_version_cli/admission.rs"]
@@ -152,36 +151,8 @@ fn selected_fixture_snapshot(
         .as_str()
         .ok_or("manifest version")?
         .to_owned();
-    configure_legacy_core_mcp(&root, &manifest_path, &mut manifest)?;
+    install_legacy_core_watcher_package(&root.join("plugins/codexy"))?;
     Ok((root, version))
-}
-
-fn configure_legacy_core_mcp(
-    root: &Path,
-    manifest_path: &Path,
-    manifest: &mut serde_json::Value,
-) -> Result<(), Box<dyn std::error::Error>> {
-    manifest["mcpServers"] = json!("./.mcp.json");
-    fs::write(manifest_path, format!("{}\n", serde_json::to_string_pretty(manifest)?))?;
-    let config = json!({
-        "watcher": {
-            "command": "uv",
-            "args": [
-                "run",
-                "--no-project",
-                "--script",
-                "./mcp/codexy_mcp_bootstrap.py",
-                "watcher",
-                "--stdio"
-            ],
-            "cwd": "."
-        }
-    });
-    fs::write(
-        root.join("plugins/codexy/.mcp.json"),
-        format!("{}\n", serde_json::to_string_pretty(&config)?),
-    )?;
-    Ok(())
 }
 
 #[test]

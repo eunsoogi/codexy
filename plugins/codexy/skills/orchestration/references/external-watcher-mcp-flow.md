@@ -3,8 +3,10 @@
 This reference applies only when the Orchestrator explicitly assigns a Watcher
 outside Codexy's packaged specialist catalog. It defines the bounded transport
 and supervision flow; it does not register or select a native Watcher role. The
-core package no longer registers Watcher MCP; an assigned host must explicitly
-configure the retained compatibility launcher and runtime.
+core package no longer registers Watcher MCP or ships the retired launcher and
+dedicated bootstrap. The Rust Watcher runtime and interrupt hooks remain in the
+repository; an assigned host must supply a compatible entrypoint and configure
+its external transport.
 
 - When an external Watcher is assigned, the Orchestrator opens one scoped
   `watcher_open` session for the Orchestrator, Watcher, and exact Worker

@@ -1,4 +1,4 @@
-//! Checks the selected runtime version pins in packaged MCP wrapper scripts.
+//! Checks the selected runtime version pin in the packaged Devtools MCP wrapper.
 
 use std::{fs, ops::Range, path::Path};
 
@@ -8,10 +8,6 @@ use crate::paths::{display_relative, repo_root};
 
 const WRAPPER: &str = "plugins/codexy-devtools/mcp/codexy-mcp-devtools";
 const LEGACY_WRAPPER: &str = "plugins/codexy-devtools/mcp/codexy-mcp-lsp";
-const CORE_WRAPPERS: [&str; 2] = [
-    "plugins/codexy/mcp/codexy-mcp-watcher.sh",
-    "plugins/codexy/mcp/codexy-mcp-watcher.cmd",
-];
 const PACKAGE_PREFIX: &str = "getcodexy==";
 
 pub(super) fn check_version(expected: &str) -> Result<()> {
@@ -28,15 +24,6 @@ pub(super) fn check_version_at(root: &Path, expected: &str) -> Result<()> {
         root.join(LEGACY_WRAPPER)
     };
     check_wrapper_version(&path, expected)?;
-    let core_present = CORE_WRAPPERS
-        .iter()
-        .any(|relative| root.join(relative).exists())
-        || root.join("plugins/codexy/.mcp.json").exists();
-    if core_present {
-        for relative in CORE_WRAPPERS {
-            check_wrapper_version(&root.join(relative), expected)?;
-        }
-    }
     Ok(())
 }
 

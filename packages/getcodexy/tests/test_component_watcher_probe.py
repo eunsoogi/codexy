@@ -30,9 +30,12 @@ class WatcherProbeTests(unittest.TestCase):
 
             # Validate the selected no-MCP package before checking its probe path.
             self.assertEqual(materialize_component_mcp(plugin, "core", "2.0.0"), plugin)
-            self.assertTrue((plugin / "mcp/codexy_mcp_bootstrap.py").is_file())
-            self.assertTrue((plugin / "mcp/codexy-mcp-watcher.sh").is_file())
-            self.assertTrue((plugin / "mcp/codexy-mcp-watcher.cmd").is_file())
+            for retired in (
+                "mcp/codexy_mcp_bootstrap.py",
+                "mcp/codexy-mcp-watcher.sh",
+                "mcp/codexy-mcp-watcher.cmd",
+            ):
+                self.assertFalse((plugin / retired).exists(), retired)
             if os.name == "nt":
                 hook_script = plugin / "hooks/codexy-thread-delivery.cmd"
                 failing_hook = b"@echo off\r\nexit /b 37\r\n"
@@ -135,7 +138,7 @@ class WatcherProbeTests(unittest.TestCase):
             {"configured": True, "started": True, "callable": False},
         )
 
-    def test_probe_preserves_the_common_uv_bootstrap_argv(self) -> None:
+    def test_probe_preserves_the_devtools_uv_bootstrap_argv(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             values = probe._argv(
                 "uv",
@@ -145,7 +148,7 @@ class WatcherProbeTests(unittest.TestCase):
                     "--no-project",
                     "--script",
                     "./mcp/codexy_mcp_bootstrap.py",
-                    "watcher",
+                    "codegraph",
                     "--stdio",
                 ],
             )
@@ -157,7 +160,7 @@ class WatcherProbeTests(unittest.TestCase):
                 "--no-project",
                 "--script",
                 "./mcp/codexy_mcp_bootstrap.py",
-                "watcher",
+                "codegraph",
                 "--stdio",
             ],
         )

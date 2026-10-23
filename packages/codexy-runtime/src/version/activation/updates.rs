@@ -19,11 +19,8 @@ const CORE_HANDOFF_SOURCES: [&str; 4] = [
     "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd",
     "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py",
 ];
-const WRAPPERS: [&str; 3] = [
-    "plugins/codexy-devtools/mcp/codexy-mcp-devtools",
-    "plugins/codexy/mcp/codexy-mcp-watcher.sh",
-    "plugins/codexy/mcp/codexy-mcp-watcher.cmd",
-];
+// Runtime activation updates only the current Devtools wrapper; core no longer ships Watcher launchers.
+const WRAPPERS: [&str; 1] = ["plugins/codexy-devtools/mcp/codexy-mcp-devtools"];
 
 #[derive(Debug)]
 pub(super) struct Update {

@@ -41,10 +41,10 @@ MUST NOT summon a Watcher solely to relay routine Worker events. A separately
 assigned bounded observation MAY use a Watcher supplied outside Codexy's
 packaged specialist catalog. Only that Watcher may observe its exact assigned
 targets, and the Orchestrator MUST await `watcher_wait` without also waiting
-directly on them. The core plugin no longer registers Watcher MCP. Its launcher
-and runtime remain for hosts that explicitly configure the compatibility
-transport; the packaged catalog does not include a native Watcher specialist or
-model pair.
+directly on them. The core plugin no longer registers Watcher MCP or ships the
+retired launcher and dedicated bootstrap. A host using an external compatibility
+transport must supply a compatible entrypoint; the packaged catalog does not
+include a native Watcher specialist or model pair.
 
 When creating a Worker, Codex MUST bind the selected model and effort to the
 authenticated recipient. For existing tasks, Codex MUST send to the

@@ -159,8 +159,6 @@ fn bootstrap_surface_contents(
             "plugins/codexy-devtools/mcp/codexy-mcp-devtools",
             "plugins/codexy-devtools/mcp/codexy-mcp-lsp",
             "plugins/codexy-devtools/mcp/codexy-mcp-codegraph",
-            "plugins/codexy/mcp/codexy-mcp-watcher.sh",
-            "plugins/codexy/mcp/codexy-mcp-watcher.cmd",
         ],
     )
 }

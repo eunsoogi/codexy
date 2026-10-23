@@ -9,7 +9,7 @@ use crate::validation::{json_array_strings, load_json};
 const BOOTSTRAP: &str = "mcp/codexy_mcp_bootstrap.py";
 const SOURCE_LAUNCHER: &str = "mcp/codexy-mcp-watcher.sh";
 
-/// Enforces the single watcher server contract, safe launchers, and platform runtime artifacts.
+/// Validates the explicitly registered legacy core Watcher MCP contract and its entrypoints.
 pub(super) fn check(plugin_root: &Path, manifest: &Value) -> Result<()> {
     if manifest.get("mcp_servers").is_some() {
         bail!("core plugin manifest must use the mcpServers field");
@@ -159,8 +159,5 @@ pub(super) fn check(plugin_root: &Path, manifest: &Value) -> Result<()> {
             display_relative(&windows)
         );
     }
-    let supported =
-        super::manifest::supported_platforms(manifest, &super::manifest_path(plugin_root))?;
-    super::runtime::check_core_watcher_artifacts(plugin_root, &supported)?;
     Ok(())
 }

@@ -69,11 +69,13 @@ class GithubPreSessionMarketplaceTests(unittest.TestCase):
                 package_version=version(core),
             )
 
-            self.assertEqual(
-                (cache / "mcp/codexy_mcp_bootstrap.py").read_bytes(),
-                (core / "mcp/codexy_mcp_bootstrap.py").read_bytes(),
-            )
-            self.assertFalse((cache / "mcp/codexy-mcp-watcher").exists())
+            for retired_path in (
+                "mcp/codexy_mcp_bootstrap.py",
+                "mcp/codexy-mcp-watcher.sh",
+                "mcp/codexy-mcp-watcher.cmd",
+            ):
+                self.assertFalse((core / retired_path).exists())
+                self.assertFalse((cache / retired_path).exists())
 
             self.assertEqual(
                 calls[:4],

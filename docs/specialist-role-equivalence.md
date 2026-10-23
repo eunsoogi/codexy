@@ -4,22 +4,22 @@ Codexy retains seven distinct implementation specialist roles and adds a
 separate advisory role. This mapping preserves former capabilities without
 retaining removed callable aliases.
 
-| Role                  | Disposition | Capability owner                                                                                                                                                                  |
-| --------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `codexy-architect`    | Retain      | Architecture and durable schema boundaries.                                                                                                                                       |
-| `codexy-advisor`      | Add         | Bounded analysis and recommendations; no file edits, delegation, ownership changes, or final approval.                                                                            |
-| `codexy-auditor`      | Retain      | Acceptance evidence and observable QA.                                                                                                                                            |
-| `codexy-cartographer` | Retain      | Read-only repository and ownership mapping.                                                                                                                                       |
-| `codexy-forge`        | Remove      | The generic owning child performs scoped implementation.                                                                                                                          |
-| `codexy-pathfinder`   | Remove      | Planning owns plan content and updates; orchestration owns classification and execution coordination; engineering owns the atomic technical approach.                             |
-| `codexy-scribe`       | Remove      | The owning child drafts its own documentation and handoff.                                                                                                                        |
-| `codexy-sculptor`     | Remove      | The engineering workflow owns behavior-preserving refactoring.                                                                                                                    |
-| `codexy-sentinel`     | Retain      | Independent strict review; fixed at `gpt-6-astra` / `xhigh`.                                                                                                                      |
-| `codexy-shipwright`   | Retain      | Release, package, and rollback readiness.                                                                                                                                         |
-| `codexy-tracer`       | Remove      | The engineering workflow owns diagnosis and regression investigation.                                                                                                             |
-| `codexy-warden`       | Retain      | Security, permission, shell, and state-mutation boundaries.                                                                                                                       |
-| `codexy-watcher`      | Remove      | The Orchestrator directly observes ordinary Worker events; core no longer registers Watcher MCP, while its launcher and runtime remain for explicit compatibility configurations. |
-| `codexy-weaver`       | Move        | GitHub/integration contract in the Codexy GitHub package.                                                                                                                         |
+| Role                  | Disposition | Capability owner                                                                                                                                       |
+| --------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `codexy-architect`    | Retain      | Architecture and durable schema boundaries.                                                                                                            |
+| `codexy-advisor`      | Add         | Bounded analysis and recommendations; no file edits, delegation, ownership changes, or final approval.                                                 |
+| `codexy-auditor`      | Retain      | Acceptance evidence and observable QA.                                                                                                                 |
+| `codexy-cartographer` | Retain      | Read-only repository and ownership mapping.                                                                                                            |
+| `codexy-forge`        | Remove      | The generic owning child performs scoped implementation.                                                                                               |
+| `codexy-pathfinder`   | Remove      | Planning owns plan content and updates; orchestration owns classification and execution coordination; engineering owns the atomic technical approach.  |
+| `codexy-scribe`       | Remove      | The owning child drafts its own documentation and handoff.                                                                                             |
+| `codexy-sculptor`     | Remove      | The engineering workflow owns behavior-preserving refactoring.                                                                                         |
+| `codexy-sentinel`     | Retain      | Independent strict review; fixed at `gpt-6-astra` / `xhigh`.                                                                                           |
+| `codexy-shipwright`   | Retain      | Release, package, and rollback readiness.                                                                                                              |
+| `codexy-tracer`       | Remove      | The engineering workflow owns diagnosis and regression investigation.                                                                                  |
+| `codexy-warden`       | Retain      | Security, permission, shell, and state-mutation boundaries.                                                                                            |
+| `codexy-watcher`      | Remove      | The Orchestrator directly observes ordinary Worker events; core no longer registers Watcher MCP or ships the retired launcher and dedicated bootstrap. |
+| `codexy-weaver`       | Move        | GitHub/integration contract in the Codexy GitHub package.                                                                                              |
 
 Advisor constraints are behavioral instructions, not host-level permission
 enforcement.

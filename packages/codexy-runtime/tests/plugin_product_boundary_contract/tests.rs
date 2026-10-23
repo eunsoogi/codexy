@@ -36,7 +36,7 @@ fn product_boundary_contract_owns_each_current_surface_once() -> TestResult {
 }
 
 #[test]
-// Keep current registrations in devtools while core retains only dormant compatibility assets.
+// Keep current registrations in Devtools while the core package omits retired Watcher entrypoints.
 fn core_and_devtools_packages_keep_developer_tool_surfaces_separate() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let core_manifest: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
@@ -48,9 +48,16 @@ fn core_and_devtools_packages_keep_developer_tool_surfaces_separate() -> TestRes
     );
     let core = root.join("plugins/codexy");
     assert!(!core.join(".mcp.json").exists());
-    assert!(core.join("mcp/codexy_mcp_bootstrap.py").is_file());
-    assert!(core.join("mcp/codexy-mcp-watcher.sh").is_file());
-    assert!(core.join("mcp/codexy-mcp-watcher.cmd").is_file());
+    for retired in [
+        "mcp/codexy_mcp_bootstrap.py",
+        "mcp/codexy-mcp-watcher.sh",
+        "mcp/codexy-mcp-watcher.cmd",
+    ] {
+        assert!(
+            !core.join(retired).exists(),
+            "current core package contains retired Watcher entrypoint: {retired}"
+        );
+    }
     for absent in [
         ".codex/lsp-client.json",
         "lsp",

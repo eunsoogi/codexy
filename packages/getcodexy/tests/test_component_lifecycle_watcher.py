@@ -26,6 +26,9 @@ from packages.getcodexy.tests.component_lifecycle_support import VERSION, fixtur
 from packages.getcodexy.tests.component_marketplace_fixture import (
     configure_no_mcp_core_package,
 )
+from packages.getcodexy.tests.component_lifecycle_watcher_cache_support import (
+    assert_update_repairs_a_stale_host_cache_surface,
+)
 from packages.getcodexy.tests.component_hook_registration_fixture import (
     completed_registration,
     fixture_hook_rows,
@@ -87,7 +90,9 @@ class LifecycleWatcherTests(unittest.TestCase):
                 )
             )
             core = state.marketplace / "plugins/codexy"
-            self.assertTrue((core / "mcp/codexy_mcp_bootstrap.py").is_file())
+            self.assertFalse((core / "mcp/codexy_mcp_bootstrap.py").exists())
+            self.assertFalse((core / "mcp/codexy-mcp-watcher.sh").exists())
+            self.assertFalse((core / "mcp/codexy-mcp-watcher.cmd").exists())
             self.assertFalse((core / "mcp/codexy-mcp-watcher").exists())
 
     def test_update_validates_the_core_source_before_host_update(self) -> None:
@@ -141,55 +146,7 @@ class LifecycleWatcherTests(unittest.TestCase):
             )
 
     def test_update_repairs_a_stale_host_cache_surface(self) -> None:
-        with fixture({"core"}) as state:
-            record(state.home, ["core"])
-            source_plugin = state.marketplace / "plugins/codexy"
-            materialize_component_mcp(source_plugin, "core", VERSION)
-            cache = component_cache_plugin(state.home, "core", VERSION)
-            shutil.copytree(source_plugin, cache)
-            cache_bootstrap = cache / "mcp/codexy_mcp_bootstrap.py"
-            # No-MCP repair preserves dormant bytes; write bytes to avoid Windows CRLF.
-            cache_bootstrap.write_bytes(b"stale cache surface\n")
-            (cache / ".mcp.json").write_text('{"watcher": {}}\n', encoding="utf-8")
-
-            with (
-                patch.object(
-                    component_lifecycle_recovery,
-                    "reconcile_official_marketplace_root",
-                    return_value=state.marketplace,
-                ),
-                patch.object(
-                    component_registration_health,
-                    "sync_agents",
-                    side_effect=completed_registration,
-                ),
-            ):
-                receipt = run_operation(
-                    "update",
-                    ("core",),
-                    state.home,
-                    state.codex,
-                    state.run,
-                    operation_id="op-update-cache-mcp",
-                    hook_lister=lambda _executable, _home: fixture_hook_rows(
-                        state.marketplace
-                    ),
-                )
-
-            self.assertEqual(
-                receipt["outcome"],
-                "completed",
-                {
-                    "receipt": receipt,
-                    "mutations": state.mutations,
-                },
-            )
-            self.assertFalse((cache / ".mcp.json").exists())
-            self.assertEqual(
-                (cache / ".codex-plugin/mcp-capability.json").read_bytes(),
-                (source_plugin / ".codex-plugin/mcp-capability.json").read_bytes(),
-            )
-            self.assertEqual(cache_bootstrap.read_bytes(), b"stale cache surface\n")
+        assert_update_repairs_a_stale_host_cache_surface(self)
 
     def test_install_rolls_back_when_selected_host_cache_is_missing(self) -> None:
         with fixture() as state:
@@ -238,9 +195,12 @@ class LifecycleWatcherTests(unittest.TestCase):
                 all(not os.path.lexists(root / ".mcp.json") for root in (plugin, cache))
             )
             for root in (plugin, cache):
-                self.assertTrue((root / "mcp/codexy_mcp_bootstrap.py").is_file())
-                self.assertTrue((root / "mcp/codexy-mcp-watcher.sh").is_file())
-                self.assertTrue((root / "mcp/codexy-mcp-watcher.cmd").is_file())
+                for retired in (
+                    "mcp/codexy_mcp_bootstrap.py",
+                    "mcp/codexy-mcp-watcher.sh",
+                    "mcp/codexy-mcp-watcher.cmd",
+                ):
+                    self.assertFalse((root / retired).exists(), retired)
             residual = cache / ".mcp.json"
             residual.write_text("{}", encoding="utf-8")
             self.assertFalse(valid_component_mcp_cache(state.home, "core", version))
