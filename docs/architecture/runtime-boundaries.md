@@ -111,6 +111,19 @@ as permission to claim the server worked.
   alone do not prove request cancellation. Candidate hook-list and runtime
   observations remain separate evidence.
 
+### Retained core-hook evidence
+
+The source change and candidate-level checks for the three retained core-hook
+concerns are recorded in merged
+[PR #1378](https://github.com/eunsoogi/codexy/pull/1378). Those checks do not
+prove that a running host invoked the hooks. The separate requirement to capture
+authentic `thread_delivery`, `child_thread_creation`, and `subagent_ownership`
+events after public 2.0.0 installation is tracked in
+[issue #1345](https://github.com/eunsoogi/codexy/issues/1345). A merge, CI pass,
+candidate hook inventory, update, or controlled rollback does not substitute for
+those events; this guide does not claim a public installation or post-install
+host-event result.
+
 ## Plugin and runtime discovery
 
 This workflow separates configuration, installation, process startup, and

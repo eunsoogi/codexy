@@ -26,8 +26,16 @@ Codexy는 Codex 에이전트의 작업을 계획하고 나누어 맡기며, 구�
 
 `getcodexy`는 컴포넌트 의존성을 계산하고 설치 목록과 수명주기를 관리합니다.
 
+이 README는 저장소에 반영된 2.0.0 source를 설명합니다. 설치 예시는
+`getcodexy==2.0.0`으로 version을 고정했으며, 해당 package가 공개된 뒤에만 실행할
+수 있습니다. version을 지정하지 않은 `uv tool install getcodexy`는 가장 최신
+공개 package를 선택하므로, 아래 2.0.0 명령을 실행하기 전에
+[Releases](https://github.com/eunsoogi/codexy/releases)에서 일치하는 version을
+확인하세요. source checkout이나 CI 결과만으로 공개 설치 또는 실행 중인 host의
+도구 노출을 입증할 수 없습니다.
+
 ```sh
-uv tool install getcodexy
+uv tool install getcodexy==2.0.0
 uv tool update-shell
 getcodexy install
 ```
@@ -35,6 +43,13 @@ getcodexy install
 tool bin 디렉터리를 `PATH`에 넣고 셸을 다시 연 뒤 사용하세요. 기본 설치는
 `core`, `github`, `devtools`를 모두 포함합니다. 설치나 업데이트 뒤에는 새 Codex
 세션을 열어 플러그인, skill, hook, agent, MCP 서버를 host에 노출하세요.
+
+1.x에서 2.0.0으로 옮길 때는 실행 중인 1.x 작업을 먼저 마치거나 인계하세요. 2.0.0
+공개 후 `uv tool upgrade getcodexy==2.0.0`으로 CLI를 먼저 업데이트하세요. 분리
+컴포넌트에는 `getcodexy update`를 사용하고, 지원되는 legacy monolith만
+`getcodexy --codex /absolute/path/to/codex migrate`로 이전할 수 있습니다. 이후
+새 Codex 세션을 여세요. `migrate`는 설치된 구성을 이전하며 실행 중인 task나
+session은 옮기지 않습니다.
 
 ### 컴포넌트 선택
 
@@ -59,7 +74,7 @@ tool bin 디렉터리를 `PATH`에 넣고 셸을 다시 연 뒤 사용하세요.
 ```sh
 getcodexy status                       # 설치 목록 확인
 getcodexy doctor                       # host 준비 상태와 컴포넌트 상태 확인
-uv tool upgrade getcodexy              # CLI 자체 업데이트
+uv tool upgrade getcodexy==2.0.0       # CLI 자체 업데이트
 getcodexy update                       # 설치된 모든 컴포넌트 업데이트
 getcodexy update github                # GitHub 의존 범위 업데이트
 getcodexy install github               # GitHub 추가
@@ -67,8 +82,9 @@ getcodexy remove github                # 의존 관계가 허용할 때 제거
 getcodexy bootstrap                    # 전체 기본 구성으로 수렴
 ```
 
-모든 명령은 `--json`을 지원합니다. 변경 작업은 journal과 receipt를 남기고,
-실패하면 이전 선택을 복원합니다. 선택 규칙과 복구 동작은
+모든 명령은 `--json`을 지원합니다. 변경 작업은 journal과 receipt를 남깁니다.
+실패한 수명주기 변경은 이전 선택을 자동 복원하며 별도의 `getcodexy rollback`
+명령은 지원하지 않습니다. 선택 규칙과 복구 동작은
 [컴포넌트 설치 및 이전 계약](docs/getcodexy-component-installation.md)에
 있습니다.
 
@@ -103,10 +119,10 @@ release를 실행합니다. Codex를 시작하는 host 환경의 `PATH`에서 `u
 `command -v uvx`(PowerShell에서는 `Get-Command uv`, `Get-Command uvx`)로
 확인하세요.
 
-이 명령은 위의 release ref를 대상으로 합니다. 아직 공개되지 않았다면
-[Releases](https://github.com/eunsoogi/codexy/releases)에서 공개된 tag를
-선택하세요. 아래 기능 설명은 현재 source tree를 기준으로 하며, 변경 사항은
-일치하는 공개 release로 설치하세요.
+위의 `v2.0.0` 예시는 해당 release가 공개된 뒤 실행하세요. 그 전에는
+[Releases](https://github.com/eunsoogi/codexy/releases)에서 이용할 수 있는 tag를
+선택하세요. 후보 source나 CI 결과는 공개 설치 또는 실행 중인 host의 노출을
+입증하지 않습니다.
 
 ## Codexy가 하는 일
 
@@ -217,6 +233,11 @@ GitHub 정책에 동의한 것으로 해석되지 않습니다.
 | Advisor / `codexy-advisor` | `gpt-6-astra`                                      | `medium`                               | 지정된 질문을 읽고 분석해 조언하며 파일 수정·위임·담당 변경·최종 인수를 하지 않습니다.                                                                                                                                                                                             |
 | Worker / ordinary child    | `gpt-6-luna` (simple) 또는 `gpt-6.1-sol` (general) | `max` (simple) 또는 `medium` (general) | 별도 app task에서 이슈를 구현·검증합니다. Orchestrator가 일반 Worker 이벤트를 직접 관찰합니다. 네 가지 `simple_predicates`를 모두 충족할 때만 Luna/Max를 사용하고, 범위가 분명한 general 구현 작업은 Sol/Medium을 선택하며, 범위·권한·필수 입력이 불분명하면 안전 경로로 보냅니다. |
 
+네 가지 `simple_predicates`의 정의는
+[Worker routing policy](plugins/codexy/skills/orchestration/references/child-routing-policy.md)에
+있습니다. 이 역할 쌍은 작업 분류 기준이며, 모델 비용이나 출력 품질의 우위를 보여
+주는 비교 결과는 아닙니다.
+
 Advisor의 읽기 전용 경계는 에이전트 지침에 따른 행동 규칙이며, 호스트 권한이
 차단된다는 보장은 아닙니다.
 
@@ -225,16 +246,18 @@ Advisor의 읽기 전용 경계는 에이전트 지침에 따른 행동 규칙�
 확인합니다. 한 Worker의 이벤트가 다른 작업의 관찰이나 issue 완료를 끝내지는
 않습니다. Orchestrator는 결과를 판단하고 교정과 인수 권한을 유지합니다. Codexy는
 native Watcher 전문 역할을 더 이상 패키징하지 않으며 core 플러그인에 Watcher
-MCP를 등록하지 않습니다. 기존 launcher, runtime, interrupt 훅은 별도로 호환
-transport를 설정한 host를 위해 유지하고, 일반 Worker 이벤트는 Orchestrator가
-직접 관찰합니다. 메시지와 목표 전환 receipt는 기존 권한과 수신 대상을
-유지합니다.
+MCP를 등록하지 않습니다. Rust Watcher server, binary, protocol, state/wait
+구현과 전용 launcher 및 interrupt hook도 제거되었습니다. 별도로 배정된 외부
+Watcher를 사용하려면 host가 호환 구현과 transport를 제공해야 합니다. 일반 Worker
+이벤트는 native 경로로 직접 관찰합니다. 메시지와 목표 전환 receipt는 기존 권한과
+수신 대상을 유지합니다.
 
 목표도 분리됩니다. Orchestrator는 전체 작업 목표를 맡고 Worker는 유한한 실행
 목표를 맡습니다. 별도로 설정한 Watcher MCP는 보고 전송 수단이며 목표를
-소유하거나 옮기지 않습니다. 이 설정은 Codexy에 포함된 구성이지 이미 실행 중인
-host가 실제로 사용한 모델의 증거는 아닙니다. `low`, `medium`, `high`, `xhigh`,
-`max`는 추론 수준입니다.
+소유하거나 옮기지 않습니다. 표의 값은 Codexy에 포함되거나 요청되는 역할
+설정이며, 실행 중인 task가 실제 사용한 모델이나 추론 수준의 증거는 아닙니다.
+권위 있는 host/task readback이 없으면 실제 설정은 알 수 없습니다. `low`,
+`medium`, `high`, `xhigh`, `max`는 추론 수준입니다.
 
 ### 패키지 전문 에이전트
 
@@ -281,6 +304,14 @@ hook timing, doctor 상태는 [아키텍처 안내서](docs/architecture.md)에�
 | Linux x86_64 (`linux-x86_64`) | 세 플러그인의 패키지 대상이며 Ubuntu CI가 lifecycle과 migration을 검증합니다.                                                                   |
 | Windows x86_64                | CI가 component CLI, transaction lifecycle, recovery, GitHub activation을 실행합니다. 자동 legacy 탐색과 devtools runtime까지 주장하지 않습니다. |
 | LSP host prerequisite         | 등록한 language server가 host에 설치되어 실행 가능해야 합니다.                                                                                  |
+
+이 표는 저장소의 CI와 package 지원 범위이며 공개된 Codexy 2.0.0 설치나 실행 중인
+host 동작을 증명하지 않습니다. 유지되는 core hook의 source 변경은 병합된
+[PR #1378](https://github.com/eunsoogi/codexy/pull/1378)에 기록되어 있고, 실제
+설치 후 event 관찰은
+[issue #1345](https://github.com/eunsoogi/codexy/issues/1345)에 남아 있습니다.
+공개 2.0.0 bundle의 Windows 검증은 별도
+[issue #1346](https://github.com/eunsoogi/codexy/issues/1346)에서 추적합니다.
 
 ## 라이선스
 

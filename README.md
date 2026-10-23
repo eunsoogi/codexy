@@ -30,12 +30,19 @@ executable contracts live in the linked guides.
 component dependencies, records the installed inventory, and exposes
 transactional lifecycle commands.
 
+This README describes the checked-in 2.0.0 source. The install example is pinned
+to `getcodexy==2.0.0` and can run only after that package is published. An
+unpinned `uv tool install getcodexy` selects the latest published package; check
+[Releases](https://github.com/eunsoogi/codexy/releases) for a matching version
+before using these 2.0.0 commands. A source checkout or CI result does not prove
+public installation or active-session exposure.
+
 ### Default installation
 
 Install the complete Codexy product:
 
 ```sh
-uv tool install getcodexy
+uv tool install getcodexy==2.0.0
 uv tool update-shell
 getcodexy install
 ```
@@ -44,6 +51,14 @@ Add uv's tool bin directory to `PATH`, then restart or reload your shell if
 needed. The default selection installs `core`, `github`, and `devtools`; open a
 fresh Codex session after installation or update so the host can expose new
 plugins, skills, hooks, agents, and MCP servers.
+
+For a 1.x-to-2.0.0 transition, finish or hand off active 1.x work first. After
+2.0.0 is published, upgrade the CLI with `uv tool upgrade getcodexy==2.0.0`
+before running component commands. Use `getcodexy update` for an existing split
+installation. Use `getcodexy --codex /absolute/path/to/codex migrate` only for
+the exact supported legacy monolith described below. Open a fresh Codex session
+afterward. Migration changes the installed configuration; it does not migrate an
+active task or session.
 
 ### Select components
 
@@ -68,7 +83,7 @@ automatically.
 ```sh
 getcodexy status                       # read the installed-component inventory
 getcodexy doctor                       # check host readiness and component health
-uv tool upgrade getcodexy              # update the installed CLI itself
+uv tool upgrade getcodexy==2.0.0       # update the installed CLI itself
 getcodexy update                       # update every installed component
 getcodexy update github                # update one installed dependency closure
 getcodexy install github               # add GitHub to an existing selection
@@ -77,9 +92,10 @@ getcodexy bootstrap                    # converge on the complete default select
 ```
 
 All commands accept `--json`. Mutations use a durable journal and receipt. A
-failed mutation restores the exact previous selection; dependency-protected
-removals, mixed versions, unknown components, and inconsistent inventories are
-rejected before mutation. See the
+failed lifecycle mutation automatically restores the exact previous selection;
+there is no manual `getcodexy rollback` command. Dependency-protected removals,
+mixed versions, unknown components, and inconsistent inventories are rejected
+before mutation. See the
 [component installation and migration
 contract](docs/getcodexy-component-installation.md) for selection rules,
 receipts, errors, and recovery behavior.
@@ -118,9 +134,10 @@ are on the `PATH` of the host that starts Codex before opening a session. Check
 with `command -v uv` and `command -v uvx` (or `Get-Command uv` and
 `Get-Command uvx` in PowerShell).
 
-Use the release ref shown above. If it is not published, choose a tag from
-[Releases](https://github.com/eunsoogi/codexy/releases). The summary describes
-current source; install changes from a matching published release.
+Run the `v2.0.0` example only after that release is published. Otherwise choose
+a tag available from [Releases](https://github.com/eunsoogi/codexy/releases).
+Candidate source and CI do not establish public installation or active-session
+exposure.
 
 ## What Codexy does
 
@@ -249,6 +266,11 @@ opt a user into another repository's GitHub policy.
 | Advisor / `codexy-advisor` | `gpt-6-astra`                                    | `medium`                             | Instruction-bounded analysis and advice; does not edit, delegate, change ownership, or grant final approval.                                                                                                                                                                          |
 | Worker / ordinary child    | `gpt-6-luna` (simple) or `gpt-6.1-sol` (general) | `max` (simple) or `medium` (general) | Separate app task that owns its implementation branch/worktree. The Orchestrator observes ordinary events directly. Luna/Max requires all four simple predicates; clearly scoped general work uses Sol/Medium, while ambiguous scope, authority, or required inputs stay fail-closed. |
 
+The four `simple_predicates` are defined in the
+[Worker routing policy](plugins/codexy/skills/orchestration/references/child-routing-policy.md).
+These pairs describe routing; they do not establish comparative model cost or
+output quality.
+
 The Advisor's read-only boundary is part of its instructions; it does not imply
 host-level permission enforcement.
 
@@ -257,16 +279,19 @@ Worker's latest cursor to observe completion, attention, and later turns. One
 Worker event does not end observation of remaining tasks or complete the issue.
 The Orchestrator judges results and retains correction and acceptance authority.
 Codexy no longer packages a native Watcher specialist or registers Watcher MCP
-in the core plugin. Existing launchers, runtime, and interrupt hooks remain for
-hosts that explicitly configure the compatibility transport, while ordinary
-Worker events are observed directly. Message and goal-transition receipts keep
-their existing authorization and destination.
+in the core plugin. The Rust Watcher server, binary, protocol, state, and wait
+implementation, along with its dedicated launchers and interrupt hooks, are
+retired. A separately assigned external Watcher requires its host to supply a
+compatible implementation and transport; ordinary Worker events use the native
+route directly. Message and goal-transition receipts keep their existing
+authorization and destination.
 
 Goal boundary: the Orchestrator owns the overall task goal and the Worker owns
 its finite execution goal. A separately configured Watcher MCP is a reporting
-transport and does not own or transfer goals. These settings are bundled
-configuration, not proof of the model used by an already-running host; `low`,
-`medium`, `high`, `xhigh`, and `max` are reasoning-effort settings.
+transport and does not own or transfer goals. These are bundled/requested role
+settings, not proof of the model or reasoning effort used by a running task;
+effective settings remain unknown without an authoritative host/task readback.
+`low`, `medium`, `high`, `xhigh`, and `max` are reasoning-effort settings.
 
 ### Packaged specialists
 
@@ -327,6 +352,14 @@ are not installed into another repository.
 | Linux x86_64 (`linux-x86_64`)      | Packaged target for all three plugins; Ubuntu CI covers package build/install, lifecycle commands, and legacy-to-split candidate migration.                                             |
 | Windows x86_64 (native CI surface) | CI exercises the component CLI, transaction lifecycle, recovery, and GitHub activation contracts. It does not claim automatic legacy-tree traversal or the packaged devtools runtime.   |
 | LSP host prerequisite              | Each registered language server must also be installed and executable on the host.                                                                                                      |
+
+These rows describe repository-side CI and package support, not a public Codexy
+2.0.0 installation or active-host execution. The merged retained-hook source
+change is [PR #1378](https://github.com/eunsoogi/codexy/pull/1378); authentic
+post-install events remain pending in
+[issue #1345](https://github.com/eunsoogi/codexy/issues/1345). Windows
+verification against the public 2.0.0 bundle remains a separate
+[issue #1346](https://github.com/eunsoogi/codexy/issues/1346).
 
 ## License
 
