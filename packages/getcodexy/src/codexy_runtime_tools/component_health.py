@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
-
 from . import component_capability_probe as _probe
 from .component_capability_observation import component_observations
 from .component_hook_activation import ACTIVATION_STATES
@@ -25,10 +22,6 @@ from .component_health_support import (
     version_relation,
 )
 from .component_manifest import ComponentManifest
-from .component_registration_health import (
-    _registered_role,
-    registration_role as _registration_role,
-)
 from .updater import compare_managed_files
 
 FAILURES = _probe.FAILURES
@@ -143,7 +136,18 @@ def _component_health(context, component):
         restart_required=False,
         observed={
             **_observed(record),
-            "capabilities": component_observations(component, configured),
+            # Keep a no-MCP core accurate when activation prevents its live probe.
+            "capabilities": component_observations(
+                component,
+                configured,
+                {
+                    "_capability_contract": {
+                        "mcp:watcher": "watcher" in expected_mcp_spec.servers
+                    }
+                }
+                if component == "core" and expected_mcp_spec is not None
+                else None,
+            ),
             "registration": registration,
         },
     )
@@ -204,41 +208,3 @@ def _mark(result: dict[str, object], stage: str, reason: str) -> dict[str, objec
     ):
         result["state"] = "incompatible"
     return result
-
-
-def _registration_roles(home, root, marker, expected, read_regular, max_bytes):
-    roles, managed, unmanaged = [], [], []  # Track expected and marker-owned roles.
-    for name, value in expected.items():
-        roles.append(
-            _registered_role(home, root, name, value, marker, read_regular, max_bytes)
-        )
-    for entry in os.scandir(root):
-        if entry.name in expected or not entry.name.endswith(".toml"):
-            continue
-        try:
-            current = (
-                read_regular(home, Path(entry.path).relative_to(home), max_bytes)
-                .decode()
-                .replace("\r\n", "\n")
-                .replace("\r", "\n")
-            )
-        except (OSError, UnicodeDecodeError, ValueError):
-            unmanaged.append(entry.name)
-            continue
-        (managed if current.startswith(marker) else unmanaged).append(entry.name)
-    roles.extend(
-        _registration_role(
-            name, "stale", "managed role is not declared by the current catalog"
-        )
-        for name in managed
-    )
-    states = {item["state"] for item in roles}
-    state = next(
-        (
-            candidate
-            for candidate in ("unmanaged-conflict", "stale", "missing")
-            if candidate in states or candidate == "unmanaged-conflict" and unmanaged
-        ),
-        "exact",
-    )
-    return roles, tuple(sorted(managed)), tuple(sorted(unmanaged)), state

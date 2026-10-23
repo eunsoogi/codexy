@@ -23,7 +23,7 @@ CAPABILITIES = {
         "specialist:codexy-sentinel",
         "specialist:codexy-shipwright",
         "specialist:codexy-warden",
-        # Legacy Watcher MCP health stays distinct from native role registration.
+        # Legacy registration remains visible without implying a current Watcher process.
         "mcp:watcher",
     ),
     "github": ("hook:codexy-github-workflow-context", "specialist:codexy-weaver"),
@@ -56,6 +56,9 @@ def component_observations(
         # A validated no-MCP core has no configured Watcher capability to report.
         observations.pop("mcp:watcher", None)
     for name in observations:
+        if name == "mcp:watcher":
+            # Current getcodexy never launches legacy Watcher MCP, so execution stays unknown.
+            continue
         details = direct.get(name)
         if isinstance(details, dict):
             observations[name] = _entry(

@@ -35,10 +35,10 @@ def compare_managed_files(
         MANAGED_MARKERS,
         MANAGED_ROOTS,
         _catalog_agent_files,
+        _registration_roles,
         registration_report,
         registration_role,
     )
-    from .component_health import _registration_roles
 
     if component not in MANAGED_MARKERS:
         return registration_report(component, False, [], (), (), 0, "exact")

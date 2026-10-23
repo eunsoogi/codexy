@@ -7,6 +7,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
@@ -46,7 +47,7 @@ class RuntimeCliTests(RuntimeGitInstallCases, unittest.TestCase):
             "lsp", Path("/tmp/plugin root").resolve(), ["--stdio"]
         )
 
-    def test_cli_accepts_watcher_server(self) -> None:
+    def test_cli_rejects_watcher_server(self) -> None:
         argv = [
             "codexy-mcp-runtime",
             "watcher",
@@ -57,31 +58,38 @@ class RuntimeCliTests(RuntimeGitInstallCases, unittest.TestCase):
         ]
         with (
             mock.patch.object(sys, "argv", argv),
+            mock.patch.object(sys, "stderr", new_callable=io.StringIO),
             mock.patch.object(runtime.Configuration, "load") as load,
-            mock.patch.object(runtime, "run"),
+            mock.patch.object(runtime, "run") as run,
         ):
-            runtime.main()
+            with self.assertRaises(SystemExit) as error:
+                runtime.main()
 
-        load.assert_called_once_with(
-            "watcher", Path("/tmp/plugin root").resolve(), ["--stdio"]
-        )
+        self.assertEqual(error.exception.code, 2)
+        load.assert_not_called()
+        run.assert_not_called()
 
-    def test_watcher_uses_windows_runtime_name(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            manifest = root / ".codex-plugin/plugin.json"
-            manifest.parent.mkdir()
-            manifest.write_text(
-                '{"name":"codexy","repository":"https://github.com/eunsoogi/codexy","version":"1.6.3"}',
-                encoding="utf-8",
-            )
-            with mock.patch.dict(
-                "os.environ", {"CODEXY_RUNTIME_PLATFORM": "windows-x86_64"}, clear=True
-            ):
-                config = runtime.Configuration.load("watcher", root, ["--stdio"])
+    def test_configuration_rejects_watcher_when_called_directly(self) -> None:
+        with (
+            mock.patch.object(sys, "stderr", new_callable=io.StringIO) as stderr,
+            self.assertRaises(SystemExit) as error,
+        ):
+            runtime.Configuration.load("watcher", Path("/tmp/legacy-plugin"), [])
 
-        self.assertIn("windows-x86_64", runtime.SUPPORTED_PLATFORMS)
-        self.assertEqual(config.runtime_name, "codexy-mcp-watcher-windows-x86_64.exe")
+        self.assertEqual(error.exception.code, 127)
+        self.assertIn("does not support server: watcher", stderr.getvalue())
+
+    def test_configuration_constructor_rejects_watcher(self) -> None:
+        plugin = Path(__file__).parents[3] / "plugins/codexy-devtools"
+        configuration = runtime.Configuration.load("lsp", plugin, [])
+        with (
+            mock.patch.object(sys, "stderr", new_callable=io.StringIO) as stderr,
+            self.assertRaises(SystemExit) as error,
+        ):
+            replace(configuration, server="watcher")
+
+        self.assertEqual(error.exception.code, 127)
+        self.assertIn("does not support server: watcher", stderr.getvalue())
 
     def test_github_token_policy_uses_environment_then_cli_on_trusted_api(self) -> None:
         api = "https://api.github.com/repos/eunsoogi/codexy/actions/artifacts"

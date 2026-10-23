@@ -9,6 +9,7 @@ import tarfile
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 
 from codexy_runtime_tools import contract
 
@@ -20,6 +21,41 @@ from runtime_contract_support import (
 )
 
 
+WATCHER_PLATFORM_KINDS = {
+    "darwin-arm64": "mach-o",
+    "linux-x86_64": "elf",
+    "windows-x86_64": "pe",
+}
+
+
+def source_selected_with_legacy_watcher() -> tuple[
+    dict[str, object], dict[str, object], dict[str, object]
+]:
+    """Bind legacy receipt metadata to the embedded candidate payload digest."""
+    watcher: dict[str, object] = {
+        "platforms": {
+            platform: {
+                "path": (
+                    f"runtime/codexy-mcp-watcher-{platform}."
+                    f"{'exe' if platform == 'windows-x86_64' else 'bin'}"
+                ),
+                "sha256": hashlib.sha256(platform.encode()).hexdigest(),
+                "kind": kind,
+            }
+            for platform, kind in WATCHER_PLATFORM_KINDS.items()
+        }
+    }
+    candidate = source_candidate()
+    candidate_classes = cast(dict[str, object], candidate["classes"])
+    candidate_classes["coreWatcherMcp"] = watcher
+    receipt = source_selected()
+    receipt_classes = cast(dict[str, object], receipt["classes"])
+    receipt_classes["coreWatcherMcp"] = watcher
+    artifact = cast(dict[str, object], receipt["artifact"])
+    artifact["payloadManifestSha256"] = hashlib.sha256(encoded(candidate)).hexdigest()
+    return receipt, watcher, candidate
+
+
 class SourceSelectedRuntimeContractTests(unittest.TestCase):
     def test_source_selected_loads_without_a_tracked_candidate_and_verifies_archive(
         self,
@@ -29,7 +65,7 @@ class SourceSelectedRuntimeContractTests(unittest.TestCase):
             archive = root / "runtime.tar.gz"
             self.write_archive(archive)
             release = source_selected(hashlib.sha256(archive.read_bytes()).hexdigest())
-            (root / "runtime-release.json").write_text(
+            _ = (root / "runtime-release.json").write_text(
                 json.dumps(release), encoding="utf-8"
             )
 
@@ -49,6 +85,43 @@ class SourceSelectedRuntimeContractTests(unittest.TestCase):
             self.assertEqual(marker["identity"]["source"]["tree"], "c" * 40)
             self.assertIn("provenance", marker["identity"])
             self.assertIn("classes", marker["identity"])
+
+    def test_source_selected_receipt_preserves_optional_legacy_watcher_class(
+        self,
+    ) -> None:
+        receipt, watcher, _candidate = source_selected_with_legacy_watcher()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _ = (root / "runtime-release.json").write_text(
+                json.dumps(receipt), encoding="utf-8"
+            )
+
+            parsed = contract.load(root)
+
+        classes = parsed.classes
+        self.assertIsNotNone(classes)
+        assert classes is not None
+        self.assertEqual(cast(object, classes["coreWatcherMcp"]), watcher)
+
+    def test_source_selected_receipt_rejects_noncanonical_legacy_watcher_path(
+        self,
+    ) -> None:
+        receipt, watcher, candidate = source_selected_with_legacy_watcher()
+        platforms = cast(dict[str, object], watcher["platforms"])
+        windows = cast(dict[str, object], platforms["windows-x86_64"])
+        windows["path"] = "runtime/codexy-mcp-watcher-windows-x86_64.bin"
+        artifact = cast(dict[str, object], receipt["artifact"])
+        artifact["payloadManifestSha256"] = hashlib.sha256(
+            encoded(candidate)
+        ).hexdigest()
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "runtime-release.json").write_text(
+                json.dumps(receipt), encoding="utf-8"
+            )
+            with self.assertRaisesRegex(ValueError, "path is not canonical"):
+                _ = contract.load(root)
 
     @staticmethod
     def write_archive(path: Path) -> None:

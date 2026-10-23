@@ -224,7 +224,7 @@ class WatcherRegistrationTests(unittest.TestCase):
                 return {
                     "started": True,
                     "callable": True,
-                    "runtime_name": "codexy-watcher",
+                    "runtime_name": "codexy",
                     "runtime_version": VERSION,
                 }
 
