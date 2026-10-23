@@ -1,6 +1,8 @@
 use std::fs;
 
 use super::{document, steps};
+#[path = "candidate_identity.rs"]
+mod candidate_identity;
 
 // Keep candidate receipts attributable to the exact PR head and Actions attempt being inspected.
 #[test]
@@ -101,6 +103,23 @@ fn release_candidate_bundle_binds_inputs_and_stays_non_publishing()
     ] {
         assert!(download_run.contains(required), "download omits {required}");
     }
+
+    let identity = candidate_steps
+        .iter()
+        .position(|step| step["name"] == "Verify selected staging receipt against activation and package bytes")
+        .ok_or("selected staging identity check")?;
+    let materialize_index = candidate_steps
+        .iter()
+        .position(|step| step["name"] == "Materialize and inspect candidate marketplace archives")
+        .ok_or("candidate archive step")?;
+    assert!(
+        identity < materialize_index,
+        "receipt identity must be checked before packaging"
+    );
+    assert_eq!(
+        candidate_steps[identity]["run"],
+        "scripts/verify_selected_staging_identity.py staging/runtime-staging-receipt.json staging/runtime-staging-run.json staging/codexy-marketplace-plugin.tar.gz"
+    );
 
     let materialize = candidate_steps
         .iter()

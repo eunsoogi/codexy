@@ -12,12 +12,13 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
     let verifier = workflow("verify-version-release.yml")?;
     let root = codexy_runtime::paths::repository_root();
     let run = format!(
-        "{}\n{}\n{}\n{}\n{}",
+        "{}\n{}\n{}\n{}\n{}\n{}",
         publisher.1,
         verifier.1,
         fs::read_to_string(root.join("scripts/smoke-public-getcodexy-release.sh"))?,
         fs::read_to_string(root.join("scripts/publish-verified-release"))?,
         fs::read_to_string(root.join("scripts/finalize-verified-release"))?,
+        fs::read_to_string(root.join("scripts/verify_selected_staging_identity.py"))?,
     );
     support::assert_structured_literals(
         &run,
@@ -40,7 +41,8 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
             "releases/assets/$asset_id", "gh api --method PATCH",
             "release asset differs from verified bytes",
             "--plugin-root \"$PWD/plugins/codexy-devtools\"",
-            "jq -er .version)\" = \"$TARGET_VERSION\"",
+            "manifest.get(\"version\") != target_version",
+            "scripts/verify_selected_staging_identity.py",
         ],
     );
     support::assert_structured_absent_literals(
@@ -49,7 +51,7 @@ fn final_publisher_materializes_and_exercises_the_public_archive()
         &["--clobber", "cp dist/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz", "gh release upload \"$RELEASE_TAG\"", "gh release download \"$RELEASE_TAG\"", "releases/tags/$RELEASE_TAG"],
     );
     let marker = |needle: &str| run.find(needle).ok_or("publisher ordering");
-    let staged_identity = marker("tar -xOzf staging/codexy-marketplace-plugin.tar.gz")?;
+    let staged_identity = marker("scripts/verify_selected_staging_identity.py")?;
     let runtime_copy = marker("cp staging/codexy-marketplace-plugin.tar.gz")?;
     let public_materialization = marker("scripts/materialize-runtime-release-archive")?;
     assert!(
