@@ -141,7 +141,6 @@ class LifecycleWatcherTests(unittest.TestCase):
             )
 
     def test_update_repairs_a_stale_host_cache_surface(self) -> None:
-        # Core 2.0 syncs its no-MCP contract without repairing dormant launchers.
         with fixture({"core"}) as state:
             record(state.home, ["core"])
             source_plugin = state.marketplace / "plugins/codexy"
@@ -149,7 +148,8 @@ class LifecycleWatcherTests(unittest.TestCase):
             cache = component_cache_plugin(state.home, "core", VERSION)
             shutil.copytree(source_plugin, cache)
             cache_bootstrap = cache / "mcp/codexy_mcp_bootstrap.py"
-            cache_bootstrap.write_text("stale cache surface\n", encoding="utf-8")
+            # No-MCP repair preserves dormant bytes; write bytes to avoid Windows CRLF.
+            cache_bootstrap.write_bytes(b"stale cache surface\n")
             (cache / ".mcp.json").write_text('{"watcher": {}}\n', encoding="utf-8")
 
             with (
