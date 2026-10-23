@@ -55,11 +55,11 @@ the retired Watcher launchers and dedicated bootstrap. The Rust Watcher server,
 binary, protocol, and state/wait implementation have been removed from
 `codexy-runtime`. Orchestration guidance remains for hosts that provide a
 compatible external implementation and transport. An internal package contract
-records the intentional empty MCP
-surface for installer and doctor validation; it does not register a host MCP
-server. Codegraph and LSP remain devtools-owned. A future extraction MUST
-promote any needed core capability into an explicitly documented public contract
-rather than importing a private path across product roots.
+records the intentional empty MCP surface for installer and doctor validation;
+it does not register a host MCP server. Codegraph and LSP remain devtools-owned.
+A future extraction MUST promote any needed core capability into an explicitly
+documented public contract rather than importing a private path across product
+roots.
 
 ### Optional GitHub behavior
 
@@ -108,13 +108,13 @@ global permission barrier.
 
 ## Target destinations and dispositions
 
-| Current logical surface                                                                                      | Destination                  | Disposition                                                                                       |
-| ------------------------------------------------------------------------------------------------------------ | ---------------------------- | ------------------------------------------------------------------------------------------------- |
-| Orchestration, specialists, instruction hooks, dreaming, engineering, realtime voice orchestration, and Wiki | `codexy`                     | Retain in core.                                                                                   |
-| Generic GitHub issue, branch, worktree, pull request, review, CI, merge, and release workflow                | `codexy-github`              | Extracted.                                                                                        |
-| External Watcher orchestration guidance                                                                      | `codexy`                     | Retain guidance for host-supplied implementations; the Rust server and transport are retired.     |
-| Codegraph and LSP MCP registrations, runtimes, wrappers, guidance, and permissions                           | `codexy-devtools`            | Extracted into the devtools package.                                                              |
-| `release-engineering` and `plugin-marketplace-prep` skills                                                   | Repository-only Codex skills | Move out of the installed plugin.                                                                 |
+| Current logical surface                                                                                      | Destination                  | Disposition                                                                                   |
+| ------------------------------------------------------------------------------------------------------------ | ---------------------------- | --------------------------------------------------------------------------------------------- |
+| Orchestration, specialists, instruction hooks, dreaming, engineering, realtime voice orchestration, and Wiki | `codexy`                     | Retain in core.                                                                               |
+| Generic GitHub issue, branch, worktree, pull request, review, CI, merge, and release workflow                | `codexy-github`              | Extracted.                                                                                    |
+| External Watcher orchestration guidance                                                                      | `codexy`                     | Retain guidance for host-supplied implementations; the Rust server and transport are retired. |
+| Codegraph and LSP MCP registrations, runtimes, wrappers, guidance, and permissions                           | `codexy-devtools`            | Extracted into the devtools package.                                                          |
+| `release-engineering` and `plugin-marketplace-prep` skills                                                   | Repository-only Codex skills | Move out of the installed plugin.                                                             |
 
 Each row is one destination decision for its current logical surface. A later
 implementation issue MAY refine a root into individual files only within its

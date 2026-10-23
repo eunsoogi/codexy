@@ -102,9 +102,9 @@ as permission to claim the server worked.
   `coreWatcherMcp` archive class, but that compatibility path does not build or
   expose a Watcher server.
 - Core hooks now cover only thread delivery, child-thread creation, and subagent
-  ownership. They do not bind a Watcher wait, add a sender `PostToolUse` handler,
-  or register custom `Interrupt` or `UserPromptSubmit` cancellation handlers.
-  Native host `Interrupt` semantics remain host-managed.
+  ownership. They do not bind a Watcher wait, add a sender `PostToolUse`
+  handler, or register custom `Interrupt` or `UserPromptSubmit` cancellation
+  handlers. Native host `Interrupt` semantics remain host-managed.
 - Package configuration does not prove host cancellation propagation. A
   delivered same-connection `notifications/cancelled` affects its own request
   only when the host propagates it; task delivery and outer wait termination

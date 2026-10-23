@@ -7,6 +7,8 @@ use serde_json::{Value, json};
 // These path modules isolate protocol and lifecycle regressions while sharing one stdio client.
 #[path = "mcp_stdio/client.rs"]
 mod client;
+#[path = "mcp_stdio/cancellation.rs"]
+mod cancellation;
 #[path = "mcp_stdio/codegraph_protocol.rs"]
 mod codegraph_protocol;
 #[path = "mcp_stdio/change_impact/mod.rs"]
