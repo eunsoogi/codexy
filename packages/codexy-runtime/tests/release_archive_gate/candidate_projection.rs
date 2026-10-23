@@ -10,6 +10,8 @@ use super::{complete_archive_fixture, complete_plugin_fixture};
 
 pub(super) type CandidateTestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+#[path = "candidate_admission.rs"]
+pub(super) mod candidate_admission;
 #[path = "../runtime_candidate_assembly_contract/fixture_seed.rs"]
 mod fixture_seed;
 
@@ -160,6 +162,8 @@ impl CandidateAssemblyFixture {
     }
 
     pub(super) fn assemble(&self) -> Output {
+        let target_version = candidate_admission::candidate_version(self.root())
+            .expect("admitted candidate version");
         Command::new("sh")
             .arg("scripts/assemble-runtime-candidate")
             .current_dir(self.root())
@@ -168,7 +172,7 @@ impl CandidateAssemblyFixture {
             .env("STAGING_RUN_ATTEMPT", "1")
             .env("GITHUB_SERVER_URL", "https://github.com")
             .env("GITHUB_REPOSITORY", "eunsoogi/codexy")
-            .env("TARGET_VERSION", env!("CARGO_PKG_VERSION"))
+            .env("TARGET_VERSION", target_version)
             .env(
                 "PATH",
                 format!(
