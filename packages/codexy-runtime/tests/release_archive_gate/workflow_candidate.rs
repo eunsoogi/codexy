@@ -53,6 +53,10 @@ fn candidate_workflow_builds_and_smokes_retained_runtimes_without_watcher() {
     let unix_smoke = step("Smoke platform-local MCP protocols")["run"]
         .as_str()
         .expect("platform-local smoke");
+    assert!(
+        unix_smoke.contains("scripts/smoke_runtime_mcp.py --skip-watcher"),
+        "candidate smoke omits the Watcher binary, so its helper must skip that case"
+    );
     for retained in [
         "scripts/smoke_runtime_mcp.py",
         "lsp_status",

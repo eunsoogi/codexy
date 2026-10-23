@@ -83,7 +83,7 @@ jobs:
         if: matrix.platform != 'windows-x86_64'
         run: |
           # The helper performs interactive init/tool/EOF checks for codexy-mcp-lsp and codexy-mcp-codegraph: {"method": "initialize"}, {"protocolVersion": "2024-11-05"}, {"name": "lsp_status"}, and {"name": "codegraph_overview"}.
-          python3 scripts/smoke_runtime_mcp.py
+          python3 scripts/smoke_runtime_mcp.py --skip-watcher
       - name: Smoke native Windows MCP protocols
         if: matrix.platform == 'windows-x86_64'
         shell: pwsh
