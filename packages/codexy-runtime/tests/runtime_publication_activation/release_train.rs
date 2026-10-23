@@ -8,7 +8,10 @@ use super::final_archive_fixture::FinalArchiveFixture;
 
 #[path = "release_train_support.rs"]
 mod release_train_support;
-use release_train_support::{copy_devtools_inputs, project_release_versions, release_checkout};
+use release_train_support::{
+    component_version, copy_devtools_inputs, project_release_versions, release_checkout,
+    set_manifest_version,
+};
 
 const COMPONENT_MANIFEST: &str =
     "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json";
@@ -63,13 +66,15 @@ fn release_train_assembler_emits_a_reproducible_complete_bundle()
             .output()?
             .stdout,
     )?;
-    assert!(entries.contains("plugins/codexy/mcp/codexy_mcp_bootstrap.py"));
+    assert!(!entries.contains("plugins/codexy/mcp/codexy_mcp_bootstrap.py"));
+    assert!(!entries.contains("plugins/codexy/mcp/codexy-mcp-watcher.sh"));
+    assert!(!entries.contains("plugins/codexy/mcp/codexy-mcp-watcher.cmd"));
     assert!(entries.contains("plugins/codexy-devtools/mcp/codexy_mcp_bootstrap.py"));
     Ok(())
 }
 
 #[test]
-fn release_train_inspector_accepts_the_complete_activation_checkout()
+fn release_train_inspector_accepts_optional_legacy_watcher_class()
 -> Result<(), Box<dyn std::error::Error>> {
     let temporary = tempfile::tempdir()?;
     let root = codexy_runtime::paths::repository_root();
@@ -200,7 +205,13 @@ fn release_train_inspector_accepts_the_complete_activation_checkout()
 }
 
 fn materialize_core_handoff_fixture(checkout: &Path, staged: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    // Extend the activated receipt with the core handoff and watcher runtime classes.
+    // Model the retained optional archive branch with a synthetic historical launcher.
+    let source_launcher = checkout.join("plugins/codexy/mcp/codexy-mcp-watcher.sh");
+    fs::create_dir_all(source_launcher.parent().ok_or("legacy launcher parent")?)?;
+    fs::write(&source_launcher, "#!/bin/sh\nexec uvx codexy-mcp-runtime watcher -- \"$@\"\n")?;
+    support::make_executable(&source_launcher)?;
+
+    // Extend the fixture with core handoff and optional legacy Watcher runtime classes.
     let activation_path = checkout.join(".agents/plugins/runtime-activation.json");
     let mut activation: Value = serde_json::from_slice(&fs::read(&activation_path)?)?;
     let mut platforms = serde_json::Map::new();
@@ -226,22 +237,5 @@ fn materialize_core_handoff_fixture(checkout: &Path, staged: &Path) -> Result<()
     activation["candidate"]["classes"]["coreHandoff"] = json!({"manifest": {"path": "handoff-runtime.json", "sha256": support::sha256_file(&handoff_path)?}, "platforms": handoff["platforms"]});
     activation["candidate"]["classes"]["coreWatcherMcp"] = json!({"platforms": watcher_platforms});
     fs::write(activation_path, format!("{}\n", serde_json::to_string_pretty(&activation)?))?;
-    Ok(())
-}
-
-fn component_version(root: &Path) -> Result<String, Box<dyn std::error::Error>> {
-    let manifest: serde_json::Value = serde_json::from_slice(&fs::read(root.join(COMPONENT_MANIFEST))?)?;
-    manifest["components"]
-        .as_array()
-        .and_then(|components| components.first())
-        .and_then(|component| component["version"].as_str())
-        .map(ToOwned::to_owned)
-        .ok_or_else(|| "component manifest version".into())
-}
-
-fn set_manifest_version(path: &Path, version: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let mut manifest: serde_json::Value = serde_json::from_slice(&fs::read(path)?)?;
-    manifest["version"] = serde_json::Value::String(version.to_owned());
-    fs::write(path, format!("{}\n", serde_json::to_string_pretty(&manifest)?))?;
     Ok(())
 }

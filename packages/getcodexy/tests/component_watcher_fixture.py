@@ -122,6 +122,5 @@ def install_watcher_runtime(
             "exit /b %ERRORLEVEL%\r\n",
             encoding="utf-8",
         )
-    # Validate against the copied package version so retained launchers do not
-    # recreate MCP registration for the intentional no-MCP core package.
+    # Validate the explicitly registered legacy fixture before probing its runtime.
     materialize_component_mcp(plugin, "core", version)

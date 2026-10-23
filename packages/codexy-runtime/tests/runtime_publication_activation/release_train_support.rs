@@ -1,6 +1,7 @@
 use std::{fs, path::{Path, PathBuf}};
 
 use crate::support;
+use serde_json::Value;
 
 use super::{COMPONENT_MANIFEST, MARKETPLACE, PLUGIN_MANIFESTS};
 
@@ -27,7 +28,7 @@ pub(super) fn project_release_versions(
     version: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     for relative in PLUGIN_MANIFESTS {
-        super::set_manifest_version(&root.join(relative), version)?;
+        set_manifest_version(&root.join(relative), version)?;
     }
     let path = root.join(MARKETPLACE);
     let mut marketplace: serde_json::Value = serde_json::from_slice(&fs::read(&path)?)?;
@@ -38,6 +39,27 @@ pub(super) fn project_release_versions(
         plugin["version"] = serde_json::Value::String(version.to_owned());
     }
     fs::write(path, format!("{}\n", serde_json::to_string_pretty(&marketplace)?))?;
+    Ok(())
+}
+
+// Bundle tagging and fixture projection share the component manifest version as their source.
+pub(super) fn component_version(root: &Path) -> Result<String, Box<dyn std::error::Error>> {
+    let manifest: Value = serde_json::from_slice(&fs::read(root.join(COMPONENT_MANIFEST))?)?;
+    manifest["components"]
+        .as_array()
+        .and_then(|components| components.first())
+        .and_then(|component| component["version"].as_str())
+        .map(ToOwned::to_owned)
+        .ok_or_else(|| "component manifest version".into())
+}
+
+pub(super) fn set_manifest_version(
+    path: &Path,
+    version: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut manifest: Value = serde_json::from_slice(&fs::read(path)?)?;
+    manifest["version"] = Value::String(version.to_owned());
+    fs::write(path, format!("{}\n", serde_json::to_string_pretty(&manifest)?))?;
     Ok(())
 }
 

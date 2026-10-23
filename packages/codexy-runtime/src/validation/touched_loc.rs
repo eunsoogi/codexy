@@ -145,11 +145,11 @@ fn is_governed_path(path: &Path) -> bool {
     {
         return true;
     }
+    // Keep extensionless maintained executables in the current hook and script trees governed.
     matches!(
         path.extension().and_then(|extension| extension.to_str()),
         Some("rs" | "sh" | "py" | "js" | "ts" | "tsx" | "jsx")
-    ) || path_text.starts_with("plugins/codexy/mcp/")
-        || path_text.starts_with("plugins/codexy/hooks/")
+    ) || path_text.starts_with("plugins/codexy/hooks/")
         || path_text.starts_with("plugins/codexy-github/hooks/")
         || path_text.starts_with("scripts/")
 }

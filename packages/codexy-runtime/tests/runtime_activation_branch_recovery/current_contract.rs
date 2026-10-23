@@ -3,18 +3,14 @@ mod fixture;
 
 use std::process::Output;
 
-use fixture::{WatcherCase, run_case, run_staged_case};
+use fixture::{CandidateCase, run_case, run_staged_case};
 
 #[test]
-// The verifier keeps current and previous package versions usable while rejecting tampered runtime payloads.
-fn verifier_tracks_current_and_older_package_versions_and_watcher_outputs()
+// Activation must remove old base entrypoints from both current and previous package revisions.
+fn verifier_tracks_retired_core_entrypoint_removal_for_current_and_older_packages()
 -> Result<(), Box<dyn std::error::Error>> {
-    for (base_version, watcher_case) in [
-        ("1.7.0", WatcherCase::Expected),
-        ("1.6.3", WatcherCase::Expected),
-        ("1.7.0", WatcherCase::Missing),
-    ] {
-        let output = run_case(base_version, watcher_case)?;
+    for base_version in ["1.7.0", "1.6.3"] {
+        let output = run_case(base_version, CandidateCase::NoRetiredPaths)?;
         assert!(
             output.status.success(),
             "verifier rejected base {base_version}:\nstdout:\n{}\nstderr:\n{}",
@@ -22,7 +18,7 @@ fn verifier_tracks_current_and_older_package_versions_and_watcher_outputs()
             String::from_utf8_lossy(&output.stderr),
         );
     }
-    let staged = run_staged_case("1.6.3", WatcherCase::Expected)?;
+    let staged = run_staged_case("1.6.3", CandidateCase::NoRetiredPaths)?;
     assert!(
         staged.status.success(),
         "verifier rejected staged activation:\nstdout:\n{}\nstderr:\n{}",
@@ -33,11 +29,11 @@ fn verifier_tracks_current_and_older_package_versions_and_watcher_outputs()
 }
 
 #[test]
-fn verifier_rejects_tampered_watcher_and_unexpected_file()
+fn verifier_rejects_stale_retired_core_launcher_and_unexpected_file()
 -> Result<(), Box<dyn std::error::Error>> {
-    let tampered = run_case("1.7.0", WatcherCase::Tampered)?;
-    assert_failure_contains(&tampered, "plugins/codexy/mcp/codexy-mcp-watcher.sh");
-    let unexpected = run_case("1.7.0", WatcherCase::Unexpected)?;
+    let stale = run_case("1.7.0", CandidateCase::StaleLauncher)?;
+    assert_failure_contains(&stale, "activation branch differs from verified contract");
+    let unexpected = run_case("1.7.0", CandidateCase::Unexpected)?;
     assert_failure_contains(&unexpected, "activation branch differs from verified contract");
     Ok(())
 }

@@ -17,6 +17,7 @@ pub(crate) mod fixture_hook_path_windows;
 pub(crate) mod fixture_path;
 pub(crate) mod fixture_probe;
 pub(crate) mod fixture_text;
+mod legacy_core_watcher;
 mod package;
 mod package_archive;
 mod package_fixture;
@@ -78,6 +79,7 @@ pub(crate) use fixture_text::{
     materialize_lf_text_fixture, normalize_fixture_text, read_text_fixture,
     write_fixture_with_permissions,
 };
+pub(crate) use legacy_core_watcher::install_legacy_core_watcher_package;
 pub(super) use package::{
     assert_wrapper_discovers_default_artifact_without_cargo,
     assert_wrapper_does_not_reuse_package_override_as_default_without_cargo,

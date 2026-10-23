@@ -7,10 +7,11 @@ Return to the [architecture guide](../architecture.md).
 The optional Codexy Devtools manifest points `mcpServers` at
 [`plugins/codexy-devtools/.mcp.json`](../../plugins/codexy-devtools/.mcp.json).
 That file registers two plugin-local stdio servers. Core Codexy no longer
-registers Watcher MCP; its launcher and runtime remain available to hosts that
-explicitly configure the compatibility transport. Registration tells a host how
-to resolve a server; runtime startup and tool exposure still belong to the host
-and the current session.
+registers Watcher MCP or ships its retired launchers and dedicated bootstrap.
+The Rust Watcher runtime remains in the repository; a host using a compatible
+external transport must provide its own entrypoint. Registration tells a host
+how to resolve a server; runtime startup and tool exposure still belong to the
+host and the current session.
 
 | Server      | Registration                                                                                                                | Runtime boundary                                                                                                                                                      | Capabilities and tools                                                                                                                                                                                                                                                                                                                  |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

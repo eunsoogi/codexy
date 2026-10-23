@@ -39,9 +39,11 @@ or host-exposure mismatch and fail closed. MUST NOT substitute `default`,
 `worker`, or `explorer` for a Codexy specialist or Sentinel.
 
 Codexy no longer packages a native Watcher specialist or registers Watcher MCP
-in the core plugin. Its launcher, runtime, and interrupt hooks remain for hosts
-that explicitly configure the compatibility transport; their presence does not
-register or prove a Watcher role in a fresh task.
+in the core plugin. The Rust runtime and interrupt hooks remain in the
+repository, but current core packages omit the retired launcher and dedicated
+bootstrap. A host using a compatibility transport must supply a compatible
+entrypoint; retained code does not register or prove a Watcher role in a fresh
+task.
 
 The registration bridge and update checker MUST NOT run from SessionStart,
 UserPromptSubmit, or another lifecycle hook. Codexy MUST NOT commit generated

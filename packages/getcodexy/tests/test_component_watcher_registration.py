@@ -22,7 +22,6 @@ from codexy_runtime_tools.component_registration_health import (
 )
 from codexy_runtime_tools.component_mcp_materialization import (
     materialize_component_mcp,
-    mcp_configuration,
     valid_component_mcp,
 )
 from packages.getcodexy.tests.component_lifecycle_support import fixture
@@ -106,15 +105,9 @@ class WatcherRegistrationTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, "surface is invalid"):
                         materialize_component_mcp(plugin, "core", version)
 
-            package["version"] = VERSION
-            package["mcpServers"] = "./.mcp.json"
-            (plugin / ".codex-plugin/mcp-capability.json").unlink(missing_ok=True)
-            package_path.write_text(json.dumps(package), encoding="utf-8")
-            (plugin / ".mcp.json").write_text(
-                json.dumps(mcp_configuration("core", VERSION), indent=2),
-                encoding="utf-8",
-            )
-            self.assertTrue(valid_component_mcp(plugin, "core", VERSION))
+            # Keep legacy registration coverage explicit after the current package drops MCP assets.
+            configure_legacy_core_package(plugin, LEGACY_VERSION)
+            self.assertTrue(valid_component_mcp(plugin, "core", LEGACY_VERSION))
 
     @unittest.skipIf(os.name == "nt", "creating a symlink requires Windows privileges")
     def test_install_rejects_a_symlinked_mcp_parent_before_materialization(
@@ -185,10 +178,12 @@ class WatcherRegistrationTests(unittest.TestCase):
 
     def test_doctor_rejects_a_missing_registered_watcher_bootstrap(self) -> None:
         with fixture({"core"}) as state:
-            _register_core(state, state.marketplace / "plugins/codexy")
-            bootstrap = state.marketplace / "plugins/codexy/mcp/codexy_mcp_bootstrap.py"
+            plugin = state.marketplace / "plugins/codexy"
+            configure_legacy_core_package(plugin, LEGACY_VERSION)
+            _register_core(state, plugin)
+            bootstrap = plugin / "mcp/codexy_mcp_bootstrap.py"
             materialize_component_mcp(
-                state.marketplace / "plugins/codexy", "core", VERSION
+                plugin, "core", LEGACY_VERSION
             )
             bootstrap.unlink()
             result = self._doctor(state)
@@ -200,12 +195,13 @@ class WatcherRegistrationTests(unittest.TestCase):
 
     def test_doctor_rejects_a_missing_cached_watcher_bootstrap(self) -> None:
         with fixture({"core"}) as state:
-            _register_core(state, state.marketplace / "plugins/codexy")
-            materialize_component_mcp(
-                state.marketplace / "plugins/codexy", "core", VERSION
-            )
+            plugin = state.marketplace / "plugins/codexy"
+            # Match the host inventory so this assertion isolates the legacy MCP surface.
+            configure_legacy_core_package(plugin, VERSION)
+            _register_core(state, plugin)
+            materialize_component_mcp(plugin, "core", VERSION)
             cache = state.home / "plugins/cache/codexy/codexy" / VERSION
-            shutil.copytree(state.marketplace / "plugins/codexy", cache)
+            shutil.copytree(plugin, cache)
             (cache / "mcp/codexy_mcp_bootstrap.py").unlink()
             result = self._doctor(state)
 

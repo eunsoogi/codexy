@@ -229,17 +229,20 @@ class WatcherMaterializationTests(unittest.TestCase):
             )
             self.assertFalse(run.call_args.kwargs.get("shell", False))
 
-    def test_plugin_bootstraps_match_the_single_packaged_implementation(self) -> None:
+    def test_only_devtools_packages_the_shared_bootstrap(self) -> None:
         canonical = (
             REPOSITORY / "packages/getcodexy/src/codexy_runtime_tools/mcp_bootstrap.py"
         ).read_bytes()
-        for plugin_name in ("codexy", "codexy-devtools"):
-            self.assertEqual(
-                (
-                    REPOSITORY / f"plugins/{plugin_name}/mcp/codexy_mcp_bootstrap.py"
-                ).read_bytes(),
-                canonical,
-            )
+        self.assertFalse(
+            (REPOSITORY / "plugins/codexy/mcp/codexy_mcp_bootstrap.py").exists()
+        )
+        self.assertEqual(
+            (
+                REPOSITORY
+                / "plugins/codexy-devtools/mcp/codexy_mcp_bootstrap.py"
+            ).read_bytes(),
+            canonical,
+        )
 
 
 if __name__ == "__main__":
