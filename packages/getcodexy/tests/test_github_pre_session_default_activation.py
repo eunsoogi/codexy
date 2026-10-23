@@ -96,9 +96,7 @@ class GithubPreSessionDefaultActivationTests(unittest.TestCase):
 
     def test_symlinked_watcher_parent_is_rejected_before_materialization(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            root, core, github = activation_fixture(
-                Path(temporary), legacy_core=True
-            )
+            root, core, github = activation_fixture(Path(temporary), legacy_core=True)
             outside = root / "outside"
             outside.mkdir()
             moved = outside / "mcp"

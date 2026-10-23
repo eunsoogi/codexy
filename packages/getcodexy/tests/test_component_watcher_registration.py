@@ -182,9 +182,7 @@ class WatcherRegistrationTests(unittest.TestCase):
             configure_legacy_core_package(plugin, LEGACY_VERSION)
             _register_core(state, plugin)
             bootstrap = plugin / "mcp/codexy_mcp_bootstrap.py"
-            materialize_component_mcp(
-                plugin, "core", LEGACY_VERSION
-            )
+            materialize_component_mcp(plugin, "core", LEGACY_VERSION)
             bootstrap.unlink()
             result = self._doctor(state)
 

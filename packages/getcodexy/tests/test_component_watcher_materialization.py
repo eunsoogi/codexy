@@ -238,8 +238,7 @@ class WatcherMaterializationTests(unittest.TestCase):
         )
         self.assertEqual(
             (
-                REPOSITORY
-                / "plugins/codexy-devtools/mcp/codexy_mcp_bootstrap.py"
+                REPOSITORY / "plugins/codexy-devtools/mcp/codexy_mcp_bootstrap.py"
             ).read_bytes(),
             canonical,
         )
