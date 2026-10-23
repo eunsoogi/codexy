@@ -36,7 +36,7 @@ fn product_boundary_contract_owns_each_current_surface_once() -> TestResult {
 }
 
 #[test]
-// Keep current registrations in Devtools while the core package omits retired Watcher entrypoints.
+// Keep Devtools registrations separate and verify the retired Rust Watcher server stays absent.
 fn core_and_devtools_packages_keep_developer_tool_surfaces_separate() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let core_manifest: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
@@ -46,6 +46,9 @@ fn core_and_devtools_packages_keep_developer_tool_surfaces_separate() -> TestRes
         core_manifest.get("mcpServers").is_none(),
         "core must not register Watcher MCP"
     );
+    let runtime = root.join("packages/codexy-runtime");
+    assert!(!runtime.join("src/watcher").exists());
+    assert!(!runtime.join("src/bin/codexy_mcp_watcher.rs").exists());
     let core = root.join("plugins/codexy");
     assert!(!core.join(".mcp.json").exists());
     for retired in [

@@ -8,10 +8,11 @@ The optional Codexy Devtools manifest points `mcpServers` at
 [`plugins/codexy-devtools/.mcp.json`](../../plugins/codexy-devtools/.mcp.json).
 That file registers two plugin-local stdio servers. Core Codexy no longer
 registers Watcher MCP or ships its retired launchers and dedicated bootstrap.
-The Rust Watcher runtime remains in the repository; a host using a compatible
-external transport must provide its own entrypoint. Registration tells a host
-how to resolve a server; runtime startup and tool exposure still belong to the
-host and the current session.
+The Rust Watcher server, binary, protocol, and state/wait implementation have
+been removed from `codexy-runtime`; any external Watcher host must provide its
+own compatible implementation. Registration tells a host how to resolve a
+server; runtime startup and tool exposure still belong to the host and the
+current session.
 
 | Server      | Registration                                                                                                                | Runtime boundary                                                                                                                                                      | Capabilities and tools                                                                                                                                                                                                                                                                                                                  |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -95,24 +96,19 @@ as permission to claim the server worked.
   separate. A direct plugin-subprocess probe can establish the first three, but
   `verified` remains `unknown` without host/session evidence; `unknown` is
   non-proof for that observation and does not by itself classify overall health.
-- A separately supplied Watcher using the core MCP uses one quiet
-  `watcher_wait`: omitting `timeoutMs` selects the 295,000 ms server-side
-  default, leaving a five-second margin under the observed 300-second
-  `tools/call` transport deadline. The bounded `MAX_WAIT_MS` maximum remains
-  3,600,000 ms. An explicit shorter wait remains supported for a user deadline
-  or a confirmed host limit. Same-connection `notifications/cancelled` releases
-  only the pending request when the host propagates it and preserves the durable
-  session; `watcher_cancel` separately ends that session and requires a fresh
-  assignment.
+- Watcher-specific `watcher_open`, `watcher_report`, `watcher_wait`,
+  `watcher_cancel`, durable state, and interrupt-hook handling are retired from
+  this runtime. Historical release readers may still validate an optional
+  `coreWatcherMcp` archive class, but that compatibility path does not build or
+  expose a Watcher server.
 - Core hooks now cover only thread delivery, child-thread creation, and subagent
-  ownership. They do not bind `watcher_wait`, add a sender `PostToolUse`
-  handler, or register custom `Interrupt` or `UserPromptSubmit` cancellation
-  handlers. This retirement leaves native host `Interrupt` semantics and the MCP
-  cancellation/session contracts above unchanged.
+  ownership. They do not bind a Watcher wait, add a sender `PostToolUse` handler,
+  or register custom `Interrupt` or `UserPromptSubmit` cancellation handlers.
+  Native host `Interrupt` semantics remain host-managed.
 - Package configuration does not prove host cancellation propagation. A
-  delivered same-connection MCP cancellation or an explicit `watcher_cancel`
-  still affects its own request or durable session; task delivery and outer wait
-  termination alone do not prove either effect. Candidate hook-list and runtime
+  delivered same-connection `notifications/cancelled` affects its own request
+  only when the host propagates it; task delivery and outer wait termination
+  alone do not prove request cancellation. Candidate hook-list and runtime
   observations remain separate evidence.
 
 ## Plugin and runtime discovery

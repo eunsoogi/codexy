@@ -9,10 +9,10 @@ replace goal-lifecycle, or choose a repository's GitHub policy.
 Codexy no longer packages a native Watcher specialist or registers Watcher MCP
 in the core plugin. Watcher-specific flows below apply only when a Watcher is
 supplied and assigned outside the packaged specialist catalog; ordinary Worker
-observation remains direct. The Rust Watcher runtime and interrupt-hook
-compatibility code remain in the repository, while current core packages omit
-the retired Watcher launchers and dedicated bootstrap. Hosts using the
-compatibility transport must supply a compatible entrypoint separately.
+observation remains direct. The Rust Watcher runtime and its interrupt-hook
+compatibility code have been removed from the repository. Hosts using the
+compatibility transport must supply their own compatible implementation and
+entrypoint.
 
 ## Canonical role mapping
 

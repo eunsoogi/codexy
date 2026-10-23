@@ -39,22 +39,13 @@ pub(super) fn materialize(
         return;
     }
     // Each core watcher entry binds its platform path, executable format, and content digest.
-    let host = crate::support::release_archive::fixture_host_platform(
-        std::env::consts::OS,
-        std::env::consts::ARCH,
-    )
-    .expect("host platform");
     for (platform, extension, kind) in WATCHERS {
         let relative = format!("runtime/codexy-mcp-watcher-{platform}.{extension}");
         let path = plugin_root.join(&relative);
-        if platform == host {
-            std::fs::copy(env!("CARGO_BIN_EXE_codexy-mcp-watcher"), &path)
-                .expect("native watcher runtime");
-        } else {
-            std::fs::write(&path, format!("fixture core watcher {platform}\n"))
-                .expect("watcher runtime");
-        }
-        if extension == "bin" || platform == host {
+        // Keep legacy optional-class reader coverage without building the retired server.
+        fs::write(&path, format!("fixture core watcher {platform}\n"))
+            .expect("watcher runtime fixture");
+        if extension == "bin" {
             super::make_executable(&path).expect("executable watcher");
         }
         release["classes"]["coreWatcherMcp"]["platforms"][platform] = json!({
