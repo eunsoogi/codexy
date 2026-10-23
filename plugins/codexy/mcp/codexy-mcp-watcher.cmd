@@ -12,7 +12,7 @@ if errorlevel 1 (
 set "repo_root=%plugin_root%\..\.."
 set "runtime_source=%repo_root%\packages\getcodexy"
 if exist "%runtime_source%\pyproject.toml" goto local_source
-uvx --from getcodexy==1.13.4 codexy-mcp-runtime watcher --plugin-root "%plugin_root%" -- %*
+uvx --from getcodexy==2.0.0 codexy-mcp-runtime watcher --plugin-root "%plugin_root%" -- %*
 exit /b %ERRORLEVEL%
 
 :local_source
