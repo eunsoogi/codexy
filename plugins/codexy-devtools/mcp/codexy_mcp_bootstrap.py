@@ -13,7 +13,8 @@ from pathlib import Path
 
 
 REPOSITORY = "https://github.com/eunsoogi/codexy"
-SERVERS = frozenset({"watcher", "lsp", "codegraph"})
+# This shared entrypoint ships with devtools; legacy Watcher launches stay in 1.x.
+SERVERS = frozenset({"lsp", "codegraph"})
 SEMVER = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z")
 
 
@@ -21,7 +22,7 @@ def main(arguments: list[str] | None = None) -> int:
     values = list(sys.argv[1:] if arguments is None else arguments)
     if not values or values[0] not in SERVERS:
         print(
-            "codexy_mcp_bootstrap requires watcher, lsp, or codegraph",
+            "codexy_mcp_bootstrap requires lsp or codegraph",
             file=sys.stderr,
         )
         return 64

@@ -1,4 +1,4 @@
-"""Load immutable runtime launch configuration from plugin metadata and environment."""
+"""Load immutable configuration for the current LSP and Codegraph launchers."""
 
 from __future__ import annotations
 
@@ -14,7 +14,8 @@ from .source import ExplicitRuntimeSource, RuntimeSourceIdentity
 
 
 REPOSITORY = "https://github.com/eunsoogi/codexy"
-PUBLIC_BUNDLE_ASSET = "codexy-marketplace-bundle.tar.gz"
+# Legacy core Watcher requests belong to their verified 1.x runner, never this 2.0 package.
+RUNTIME_SERVERS = ("lsp", "codegraph")
 
 
 def host_platform_name() -> str:
@@ -59,13 +60,18 @@ class Configuration:
     git_fallback: bool
     release_contract: RuntimeRelease | None = None
     source_identity: RuntimeSourceIdentity | None = None
-    allow_mixed_plugin_roots: bool = False
+
+    def __post_init__(self) -> None:
+        if self.server not in RUNTIME_SERVERS:
+            fail(f"codexy-mcp-runtime does not support server: {self.server}")
 
     @classmethod
     def load(
         cls, server: str, plugin_root: Path, arguments: list[str]
     ) -> "Configuration":
         """Use the release contract unless an explicit source is selected."""
+        if server not in RUNTIME_SERVERS:
+            fail(f"codexy-mcp-runtime does not support server: {server}")
         manifest = plugin_root / ".codex-plugin/plugin.json"
         try:
             release = plugin_release(manifest)
@@ -101,12 +107,10 @@ class Configuration:
                 release_contract.artifact.sha256,
             )
         elif explicit_source is None:
-            asset = (
-                PUBLIC_BUNDLE_ASSET
-                if server == "watcher"
-                else "codexy-marketplace-plugin.tar.gz"
+            package_url = (
+                f"{REPOSITORY}/releases/download/v{release}/"
+                "codexy-marketplace-plugin.tar.gz"
             )
-            package_url = f"{REPOSITORY}/releases/download/v{release}/{asset}"
         platform = host_platform_name()
         return cls(
             server=server,
@@ -140,5 +144,4 @@ class Configuration:
                 package_url=package_url,
                 release=release_contract,
             ),
-            allow_mixed_plugin_roots=server == "watcher" and release_contract is None,
         )

@@ -1,4 +1,4 @@
-"""Validation for the optional core Watcher runtime class."""
+"""Validate legacy Watcher receipt metadata without making it executable."""
 
 from typing import Any
 

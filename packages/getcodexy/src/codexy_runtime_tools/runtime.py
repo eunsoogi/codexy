@@ -10,7 +10,7 @@ from typing import NoReturn
 
 from .cache import runtime_cache_key
 from .installer import executable, execute, install_git, install_package
-from .runtime_configuration import REPOSITORY, Configuration
+from .runtime_configuration import REPOSITORY, Configuration, RUNTIME_SERVERS
 from .source import ExplicitRuntimeSource, RuntimeSourceIdentity
 
 
@@ -243,7 +243,7 @@ def run(config: Configuration) -> NoReturn:
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="codexy-mcp-runtime")
-    parser.add_argument("server", choices=("lsp", "codegraph", "watcher"))
+    parser.add_argument("server", choices=RUNTIME_SERVERS)
     parser.add_argument("--plugin-root", type=Path, required=True)
     parsed, arguments = parser.parse_known_args()
     arguments = arguments[1:] if arguments[:1] == ["--"] else arguments

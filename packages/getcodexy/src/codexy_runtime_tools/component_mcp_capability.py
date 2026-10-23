@@ -34,6 +34,7 @@ class McpSpec:
 
 
 MCP_SPECS = {
+    # Read-only compatibility for existing registrations; current launchers reject Watcher.
     "core": McpSpec(
         "core",
         "codexy",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from .component_core_hooks import (
@@ -173,6 +174,44 @@ def _registered_role(
         "exact" if exact else "stale",
         None if exact else "registered role differs from the package",
     )
+
+
+def _registration_roles(home, root, marker, expected, read_regular, max_bytes):
+    roles, managed, unmanaged = [], [], []  # Track expected and marker-owned roles.
+    for name, value in expected.items():
+        roles.append(
+            _registered_role(home, root, name, value, marker, read_regular, max_bytes)
+        )
+    for entry in os.scandir(root):
+        if entry.name in expected or not entry.name.endswith(".toml"):
+            continue
+        try:
+            current = (
+                read_regular(home, Path(entry.path).relative_to(home), max_bytes)
+                .decode()
+                .replace("\r\n", "\n")
+                .replace("\r", "\n")
+            )
+        except (OSError, UnicodeDecodeError, ValueError):
+            unmanaged.append(entry.name)
+            continue
+        (managed if current.startswith(marker) else unmanaged).append(entry.name)
+    roles.extend(
+        registration_role(
+            name, "stale", "managed role is not declared by the current catalog"
+        )
+        for name in managed
+    )
+    states = {item["state"] for item in roles}
+    state = next(
+        (
+            candidate
+            for candidate in ("unmanaged-conflict", "stale", "missing")
+            if candidate in states or candidate == "unmanaged-conflict" and unmanaged
+        ),
+        "exact",
+    )
+    return roles, tuple(sorted(managed)), tuple(sorted(unmanaged)), state
 
 
 def registration_report(

@@ -57,7 +57,7 @@ class ComponentHealthAdmissionTests(unittest.TestCase):
                 return_value={
                     "started": True,
                     "callable": True,
-                    "runtime_name": "codexy-watcher",
+                    "runtime_name": "codexy",
                     "runtime_version": version,
                 },
             ) as probe:

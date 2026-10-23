@@ -1,46 +1,28 @@
-"""Core Watcher source launchers exercise the real bootstrap selection path."""
+"""The current shared bootstrap rejects retired core Watcher selectors."""
 
 from __future__ import annotations
 
-import json
-import os
-import tempfile
+import io
+import sys
 import unittest
-from pathlib import Path
-from unittest import mock
+from unittest.mock import patch
 
-from codexy_runtime_tools.runtime_configuration import (
-    PUBLIC_BUNDLE_ASSET,
-    Configuration,
-)
-from codexy_runtime_tools.version_lock import default_package_version
-
-
-REPOSITORY = "https://github.com/eunsoogi/codexy"
-VERSION = default_package_version()
+from codexy_runtime_tools import mcp_bootstrap
 
 
 class CoreWatcherBootstrapTests(unittest.TestCase):
-    """Keep runtime selection usable for old registered core packages."""
+    def test_shared_bootstrap_rejects_watcher_before_runtime_selection(self) -> None:
+        with (
+            patch.object(sys, "stderr", new_callable=io.StringIO) as stderr,
+            patch.object(mcp_bootstrap, "_selected_version") as selected_version,
+            patch.object(mcp_bootstrap.shutil, "which") as find_uvx,
+        ):
+            result = mcp_bootstrap.main(["watcher", "--stdio"])
 
-    def test_legacy_core_watcher_selects_the_public_bundle_asset(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            manifest = root / ".codex-plugin/plugin.json"
-            manifest.parent.mkdir()
-            manifest.write_text(
-                json.dumps(
-                    {"name": "codexy", "repository": REPOSITORY, "version": VERSION}
-                ),
-                encoding="utf-8",
-            )
-            with mock.patch.dict(os.environ, {}, clear=True):
-                config = Configuration.load("watcher", root, ["--stdio"])
-            self.assertTrue(
-                config.package_url.endswith(f"/v{VERSION}/{PUBLIC_BUNDLE_ASSET}")
-            )
-            self.assertTrue(config.allow_mixed_plugin_roots)
-            self.assertEqual(config.source_identity.package_plugin_root(), "codexy")
+        self.assertEqual(result, 64)
+        self.assertIn("requires lsp or codegraph", stderr.getvalue())
+        selected_version.assert_not_called()
+        find_uvx.assert_not_called()
 
 
 if __name__ == "__main__":
