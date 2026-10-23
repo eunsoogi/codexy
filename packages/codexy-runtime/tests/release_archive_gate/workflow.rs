@@ -2,6 +2,9 @@ use crate::support::release_archive as release_archive_support;
 
 use serde_yaml::Value;
 
+#[path = "workflow_candidate.rs"]
+mod candidate;
+
 #[test]
 fn archive_gate_workflow_covers_every_packaged_surface_and_native_smoke() {
     let root = codexy_runtime::paths::repository_root();

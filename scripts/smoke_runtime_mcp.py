@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Interactively smoke the POSIX native MCP runtime binaries."""
 
+import argparse
 import json
 import os
 from pathlib import Path
@@ -90,11 +91,26 @@ def smoke_case(binary, name, arguments, state_dir):
             raise RuntimeError(f"{binary} failed: {stderr}")
 
 
+def selected_cases(skip_watcher):
+    # Candidate packages omit Watcher, but the default suite still covers full
+    # runtime builds.
+    if skip_watcher:
+        return tuple(case for case in CASES if case[1] != "watcher_open")
+    return CASES
+
+
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--skip-watcher",
+        action="store_true",
+        help="skip the Watcher case when the candidate omits its runtime binary",
+    )
+    options = parser.parse_args()
     root = Path.cwd()
     with tempfile.TemporaryDirectory(prefix="codexy-mcp-smoke-") as state:
         state_dir = Path(state)
-        for relative, name, arguments in CASES:
+        for relative, name, arguments in selected_cases(options.skip_watcher):
             smoke_case(str(root / relative), name, arguments, state_dir)
 
 
