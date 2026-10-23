@@ -1,4 +1,4 @@
-"""Lifecycle fixtures copy each plugin once and add the bundled Watcher on Windows."""
+"""Marketplace fixtures isolate legacy Watcher binaries to upgrade coverage."""
 
 import json
 import os
@@ -11,7 +11,10 @@ from codexy_runtime_tools.component_mcp_capability import (
     mcp_configuration,
 )
 from codexy_runtime_tools.component_manifest import load_component_manifest
-from packages.getcodexy.tests.component_watcher_fixture import install_watcher_runtime
+from packages.getcodexy.tests.component_watcher_fixture import (
+    LEGACY_VERSION,
+    install_watcher_runtime,
+)
 
 REPOSITORY = Path(__file__).resolve().parents[3]
 PLUGIN_NAMES = {
@@ -132,17 +135,24 @@ def materialize_plugins(
             configure_core_package(plugin, version)
         else:
             continue
-        if component == "core":
-            install_watcher_runtime(plugin)
 
 
-def populate_plugins(marketplace: Path) -> None:
+def populate_plugins(
+    marketplace: Path, *, verified_legacy_upgrade_fixture: bool = False
+) -> None:
+    # Checkout and public 1.13.4 share a version string; only an explicit
+    # upgrade fixture may add the verified native Watcher binary.
     for plugin in ("codexy", "codexy-github", "codexy-devtools"):
         destination = marketplace / "plugins" / plugin
         created = not destination.exists()
         if created:
             shutil.copytree(REPOSITORY / "plugins" / plugin, destination)
             if plugin == "codexy":
-                configure_core_package(destination, "1.13.4")
-        if created and plugin == "codexy" and os.name == "nt":
-            install_watcher_runtime(destination)
+                configure_core_package(destination, LEGACY_VERSION)
+        if (
+            created
+            and plugin == "codexy"
+            and verified_legacy_upgrade_fixture
+            and os.name == "nt"
+        ):
+            install_watcher_runtime(destination, verified_legacy_upgrade_fixture=True)

@@ -1,11 +1,9 @@
 """Fixtures for GitHub pre-session installation cases."""
 
 import json
-import os
 import shutil
 from pathlib import Path
 
-from component_watcher_fixture import install_watcher_runtime
 from component_marketplace_fixture import configure_candidate_package
 from codexy_runtime_tools.updater import SyncResult
 
@@ -24,9 +22,7 @@ def marketplace(root: Path) -> dict[str, object]:
 def plugin(root: Path, name: str) -> Path:
     shutil.copytree(REPOSITORY / "plugins" / name, root)
     configure_candidate_package(root)
-    if name == "codexy":
-        if os.name == "nt":
-            install_watcher_runtime(root)
+    # Candidate packages use the current no-MCP contract without legacy Watcher assets.
     return root
 
 

@@ -12,11 +12,7 @@ from unittest.mock import Mock, patch
 
 from codexy_runtime_tools.version_lock import default_package_version
 from packages.getcodexy.tests.component_marketplace_fixture import (
-    configure_core_package,
-)
-from packages.getcodexy.tests.component_watcher_fixture import install_watcher_runtime
-from packages.getcodexy.tests.component_watcher_fixture import (
-    require_native_watcher_binary,
+    configure_no_mcp_core_package,
 )
 
 FAKE_MCP = r"""#!/usr/bin/env python3
@@ -140,8 +136,8 @@ def copy_marketplace_plugins(repository: Path, root: Path) -> str:
             json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
         )
         if plugin == "codexy":
-            configure_core_package(destination, version)
-            install_watcher_runtime(destination)
+            # Exercise current no-MCP behavior; legacy fixtures alone carry Watcher.
+            configure_no_mcp_core_package(destination, version)
     _git(root, "init", "-q")
     _git(root, "branch", "-M", "main")
     _git(root, "config", "user.name", "fixture")

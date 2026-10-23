@@ -30,8 +30,6 @@ class ComponentDistributionTests(unittest.TestCase):
         value = os.environ.get(EXECUTABLE_ENV)
         if not value:
             raise unittest.SkipTest(f"{EXECUTABLE_ENV} is not set")
-        if os.name == "nt":
-            support.require_native_watcher_binary()
         cls.executable = Path(value).resolve()
         if not cls.executable.is_file():
             raise RuntimeError(
@@ -76,6 +74,8 @@ class ComponentDistributionTests(unittest.TestCase):
         self.temporary.cleanup()
 
     def test_installed_cli_executes_supported_lifecycle_matrix(self) -> None:
+        core = self.marketplace / "plugins/codexy"
+        self.assertFalse((core / ".mcp.json").exists())
         self.assertEqual(
             self._run("install")["selection_after"], ["core", "github", "devtools"]
         )

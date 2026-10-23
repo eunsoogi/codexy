@@ -11,6 +11,7 @@ use crate::paths::display_relative;
 const WORKFLOW: &str = ".github/workflows/python-package.yml";
 const HELPER: &str = "scripts/verify_public_marketplace_bundle.py";
 const SUPPORT: &str = "scripts/public_marketplace_bundle_support.py";
+const BASELINES: &str = ".github/scripts/verify-public-marketplace-baselines.ps1";
 const JOB: &str = "github-activation-windows";
 const STEP: &str = "Run native component lifecycle tests";
 
@@ -44,46 +45,28 @@ fn lifecycle_run<'a>(workflow: &'a Value, path: &Path) -> Result<&'a str> {
 }
 
 fn check_lifecycle(run: &str, path: &Path) -> Result<()> {
-    // The workflow must stop on verifier failure before trusting its emitted binary path.
+    // A separate verifier owns selected-baseline and legacy-upgrade provenance.
     require_ordered(
         run,
         &[
-            "$verified = python scripts/verify_public_marketplace_bundle.py --output-dir $bundleRoot",
+            "& ./.github/scripts/verify-public-marketplace-baselines.ps1",
             "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
-            "$release = $verified | ConvertFrom-Json",
-            "$binary = $release.watcher_binary",
-            "$env:CODEXY_TEST_WATCHER_BINARY = $binary",
-            "\"CODEXY_TEST_WATCHER_BINARY=$binary\" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append",
+            "$env:PYTHONPATH = \"packages/getcodexy/src;packages/getcodexy/tests\"",
         ],
         path,
     )?;
-    for (prefix, expected) in [
-        (
-            "$verified =",
-            "$verified = python scripts/verify_public_marketplace_bundle.py --output-dir $bundleRoot",
-        ),
-        ("$release =", "$release = $verified | ConvertFrom-Json"),
-        ("$binary =", "$binary = $release.watcher_binary"),
-        (
-            "$env:CODEXY_TEST_WATCHER_BINARY =",
-            "$env:CODEXY_TEST_WATCHER_BINARY = $binary",
-        ),
-        (
-            "\"CODEXY_TEST_WATCHER_BINARY=",
-            "\"CODEXY_TEST_WATCHER_BINARY=$binary\" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append",
-        ),
-    ] {
-        let assignments = run
-            .lines()
-            .map(str::trim)
-            .filter(|line| line.starts_with(prefix))
-            .collect::<Vec<_>>();
-        if assignments.as_slice() != [expected] {
-            bail!(
-                "{} must bind the tested binary to the verified helper result",
-                display_relative(path)
-            );
-        }
+    let baseline_calls = run
+        .lines()
+        .map(str::trim)
+        .filter(|line| {
+            line.starts_with("& ./.github/scripts/verify-public-marketplace-baselines.ps1")
+        })
+        .count();
+    if baseline_calls != 1 {
+        bail!(
+            "{} must invoke the baseline verifier exactly once",
+            display_relative(path)
+        );
     }
     let release_version =
         Regex::new(r"(?i)(?:^|[^[:alnum:]])v?[0-9]+\.[0-9]+\.[0-9]+(?:$|[^[:alnum:]])")?;
@@ -132,6 +115,7 @@ fn check_helper(root: &Path, workflow: &Path, workflow_text: &str) -> Result<()>
     for required in [
         "from public_marketplace_bundle_support import",
         "CONTRACT,",
+        "LEGACY_UPGRADE_VERSION,",
         "current_tag, _ = contract_tag(current_contract",
         "release_tag = current_tag",
         "version = current_tag.removeprefix(\"v\")",
@@ -141,6 +125,9 @@ fn check_helper(root: &Path, workflow: &Path, workflow_text: &str) -> Result<()>
         "\"release\",",
         "\"download\",",
         "runtime-release-receipt.json",
+        "--legacy-upgrade",
+        "legacy_watcher_binary",
+        "extracted_root",
     ] {
         if !text.contains(required) {
             bail!(
@@ -150,7 +137,7 @@ fn check_helper(root: &Path, workflow: &Path, workflow_text: &str) -> Result<()>
         }
     }
     reject_literal_version(&text, &path)?;
-    for required in [HELPER, "BASE_SHA", "PRIOR_PUBLIC_VERSION"] {
+    for required in [HELPER, BASELINES, "BASE_SHA", "PRIOR_PUBLIC_VERSION"] {
         if !workflow_text.contains(required) {
             bail!(
                 "{} must route the lifecycle through the trusted helper; missing {required:?}",
@@ -171,6 +158,9 @@ fn check_support(root: &Path) -> Result<()> {
         "archive.extract",
         "runtime-release-receipt/v2",
         "manifestSha256",
+        "LEGACY_UPGRADE_VERSION",
+        "if version == LEGACY_UPGRADE_VERSION:",
+        "watcher.exists()",
     ] {
         if !text.contains(required) {
             bail!(

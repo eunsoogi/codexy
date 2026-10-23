@@ -4,6 +4,8 @@ pub(super) const REPLACED_FILES: &[&str] = &[
     // manifest, so copying them from the working tree would mix states.
     ".github/workflows/plugin-runtime-binaries.yml",
     ".github/workflows/python-package.yml",
+    // The Windows workflow delegates both public baselines to this checked-in script.
+    ".github/scripts/verify-public-marketplace-baselines.ps1",
     "packages/codexy-runtime/Cargo.toml",
     "packages/codexy-runtime/Cargo.lock",
     ".agents/plugins/release-publish-contract.json",

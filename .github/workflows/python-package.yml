@@ -127,14 +127,8 @@ jobs:
           PRIOR_PUBLIC_VERSION: ${{ inputs.prior_public_version || '' }}
         run: |
           $ErrorActionPreference = "Stop"
-          $bundleRoot = Join-Path $env:RUNNER_TEMP "codexy-public-marketplace-bundle"
-          $verified = python scripts/verify_public_marketplace_bundle.py --output-dir $bundleRoot
+          & ./.github/scripts/verify-public-marketplace-baselines.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $release = $verified | ConvertFrom-Json
-          Write-Host (@{ prior_public_release = $release.release_tag; baseline_source = $release.baseline_source; baseline_commit = $release.baseline_commit; bundle_sha256 = $release.bundle_sha256 } | ConvertTo-Json -Compress)
-          $binary = $release.watcher_binary
-          $env:CODEXY_TEST_WATCHER_BINARY = $binary
-          "CODEXY_TEST_WATCHER_BINARY=$binary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           $env:PYTHONPATH = "packages/getcodexy/src;packages/getcodexy/tests"
           $hookRoot = Join-Path $PWD "plugins/codexy-github/hooks"
           $expectedContext = '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Codexy GitHub workflow is installed. Use $git-workflow; GitHub authorization remains with the host, connector, and GitHub."}}'
@@ -162,6 +156,7 @@ jobs:
             "packages/getcodexy/tests/test_component_transaction_durability.py"
             "packages/getcodexy/tests/test_component_lifecycle_watcher.py"
             "packages/getcodexy/tests/test_component_watcher_registration.py"
+            "packages/getcodexy/tests/test_public_marketplace_bundle_contract.py"
           )
           python -m unittest @componentTests
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -175,8 +170,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $bundleRoot = Join-Path $env:RUNNER_TEMP "codexy-public-marketplace-bundle"
-          $runtimeDir = Join-Path $bundleRoot "extracted/plugins/codexy/runtime"
+          $runtimeDir = Join-Path $env:CODEXY_PUBLIC_BUNDLE_ROOT "plugins/codexy/runtime"
           if (-not (Test-Path -LiteralPath $runtimeDir -PathType Container)) { throw "verified public runtime directory is missing: $runtimeDir" }
           $env:CODEXY_RUNTIME_DIR = $runtimeDir
           $env:CODEXY_RUNTIME_CACHE_DIR = Join-Path $env:RUNNER_TEMP "codexy-candidate-runtime-cache"

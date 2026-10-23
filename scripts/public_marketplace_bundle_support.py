@@ -14,6 +14,8 @@ VERSION = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z
 TAG = re.compile(r"v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z")
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 CONTRACT = Path(".agents/plugins/release-publish-contract.json")
+# The last published core package with a Watcher is retained only as the upgrade source.
+LEGACY_UPGRADE_VERSION = "1.13.4"
 COMPONENTS = {
     "codexy": "plugins/codexy",
     "codexy-github": "plugins/codexy-github",
@@ -162,7 +164,7 @@ def verify_bundle(
     return actual_digest
 
 
-def verify_contents(root: Path, receipt: dict, version: str) -> Path:
+def verify_contents(root: Path, receipt: dict, version: str) -> Path | None:
     # Bind each package manifest and marketplace entry to the same receipt version and component root.
     records = receipt.get("components")
     if not isinstance(records, list):
@@ -203,6 +205,15 @@ def verify_contents(root: Path, receipt: dict, version: str) -> Path:
         ):
             fail("public bundle marketplace version or path is stale")
     watcher = root / "plugins/codexy/mcp/codexy-mcp-watcher.exe"
-    if not watcher.is_file() or watcher.read_bytes()[:2] != b"MZ":
-        fail("public bundle is missing a native Windows Watcher executable")
-    return watcher
+    if version == LEGACY_UPGRADE_VERSION:
+        if not watcher.is_file() or watcher.read_bytes()[:2] != b"MZ":
+            fail(
+                "verified 1.13.4 upgrade bundle is missing its native Windows Watcher executable"
+            )
+        return watcher
+    # Newer core packages do not register Watcher; keep its binary confined to the verified legacy fixture.
+    if watcher.exists():
+        fail(
+            "public bundle contains a legacy Watcher outside the verified 1.13.4 upgrade fixture"
+        )
+    return None
