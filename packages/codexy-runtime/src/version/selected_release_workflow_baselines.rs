@@ -11,7 +11,7 @@ use crate::paths::display_relative;
 const WORKFLOW: &str = ".github/workflows/python-package.yml";
 const BASELINES: &str = ".github/scripts/verify-public-marketplace-baselines.ps1";
 const JOB: &str = "github-activation-windows";
-const RUNTIME_STEP: &str = "Verify candidate wheel runtime handoff on native Windows";
+const RUNTIME_STEP: &str = "Verify candidate MCP runtime entrypoint on native Windows";
 
 pub(super) fn check(root: &Path) -> Result<()> {
     let path = root.join(WORKFLOW);
@@ -37,17 +37,22 @@ fn candidate_runtime_run<'a>(workflow: &'a Value, path: &Path) -> Result<&'a str
         })
         .and_then(|step| step.get("run"))
         .and_then(Value::as_str)
-        .with_context(|| format!("{} runtime handoff step is missing", display_relative(path)))
+        .with_context(|| {
+            format!(
+                "{} candidate runtime entrypoint step is missing",
+                display_relative(path)
+            )
+        })
 }
 
 fn check_candidate_runtime(workflow: &Value, path: &Path) -> Result<()> {
-    // Candidate smoke tests must consume the extracted root whose digest the verifier logged.
+    // Exercise the locally built candidate without requiring MCP assets in the selected public bundle.
     let run = candidate_runtime_run(workflow, path)?;
     require_ordered(
         run,
         &[
-            "$runtimeDir = Join-Path $env:CODEXY_PUBLIC_BUNDLE_ROOT \"plugins/codexy/runtime\"",
-            "if (-not (Test-Path -LiteralPath $runtimeDir -PathType Container))",
+            "& $env:GETCODEXY_CANDIDATE_RUNTIME --help",
+            "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
         ],
         path,
     )
@@ -129,7 +134,7 @@ fn require_ordered(run: &str, required: &[&str], path: &Path) -> Result<()> {
     for needle in required {
         let found = run[offset..].find(needle).with_context(|| {
             format!(
-                "{} runtime handoff step is missing {needle:?}",
+                "{} candidate runtime entrypoint step is missing {needle:?}",
                 display_relative(path)
             )
         })?;

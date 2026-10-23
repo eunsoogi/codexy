@@ -189,7 +189,7 @@ class WindowsActivationContractTests(unittest.TestCase):
             "CODEXY_TEST_LEGACY_MARKETPLACE_ROOT=",
         ):
             self.assertIn(required, baseline_script)
-        self.assertIn(
+        self.assertNotIn(
             'Join-Path $env:CODEXY_PUBLIC_BUNDLE_ROOT "plugins/codexy/runtime"',
             workflow,
         )

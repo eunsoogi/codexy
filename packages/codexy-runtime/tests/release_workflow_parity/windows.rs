@@ -22,11 +22,10 @@ fn windows_package_lifecycle_uses_the_selected_public_release_helper()
     let runtime = run(
         &workflow,
         "github-activation-windows",
-        "Verify candidate wheel runtime handoff on native Windows",
+        "Verify candidate MCP runtime entrypoint on native Windows",
     )?;
-    assert!(runtime.contains(
-        "$runtimeDir = Join-Path $env:CODEXY_PUBLIC_BUNDLE_ROOT \"plugins/codexy/runtime\""
-    ));
+    assert!(runtime.contains("& $env:GETCODEXY_CANDIDATE_RUNTIME --help"));
+    assert!(!runtime.contains("CODEXY_PUBLIC_BUNDLE_ROOT"));
     for forbidden in [
         "gh release",
         "Invoke-WebRequest",

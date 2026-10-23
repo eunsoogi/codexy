@@ -61,6 +61,19 @@ class PublicMarketplaceBundleContractTests(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "outside the verified 1.13.4"):
                 verify_contents(root, receipt, "2.0.0")
 
+    def test_newer_public_bundle_rejects_the_shipped_runtime_watcher_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = self._package_contents(root, "2.0.0", include_watcher=False)
+            watcher = (
+                root / "plugins/codexy/runtime/codexy-mcp-watcher-windows-x86_64.exe"
+            )
+            watcher.parent.mkdir(parents=True)
+            watcher.write_bytes(b"MZfixture")
+
+            with self.assertRaisesRegex(SystemExit, "outside the verified 1.13.4"):
+                verify_contents(root, receipt, "2.0.0")
+
     def test_watcher_fixture_builder_rejects_a_newer_package(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             plugin = Path(temporary)

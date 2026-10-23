@@ -79,8 +79,8 @@ fn selected_release_projections_fail_closed_without_mutation() -> TestResult {
             ".github/scripts/verify-public-marketplace-baselines.ps1",
             |text: String, _version: &str| {
                 text.replacen(
-                    "$release = $verified | ConvertFrom-Json\n",
-                    "$release = $verified | ConvertFrom-Json\ngh release download v1.7.0 --repo eunsoogi/codexy --dir $bundleRoot\n",
+                    "$release = $verified | ConvertFrom-Json",
+                    "$release = $verified | ConvertFrom-Json; gh release download v1.7.0 --repo eunsoogi/codexy --dir $bundleRoot",
                     1,
                 )
             },

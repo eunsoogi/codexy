@@ -205,14 +205,17 @@ def verify_contents(root: Path, receipt: dict, version: str) -> Path | None:
         ):
             fail("public bundle marketplace version or path is stale")
     watcher = root / "plugins/codexy/mcp/codexy-mcp-watcher.exe"
+    runtime_watcher = (
+        root / "plugins/codexy/runtime/codexy-mcp-watcher-windows-x86_64.exe"
+    )
     if version == LEGACY_UPGRADE_VERSION:
         if not watcher.is_file() or watcher.read_bytes()[:2] != b"MZ":
             fail(
                 "verified 1.13.4 upgrade bundle is missing its native Windows Watcher executable"
             )
         return watcher
-    # Newer core packages do not register Watcher; keep its binary confined to the verified legacy fixture.
-    if watcher.exists():
+    # Reject both Watcher paths that shipped in the historical bundle after 1.13.4.
+    if watcher.exists() or runtime_watcher.exists():
         fail(
             "public bundle contains a legacy Watcher outside the verified 1.13.4 upgrade fixture"
         )
