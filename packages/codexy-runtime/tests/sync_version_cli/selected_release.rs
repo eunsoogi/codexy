@@ -10,6 +10,7 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 // Every selected public projection must reject stale values without repairing the invalid fixture.
 #[test]
 fn selected_release_projections_fail_closed_without_mutation() -> TestResult {
+    // Match PowerShell source tokens without newline suffixes so CRLF checkouts remain mutable.
     let cases: &[(&str, &str, fn(String, &str) -> String)] = &[
         (
             "contract selected version",
@@ -64,34 +65,56 @@ fn selected_release_projections_fail_closed_without_mutation() -> TestResult {
             },
         ),
         (
+            "Windows lifecycle baseline verifier bypass",
+            ".github/workflows/python-package.yml",
+            |text: String, _version: &str| {
+                text.replacen(
+                    "          & ./.github/scripts/verify-public-marketplace-baselines.ps1\n",
+                    "          Write-Host 'skip baseline verification'\n",
+                    1,
+                )
+            },
+        ),
+        (
             "Windows lifecycle direct release download",
-            ".github/workflows/python-package.yml",
+            ".github/scripts/verify-public-marketplace-baselines.ps1",
             |text: String, _version: &str| {
                 text.replacen(
-                    "          $release = $verified | ConvertFrom-Json\n",
-                    "          $release = $verified | ConvertFrom-Json\n          gh release download v1.7.0 --repo eunsoogi/codexy --dir $bundleRoot\n",
+                    "$release = $verified | ConvertFrom-Json",
+                    "$release = $verified | ConvertFrom-Json; gh release download v1.7.0 --repo eunsoogi/codexy --dir $bundleRoot",
                     1,
                 )
             },
         ),
         (
-            "Windows lifecycle binary rebinding",
-            ".github/workflows/python-package.yml",
+            "Windows legacy fixture verifier bypass",
+            ".github/scripts/verify-public-marketplace-baselines.ps1",
             |text: String, _version: &str| {
                 text.replacen(
-                    "          $binary = $release.watcher_binary\n",
-                    "          $binary = \"stale-watcher.exe\"\n",
+                    "--legacy-upgrade --output-dir $legacyRoot",
+                    "--output-dir $legacyRoot",
                     1,
                 )
             },
         ),
         (
-            "Windows lifecycle environment rebinding",
-            ".github/workflows/python-package.yml",
+            "Windows lifecycle legacy package rebinding",
+            ".github/scripts/verify-public-marketplace-baselines.ps1",
             |text: String, _version: &str| {
                 text.replacen(
-                    "          $env:CODEXY_TEST_WATCHER_BINARY = $binary\n",
-                    "          $env:CODEXY_TEST_WATCHER_BINARY = $binary\n          $env:CODEXY_TEST_WATCHER_BINARY = \"stale-watcher.exe\"\n",
+                    "$env:CODEXY_TEST_LEGACY_MARKETPLACE_ROOT = [string]$legacyRelease.extracted_root",
+                    "$env:CODEXY_TEST_LEGACY_MARKETPLACE_ROOT = [string]$release.extracted_root",
+                    1,
+                )
+            },
+        ),
+        (
+            "Windows lifecycle legacy environment rebinding",
+            ".github/scripts/verify-public-marketplace-baselines.ps1",
+            |text: String, _version: &str| {
+                text.replacen(
+                    "CODEXY_TEST_LEGACY_MARKETPLACE_ROOT=$($legacyRelease.extracted_root)",
+                    "CODEXY_TEST_LEGACY_MARKETPLACE_ROOT=stale-watcher.exe",
                     1,
                 )
             },

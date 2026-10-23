@@ -1,4 +1,4 @@
-"""Small local Watcher runtime used by installed-component tests."""
+"""Small Watcher runtime fixture for the verified legacy-upgrade package."""
 
 from __future__ import annotations
 
@@ -6,10 +6,12 @@ import json
 import os
 import shutil
 import sys
-import unittest
 from pathlib import Path
 
 from codexy_runtime_tools.component_mcp_materialization import materialize_component_mcp
+
+LEGACY_VERSION = "1.13.4"
+LEGACY_MARKETPLACE_ENV = "CODEXY_TEST_LEGACY_MARKETPLACE_ROOT"
 
 
 FAKE_WATCHER = r"""#!/usr/bin/env python3
@@ -39,19 +41,69 @@ for line in sys.stdin:
 """
 
 
-def require_native_watcher_binary() -> Path:
-    native_binary = os.environ.get("CODEXY_TEST_WATCHER_BINARY")
-    if native_binary:
-        source = Path(native_binary)
-        if not source.is_file():
-            raise RuntimeError(f"missing hosted Windows Watcher runtime: {source}")
-        return source
-    if os.environ.get("CI", "").lower() == "true":
-        raise RuntimeError("hosted Windows Watcher runtime is required in CI")
-    raise unittest.SkipTest("hosted Windows Watcher runtime is required")
+def verified_legacy_marketplace_root() -> Path | None:
+    value = os.environ.get(LEGACY_MARKETPLACE_ENV)
+    if not value:
+        if os.name == "nt" and os.environ.get("CI", "").lower() == "true":
+            raise RuntimeError(
+                "verified 1.13.4 upgrade bundle is required in Windows CI"
+            )
+        return None
+    root = Path(value).resolve()
+    receipt_path = root.parent / "download/runtime-release-receipt.json"
+    if not root.is_dir() or not receipt_path.is_file():
+        raise RuntimeError(f"verified legacy marketplace bundle is incomplete: {root}")
+    try:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise RuntimeError(
+            f"verified legacy release receipt is unreadable: {error}"
+        ) from error
+    if not isinstance(receipt, dict):
+        raise RuntimeError("verified legacy release receipt must be an object")
+    release = receipt.get("release")
+    if not isinstance(release, dict) or release.get("tag") != f"v{LEGACY_VERSION}":
+        raise RuntimeError(
+            "legacy marketplace fixture is not the verified 1.13.4 release"
+        )
+    for plugin in ("codexy", "codexy-github", "codexy-devtools"):
+        manifest_path = root / "plugins" / plugin / ".codex-plugin/plugin.json"
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise RuntimeError(
+                f"verified legacy manifest is unreadable: {manifest_path}"
+            ) from error
+        if manifest.get("name") != plugin or manifest.get("version") != LEGACY_VERSION:
+            raise RuntimeError(f"verified legacy package identity mismatch: {plugin}")
+    watcher = root / "plugins/codexy/mcp/codexy-mcp-watcher.exe"
+    if not watcher.is_file() or watcher.read_bytes()[:2] != b"MZ":
+        raise RuntimeError(
+            "verified 1.13.4 package is missing its native Windows Watcher"
+        )
+    return root
 
 
-def install_watcher_runtime(plugin: Path) -> None:
+def install_watcher_runtime(
+    plugin: Path, *, verified_legacy_upgrade_fixture: bool = False
+) -> None:
+    if not verified_legacy_upgrade_fixture:
+        raise RuntimeError(
+            "Watcher test runtime requires the explicit legacy upgrade fixture"
+        )
+    manifest = json.loads(
+        (plugin / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
+    )
+    version = manifest.get("version")
+    if version != LEGACY_VERSION:
+        raise RuntimeError(
+            "Watcher test runtime is restricted to the 1.13.4 upgrade fixture"
+        )
+    legacy_root = verified_legacy_marketplace_root()
+    if legacy_root is None:
+        raise RuntimeError(
+            "verified 1.13.4 upgrade bundle is required for Watcher fixtures"
+        )
     runtime = plugin / "runtime"
     runtime.mkdir(parents=True, exist_ok=True)
     for platform in ("darwin-arm64", "linux-x86_64"):
@@ -60,7 +112,7 @@ def install_watcher_runtime(plugin: Path) -> None:
         path.chmod(0o755)
     if os.name == "nt":
         binary = runtime / "codexy-mcp-watcher-windows-x86_64.exe"
-        source = require_native_watcher_binary()
+        source = legacy_root / "plugins/codexy/mcp/codexy-mcp-watcher.exe"
         shutil.copyfile(source, binary)
         binary.chmod(0o755)
         script = runtime / "codexy-mcp-watcher-windows-x86_64.py"
@@ -70,12 +122,6 @@ def install_watcher_runtime(plugin: Path) -> None:
             "exit /b %ERRORLEVEL%\r\n",
             encoding="utf-8",
         )
-    manifest = json.loads(
-        (plugin / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
-    )
-    version = manifest.get("version")
-    if not isinstance(version, str):
-        raise RuntimeError("Watcher runtime fixture requires a package version")
     # Validate against the copied package version so retained launchers do not
     # recreate MCP registration for the intentional no-MCP core package.
     materialize_component_mcp(plugin, "core", version)

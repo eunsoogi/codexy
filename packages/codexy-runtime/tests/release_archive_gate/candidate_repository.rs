@@ -6,10 +6,13 @@ pub(super) fn copy_selected_sources(repo_root: &Path) {
     // A minimal repository projection exposes any undeclared source-checkout dependency.
     std::fs::create_dir_all(repo_root.join("packages/codexy-runtime/src/version"))
         .expect("candidate version parent");
+    std::fs::create_dir_all(repo_root.join(".github/scripts"))
+        .expect("candidate verification script parent");
     std::fs::create_dir_all(repo_root.join("plugins/codexy-devtools/mcp"))
         .expect("candidate devtools parent");
     for relative in [
         ".github/workflows/python-package.yml",
+        ".github/scripts/verify-public-marketplace-baselines.ps1",
         "packages/codexy-runtime/src/version/bootstrap.rs",
         "plugins/codexy-devtools/mcp/codexy-mcp-devtools",
         "plugins/codexy-devtools/runtime-release.json",

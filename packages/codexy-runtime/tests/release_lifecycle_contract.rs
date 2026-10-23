@@ -19,6 +19,7 @@ fn synthetic_future_release_contract_is_admitted_without_a_publish_operation()
         "packages/getcodexy/uv.lock",
         "packages/getcodexy/src/codexy_runtime_tools/component-manifest.json",
         ".github/workflows/python-package.yml",
+        ".github/scripts/verify-public-marketplace-baselines.ps1",
         "scripts/verify_public_marketplace_bundle.py",
         "scripts/public_marketplace_bundle_support.py",
         "scripts/validate-release-lifecycle-contract",

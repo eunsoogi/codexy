@@ -7,6 +7,8 @@ use crate::paths::display_relative;
 
 #[path = "selected_release_workflow.rs"]
 mod workflow;
+#[path = "selected_release_workflow_baselines.rs"]
+mod workflow_baselines;
 
 const CONTRACT: &str = ".agents/plugins/release-publish-contract.json";
 const BOOTSTRAP: &str = "packages/codexy-runtime/src/version/bootstrap.rs";
@@ -84,7 +86,8 @@ pub(crate) fn check(root: &Path, expected: &str) -> Result<()> {
     }
 
     super::wrappers::check_version_at(root, runtime_version)?;
-    workflow::check(root)
+    workflow::check(root)?;
+    workflow_baselines::check(root)
 }
 
 fn semantic(version: &str) -> (u64, u64, u64) {

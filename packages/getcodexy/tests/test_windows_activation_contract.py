@@ -170,25 +170,28 @@ class WindowsActivationContractTests(unittest.TestCase):
         )
         run = self._windows_activation_pwsh_runs(workflow)[0]
         self.assertIn(
-            "$verified = python scripts/verify_public_marketplace_bundle.py --output-dir $bundleRoot",
-            run,
+            "& ./.github/scripts/verify-public-marketplace-baselines.ps1", run
         )
-        self.assertIn("$release = $verified | ConvertFrom-Json", run)
-        self.assertIn("$binary = $release.watcher_binary", run)
-        self.assertIn("$env:CODEXY_TEST_WATCHER_BINARY = $binary", run)
-        self.assertIn(
-            '"CODEXY_TEST_WATCHER_BINARY=$binary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append',
-            run,
-        )
-        self.assertEqual(
-            run.splitlines().count("$env:CODEXY_TEST_WATCHER_BINARY = $binary"),
-            1,
-        )
-        self.assertEqual(
-            run.splitlines().count(
-                '"CODEXY_TEST_WATCHER_BINARY=$binary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append'
-            ),
-            1,
+        self.assertNotIn("$release.watcher_binary", run)
+        self.assertNotIn("CODEXY_TEST_WATCHER_BINARY", run)
+        baseline_script = (
+            repository / ".github/scripts/verify-public-marketplace-baselines.ps1"
+        ).read_text(encoding="utf-8")
+        for required in (
+            "python scripts/verify_public_marketplace_bundle.py --output-dir $bundleRoot",
+            "$release = $verified | ConvertFrom-Json",
+            "$release.extracted_root",
+            "--legacy-upgrade --output-dir $legacyRoot",
+            "$legacyRelease.legacy_watcher_binary",
+            "$legacyRelease.legacy_upgrade_fixture",
+            "$legacyRelease.extracted_root",
+            "CODEXY_PUBLIC_BUNDLE_ROOT=",
+            "CODEXY_TEST_LEGACY_MARKETPLACE_ROOT=",
+        ):
+            self.assertIn(required, baseline_script)
+        self.assertNotIn(
+            'Join-Path $env:CODEXY_PUBLIC_BUNDLE_ROOT "plugins/codexy/runtime"',
+            workflow,
         )
         for forbidden in (
             "gh release",
@@ -219,6 +222,7 @@ class WindowsActivationContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         for required in (
             'CONTRACT = Path(".agents/plugins/release-publish-contract.json")',
+            'LEGACY_UPGRADE_VERSION = "1.13.4"',
             "runtime-release-receipt/v2",
             "manifestSha256",
             "tarfile.open",

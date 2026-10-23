@@ -16,11 +16,12 @@ pub(super) struct MaterializedFixture {
 // Keep only files that the activation and validation contracts read. The
 // verifier archives this fixture four times, so recursive source trees multiply
 // Windows filesystem work without adding an oracle.
-const PREPARED_PATHS: [&str; 30] = [
+const PREPARED_PATHS: [&str; 31] = [
     "AGENTS.md",
     ".agents/plugins",
     ".gitattributes",
     ".github/workflows/python-package.yml",
+    ".github/scripts/verify-public-marketplace-baselines.ps1",
     ".github/workflows/plugin-runtime-binaries.yml",
     "README.md",
     "README.ko.md",
@@ -164,6 +165,7 @@ fn prepare(repo: &Path) -> Result<String, Box<dyn std::error::Error>> {
     for relative in [
         ".github/workflows/plugin-runtime-binaries.yml",
         ".github/workflows/python-package.yml",
+        ".github/scripts/verify-public-marketplace-baselines.ps1",
         "scripts/public_marketplace_bundle_support.py",
         "scripts/verify_public_marketplace_bundle.py",
     ] {

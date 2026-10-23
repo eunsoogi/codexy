@@ -10,6 +10,7 @@ from pathlib import Path
 
 from public_marketplace_bundle_support import (
     CONTRACT,
+    LEGACY_UPGRADE_VERSION,
     SHA256,
     base_contract,
     canonical_version,
@@ -26,6 +27,11 @@ from public_marketplace_bundle_support import (
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument(
+        "--legacy-upgrade",
+        action="store_true",
+        help="verify the published package retained for legacy upgrade coverage",
+    )
     args = parser.parse_args()
     root = Path.cwd()
     current_contract = read_json(root / CONTRACT)
@@ -33,8 +39,13 @@ def main() -> None:
     override = os.environ.get("PRIOR_PUBLIC_VERSION", "").strip()
     baseline_source = "current checkout release contract"
     baseline_commit = ""
+    # Keep the historical upgrade input independent from the selected public baseline.
+    if args.legacy_upgrade:
+        version = LEGACY_UPGRADE_VERSION
+        release_tag = f"v{version}"
+        baseline_source = "verified legacy upgrade fixture"
     # Select one stable baseline from an explicit override or the prior checkout contract.
-    if override:
+    elif override:
         version = canonical_version(override, "PRIOR_PUBLIC_VERSION")
         release_tag = f"v{version}"
         baseline_source = "PRIOR_PUBLIC_VERSION"
@@ -115,8 +126,8 @@ def main() -> None:
     digest = verify_bundle(bundle, receipt, release_tag, expected_digest)
     extract = output_dir / "extracted"
     safe_extract(bundle, extract)
-    # Validate the receipt's package inventory and return the Windows Watcher used by CI.
-    watcher = verify_contents(extract, receipt, version)
+    # Validate the receipt inventory; only the historical upgrade fixture may emit a Watcher path.
+    legacy_watcher = verify_contents(extract, receipt, version)
     print(
         json.dumps(
             {
@@ -125,7 +136,13 @@ def main() -> None:
                 "baseline_source": baseline_source,
                 "baseline_commit": baseline_commit,
                 "bundle_sha256": digest,
-                "watcher_binary": str(watcher.resolve()),
+                "extracted_root": str(extract.resolve()),
+                "legacy_upgrade_fixture": version == LEGACY_UPGRADE_VERSION,
+                "legacy_watcher_binary": (
+                    str(legacy_watcher.resolve())
+                    if legacy_watcher is not None
+                    else None
+                ),
             },
             separators=(",", ":"),
         )
