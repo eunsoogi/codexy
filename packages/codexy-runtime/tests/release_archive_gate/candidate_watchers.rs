@@ -131,7 +131,8 @@ fn assemble_and_validate(
         String::from_utf8_lossy(&output.stderr)
     );
     let root = fixture.root();
-    let plugin = root.join("dist/candidate/plugins/codexy-devtools");
+    let target_version =
+        super::super::candidate_projection::candidate_admission::candidate_version(root)?;
     let receipt_path = root.join("dist/runtime-staging-receipt.json");
     let receipt: serde_json::Value = serde_json::from_slice(&fs::read(&receipt_path)?)?;
     let candidate = receipt["candidate"].clone();
@@ -173,7 +174,7 @@ fn assemble_and_validate(
         fs::write(&malformed_path, serde_json::to_vec(&malformed)?)?;
         let rejected = codexy_runtime::version::activation::activate(
             fixture.root(),
-            env!("CARGO_PKG_VERSION"),
+            &target_version,
             &malformed_path,
         )
         .expect_err("accepted malformed candidate schema");
@@ -185,7 +186,7 @@ fn assemble_and_validate(
     // The Rust activation API validates archive-backed staging receipts and optional class sets.
     codexy_runtime::version::activation::activate(
         fixture.root(),
-        env!("CARGO_PKG_VERSION"),
+        &target_version,
         &reader_receipt_path,
     )?;
 
@@ -196,7 +197,8 @@ fn assemble_and_validate(
     materializer
         .arg(codexy_runtime::paths::repository_root().join("scripts/materialize_runtime_source.py"))
         .current_dir(root)
-        .env("SOURCE_PLUGIN", &plugin)
+        // Source metadata stays selected while the staged candidate advances.
+        .env("SOURCE_PLUGIN", root.join("plugins/codexy-devtools"))
         .env("STAGED_PLUGIN", &extracted_plugin)
         .env("PUBLIC_RELEASE", "0")
         .env("ACTIVATION_RECORD", &reader_receipt_path)
