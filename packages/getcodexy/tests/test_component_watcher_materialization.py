@@ -96,9 +96,7 @@ class WatcherMaterializationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             # Cache repair must follow the legacy core MCP surface under test.
-            source = _copy_plugin(
-                root / "marketplace", "codexy", LEGACY_VERSION
-            )
+            source = _copy_plugin(root / "marketplace", "codexy", LEGACY_VERSION)
             home = root / "home/.codex"
             cache = component_cache_plugin(home, "core", LEGACY_VERSION)
             cache.parent.mkdir(parents=True)

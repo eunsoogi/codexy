@@ -94,7 +94,9 @@ class ComponentInspectionHostCases:
                 )
                 self.assertEqual(
                     next(
-                        item for item in registration["roles"] if item["file"] == role.name
+                        item
+                        for item in registration["roles"]
+                        if item["file"] == role.name
                     )["state"],
                     "exact" if expected == "exact" else expected_state,
                 )
