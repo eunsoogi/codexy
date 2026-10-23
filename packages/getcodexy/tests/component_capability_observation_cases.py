@@ -7,6 +7,21 @@ from unittest.mock import patch
 
 
 class CapabilityObservationCases:
+    def _configure_watcher_compatibility_fixture(self) -> None:
+        from codexy_runtime_tools.component_mcp_materialization import (
+            materialize_component_mcp,
+        )
+        from packages.getcodexy.tests.component_marketplace_fixture import (
+            configure_legacy_core_package,
+        )
+
+        version = self.manifest.version
+        # Retained Watcher diagnostics require an explicit registered MCP package.
+        configure_legacy_core_package(self._record_core, version)
+        self.records["core"]["version"] = version
+        self.records["core"]["source"]["path"] = str(self._record_core.resolve())
+        materialize_component_mcp(self._record_core, "core", version)
+
     def test_mcp_client_version_follows_package_authority(self):
         from codexy_runtime_tools import component_capability_probe as probe
 
@@ -79,6 +94,7 @@ class CapabilityObservationCases:
                 self.assertEqual(observed["scope"], "plugin-subprocess")
 
     def test_doctor_keeps_watcher_mcp_without_retired_specialist_observation(self):
+        self._configure_watcher_compatibility_fixture()
         with patch(
             "codexy_runtime_tools.component_health._probe_component",
             return_value={
@@ -113,6 +129,7 @@ class CapabilityObservationCases:
         self.assertIsNone(watcher["session_id"])
 
     def test_failed_watcher_probe_preserves_unknown_host_and_callable_state(self):
+        self._configure_watcher_compatibility_fixture()
         with patch(
             "codexy_runtime_tools.component_health._probe_component",
             return_value={

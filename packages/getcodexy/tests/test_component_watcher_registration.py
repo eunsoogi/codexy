@@ -32,8 +32,10 @@ from packages.getcodexy.tests.component_hook_registration_fixture import (
 )
 from packages.getcodexy.tests.component_inspection_host_cases import _register_core
 from packages.getcodexy.tests.component_marketplace_fixture import (
+    configure_legacy_core_package,
     make_no_mcp_core_package,
 )
+from packages.getcodexy.tests.component_watcher_fixture import LEGACY_VERSION
 
 
 def _write_core_roles(home, plugin) -> None:
@@ -46,6 +48,15 @@ def _write_core_roles(home, plugin) -> None:
 
 
 class WatcherRegistrationTests(unittest.TestCase):
+    def _doctor(self, state):
+        """Run doctor with hook inventory from this fixture's marketplace."""
+        return doctor(
+            state.home,
+            codex=state.codex,
+            runner=state.run,
+            hook_lister=lambda _executable, _home: fixture_hook_rows(state.marketplace),
+        )
+
     def test_absent_registration_requires_an_explicit_no_mcp_contract(self) -> None:
         with fixture() as state:
             plugin = state.marketplace / "plugins/codexy"
@@ -111,6 +122,10 @@ class WatcherRegistrationTests(unittest.TestCase):
     ) -> None:
         with fixture() as state:
             core = state.marketplace / "plugins/codexy"
+            # Exercise path safety only after registering the compatibility MCP surface.
+            configure_legacy_core_package(core, VERSION)
+            self.assertEqual(materialize_component_mcp(core, "core", VERSION), core)
+            self.assertTrue(valid_component_mcp(core, "core", VERSION))
             outside = state.root / "outside"
             outside.mkdir()
             moved = outside / "mcp"
@@ -128,15 +143,27 @@ class WatcherRegistrationTests(unittest.TestCase):
                 operation_id="op-install-symlinked-mcp-parent",
             )
 
-            self.assertEqual(receipt["outcome"], "rolled-back")
+            self.assertEqual(
+                receipt["outcome"],
+                "rolled-back",
+                {"receipt": receipt, "mutations": state.mutations},
+            )
+            self.assertFalse(
+                any(mutation[:2] == ("plugin", "add") for mutation in state.mutations)
+            )
             self.assertEqual(marker.read_bytes(), b"preserve")
 
     def test_declared_watcher_rejects_a_missing_launcher(self) -> None:
         with fixture({"core"}) as state:
             plugin = state.marketplace / "plugins/codexy"
+            configure_legacy_core_package(plugin, LEGACY_VERSION)
+            self.assertEqual(
+                materialize_component_mcp(plugin, "core", LEGACY_VERSION), plugin
+            )
+            self.assertTrue(valid_component_mcp(plugin, "core", LEGACY_VERSION))
             (plugin / "mcp/codexy-mcp-watcher.sh").unlink()
 
-            self.assertFalse(valid_component_mcp(plugin, "core", VERSION))
+            self.assertFalse(valid_component_mcp(plugin, "core", LEGACY_VERSION))
 
     def test_core_registration_contains_only_retained_routing_hooks(self) -> None:
         with fixture({"core"}) as state:
@@ -164,14 +191,7 @@ class WatcherRegistrationTests(unittest.TestCase):
                 state.marketplace / "plugins/codexy", "core", VERSION
             )
             bootstrap.unlink()
-            result = doctor(
-                state.home,
-                codex=state.codex,
-                runner=state.run,
-                hook_lister=lambda _executable, _home: fixture_hook_rows(
-                    state.marketplace
-                ),
-            )
+            result = self._doctor(state)
 
         health = result["component_health"][0]
         self.assertFalse(health["configured"])
@@ -187,14 +207,7 @@ class WatcherRegistrationTests(unittest.TestCase):
             cache = state.home / "plugins/cache/codexy/codexy" / VERSION
             shutil.copytree(state.marketplace / "plugins/codexy", cache)
             (cache / "mcp/codexy_mcp_bootstrap.py").unlink()
-            result = doctor(
-                state.home,
-                codex=state.codex,
-                runner=state.run,
-                hook_lister=lambda _executable, _home: fixture_hook_rows(
-                    state.marketplace
-                ),
-            )
+            result = self._doctor(state)
 
         health = result["component_health"][0]
         self.assertFalse(health["configured"])
@@ -225,14 +238,7 @@ class WatcherRegistrationTests(unittest.TestCase):
                 "codexy_runtime_tools.component_health._probe_component",
                 side_effect=successful_probe,
             ):
-                result = doctor(
-                    state.home,
-                    codex=state.codex,
-                    runner=state.run,
-                    hook_lister=lambda _executable, _home: fixture_hook_rows(
-                        state.marketplace
-                    ),
-                )
+                result = self._doctor(state)
 
         self.assertEqual(probed, [cache])
 

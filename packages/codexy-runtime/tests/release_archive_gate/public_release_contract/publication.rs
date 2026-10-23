@@ -150,28 +150,30 @@ fn publisher_identity_accepts_legacy_and_no_watcher_receipts() {
             .output()
             .unwrap()
     };
-    let legacy = run(&selected, &selected["candidate"]);
-    assert!(
-        legacy.status.success(),
-        "legacy receipt rejected\nstdout: {}\nstderr: {}",
-        String::from_utf8_lossy(&legacy.stdout),
-        String::from_utf8_lossy(&legacy.stderr)
-    );
-    let mut bad_watcher = selected["candidate"].clone();
+    // Keep legacy Watcher validation independent of the currently selected class set.
+    let mut legacy = selected.clone();
+    legacy["candidate"]["classes"]["coreWatcherMcp"] = json!({"platforms": {
+        "darwin-arm64": {"sha256": "a".repeat(64)},
+        "linux-x86_64": {"sha256": "b".repeat(64)},
+        "windows-x86_64": {"sha256": "c".repeat(64)}
+    }});
+    let watcher = legacy["candidate"].clone();
+    assert!(run(&legacy, &watcher).status.success());
+    let mut bad_watcher = watcher.clone();
     bad_watcher["classes"]["coreWatcherMcp"]["platforms"]["linux-x86_64"]["sha256"] =
         json!("0".repeat(64));
     assert!(
-        !run(&selected, &bad_watcher).status.success(),
-        "mismatched Watcher digest accepted"
+        !run(&legacy, &bad_watcher).status.success(),
+        "bad Watcher digest accepted"
     );
-    let mut incomplete_watcher = selected["candidate"].clone();
-    incomplete_watcher["classes"]["coreWatcherMcp"]["platforms"]
+    let mut incomplete = watcher.clone();
+    incomplete["classes"]["coreWatcherMcp"]["platforms"]
         .as_object_mut()
         .unwrap()
         .remove("windows-x86_64");
     assert!(
-        !run(&selected, &incomplete_watcher).status.success(),
-        "incomplete Watcher platform inventory accepted"
+        !run(&legacy, &incomplete).status.success(),
+        "bad Watcher platforms accepted"
     );
     let mut no_watcher = selected.clone();
     no_watcher["candidate"]["classes"]
@@ -179,18 +181,16 @@ fn publisher_identity_accepts_legacy_and_no_watcher_receipts() {
         .unwrap()
         .remove("coreWatcherMcp");
     let no_watcher_candidate = no_watcher["candidate"].clone();
-    let output = run(&no_watcher, &no_watcher_candidate);
     assert!(
-        output.status.success(),
-        "no-Watcher receipt rejected: {}",
-        String::from_utf8_lossy(&output.stderr)
+        run(&no_watcher, &no_watcher_candidate).status.success(),
+        "no-Watcher rejected"
     );
     assert!(
-        !run(&no_watcher, &selected["candidate"]).status.success(),
+        !run(&no_watcher, &watcher).status.success(),
         "receipt-only Watcher class accepted"
     );
     assert!(
-        !run(&selected, &no_watcher_candidate).status.success(),
+        !run(&legacy, &no_watcher_candidate).status.success(),
         "selection-only Watcher class accepted"
     );
     for class in ["coreHandoff", "devtoolsMcp"] {

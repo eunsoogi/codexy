@@ -38,62 +38,68 @@ class ComponentInspectionHostCases:
                 before = _home_snapshot(state.home)
                 result = doctor(state.home, codex=state.codex, runner=state.run)
                 self.assertEqual(_home_snapshot(state.home), before)
-            entry = result["component_health"][0]
-            registration = entry["observed"]["registration"]
-            self.assertTrue(registration["observed"])
-            self.assertEqual(registration["expected_count"], 8)
-            capabilities = entry["observed"]["capabilities"]
-            self.assertIn("mcp:watcher", capabilities)
-            self.assertIn("specialist:codexy-advisor", capabilities)
-            self.assertNotIn("specialist:codexy-watcher", capabilities)
-            for capability in capabilities.values():
-                self.assertEqual(capability["states"]["verified"], "unknown")
-                self.assertIsNone(capability["host_id"])
-                self.assertIsNone(capability["session_id"])
-            if expected == "exact":
-                advisor = capabilities["specialist:codexy-advisor"]
-                self.assertEqual(
-                    advisor["states"],
-                    {
-                        "configured": "configured",
-                        "loaded": "unknown",
-                        "callable": "unknown",
-                        "verified": "unknown",
-                    },
+                entry = result["component_health"][0]
+                registration = entry["observed"]["registration"]
+                self.assertTrue(registration["observed"])
+                self.assertEqual(registration["expected_count"], 8)
+                capabilities = entry["observed"]["capabilities"]
+                if expected == "exact":
+                    # The current no-MCP core excludes Watcher from direct capability results.
+                    self.assertNotIn("mcp:watcher", capabilities)
+                self.assertIn("specialist:codexy-advisor", capabilities)
+                self.assertNotIn("specialist:codexy-watcher", capabilities)
+                for capability in capabilities.values():
+                    self.assertEqual(capability["states"]["verified"], "unknown")
+                    self.assertIsNone(capability["host_id"])
+                    self.assertIsNone(capability["session_id"])
+                if expected == "exact":
+                    advisor = capabilities["specialist:codexy-advisor"]
+                    self.assertEqual(
+                        advisor["states"],
+                        {
+                            "configured": "configured",
+                            "loaded": "unknown",
+                            "callable": "unknown",
+                            "verified": "unknown",
+                        },
+                    )
+                    self.assertEqual(advisor["source"], "getcodexy-registration-check")
+                    self.assertEqual(advisor["scope"], "current-doctor-invocation")
+                    # Registration is not evidence of authenticated native-role invocation.
+                    self.assertIsNone(advisor["host_id"])
+                    self.assertIsNone(advisor["session_id"])
+                else:
+                    self.assertEqual(
+                        capabilities["specialist:codexy-advisor"]["states"],
+                        {
+                            "configured": "unknown",
+                            "loaded": "unknown",
+                            "callable": "unknown",
+                            "verified": "unknown",
+                        },
+                    )
+                expected_state = (
+                    "missing" if expected == "missing-directory" else expected
                 )
-                self.assertEqual(advisor["source"], "getcodexy-registration-check")
-                self.assertEqual(advisor["scope"], "current-doctor-invocation")
-                # Registration is not evidence of authenticated native-role invocation.
-                self.assertIsNone(advisor["host_id"])
-                self.assertIsNone(advisor["session_id"])
-            else:
+                self.assertEqual(registration["state"], expected_state)
                 self.assertEqual(
-                    capabilities["specialist:codexy-advisor"]["states"],
+                    entry["state"],
                     {
-                        "configured": "unknown",
-                        "loaded": "unknown",
-                        "callable": "unknown",
-                        "verified": "unknown",
-                    },
+                        "exact": "healthy",
+                        "stale": "stale",
+                        "missing": "missing",
+                        "unmanaged-conflict": "incompatible",
+                        "missing-directory": "missing",
+                    }[expected],
                 )
-            expected_state = "missing" if expected == "missing-directory" else expected
-            self.assertEqual(registration["state"], expected_state)
-            self.assertEqual(
-                entry["state"],
-                {
-                    "exact": "healthy",
-                    "stale": "stale",
-                    "missing": "missing",
-                    "unmanaged-conflict": "incompatible",
-                    "missing-directory": "missing",
-                }[expected],
-            )
-            self.assertEqual(
-                next(
-                    item for item in registration["roles"] if item["file"] == role.name
-                )["state"],
-                "exact" if expected == "exact" else expected_state,
-            )
+                self.assertEqual(
+                    next(
+                        item
+                        for item in registration["roles"]
+                        if item["file"] == role.name
+                    )["state"],
+                    "exact" if expected == "exact" else expected_state,
+                )
 
     def test_doctor_reports_host_requirement(self) -> None:
         with fixture() as state:

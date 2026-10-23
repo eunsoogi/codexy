@@ -26,6 +26,7 @@ from codexy_runtime_tools.component_mcp_materialization import (
 from packages.getcodexy.tests.component_marketplace_fixture import (
     copy_plugin_package as _copy_plugin,
 )
+from packages.getcodexy.tests.component_watcher_fixture import LEGACY_VERSION
 
 
 REPOSITORY = Path(__file__).resolve().parents[3]
@@ -41,22 +42,24 @@ class WatcherMaterializationTests(unittest.TestCase):
 
             self.assertEqual(materialize_component_mcp(plugin, "core", VERSION), plugin)
             self.assertTrue(valid_component_mcp(plugin, "core", VERSION))
+            self.assertFalse((plugin / ".mcp.json").exists())
             self.assertFalse((plugin / "mcp/codexy-mcp-watcher").exists())
 
     def test_each_component_uses_only_its_own_mcp_servers(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for component, plugin_name, servers in (
-                ("core", "codexy", {"watcher"}),
-                ("devtools", "codexy-devtools", {"lsp", "codegraph"}),
+            # Core 2.0 is no-MCP; retain Watcher registration coverage on its legacy package.
+            for component, plugin_name, servers, version in (
+                ("core", "codexy", {"watcher"}, LEGACY_VERSION),
+                ("devtools", "codexy-devtools", {"lsp", "codegraph"}, VERSION),
             ):
-                plugin = _copy_plugin(root, plugin_name)
+                plugin = _copy_plugin(root, plugin_name, version)
                 configuration = json.loads(
                     (plugin / ".mcp.json").read_text(encoding="utf-8")
                 )
                 self.assertEqual(set(configuration), servers)
-                self.assertEqual(configuration, mcp_configuration(component))
-                self.assertTrue(valid_component_mcp(plugin, component, VERSION))
+                self.assertEqual(configuration, mcp_configuration(component, version))
+                self.assertTrue(valid_component_mcp(plugin, component, version))
 
     def test_devtools_helper_is_readable_but_not_required_to_be_executable(
         self,
@@ -92,9 +95,10 @@ class WatcherMaterializationTests(unittest.TestCase):
     def test_existing_host_cache_repairs_only_the_exact_component_surface(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            source = _copy_plugin(root / "marketplace", "codexy")
+            # Cache repair must follow the legacy core MCP surface under test.
+            source = _copy_plugin(root / "marketplace", "codexy", LEGACY_VERSION)
             home = root / "home/.codex"
-            cache = component_cache_plugin(home, "core", VERSION)
+            cache = component_cache_plugin(home, "core", LEGACY_VERSION)
             cache.parent.mkdir(parents=True)
             shutil.copytree(source, cache)
             bootstrap = cache / "mcp/codexy_mcp_bootstrap.py"
@@ -102,7 +106,7 @@ class WatcherMaterializationTests(unittest.TestCase):
             bootstrap.chmod(0o600)
 
             target = materialize_component_mcp_cache(
-                home, "core", VERSION, source_plugin=source
+                home, "core", LEGACY_VERSION, source_plugin=source
             )
 
             self.assertEqual(target, cache)
@@ -114,7 +118,7 @@ class WatcherMaterializationTests(unittest.TestCase):
                 stat.S_IMODE(bootstrap.stat().st_mode),
                 stat.S_IMODE((source / "mcp/codexy_mcp_bootstrap.py").stat().st_mode),
             )
-            self.assertTrue(valid_component_mcp_cache(home, "core", VERSION))
+            self.assertTrue(valid_component_mcp_cache(home, "core", LEGACY_VERSION))
             self.assertFalse((cache / "mcp/codexy-mcp-watcher").exists())
 
     def test_missing_selected_host_cache_is_not_silently_skipped(self) -> None:
