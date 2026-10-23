@@ -7,6 +7,8 @@ use serde_json::{Value, json};
 // These path modules isolate protocol and lifecycle regressions while sharing one stdio client.
 #[path = "mcp_stdio/client.rs"]
 mod client;
+#[path = "mcp_stdio/cancellation.rs"]
+mod cancellation;
 #[path = "mcp_stdio/codegraph_protocol.rs"]
 mod codegraph_protocol;
 #[path = "mcp_stdio/change_impact/mod.rs"]
@@ -29,23 +31,5 @@ mod lsp_server_error;
 mod lsp_stderr;
 #[path = "mcp_stdio/wrapper_runtime.rs"]
 mod wrapper_runtime;
-#[path = "mcp_stdio/watcher_protocol.rs"]
-mod watcher_protocol;
-#[path = "mcp_stdio/watcher_long_wait.rs"]
-mod watcher_long_wait;
-#[path = "mcp_stdio/watcher_interrupt.rs"]
-mod watcher_interrupt;
-#[path = "mcp_stdio/watcher_lock_lifecycle.rs"]
-mod watcher_lock_lifecycle;
-#[path = "mcp_stdio/watcher_recovery.rs"]
-mod watcher_recovery;
-#[path = "mcp_stdio/watcher_state.rs"]
-mod watcher_state;
-#[path = "mcp_stdio/watcher_deterministic.rs"]
-mod watcher_deterministic;
-// Keep material event identity and transition regressions separate from persistence coverage.
-#[path = "mcp_stdio/watcher_material_identity.rs"]
-mod watcher_material_identity;
-
 use client::{InstalledPlugin, McpClient, TempRuntimeDir};
 use fixtures::{installed_plugin_copy, installed_plugin_under_rust_host, temp_runtime_dir};

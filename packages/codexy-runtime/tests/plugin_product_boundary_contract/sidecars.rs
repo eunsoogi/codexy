@@ -19,7 +19,7 @@ fn product_boundary_contract_loads_responsibility_sidecars() -> TestResult {
     assert_eq!(
         counts,
         BTreeMap::from([
-            ("codexy", 7),
+            ("codexy", 6),
             ("codexy-devtools", 11),
             ("codexy-github", 3),
             ("repository-only", 7),

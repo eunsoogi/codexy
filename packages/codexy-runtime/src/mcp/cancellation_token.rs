@@ -1,6 +1,5 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
-use std::time::Duration;
 
 /// Cooperative cancellation state for one in-flight MCP request.
 #[derive(Clone, Debug)]
@@ -34,12 +33,6 @@ impl CancellationToken {
 
     pub(super) fn same_instance(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.0, &other.0)
-    }
-
-    pub(crate) fn wait(&self, timeout: Duration) {
-        // This is a wake hint for polling callers; they re-check cancellation after waking.
-        let completed = lock(&self.0.completed);
-        let _ = self.0.wake.wait_timeout(completed, timeout);
     }
 
     pub(super) fn complete(&self) {

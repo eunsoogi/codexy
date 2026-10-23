@@ -143,7 +143,6 @@ pub(super) fn validate_records(root: &Path, records: &[SurfaceRecord]) -> TestRe
         ("runtime.codegraph", "codexy-devtools"),
         ("runtime.lsp", "codexy-devtools"),
         ("runtime.entrypoints", "codexy-devtools"),
-        ("runtime.watcher", "codexy"),
         ("assets.repository", "repository-only"),
         ("assets.plugin", "codexy"),
     ] {
