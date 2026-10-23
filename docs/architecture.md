@@ -7,7 +7,7 @@ of truth remains the packaged files linked below; being packaged or configured
 does not by itself guarantee that a particular Codex host exposes the surface in
 an already-running session.
 
-The frozen target ownership for the future core, GitHub, and developer-tools
+The frozen target ownership for the approved core, GitHub, and developer-tools
 products is defined in the
 [three-plugin product boundary](plugin-product-boundary.md).
 
@@ -40,6 +40,31 @@ GitHub integration after installation.
 
 Removed-role rationale and the Inspector distinction are in
 [`specialist-role-equivalence.md`](specialist-role-equivalence.md).
+
+## Task roles and direct observation
+
+The packaged specialists above are separate from issue-task ownership roles. The
+Orchestrator owns the overall goal, coordination, verification, correction, and
+acceptance; its configured pair is `gpt-6-luna` / `max`. The Advisor uses
+`gpt-6-astra` / `medium` for bounded, instruction-based read-only advice; this
+boundary does not enforce host permissions. A Worker owns one issue lane, its
+branch/worktree, and its finite goal. Clearly scoped general implementation uses
+`gpt-6.1-sol` / `medium`; `gpt-6-luna` / `max` is selected only for simple work
+that satisfies all four predicates in the
+[Worker routing policy](../plugins/codexy/skills/orchestration/references/child-routing-policy.md).
+Role ownership is defined in the
+[supervision reference](../plugins/codexy/skills/orchestration/references/parent-supervision.md).
+These pairs describe routing; they do not establish comparative model cost or
+output quality.
+
+For ordinary Worker observation, the Orchestrator uses native `wait_threads`
+with each task's latest cursor and retains judgement and acceptance. A single
+event does not complete the issue. Codexy 2.0.0 does not package a native
+Watcher specialist or MCP server, and the Rust Watcher runtime is retired. A
+separately assigned external Watcher requires a host-supplied compatible
+implementation and transport. These model pairs are configured or requested role
+settings; effective settings for a running task remain unknown without an
+authoritative host/task readback.
 
 ## Detailed boundaries
 
@@ -126,6 +151,22 @@ passing. Current-head identity, authenticated GitHub snapshots, ancestry, and
 findings remain authoritative. A `PASS` supports readiness only when it has no
 unresolved actionable findings and is bound to the exact current head. Missing
 historical or optional connector evidence is unknown and does not add a gate.
+
+## 1.x transition and supported lifecycle paths
+
+For a 1.x-to-2.0.0 transition, finish or hand off active 1.x tasks before
+changing the installation. After 2.0.0 is published, upgrade the CLI with
+`uv tool upgrade getcodexy==2.0.0` before running component commands. Use
+`getcodexy update [COMPONENT ...]` for an existing split installation. Use
+`getcodexy --codex /absolute/path/to/codex migrate [COMPONENT ...]` only for an
+exact supported legacy monolith, with a trusted Codex executable and a distinct
+split release target. That migration changes the installed configuration; it
+does not migrate an active task or session. Open a fresh Codex session after the
+component operation. Failed lifecycle changes automatically restore the prior
+selection, and the public CLI has no manual `getcodexy rollback` command. The
+[component installation and migration contract](getcodexy-component-installation.md)
+defines selection, recovery, and rollback behavior. Use a published release ref;
+repository source and CI do not establish public installation or host exposure.
 
 ## Keeping the guide current
 

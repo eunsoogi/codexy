@@ -1,20 +1,26 @@
-# Watcher correctness and contention stress
+# Historical Watcher correctness and contention stress
 
-The default system suite separates durable transport correctness from burst
-throughput. Three accepted events are checked across a process restart in pages
-of two, including exact IDs, contents, sequence, cursor and empty final page. An
-independent observer checks health after each completed report. A controlled OS
-lock owner holds the transition lock until another process returns the bounded
-busy error, then verifies unchanged state and successful progress by that same
-process after release. This negative test does not make ordinary busy responses
-acceptable or add a client retry policy.
+This page preserves pre-2.0 Watcher tests, measurements, and host observations.
+Its commands and results apply to recorded revisions and do not prove the
+current Codexy 2.0.0 runtime, public installation, post-install hook execution,
+or model cost/quality. See
+[runtime boundaries](architecture/runtime-boundaries.md),
+[PR #1378](https://github.com/eunsoogi/codexy/pull/1378), and
+[issue #1345](https://github.com/eunsoogi/codexy/issues/1345) for current
+source, candidate evidence, and the separate post-install event requirement.
 
-Existing cancellation, process-death, interrupted-write recovery, bounded
-quarantine recovery and unknown-data preservation tests remain in the default
-suite. The Codexy core package no longer registers a sender `PostToolUse`
-cancellation hook. Same-connection MCP cancellation and durable `watcher_cancel`
-remain separate runtime contracts, while actual app delivery remains a separate
-proof surface.
+At the recorded baseline, the default suite separated durable transport from
+burst throughput. It checked three accepted events across restart in pages of
+two, including exact IDs, contents, sequence, cursor and empty final page; an
+independent observer checked health after each report. A controlled OS lock
+owner held the transition lock until another process got a bounded busy error,
+then verified unchanged state and successful same-process progress after
+release; this did not make ordinary busy responses acceptable or add client
+retry. Default tests also retained cancellation and process-death cases,
+interrupted-write and bounded-quarantine recovery, and unknown-data
+preservation. The core sender `PostToolUse` cancellation hook was removed;
+same-connection MCP cancellation and durable `watcher_cancel` remained separate
+contracts, while actual app delivery remained a separate proof surface.
 
 ## Single wait response envelope
 
