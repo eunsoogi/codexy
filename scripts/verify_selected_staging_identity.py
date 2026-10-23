@@ -73,11 +73,9 @@ def verify(root: Path, receipt_path: Path, run_path: Path, archive_path: Path) -
     if selected_has_watcher:
         platforms = staged_classes["coreWatcherMcp"].get("platforms", {})
         selected_platforms = selected_classes["coreWatcherMcp"].get("platforms", {})
-        if (
-            len(platforms) != 3
-            or platforms.get("linux-x86_64", {}).get("sha256")
-            != selected_platforms.get("linux-x86_64", {}).get("sha256")
-        ):
+        if len(platforms) != 3 or platforms.get("linux-x86_64", {}).get(
+            "sha256"
+        ) != selected_platforms.get("linux-x86_64", {}).get("sha256"):
             reject("optional Watcher runtime differs from the selected activation")
     elif (
         staged_handoff != selected_handoff
@@ -122,7 +120,13 @@ def verify(root: Path, receipt_path: Path, run_path: Path, archive_path: Path) -
                     "plugins/codexy-devtools/.codex-plugin/plugin.json"
                 ).read()
             )
-    except (OSError, KeyError, AttributeError, tarfile.TarError, json.JSONDecodeError) as error:
+    except (
+        OSError,
+        KeyError,
+        AttributeError,
+        tarfile.TarError,
+        json.JSONDecodeError,
+    ) as error:
         reject(f"staged marketplace manifest cannot be read: {error}")
     if manifest.get("version") != target_version:
         reject("staged marketplace version differs from the requested candidate")

@@ -1,8 +1,12 @@
 use std::{fs, path::PathBuf, process::Output};
 
+#[cfg(unix)]
+use std::{os::unix::fs::PermissionsExt, process::Command};
+
 use crate::support::FixtureCommand;
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
+use super::{document, steps};
 
 const SOURCE_COMMIT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const SOURCE_TREE: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
@@ -42,6 +46,60 @@ fn selected_staging_identity_binds_receipt_provenance_and_archive_bytes()
             String::from_utf8_lossy(&rejected.stderr)
         );
     }
+    Ok(())
+}
+
+// The activation checkout predates this verifier, so exercise the workflow's exact Git projection command.
+#[cfg(unix)]
+#[test]
+fn candidate_workflow_loads_verifier_from_workflow_revision_after_checkout()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = StagingFixture::new()?;
+    run_git(&fixture.root, &["init", "--quiet", "--initial-branch=main"])?;
+    run_git(&fixture.root, &["config", "user.email", "codexy-test@example.invalid"])?;
+    run_git(&fixture.root, &["config", "user.name", "codexy-test"])?;
+    run_git(&fixture.root, &["add", "-A"])?;
+    run_git(&fixture.root, &["commit", "--quiet", "-m", "frozen activation"])?;
+    let activation = run_git(&fixture.root, &["rev-parse", "HEAD"])?;
+
+    let helper = fixture.root.join("scripts/verify_selected_staging_identity.py");
+    fs::create_dir_all(helper.parent().ok_or("verifier parent")?)?;
+    fs::copy(
+        codexy_runtime::paths::repository_root()
+            .join("scripts/verify_selected_staging_identity.py"),
+        &helper,
+    )?;
+    let mut permissions = fs::metadata(&helper)?.permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(&helper, permissions)?;
+    run_git(&fixture.root, &["add", "scripts/verify_selected_staging_identity.py"])?;
+    run_git(&fixture.root, &["commit", "--quiet", "-m", "authenticated workflow verifier"])?;
+    let workflow_sha = run_git(&fixture.root, &["rev-parse", "HEAD"])?;
+    run_git(&fixture.root, &["checkout", "--quiet", "--detach", activation.trim()])?;
+    assert!(!helper.exists(), "activation checkout unexpectedly contains the verifier");
+
+    let workflow = document("prepare-version-candidate.yml")?;
+    let candidate_steps = steps(&workflow, "prepare-candidate")?;
+    let identity = candidate_steps
+        .iter()
+        .find(|step| step["name"] == "Verify selected staging receipt against activation and package bytes")
+        .ok_or("selected staging verifier step")?;
+    let runner_temp = tempfile::tempdir()?;
+    let output = Command::new("bash")
+        .args(["--noprofile", "--norc", "-e", "-o", "pipefail", "-c"])
+        .arg(identity["run"].as_str().ok_or("selected verifier command")?)
+        .current_dir(&fixture.root)
+        .env("WORKFLOW_SHA", workflow_sha.trim())
+        .env("RUNNER_TEMP", runner_temp.path())
+        .env("STAGING_SOURCE_COMMIT", SOURCE_COMMIT)
+        .env("STAGING_RUN_ID", STAGING_RUN_ID.to_string())
+        .env("TARGET_VERSION", "2.0.0")
+        .output()?;
+    assert!(
+        output.status.success(),
+        "candidate verifier projection failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     Ok(())
 }
 
@@ -154,4 +212,13 @@ impl StagingFixture {
             .env("TARGET_VERSION", "2.0.0")
             .output()?)
     }
+}
+
+#[cfg(unix)]
+fn run_git(cwd: &std::path::Path, args: &[&str]) -> Result<String, Box<dyn std::error::Error>> {
+    let output = Command::new("git").current_dir(cwd).args(args).output()?;
+    if !output.status.success() {
+        return Err(format!("git {args:?} failed: {}", String::from_utf8_lossy(&output.stderr)).into());
+    }
+    Ok(String::from_utf8(output.stdout)?)
 }

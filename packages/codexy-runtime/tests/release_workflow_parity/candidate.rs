@@ -116,10 +116,25 @@ fn release_candidate_bundle_binds_inputs_and_stays_non_publishing()
         identity < materialize_index,
         "receipt identity must be checked before packaging"
     );
-    assert_eq!(
-        candidate_steps[identity]["run"],
-        "scripts/verify_selected_staging_identity.py staging/runtime-staging-receipt.json staging/runtime-staging-run.json staging/codexy-marketplace-plugin.tar.gz"
-    );
+    let identity_step = &candidate_steps[identity];
+    assert_eq!(identity_step["env"]["WORKFLOW_SHA"], "${{ github.workflow_sha }}");
+    let identity_run = identity_step["run"].as_str().ok_or("selected staging verifier command")?;
+    let projection_commands = [
+        "verifier=\"$RUNNER_TEMP/verify_selected_staging_identity.py\"",
+        "git show \"$WORKFLOW_SHA:scripts/verify_selected_staging_identity.py\" > \"$verifier\"",
+        "chmod 755 \"$verifier\"",
+        "git hash-object \"$verifier\"",
+        "git rev-parse \"$WORKFLOW_SHA:scripts/verify_selected_staging_identity.py\"",
+        "\"$verifier\" staging/runtime-staging-receipt.json staging/runtime-staging-run.json staging/codexy-marketplace-plugin.tar.gz",
+    ];
+    let mut previous_position = 0;
+    for required in projection_commands {
+        let position = identity_run
+            .find(required)
+            .ok_or_else(|| format!("candidate verifier omits {required}"))?;
+        assert!(position >= previous_position, "candidate verifier source is not checked before execution");
+        previous_position = position;
+    }
 
     let materialize = candidate_steps
         .iter()

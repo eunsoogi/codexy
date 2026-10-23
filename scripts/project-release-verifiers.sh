@@ -22,6 +22,12 @@ if test -n "$actual_paths"; then
 		scripts/reconcile-release-attestations | scripts/verify-release-attestation-set)
 			git checkout "$GITHUB_SHA" -- "$path"
 			;;
+		scripts/verify_selected_staging_identity.py)
+			# This helper postdates the frozen activation, so import and authenticate its protected-main blob explicitly.
+			git checkout "$GITHUB_SHA" -- "$path"
+			test -x "$path"
+			test "$(git hash-object "$path")" = "$(git rev-parse "$GITHUB_SHA:$path")"
+			;;
 		scripts/finalize-verified-release)
 			git checkout "$GITHUB_SHA" -- "$path"
 			test -x "$path"
@@ -42,7 +48,8 @@ EOF
 fi
 for verifier in \
 	scripts/reconcile-release-attestations \
-	scripts/verify-release-attestation-set; do
+	scripts/verify-release-attestation-set \
+	scripts/verify_selected_staging_identity.py; do
 	# Verify the resulting bytes match the main-branch verifier revision exactly.
 	test -x "$verifier"
 	test "$(git hash-object "$verifier")" = "$(git rev-parse "$GITHUB_SHA:$verifier")"

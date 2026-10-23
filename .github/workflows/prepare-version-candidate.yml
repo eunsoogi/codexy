@@ -87,7 +87,15 @@ jobs:
           test "$(jq -er .digest <<<"$artifact")" = "sha256:$(sha256sum staging.zip | awk '{print $1}')"
 
       - name: Verify selected staging receipt against activation and package bytes
-        run: scripts/verify_selected_staging_identity.py staging/runtime-staging-receipt.json staging/runtime-staging-run.json staging/codexy-marketplace-plugin.tar.gz
+        env:
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+        run: |
+          # Keep candidate inputs at the activation commit while running the verifier from the admitted workflow revision.
+          verifier="$RUNNER_TEMP/verify_selected_staging_identity.py"
+          git show "$WORKFLOW_SHA:scripts/verify_selected_staging_identity.py" > "$verifier"
+          chmod 755 "$verifier"
+          test "$(git hash-object "$verifier")" = "$(git rev-parse "$WORKFLOW_SHA:scripts/verify_selected_staging_identity.py")"
+          "$verifier" staging/runtime-staging-receipt.json staging/runtime-staging-run.json staging/codexy-marketplace-plugin.tar.gz
 
       - name: Materialize and inspect candidate marketplace archives
         id: materialize_candidate
