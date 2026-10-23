@@ -1,0 +1,222 @@
+name: Prepare verified version candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_version:
+        description: "Exact version selected by the activation contract"
+        required: true
+        type: string
+      staging_source_commit:
+        description: "Exact protected-main commit behind the selected runtime artifact"
+        required: true
+        type: string
+      activation_commit:
+        description: "Exact protected-main commit that selects the staged artifact"
+        required: true
+        type: string
+      staging_run_id:
+        description: "Successful authenticated runtime staging run selected by activation"
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  prepare-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      actions: read
+      contents: read
+    env:
+      TARGET_VERSION: ${{ inputs.target_version }}
+      STAGING_SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
+      ACTIVATION_COMMIT: ${{ inputs.activation_commit }}
+      STAGING_RUN_ID: ${{ inputs.staging_run_id }}
+      RELEASE_TAG: v${{ inputs.target_version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.activation_commit }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify selected protected-main source and activation record
+        env:
+          DISPATCH_SHA: ${{ github.sha }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+        run: |
+          # Freeze every source identity before the staging API token is used.
+          test "$GITHUB_REF" = refs/heads/main
+          for commit in "$STAGING_SOURCE_COMMIT" "$ACTIVATION_COMMIT" "$DISPATCH_SHA" "$WORKFLOW_SHA"; do
+            case "$commit" in *[!0-9a-f]*|'') exit 1 ;; esac
+            test "${#commit}" -eq 40
+          done
+          case "$STAGING_RUN_ID" in *[!0-9]*|'') exit 1 ;; esac
+          test "$STAGING_RUN_ID" -gt 0
+          test "$(git rev-parse HEAD)" = "$ACTIVATION_COMMIT"
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          git merge-base --is-ancestor "$STAGING_SOURCE_COMMIT" "$ACTIVATION_COMMIT"
+          git merge-base --is-ancestor "$ACTIVATION_COMMIT" "$DISPATCH_SHA"
+          git merge-base --is-ancestor "$DISPATCH_SHA" origin/main
+          git merge-base --is-ancestor "$WORKFLOW_SHA" origin/main
+          scripts/validate-release-lifecycle-contract "$TARGET_VERSION"
+          test "$(jq -er .runtime.selectedTag .agents/plugins/release-publish-contract.json)" = "$RELEASE_TAG"
+          test "$(jq -er .candidate.source.commit .agents/plugins/runtime-activation.json)" = "$STAGING_SOURCE_COMMIT"
+          test "$(jq -er .candidate.artifact.stagingRunId .agents/plugins/runtime-activation.json)" = "$STAGING_RUN_ID"
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Download authenticated selected runtime artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
+          SOURCE_COMMIT: ${{ inputs.staging_source_commit }}
+        run: |
+          scripts/download-runtime-staging-artifact staging
+          expected_name="runtime-staging-${STAGING_RUN_ID}-$(jq -er .run_attempt staging/runtime-staging-run.json)"
+          artifact=$(jq -er --arg name "$expected_name" '[.artifacts[] | select(.name == $name and .expired == false)] | if length == 1 then .[0] else error("selected staging artifact missing or ambiguous") end' staging/runtime-staging-artifacts.json)
+          test "$(jq -er .name <<<"$artifact")" = "$expected_name"
+          test "$(jq -er .digest <<<"$artifact")" = "sha256:$(sha256sum staging.zip | awk '{print $1}')"
+
+      - name: Materialize and inspect candidate marketplace archives
+        id: materialize_candidate
+        env:
+          RELEASE_TAG: v${{ inputs.target_version }}
+        run: |
+          mkdir -p dist final-inspect
+          cp staging/codexy-marketplace-plugin.tar.gz dist/codexy-runtime-package.tar.gz
+          runtime_package_sha256="$(sha256sum dist/codexy-runtime-package.tar.gz | awk '{print $1}')"
+          test "$runtime_package_sha256" = "$(jq -er .artifact.sha256 staging/runtime-staging-receipt.json)"
+          printf 'runtime_package_sha256=%s\n' "$runtime_package_sha256" >> "$GITHUB_OUTPUT"
+          RELEASE_TAG="$RELEASE_TAG" scripts/materialize-runtime-release-archive staging/codexy-marketplace-plugin.tar.gz dist/codexy-marketplace-plugin.tar.gz
+          RELEASE_TAG="$RELEASE_TAG" scripts/assemble-release-train-archive.sh dist/codexy-marketplace-plugin.tar.gz dist/codexy-marketplace-bundle.tar.gz
+          tar --no-same-owner --no-same-permissions -xzf dist/codexy-marketplace-plugin.tar.gz -C final-inspect
+          scripts/inspect-release-archive dist/codexy-marketplace-plugin.tar.gz final-inspect/plugins/codexy-devtools public-release
+          scripts/inspect_release_train_archive.py dist/codexy-marketplace-bundle.tar.gz "$PWD" "$RELEASE_TAG"
+          scripts/create_release_train_receipt.py dist/codexy-marketplace-plugin.tar.gz dist/codexy-marketplace-bundle.tar.gz dist/codexy-runtime-package.tar.gz staging/runtime-staging-receipt.json staging/runtime-staging-run.json dist/runtime-release-receipt.json
+
+      - name: Build and verify getcodexy from the frozen activation commit
+        env:
+          TARGET_VERSION: ${{ inputs.target_version }}
+        run: |
+          # Build the CLI from the same immutable source as the marketplace bundle.
+          scripts/sync-plugin-version.sh --check
+          python -m pip install --disable-pip-version-check build
+          python -m build --outdir dist/getcodexy-dist packages/getcodexy
+          python3 scripts/verify_getcodexy_package_artifact.py --dist dist/getcodexy-dist --version "$TARGET_VERSION"
+
+      - name: Resolve previous package version
+        id: previous_version
+        env:
+          TARGET_VERSION: ${{ inputs.target_version }}
+        run: |
+          previous_version=
+          while read -r revision; do
+            candidate="$(git show "$revision:packages/getcodexy/pyproject.toml" | sed -nE 's/^version = "([0-9]+\.[0-9]+\.[0-9]+)"$/\1/p' | head -n 1)"
+            if [[ -n "$candidate" && "$candidate" != "$TARGET_VERSION" ]]; then previous_version=$candidate; break; fi
+          done < <(git log --format=%H "$ACTIVATION_COMMIT" -- packages/getcodexy/pyproject.toml)
+          case "$previous_version" in '' | *[!0-9.]*) echo "previous package version is unavailable" >&2; exit 1 ;; esac
+          test "$previous_version" != "$TARGET_VERSION"
+          printf 'version=%s\n' "$previous_version" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke the local package and bundle without publishing
+        env:
+          CODEXY_RUNTIME_PACKAGE_PATH: ${{ github.workspace }}/dist/codexy-runtime-package.tar.gz
+          CODEXY_RUNTIME_PACKAGE_SHA256: ${{ steps.materialize_candidate.outputs.runtime_package_sha256 }}
+          GETCODEXY_DIST: ${{ github.workspace }}/dist/getcodexy-dist
+          PUBLIC_BUNDLE_ARCHIVE: ${{ github.workspace }}/dist/codexy-marketplace-bundle.tar.gz
+          PUBLIC_INSPECT_ROOT: final-inspect
+          UPGRADE_FROM_VERSION: ${{ steps.previous_version.outputs.version }}
+        run: scripts/smoke-public-getcodexy-release.sh
+
+      - name: Bind selected inputs and this workflow attempt to the candidate receipt
+        env:
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+        run: |
+          # The release receipt proves package bytes; this wrapper identifies the non-public producing run.
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+
+          def digest(path):
+              return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+          release = json.loads(Path("dist/runtime-release-receipt.json").read_text())
+          staging_run = json.loads(Path("staging/runtime-staging-run.json").read_text())
+          artifact_index = json.loads(Path("staging/runtime-staging-artifacts.json").read_text())
+          expected_name = release["staging"]["artifactName"]
+          matches = [item for item in artifact_index["artifacts"] if item["name"] == expected_name and not item["expired"]]
+          if release["release"]["tag"] != os.environ["RELEASE_TAG"]:
+              raise SystemExit("release receipt version differs from candidate input")
+          if int(staging_run["id"]) != int(release["staging"]["runId"]) or int(staging_run["run_attempt"]) != int(release["staging"]["runAttempt"]):
+              raise SystemExit("staging run metadata differs from release receipt")
+          if len(matches) != 1 or not matches[0].get("digest"):
+              raise SystemExit("selected staging artifact metadata is missing or ambiguous")
+          if matches[0]["digest"] != "sha256:" + digest("staging.zip"):
+              raise SystemExit("selected staging artifact download digest mismatch")
+          distributions = [
+              {"name": path.name, "sha256": digest(path)}
+              for path in sorted(Path("dist/getcodexy-dist").iterdir()) if path.is_file()
+          ]
+          receipt = {
+              "schema": "codexy-marketplace-candidate-receipt/v1",
+              "candidate": {
+                  "source": release["source"],
+                  "version": release["release"]["tag"].removeprefix("v"),
+                  "workflow": {
+                      "repository": os.environ["GITHUB_REPOSITORY"],
+                      "ref": os.environ["GITHUB_REF"],
+                      "workflowRef": os.environ["WORKFLOW_REF"],
+                      "workflowSha": os.environ["WORKFLOW_SHA"],
+                      "dispatchSha": os.environ["GITHUB_SHA"],
+                      "runId": int(os.environ["GITHUB_RUN_ID"]),
+                      "runAttempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+                  },
+                  "staging": {
+                      "runId": release["staging"]["runId"],
+                      "runAttempt": release["staging"]["runAttempt"],
+                      "artifactName": expected_name,
+                      "artifactId": int(matches[0]["id"]),
+                      "artifactDigest": matches[0]["digest"],
+                      "archiveSha256": release["runtimeArtifact"]["sha256"],
+                  },
+                  "artifacts": {
+                      "marketplacePlugin": release["artifact"],
+                      "marketplaceBundle": release["bundleArtifact"],
+                      "runtimePackage": release["runtimeArtifact"],
+                      "getcodexy": distributions,
+                  },
+                  "components": release["components"],
+                  "runtimeClasses": release.get("runtimeClasses", {}),
+              },
+          }
+          Path("dist/codexy-marketplace-candidate-receipt.json").write_text(
+              json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n"
+          )
+          PY
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: codexy-${{ inputs.target_version }}-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            dist/codexy-marketplace-plugin.tar.gz
+            dist/codexy-marketplace-bundle.tar.gz
+            dist/codexy-runtime-package.tar.gz
+            dist/runtime-release-receipt.json
+            dist/codexy-marketplace-candidate-receipt.json
+            dist/getcodexy-dist/*
+            staging/runtime-staging-receipt.json
+            staging/runtime-staging-provenance.json
+            staging/runtime-staging-run.json
+            staging/runtime-staging-artifacts.json
+          if-no-files-found: error
+          retention-days: 14
