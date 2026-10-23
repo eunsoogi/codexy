@@ -78,6 +78,7 @@ fn final_release_admits_explicit_lineage_before_publication() -> Result<(), Box<
             "while IFS= read -r path; do",
             "scripts/project-release-verifiers.sh)",
             "scripts/reconcile-release-attestations | scripts/verify-release-attestation-set)",
+            "scripts/verify_selected_staging_identity.py)",
             "git checkout \"$GITHUB_SHA\" -- \"$path\"",
             "git hash-object \"$verifier\"",
             "git rev-parse \"$GITHUB_SHA:scripts/finalize-verified-release\"",

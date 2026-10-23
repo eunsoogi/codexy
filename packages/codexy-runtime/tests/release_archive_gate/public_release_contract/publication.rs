@@ -3,31 +3,11 @@ use sha2::Digest;
 use std::fs;
 
 use super::Command;
-
-#[cfg(windows)]
-fn workflow_bash() -> std::path::PathBuf {
-    // A bare `bash` can select the WSL launcher; bind this fixture to Git for Windows Bash.
-    let exec_path = Command::new("git")
-        .arg("--exec-path")
-        .output()
-        .expect("Git executable path");
-    assert_eq!(exec_path.status.code(), Some(0), "git --exec-path");
-    let exec_path = String::from_utf8(exec_path.stdout).expect("Git executable path is UTF-8");
-    std::path::Path::new(exec_path.trim())
-        .ancestors()
-        .map(|root| root.join("bin/bash.exe"))
-        .find(|candidate| candidate.is_file())
-        .expect("Git for Windows Bash beside Git")
-}
-
-#[cfg(not(windows))]
-fn workflow_bash() -> &'static str {
-    "bash"
-}
+use crate::support::make_executable;
 
 #[test]
 fn publisher_identity_accepts_legacy_and_no_watcher_receipts() {
-    // Run the workflow's own consumer checks before invoking any release producer.
+    // Exercise the shared verifier that both candidate assembly and publication invoke.
     let repo = codexy_runtime::paths::repository_root();
     let root = tempfile::tempdir().expect("publisher fixture root");
     let workflow_path = repo.join(".github/workflows/publish-version-release.yml");
@@ -36,8 +16,7 @@ fn publisher_identity_accepts_legacy_and_no_watcher_receipts() {
         "scripts/admit-pypi-environment",
         "git merge-base --is-ancestor \"$ACTIVATION_COMMIT\" origin/main",
         "test \"$GITHUB_REF\" = refs/heads/main",
-        "cmp receipt-provenance.json staged-provenance.json",
-        "sha256sum staging/codexy-marketplace-plugin.tar.gz",
+        "scripts/verify_selected_staging_identity.py",
     ] {
         assert!(
             workflow_source.contains(preserved),
@@ -55,6 +34,8 @@ fn publisher_identity_accepts_legacy_and_no_watcher_receipts() {
         .as_str()
         .unwrap()
         .to_owned();
+    assert!(step.contains("test \"$(git rev-parse HEAD)\" = \"$ACTIVATION_COMMIT\""));
+    assert!(step.contains("scripts/verify_selected_staging_identity.py"));
     let mut selected: Value = serde_json::from_slice(
         &fs::read(repo.join(".agents/plugins/runtime-activation.json")).unwrap(),
     )
@@ -84,7 +65,11 @@ fn publisher_identity_accepts_legacy_and_no_watcher_receipts() {
     let stage = root.path().join("staging");
     fs::write(
         stage.join("runtime-staging-run.json"),
-        json!({"run_attempt": selected["candidate"]["artifact"]["stagingRunAttempt"]}).to_string(),
+        json!({
+            "id": selected["candidate"]["artifact"]["stagingRunId"],
+            "run_attempt": selected["candidate"]["artifact"]["stagingRunAttempt"],
+        })
+        .to_string(),
     )
     .unwrap();
     fs::write(
@@ -92,38 +77,16 @@ fn publisher_identity_accepts_legacy_and_no_watcher_receipts() {
         serde_json::to_vec(&selected["provenance"]).unwrap(),
     )
     .unwrap();
-    // Give the workflow an isolated HEAD so fixture behavior does not depend on the host's .git layout.
-    assert!(
-        Command::new("git")
-            .args(["init", "-q"])
-            .current_dir(root.path())
-            .status()
-            .unwrap()
-            .success()
-    );
-    assert!(
-        Command::new("git")
-            .args([
-                "-c",
-                "user.name=Codexy fixture",
-                "-c",
-                "user.email=codexy-fixture@example.invalid",
-                "commit",
-                "--allow-empty",
-                "-m",
-                "publisher fixture"
-            ])
-            .current_dir(root.path())
-            .status()
-            .unwrap()
-            .success()
-    );
-    let head = Command::new("git")
-        .args(["rev-parse", "HEAD"])
-        .current_dir(root.path())
-        .output()
-        .unwrap();
-    let head = String::from_utf8(head.stdout).unwrap().trim().to_owned();
+    let helper = root
+        .path()
+        .join("scripts/verify_selected_staging_identity.py");
+    fs::create_dir_all(helper.parent().unwrap()).unwrap();
+    fs::copy(
+        repo.join("scripts/verify_selected_staging_identity.py"),
+        &helper,
+    )
+    .unwrap();
+    make_executable(&helper).unwrap();
     let source = selected["candidate"]["source"]["commit"]
         .as_str()
         .unwrap()
@@ -136,11 +99,11 @@ fn publisher_identity_accepts_legacy_and_no_watcher_receipts() {
         )
         .unwrap();
         fs::write(stage.join("runtime-staging-receipt.json"), serde_json::to_vec(&json!({"candidate": candidate, "artifact": selection["artifact"], "provenance": selection["provenance"]})).unwrap()).unwrap();
-        Command::new(workflow_bash())
-            .args(["-e", "-x", "-o", "pipefail", "-c"])
-            .arg(&step)
+        Command::new(&helper)
+            .arg_path(stage.join("runtime-staging-receipt.json"))
+            .arg_path(stage.join("runtime-staging-run.json"))
+            .arg_path(&archive)
             .current_dir(root.path())
-            .env("ACTIVATION_COMMIT", &head)
             .env("STAGING_SOURCE_COMMIT", &source)
             .env(
                 "STAGING_RUN_ID",

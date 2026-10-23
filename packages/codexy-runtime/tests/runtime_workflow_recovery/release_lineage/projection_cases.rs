@@ -11,6 +11,7 @@ pub(super) fn assert_projection_cases(
         ("allowed-reconciliation-delta", "reconciliation-delta", true),
         ("allowed-finalizer-delta", "finalizer-delta", true),
         ("allowed-smoke-delta", "smoke-delta", true),
+        ("allowed-identity-verifier-delta", "identity-verifier-delta", true),
         ("allowed-host-delta", "host-delta", true),
         ("allowed-smoke-and-host-delta", "smoke-host-delta", true),
         ("non-executable-host", "host-mode-delta", false),
@@ -41,6 +42,10 @@ fn run_projection_case(
     write_executable(&scripts.join("project-release-verifiers.sh"), projection)?;
     write_executable(&scripts.join("reconcile-release-attestations"), "activation-reconcile\n")?;
     write_executable(&scripts.join("verify-release-attestation-set"), "activation-set\n")?;
+    write_executable(
+        &scripts.join("verify_selected_staging_identity.py"),
+        "activation-identity-verifier\n",
+    )?;
     write_executable(&scripts.join("finalize-verified-release"), "activation-finalizer\n")?;
     write_executable(
         &scripts.join("smoke-public-getcodexy-release.sh"),
@@ -56,6 +61,12 @@ fn run_projection_case(
         "reconciliation-delta" => commit_script(root, &scripts, "reconcile-release-attestations", "main-reconcile\n")?,
         "finalizer-delta" => commit_script(root, &scripts, "finalize-verified-release", "main-finalizer\n")?,
         "smoke-delta" => commit_script(root, &scripts, "smoke-public-getcodexy-release.sh", "main-smoke\n")?,
+        "identity-verifier-delta" => commit_script(
+            root,
+            &scripts,
+            "verify_selected_staging_identity.py",
+            "main-identity-verifier\n",
+        )?,
         "host-delta" => commit_script(root, &scripts, "fake_public_codex_host.py", "main-host\n")?,
         "smoke-host-delta" => {
             commit_script(root, &scripts, "smoke-public-getcodexy-release.sh", "main-smoke\n")?;
@@ -94,14 +105,27 @@ fn run_projection_case(
         let expected_reconciliation = if kind == "reconciliation-delta" { "main-reconcile\n" } else { "activation-reconcile\n" };
         let expected_finalizer = if kind == "finalizer-delta" { "main-finalizer\n" } else { "activation-finalizer\n" };
         let expected_smoke = if matches!(kind, "smoke-delta" | "smoke-host-delta") { "main-smoke\n" } else { "activation-smoke\n" };
+        let expected_identity_verifier = if kind == "identity-verifier-delta" {
+            "main-identity-verifier\n"
+        } else {
+            "activation-identity-verifier\n"
+        };
         assert_eq!(fs::read_to_string(scripts.join("verify-release-attestation-set"))?, expected_verifier);
         assert_eq!(fs::read_to_string(scripts.join("reconcile-release-attestations"))?, expected_reconciliation);
         assert_eq!(fs::read_to_string(scripts.join("finalize-verified-release"))?, expected_finalizer);
         assert_eq!(fs::read_to_string(scripts.join("smoke-public-getcodexy-release.sh"))?, expected_smoke);
+        assert_eq!(
+            fs::read_to_string(scripts.join("verify_selected_staging_identity.py"))?,
+            expected_identity_verifier
+        );
         assert!(!Command::new("git").current_dir(root).args(["symbolic-ref", "-q", "HEAD"]).status()?.success());
         let expected_host = if matches!(kind, "host-delta" | "smoke-host-delta") { "main-host\n" } else { "activation-host\n" };
         assert_eq!(fs::read_to_string(scripts.join("fake_public_codex_host.py"))?, expected_host);
-        for path in ["scripts/smoke-public-getcodexy-release.sh", "scripts/fake_public_codex_host.py"] {
+        for path in [
+            "scripts/smoke-public-getcodexy-release.sh",
+            "scripts/fake_public_codex_host.py",
+            "scripts/verify_selected_staging_identity.py",
+        ] {
             assert!(fs::metadata(root.join(path))?.permissions().mode() & 0o111 != 0);
             assert_eq!(run_git(root, &["hash-object", path])?, run_git(root, &["rev-parse", &format!("{current}:{path}")])?);
         }
