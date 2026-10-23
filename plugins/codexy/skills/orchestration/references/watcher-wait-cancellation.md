@@ -1,9 +1,22 @@
 # Watcher wait cancellation
 
-The core `PreToolUse` hook binds an authenticated `watcher_wait` call to an
-opaque, short-lived request record. A same-connection MCP cancellation or a
-packaged Watcher cancellation hook releases only that request; it preserves the
-durable Watcher session and its event log.
+The #1345 candidate removes the Watcher-specific `PreToolUse`, `PostToolUse`,
+`Interrupt`, and `UserPromptSubmit` hook registrations from the core package.
+Codexy's core no longer injects the optional `requestBinding`; a separately
+configured host integration may supply one, and the MCP runtime validates it
+against the authenticated parent capability. A native host interrupt or
+same-connection MCP cancellation may release the current request while
+preserving the durable Watcher session and event log. Explicit `watcher_cancel`
+still ends that session and requires a new assignment.
+
+## Retired hook behavior
+
+The details below describe core hook behavior before #1345. The candidate no
+longer maps these host events or successful sender calls to Watcher request
+cancellation.
+
+The earlier core `PreToolUse` hook bound an authenticated `watcher_wait` call to
+an opaque, short-lived request record.
 
 When a JSON wait result is returned, `cancellationReason` appears only with
 `status=cancelled`: `request_cancelled` identifies the request-binding branch,
@@ -12,15 +25,15 @@ this value from the branch that returned the result. A same-connection MCP
 `notifications/cancelled` response may be suppressed by the transport, so it
 does not produce a synthetic JSON result or cancellation reason.
 
-The `Interrupt` hook matches the exact host `session_id` and `turn_id`. The
-`UserPromptSubmit` hook matches the host session and cancels only when exactly
-one armed or active Watcher wait is bound to that session. If more than one
-request matches, it fails closed. The hook forwards only `session_id`; prompt
-text does not reach the Watcher runtime. Direct Watcher callers remain
+The earlier `Interrupt` hook matched the exact host `session_id` and `turn_id`.
+The `UserPromptSubmit` hook matched the host session and cancelled only when
+exactly one armed or active Watcher wait was bound to that session. If more than
+one request matched, it failed closed. The hook forwarded only `session_id`;
+prompt text did not reach the Watcher runtime. Direct Watcher callers remained
 binding-free.
 
-A successful cross-thread send may release the recipient wait through the
-sender's `PostToolUse`. The handler accepts only the exact
+Before #1345, a successful cross-thread send could release the recipient wait
+through the sender's `PostToolUse`. The handler accepted only the exact
 `mcp__codex_app__send_message_to_thread` tool with outer `isError=false`, one
 text result containing a JSON `threadId`, and matching input and result
 recipients. It uses that recipient in the shared Watcher state root; sender
@@ -30,10 +43,12 @@ match cancels only that request, preserving the durable session, queue, and
 cursor. Actual app proof must still identify the installed candidate and verify
 recipient handling and a later report through the same session.
 
-The host MUST deliver a matching hook for plugin cancellation to take effect. A
-delegated task message or outer wait termination may leave the native request
-active. Codex MUST keep host observations tied to the exact candidate and
-distinguish these results:
+In those earlier builds, the host had to deliver a matching hook for plugin
+cancellation to take effect. A delegated task message or outer wait termination
+could leave the native request active. Native host interruption, MCP transport
+cancellation, and explicit `watcher_cancel` remain separate outcomes. Codex MUST
+keep host observations tied to the exact candidate and distinguish these
+results:
 
 - An earlier candidate exposed `UserPromptSubmit` as untrusted. A delegated
   task-to-task follow-up timed out, and its read-thread record omitted

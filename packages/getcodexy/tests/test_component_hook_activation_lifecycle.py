@@ -54,37 +54,36 @@ def _old_hook_rows(plugin: Path) -> list[dict[str, object]]:
     events = {
         "PreToolUse": "preToolUse",
         "PermissionRequest": "permissionRequest",
-        "Interrupt": "interrupt",
     }
     event_keys = {
         "PreToolUse": "pre_tool_use",
         "PermissionRequest": "permission_request",
-        "Interrupt": "interrupt",
     }
     value = json.loads((plugin / "hooks/hooks.json").read_text(encoding="utf-8"))
     path = plugin / "hooks/hooks.json"
     rows = []
-    for event in events:
-        group = value["hooks"][event][0]
-        for hook_index, hook in enumerate(group["hooks"]):
-            command = hook["command"].replace("${PLUGIN_ROOT}", str(plugin))
-            rows.append(
-                {
-                    "key": f"codexy@codexy:hooks/hooks.json:{event_keys[event]}:0:{hook_index}",
-                    "eventName": events[event],
-                    "handlerType": "command",
-                    "command": command,
-                    "async": hook.get("async", False),
-                    "matcher": group.get("matcher"),
-                    "timeoutSec": hook.get("timeout", 600),
-                    "sourcePath": str(path),
-                    "pluginId": "codexy@codexy",
-                    "enabled": True,
-                    "isManaged": False,
-                    "currentHash": "sha256:fixture",
-                    "trustStatus": "trusted",
-                }
-            )
+    # Keep one host trust decision stale as the retained hook topology changes.
+    for event, event_name in events.items():
+        for group_index, group in enumerate(value["hooks"][event]):
+            for hook_index, hook in enumerate(group["hooks"]):
+                command = hook["command"].replace("${PLUGIN_ROOT}", str(plugin))
+                rows.append(
+                    {
+                        "key": f"codexy@codexy:hooks/hooks.json:{event_keys[event]}:{group_index}:{hook_index}",
+                        "eventName": event_name,
+                        "handlerType": "command",
+                        "command": command,
+                        "async": hook.get("async", False),
+                        "matcher": group.get("matcher"),
+                        "timeoutSec": hook.get("timeout", 600),
+                        "sourcePath": str(path),
+                        "pluginId": "codexy@codexy",
+                        "enabled": True,
+                        "isManaged": False,
+                        "currentHash": "sha256:fixture",
+                        "trustStatus": "untrusted" if not rows else "trusted",
+                    }
+                )
     return rows
 
 

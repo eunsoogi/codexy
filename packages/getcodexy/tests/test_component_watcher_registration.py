@@ -138,28 +138,22 @@ class WatcherRegistrationTests(unittest.TestCase):
 
             self.assertFalse(valid_component_mcp(plugin, "core", VERSION))
 
-    def test_sender_posttool_hook_is_registered_as_its_own_exact_concern(self) -> None:
+    def test_core_registration_contains_only_retained_routing_hooks(self) -> None:
         with fixture({"core"}) as state:
             plugin = state.marketplace / "plugins/codexy"
             materialize_component_mcp(plugin, "core", VERSION)
             hooks = json.loads((plugin / "hooks/hooks.json").read_text())["hooks"]
 
-            self.assertEqual(
-                hooks["PostToolUse"],
-                [
-                    {
-                        "matcher": "^mcp__codex_app__send_message_to_thread$",
-                        "hooks": [
-                            {
-                                "type": "command",
-                                "command": '"${PLUGIN_ROOT}/hooks/codexy-watcher-interrupt.sh" PostToolUse',
-                                "commandWindows": '"${PLUGIN_ROOT}/hooks/codexy-watcher-interrupt.cmd" PostToolUse',
-                                "timeout": 3,
-                            }
-                        ],
-                    }
-                ],
-            )
+            self.assertEqual(set(hooks), {"PermissionRequest", "PreToolUse"})
+            expected_matchers = {
+                "^(?:codex_app__|mcp__codex_app__)send_message_to_thread$",
+                "^(?:codex_app__|mcp__codex_app__)create_thread$",
+                "^(?:(?:agents|multi_agent_v1)__)?spawn_agent$",
+            }
+            for event in ("PermissionRequest", "PreToolUse"):
+                self.assertEqual(
+                    {group["matcher"] for group in hooks[event]}, expected_matchers
+                )
             self.assertTrue(valid_registration(plugin, "core"))
 
     def test_doctor_rejects_a_missing_registered_watcher_bootstrap(self) -> None:

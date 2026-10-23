@@ -7,15 +7,10 @@ COMMAND_HOOKS = (
     (_TOOL_PREFIX + "create_thread$", "codexy-child-thread-creation"),
     (r"^(?:(?:agents|multi_agent_v1)__)?spawn_agent$", "codexy-subagent-ownership"),
 )
-WATCHER_WAIT_HOOK = (r"^(?:mcp__[^ ]+__)?watcher_wait$", "codexy-watcher-interrupt")
-LIFECYCLE_HOOKS = (WATCHER_WAIT_HOOK,)
-# Observe only completed sender calls; failed sends cannot release recipient waits.
-POST_TOOL_HOOKS = (
-    (r"^mcp__codex_app__send_message_to_thread$", "codexy-watcher-interrupt"),
-)
+# The installed core package carries only its retained routing and ownership launchers.
 LAUNCHERS = tuple(
     f"hooks/{stem}.{extension}"
-    for _, stem in (*COMMAND_HOOKS, *LIFECYCLE_HOOKS)
+    for _, stem in COMMAND_HOOKS
     for extension in ("sh", "cmd")
 )
 # Windows invokes the event script with `py.exe -3 -I -B`, bypassing the POSIX
@@ -33,8 +28,4 @@ DEPENDENCIES = (
     "hooks/codexy_policy/envelope.py",
     "hooks/codexy_policy/timing.py",
     "hooks/codexy_policy/windows_timing.py",
-    "hooks/codexy-watcher-interrupt.sh",
-    "hooks/codexy-watcher-interrupt.cmd",
-    "hooks/codexy_watcher_interrupt.py",
-    "hooks/codexy_watcher_interrupt_events.py",
 )

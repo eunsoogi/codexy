@@ -7,8 +7,6 @@ use std::io::Write as _;
 use std::process::Stdio;
 
 const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
-// The separate PostToolUse sender concern is covered by its focused suite.
-const LIFECYCLE_MATCHER: &str = "^(?:mcp__[^ ]+__)?watcher_wait$";
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 type LauncherResult = Result<Option<Value>, Box<dyn std::error::Error>>;
 
@@ -73,18 +71,11 @@ fn packaged_hooks_bind_each_concern_and_event_once() -> TestResult {
     let hooks: Value = serde_json::from_str(&std::fs::read_to_string(root.join("hooks.json"))?)?;
     let events = hooks["hooks"].as_object().ok_or("hooks object")?;
 
-    assert_eq!(
-        events.len(),
-        EVENTS.len() + 3,
-        "preventive, lifecycle, and sender events are retained"
-    );
+    assert_eq!(events.len(), EVENTS.len(), "only retained core events remain");
     for event in EVENTS {
         let groups = events[*event]
             .as_array()
-            .ok_or("event groups")?
-            .iter()
-            .filter(|group| group["matcher"] != LIFECYCLE_MATCHER)
-            .collect::<Vec<_>>();
+            .ok_or("event groups")?;
         assert_eq!(groups.len(), INSTALLED_IDS.len(), "{event} concern coverage");
         let mut seen = HashSet::new();
         for group in groups {
