@@ -10,6 +10,7 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 // Every selected public projection must reject stale values without repairing the invalid fixture.
 #[test]
 fn selected_release_projections_fail_closed_without_mutation() -> TestResult {
+    // Match PowerShell source tokens without newline suffixes so CRLF checkouts remain mutable.
     let cases: &[(&str, &str, fn(String, &str) -> String)] = &[
         (
             "contract selected version",
@@ -101,8 +102,8 @@ fn selected_release_projections_fail_closed_without_mutation() -> TestResult {
             ".github/scripts/verify-public-marketplace-baselines.ps1",
             |text: String, _version: &str| {
                 text.replacen(
-                    "$env:CODEXY_TEST_LEGACY_MARKETPLACE_ROOT = [string]$legacyRelease.extracted_root\n",
-                    "$env:CODEXY_TEST_LEGACY_MARKETPLACE_ROOT = [string]$release.extracted_root\n",
+                    "$env:CODEXY_TEST_LEGACY_MARKETPLACE_ROOT = [string]$legacyRelease.extracted_root",
+                    "$env:CODEXY_TEST_LEGACY_MARKETPLACE_ROOT = [string]$release.extracted_root",
                     1,
                 )
             },
@@ -112,8 +113,8 @@ fn selected_release_projections_fail_closed_without_mutation() -> TestResult {
             ".github/scripts/verify-public-marketplace-baselines.ps1",
             |text: String, _version: &str| {
                 text.replacen(
-                    "\"CODEXY_TEST_LEGACY_MARKETPLACE_ROOT=$($legacyRelease.extracted_root)\" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append\n",
-                    "\"CODEXY_TEST_LEGACY_MARKETPLACE_ROOT=stale-watcher.exe\" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append\n",
+                    "CODEXY_TEST_LEGACY_MARKETPLACE_ROOT=$($legacyRelease.extracted_root)",
+                    "CODEXY_TEST_LEGACY_MARKETPLACE_ROOT=stale-watcher.exe",
                     1,
                 )
             },
