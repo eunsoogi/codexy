@@ -21,7 +21,7 @@ from .component_registration_snapshot import (
     restore_managed_role_files,
 )
 from .component_registration_projection import (
-    MANAGED_MARKERS,
+    has_managed_role_marker,
     managed_component_for_path,
 )
 from .component_resolver import verify_post_operation_inventory
@@ -110,7 +110,7 @@ def _restore_managed_entry(home: Path, entry: ManagedFileSnapshot) -> None:
         return
     component = managed_component_for_path(entry.relative)
     if current is not None and component is not None:
-        if not current.startswith(MANAGED_MARKERS[component].encode()):
+        if not has_managed_role_marker(current, component):
             raise RuntimeError(f"managed restore refuses unmanaged path: {path}")
     _atomic_write(path, entry.data)
     _set_mode(path, entry.mode)

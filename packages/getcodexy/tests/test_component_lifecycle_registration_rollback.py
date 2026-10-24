@@ -34,6 +34,10 @@ class ComponentLifecycleRegistrationRollbackTests(unittest.TestCase):
             _run_github_projection(state)
             core_root = state.home / "agents/codexy"
             github_root = state.home / "agents/codexy-github"
+            github_role = github_root / "codexy-weaver.toml"
+            github_bytes = github_role.read_bytes().replace(b"\n", b"\r\n")
+            github_role.write_bytes(github_bytes)
+            self.assertTrue(github_bytes.startswith(b"# Managed by Codexy GitHub.\r\n"))
             core_before = _managed_files(core_root, CORE_MARKER)
             github_before = _managed_files(github_root, GITHUB_MARKER)
             core_user = core_root / "my-agent.toml"
@@ -65,6 +69,7 @@ class ComponentLifecycleRegistrationRollbackTests(unittest.TestCase):
             self.assertEqual(recorded(state.home), ["core", "github"])
             self.assertEqual(_managed_files(core_root, CORE_MARKER), core_before)
             self.assertEqual(_managed_files(github_root, GITHUB_MARKER), github_before)
+            self.assertEqual(github_role.read_bytes(), github_bytes)
             self.assertEqual(core_user.read_bytes(), b"core user role\n")
             self.assertEqual(github_user.read_bytes(), b"github user role\n")
 

@@ -8,8 +8,14 @@ import sys
 from pathlib import Path
 
 from .component_registration_health import synchronize_core_registration
+from .component_registration_projection import (
+    MANAGED_ROOTS,
+    has_managed_role_marker,
+    managed_role_files,
+)
 from .component_transition_journal import Journal
 from .plugin_resolution import MarketplaceBinding, marketplace_path
+from .component_transaction_snapshot import _read_regular, _unlink_regular
 from .updater import _validate_real_path, sync_agents
 
 
@@ -25,6 +31,9 @@ def synchronize_component_registrations(
         _uninstall_core(home, root)
     if "github" in removed:
         _uninstall_github(home, root)
+    for component in MANAGED_ROOTS:
+        if component in removed:
+            _remove_remaining_managed_roles(home, component)
 
 
 def _uninstall_core(home: Path, root: MarketplaceBinding) -> None:
@@ -70,3 +79,29 @@ def _uninstall_github(home: Path, root: MarketplaceBinding) -> None:
         diagnostics = "; ".join(filter(str.strip, (result.stdout, result.stderr)))
         detail = f": {diagnostics}" if diagnostics else ""
         raise RuntimeError(f"Codexy GitHub role removal failed{detail}")
+
+
+def _remove_remaining_managed_roles(home: Path, component: str) -> None:
+    """Clear stale marker-owned roles omitted by the current package catalog."""
+    root = home / MANAGED_ROOTS[component]
+    # Current uninstallers know the package catalog; legacy marked files still
+    # belong to this component and must be removed within this transaction.
+    for name in managed_role_files(home, component):
+        path = root / name
+        try:
+            metadata = path.lstat()
+            identity = (metadata.st_dev, metadata.st_ino)
+            contents = _read_regular(path)
+        except FileNotFoundError:
+            continue
+        if contents is None or not has_managed_role_marker(contents, component):
+            continue
+        current = path.lstat()
+        if (current.st_dev, current.st_ino) != identity:
+            continue
+        _unlink_regular(path, identity)
+    remaining = managed_role_files(home, component)
+    if remaining:
+        raise RuntimeError(
+            f"managed {component} roles remain after removal: {', '.join(remaining)}"
+        )

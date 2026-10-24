@@ -7,7 +7,10 @@ import stat
 from pathlib import Path
 from typing import Callable
 
-from .component_registration_projection import MANAGED_MARKERS, MANAGED_ROOTS
+from .component_registration_projection import (
+    MANAGED_ROOTS,
+    has_managed_role_marker,
+)
 from .component_transaction_durability import sync_parent_directory
 from .component_transaction_snapshot import (
     ManagedFileSnapshot,
@@ -31,14 +34,15 @@ def capture_managed_role_files(home: Path) -> tuple[ManagedFileSnapshot, ...]:
             raise ValueError(
                 f"transaction snapshot requires a real role directory: {root}"
             )
-        marker = MANAGED_MARKERS[component].encode()
         with os.scandir(root) as directory:
             for item in sorted(directory, key=lambda entry: entry.name):
                 if not item.name.endswith(".toml"):
                     continue
                 path = Path(item.path)
                 contents = _read_regular(path)
-                if contents is not None and contents.startswith(marker):
+                if contents is not None and has_managed_role_marker(
+                    contents, component
+                ):
                     entries.append(
                         ManagedFileSnapshot(
                             relative_root / item.name,
@@ -66,7 +70,6 @@ def restore_managed_role_files(
             raise ValueError(
                 f"transaction restore requires a real role directory: {root}"
             )
-        marker = MANAGED_MARKERS[component].encode()
         with os.scandir(root) as directory:
             for item in sorted(directory, key=lambda entry: entry.name):
                 if not item.name.endswith(".toml"):
@@ -74,7 +77,9 @@ def restore_managed_role_files(
                 path = Path(item.path)
                 contents = _read_regular(path)
                 relative = relative_root / item.name
-                if contents is not None and contents.startswith(marker):
+                if contents is not None and has_managed_role_marker(
+                    contents, component
+                ):
                     if relative not in expected:
                         _unlink_regular(path)
     for entry in snapshots:

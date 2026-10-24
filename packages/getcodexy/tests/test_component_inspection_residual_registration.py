@@ -88,3 +88,21 @@ class ComponentInspectionResidualRegistrationTests(unittest.TestCase):
         self.assertEqual(report["inventory"]["components"], [])
         self.assertEqual(report["errors"], [])
         self.assertEqual(after, roles)
+
+    def test_doctor_detects_crlf_managed_role_for_absent_component(self) -> None:
+        with fixture() as state:
+            github_role = state.home / "agents/codexy-github/legacy-weaver.toml"
+            github_role.parent.mkdir(parents=True)
+            role_bytes = b"# Managed by Codexy GitHub.\r\nname = 'legacy-weaver'\r\n"
+            github_role.write_bytes(role_bytes)
+            record(state.home, [])
+
+            report = doctor(state.home, codex=state.codex, runner=state.run)
+            self.assertEqual(github_role.read_bytes(), role_bytes)
+
+        health = {entry["component"]: entry for entry in report["component_health"]}
+        self.assertEqual(
+            health["github"]["reason_code"], "orphaned-managed-registration"
+        )
+        self.assertFalse(health["github"]["healthy"])
+        self.assertEqual(report["inventory"]["components"], [])

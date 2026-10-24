@@ -19,6 +19,12 @@ MANAGED_ROOTS = {
 }
 
 
+def has_managed_role_marker(contents: bytes, component: str) -> bool:
+    """Recognize LF and Windows CRLF markers while preserving original bytes."""
+    marker = MANAGED_MARKERS[component].encode()
+    return contents.startswith(marker) or contents.startswith(marker[:-1] + b"\r\n")
+
+
 def managed_component_for_path(relative: Path) -> str | None:
     """Return the owner only for a direct, non-hidden standalone TOML role."""
     parts = relative.parts
@@ -48,7 +54,6 @@ def managed_role_files(home: Path, component: str) -> tuple[str, ...]:
     metadata = root.lstat()
     if _is_link(metadata) or not stat.S_ISDIR(metadata.st_mode):
         raise ValueError("registration root is not a real directory")
-    marker = MANAGED_MARKERS[component].encode()
     names: list[str] = []
     with os.scandir(root) as directory:
         for item in sorted(directory, key=lambda entry: entry.name):
@@ -60,7 +65,7 @@ def managed_role_files(home: Path, component: str) -> tuple[str, ...]:
             contents = _read_regular(
                 home, relative_root / item.name, MAX_COMPONENT_BYTES
             )
-            if contents.startswith(marker):
+            if has_managed_role_marker(contents, component):
                 names.append(item.name)
     return tuple(names)
 

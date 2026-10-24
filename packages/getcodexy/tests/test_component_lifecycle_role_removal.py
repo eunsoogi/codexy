@@ -85,6 +85,8 @@ class ComponentLifecycleRoleRemovalTests(unittest.TestCase):
             github_user = state.home / "agents/codexy-github/my-agent.toml"
             core_user.write_bytes(b"core user role\n")
             github_user.write_bytes(b"github user role\n")
+            stale_role = state.home / "agents/codexy-github/old-role.toml"
+            stale_role.write_bytes(GITHUB_MARKER + b"name = 'old-weaver'\n")
 
             removed = run_operation(
                 "remove",
@@ -103,6 +105,7 @@ class ComponentLifecycleRoleRemovalTests(unittest.TestCase):
                 _managed_files(state.home / "agents/codexy-github", GITHUB_MARKER),
                 {},
             )
+            self.assertFalse(stale_role.exists())
             self.assertEqual(core_user.read_bytes(), b"core user role\n")
             self.assertEqual(github_user.read_bytes(), b"github user role\n")
             self.assertEqual(state.selection, {"core"})
