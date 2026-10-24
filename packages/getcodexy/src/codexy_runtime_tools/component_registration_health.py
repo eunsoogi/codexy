@@ -21,18 +21,11 @@ from .component_mcp_materialization import (
 from .component_manifest import load_component_manifest
 from .component_registration_catalog import CATALOGS, _catalog_agent_files
 from .component_registration_files import _launcher, _regular, _skill, _text
+from .component_registration_projection import MANAGED_MARKERS, MANAGED_ROOTS
 from .component_transition_journal import Journal
 from .plugin_resolution import MarketplaceBinding, marketplace_path
 from .updater import sync_agents
 
-MANAGED_MARKERS = {
-    "core": "# CODEXY MANAGED AGENT\n",
-    "github": "# Managed by Codexy GitHub.\n",
-}
-MANAGED_ROOTS = {
-    "core": Path("agents/codexy"),
-    "github": Path("agents/codexy-github"),
-}
 REGISTRATION_SOURCE = "codex-home-standalone-agent-projection"
 REGISTRATION_SCOPE = "current-doctor-invocation"
 REGISTRATION_REPAIR = "repair the Codexy registration, then rerun getcodexy doctor"

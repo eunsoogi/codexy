@@ -8,17 +8,20 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .component_transaction_durability import sync_parent_directory
+from .component_registration_projection import (
+    has_managed_role_marker,
+    managed_component_for_path,
+)
 from .updater import _absolute, _validate_real_path
 
 
-CORE_MANAGED_MARKER = b"# CODEXY MANAGED AGENT\n"
 MANAGED_CONFIG_BEGIN = b"# BEGIN CODEXY MANAGED AGENTS"
 MANAGED_CONFIG_END = b"# END CODEXY MANAGED AGENTS"
 
 
 @dataclass(frozen=True)
 class ManagedFileSnapshot:
-    """One file owned by the core standalone-agent projection."""
+    """One file owned by a component standalone-agent projection."""
 
     relative: Path
     data: bytes
@@ -35,9 +38,8 @@ class ManagedFileSnapshot:
             raise ValueError("component transaction has an invalid managed snapshot")
         if not 0 <= self.mode <= 0o777:
             raise ValueError("component transaction has an invalid managed mode")
-        if relative.parts[:2] == ("agents", "codexy") and not self.data.startswith(
-            CORE_MANAGED_MARKER
-        ):
+        component = managed_component_for_path(relative)
+        if component is not None and not has_managed_role_marker(self.data, component):
             raise ValueError("component transaction has an unmanaged role snapshot")
         if relative == Path("config.toml") and not (
             MANAGED_CONFIG_BEGIN in self.data and MANAGED_CONFIG_END in self.data
@@ -102,12 +104,7 @@ def _allowed_path(relative: Path) -> bool:
     parts = relative.parts
     return (
         relative == Path("config.toml")
-        or (
-            len(parts) == 3
-            and parts[:2] == ("agents", "codexy")
-            and parts[2].endswith(".toml")
-            and not parts[2].startswith(".")
-        )
+        or managed_component_for_path(relative) is not None
         or (len(parts) == 1 and relative.name.startswith("config.toml.codexy-backup-"))
     )
 

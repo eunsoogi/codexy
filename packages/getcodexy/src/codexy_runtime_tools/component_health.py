@@ -22,6 +22,7 @@ from .component_health_support import (
     version_relation,
 )
 from .component_manifest import ComponentManifest
+from .component_registration_orphans import include_orphaned_registrations
 from .updater import compare_managed_files
 
 FAILURES = _probe.FAILURES
@@ -50,11 +51,12 @@ def health(
         activation,
         codex_home,
     )
-    return [
+    entries = [
         _component_health(context, component)
         for component in manifest.component_ids
         if component in expected
     ]
+    return include_orphaned_registrations(entries, manifest, actual, codex_home)
 
 
 def _component_health(context, component):
