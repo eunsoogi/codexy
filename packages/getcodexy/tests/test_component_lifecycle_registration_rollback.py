@@ -35,7 +35,10 @@ class ComponentLifecycleRegistrationRollbackTests(unittest.TestCase):
             core_root = state.home / "agents/codexy"
             github_root = state.home / "agents/codexy-github"
             github_role = github_root / "codexy-weaver.toml"
-            github_bytes = github_role.read_bytes().replace(b"\n", b"\r\n")
+            # Normalize native newlines first so this CRLF fixture is stable on Windows.
+            github_bytes = (
+                github_role.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+            )
             github_role.write_bytes(github_bytes)
             self.assertTrue(github_bytes.startswith(b"# Managed by Codexy GitHub.\r\n"))
             core_before = _managed_files(core_root, CORE_MARKER)
