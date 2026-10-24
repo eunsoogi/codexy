@@ -15,13 +15,19 @@ from .component_lifecycle_admission import (
     replay_receipt,
 )
 from .component_lifecycle_terminal import terminal
-from .component_transaction_durability import sync_parent_directory
 from .component_manifest import ComponentManifest
+from .component_registration_snapshot import (
+    capture_managed_role_files,
+    restore_managed_role_files,
+)
+from .component_registration_projection import (
+    MANAGED_MARKERS,
+    managed_component_for_path,
+)
 from .component_resolver import verify_post_operation_inventory
 from .component_transaction_state import clear_journal as _clear_journal
 from .component_transaction_state import write_inventory
 from .component_transaction_snapshot import (
-    CORE_MANAGED_MARKER,
     MANAGED_CONFIG_BEGIN,
     MANAGED_CONFIG_END,
     ManagedFileSnapshot,
@@ -48,28 +54,7 @@ def capture_managed_files(home: Path) -> tuple[ManagedFileSnapshot, ...]:
     metadata = home.lstat()
     if _is_link(metadata) or not stat.S_ISDIR(metadata.st_mode):
         raise ValueError(f"transaction snapshot requires a real home directory: {home}")
-    entries: list[ManagedFileSnapshot] = []
-    agents_root = home / "agents" / "codexy"
-    if os.path.lexists(agents_root):
-        root_metadata = agents_root.lstat()
-        if _is_link(root_metadata) or not stat.S_ISDIR(root_metadata.st_mode):
-            raise ValueError(
-                f"transaction snapshot requires a real agent directory: {agents_root}"
-            )
-        with os.scandir(agents_root) as directory:
-            for item in sorted(directory, key=lambda entry: entry.name):
-                if not item.name.endswith(".toml"):
-                    continue
-                path = Path(item.path)
-                contents = _read_regular(path)
-                if contents is not None and contents.startswith(CORE_MANAGED_MARKER):
-                    entries.append(
-                        ManagedFileSnapshot(
-                            Path("agents") / "codexy" / item.name,
-                            contents,
-                            stat.S_IMODE(path.lstat().st_mode),
-                        )
-                    )
+    entries = list(capture_managed_role_files(home))
     config = home / "config.toml"
     config_contents = _read_regular(config)
     if config_contents is not None and all(
@@ -103,26 +88,7 @@ def restore_managed_files(
 ) -> None:
     """Restore the captured managed surface while leaving user-owned files alone."""
     expected = {entry.relative: entry for entry in snapshots}
-    agents_root = home / "agents" / "codexy"
-    if os.path.lexists(agents_root):
-        metadata = agents_root.lstat()
-        if _is_link(metadata) or not stat.S_ISDIR(metadata.st_mode):
-            raise ValueError(
-                f"transaction restore requires a real agent directory: {agents_root}"
-            )
-        with os.scandir(agents_root) as directory:
-            for item in sorted(directory, key=lambda entry: entry.name):
-                if not item.name.endswith(".toml"):
-                    continue
-                path = Path(item.path)
-                contents = _read_regular(path)
-                relative = Path("agents") / "codexy" / item.name
-                if contents is not None and contents.startswith(CORE_MANAGED_MARKER):
-                    if relative not in expected:
-                        _unlink_regular(path)
-    for entry in snapshots:
-        if entry.relative.parts[:2] == ("agents", "codexy"):
-            _restore_managed_entry(home, entry)
+    restore_managed_role_files(home, snapshots, _restore_managed_entry)
     config_entry = expected.get(Path("config.toml"))
     if config_entry is not None:
         _restore_managed_config(home, config_entry)
@@ -133,8 +99,6 @@ def restore_managed_files(
         ):
             _restore_managed_entry(home, entry)
     _remove_new_backups(home, expected, original_config)
-    _remove_empty_directory(agents_root)
-    _remove_empty_directory(agents_root.parent)
 
 
 def _restore_managed_entry(home: Path, entry: ManagedFileSnapshot) -> None:
@@ -144,8 +108,9 @@ def _restore_managed_entry(home: Path, entry: ManagedFileSnapshot) -> None:
     if current == entry.data:
         _set_mode(path, entry.mode)
         return
-    if current is not None and entry.relative.parts[:2] == ("agents", "codexy"):
-        if not current.startswith(CORE_MANAGED_MARKER):
+    component = managed_component_for_path(entry.relative)
+    if current is not None and component is not None:
+        if not current.startswith(MANAGED_MARKERS[component].encode()):
             raise RuntimeError(f"managed restore refuses unmanaged path: {path}")
     _atomic_write(path, entry.data)
     _set_mode(path, entry.mode)
@@ -185,19 +150,6 @@ def _remove_new_backups(
 def _set_mode(path: Path, mode: int) -> None:
     _read_regular(path)
     os.chmod(path, mode)
-
-
-def _remove_empty_directory(path: Path) -> None:
-    if not os.path.lexists(path):
-        return
-    metadata = path.lstat()
-    if _is_link(metadata) or not stat.S_ISDIR(metadata.st_mode):
-        raise ValueError(f"transaction restore requires a real directory: {path}")
-    try:
-        path.rmdir()
-        sync_parent_directory(path.parent)
-    except OSError:
-        return
 
 
 def finish_committed(

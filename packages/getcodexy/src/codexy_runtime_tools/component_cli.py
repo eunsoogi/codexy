@@ -90,7 +90,20 @@ def main(argv: list[str] | None = None) -> int:
     unhealthy = arguments.command in {"status", "doctor"} and bool(
         receipt.get("errors")
     )
-    return 0 if receipt["outcome"] == "completed" and not unhealthy else 2
+    # Doctor health findings stay outside the closed lifecycle-domain error codes.
+    orphaned_registration = arguments.command == "doctor" and any(
+        isinstance(entry, dict)
+        and entry.get("reason_code")
+        in {"orphaned-managed-registration", "registration-inspection-unavailable"}
+        for entry in receipt.get("component_health", [])
+    )
+    return (
+        0
+        if receipt["outcome"] == "completed"
+        and not unhealthy
+        and not orphaned_registration
+        else 2
+    )
 
 
 def _record_capability_failures(receipt: dict[str, object]) -> None:
