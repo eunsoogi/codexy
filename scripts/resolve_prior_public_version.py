@@ -42,7 +42,7 @@ def public_release_tags(repository: str) -> list[str]:
         detail = getattr(error, "stderr", "")
         print(
             "could not read public releases to select the package baseline; "
-            f"refusing to dispatch python-package.yml ({detail.strip() or error})",
+            f"refusing to continue with an unverified baseline ({detail.strip() or error})",
             file=sys.stderr,
         )
         raise SystemExit(1) from error
@@ -64,10 +64,23 @@ def resolve(target: Version, target_text: str, release_tags: list[str]) -> str:
     return max(candidates, key=lambda candidate: candidate[0])[1]
 
 
+def resolve_package_baseline(target: Version, release_tags: list[str]) -> str:
+    # Keep checking the target after publication, but use its stable predecessor while unpublished.
+    if f"v{target[1]}" in {tag.strip() for tag in release_tags}:
+        return target[1]
+    return resolve(target, target[1], release_tags)
+
+
 def main() -> int:
-    if len(sys.argv) != 3:
+    prefer_published_target = (
+        len(sys.argv) == 4 and sys.argv[3] == "--prefer-published-target"
+    )
+    if len(sys.argv) not in {3, 4} or (
+        len(sys.argv) == 4 and not prefer_published_target
+    ):
         print(
-            "usage: resolve_prior_public_version.py <repository> <target-version>",
+            "usage: resolve_prior_public_version.py <repository> <target-version> "
+            "[--prefer-published-target]",
             file=sys.stderr,
         )
         return 2
@@ -80,7 +93,13 @@ def main() -> int:
         )
         return 1
     try:
-        print(resolve(target, target_text, public_release_tags(sys.argv[1])))
+        release_tags = public_release_tags(sys.argv[1])
+        version = (
+            resolve_package_baseline(target, release_tags)
+            if prefer_published_target
+            else resolve(target, target_text, release_tags)
+        )
+        print(version)
     except ValueError as error:
         print(error, file=sys.stderr)
         return 1
