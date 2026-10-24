@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
 
 from public_marketplace_bundle_support import (
@@ -24,6 +25,19 @@ from public_marketplace_bundle_support import (
 )
 
 
+def resolve_automatic_public_baseline(repository: str, current_version: str) -> str:
+    # Reuse the authenticated release list, then independently verify the chosen release below.
+    resolver = Path(__file__).resolve().with_name("resolve_prior_public_version.py")
+    version = run(
+        sys.executable,
+        str(resolver),
+        repository,
+        current_version,
+        "--prefer-published-target",
+    ).strip()
+    return canonical_version(version, "authenticated automatic public baseline")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", required=True, type=Path)
@@ -36,9 +50,22 @@ def main() -> None:
     root = Path.cwd()
     current_contract = read_json(root / CONTRACT)
     current_tag, _ = contract_tag(current_contract, "current release contract")
-    override = os.environ.get("PRIOR_PUBLIC_VERSION", "").strip()
+    override = os.environ.get("PRIOR_PUBLIC_VERSION", "")
+    automatic_event = os.environ.get("GITHUB_EVENT_NAME") in {"pull_request", "push"}
+    repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
+    if not repository:
+        fail("GITHUB_REPOSITORY is required")
     baseline_source = "current checkout release contract"
     baseline_commit = ""
+    sha = ""
+    previous_tag = None
+    if not args.legacy_upgrade and not override:
+        sha = os.environ.get("BASE_SHA", "").strip()
+        if sha and sha != "0" * 40:
+            previous_contract = base_contract(root, sha)
+            previous_tag, _ = contract_tag(
+                previous_contract, f"baseline release contract {sha}"
+            )
     # Keep the historical upgrade input independent from the selected public baseline.
     if args.legacy_upgrade:
         version = LEGACY_UPGRADE_VERSION
@@ -49,23 +76,22 @@ def main() -> None:
         version = canonical_version(override, "PRIOR_PUBLIC_VERSION")
         release_tag = f"v{version}"
         baseline_source = "PRIOR_PUBLIC_VERSION"
+    # Keep a changed base contract as the baseline. Resolve public versions only
+    # when both tags match or an automatic event has no base tag.
+    elif automatic_event and (previous_tag is None or previous_tag == current_tag):
+        version = resolve_automatic_public_baseline(
+            repository, current_tag.removeprefix("v")
+        )
+        release_tag = f"v{version}"
+        baseline_source = "authenticated public release selection for automatic CI"
+    elif previous_tag is not None and previous_tag != current_tag:
+        release_tag = previous_tag
+        version = previous_tag.removeprefix("v")
+        baseline_source = f"release contract at BASE_SHA {sha}"
+        baseline_commit = sha
     else:
         release_tag = current_tag
         version = current_tag.removeprefix("v")
-        sha = os.environ.get("BASE_SHA", "").strip()
-        if sha and sha != "0" * 40:
-            previous_contract = base_contract(root, sha)
-            previous_tag, _ = contract_tag(
-                previous_contract, f"baseline release contract {sha}"
-            )
-            if previous_tag != current_tag:
-                release_tag = previous_tag
-                version = previous_tag.removeprefix("v")
-                baseline_source = f"release contract at BASE_SHA {sha}"
-                baseline_commit = sha
-    repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
-    if not repository:
-        fail("GITHUB_REPOSITORY is required")
     release_json = json.loads(
         run(
             "gh",
