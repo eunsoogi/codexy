@@ -62,6 +62,19 @@ includes parent replies, task/agent prompts, delegated instructions, progress
 and callback messages, handoffs, and tool prompt fields. Concision and protected
 technical text MUST follow that contract.
 
+### Orchestration-request boundary
+
+When the user asks to orchestrate, the parent MUST delegate every independent
+investigation, research, diagnosis, design, implementation, test, and execution
+verification task, including small, urgent, or read-only work. It MUST retain
+only coordination, minimum state/evidence readbacks, acceptance judgment, next
+directions, and reporting under
+[task classification](references/task-classification.md#orchestration-request-ownership).
+Ordinary single-task requests and assigned implementation Workers MUST retain
+their existing roles. Delegation MUST preserve actual host/user authority,
+existing owners, setup, goal, review, and capacity rules; missing child
+authority or tools MUST NOT authorize parent execution.
+
 ### Delegated supervision route
 
 When a task uses app-thread Workers, a separately assigned external Watcher,
@@ -101,24 +114,25 @@ before task-specific work. The parent goal MUST NOT stand in for the child goal.
 For selected child-owned issue lanes, the Orchestrator MUST assign one Worker
 before implementation; that Worker owns implementation and review-response
 patches. Existing usable Workers retain ownership, and the Orchestrator MUST NOT
-patch the lane or create a duplicate. The Orchestrator MUST coordinate and
-verify; merge and publication remain separately authorized. Each implementation
-Worker MUST start in an app-managed project worktree requested in its initial
-`create_thread` call. A local or projectless task MUST NOT be retrofitted with a
-different worktree route. The parent MUST verify actual task state and exposed
-permissions before implementation; when this requires post-creation parent
-environment validation, it MUST assign a short setup phase with the exact check,
-evidence, and parent-owned release condition. Otherwise, a ready independent
-lane MUST proceed through implementation, verification, selected review, and
-handoff within its initial authority, without routine read-only, plan-review, or
-code-only approval prompts. The setup release MUST carry the already-defined
-execution scope; follow-up goal startup MUST use actual lifecycle readback.
-Shared-file or resource conflicts (including shared migrations or Simulator
-reservations), missing authority, and material safety decisions MUST remain
-parent gates; independent authorized work MUST continue. Required review and
-slot capacity MUST remain binding. Model and effort MUST be selected
-automatically from recipient role without asking the user to choose or
-reconfirm, subject to the actual tool contract.
+patch the lane or create a duplicate. The Orchestrator MUST coordinate and judge
+returned proof; the Worker MUST execute verification. Merge and publication
+remain separately authorized. Each implementation Worker MUST start in an
+app-managed project worktree requested in its initial `create_thread` call. A
+local or projectless task MUST NOT be retrofitted with a different worktree
+route. The parent MUST verify actual task state and exposed permissions before
+implementation; when this requires post-creation parent environment validation,
+it MUST assign a short setup phase with the exact check, evidence, and
+parent-owned release condition. Otherwise, a ready independent lane MUST proceed
+through implementation, verification, selected review, and handoff within its
+initial authority, without routine read-only, plan-review, or code-only approval
+prompts. The setup release MUST carry the already-defined execution scope;
+follow-up goal startup MUST use actual lifecycle readback. Shared-file or
+resource conflicts (including shared migrations or Simulator reservations),
+missing authority, and material safety decisions MUST remain parent gates;
+independent authorized work MUST continue. Required review and slot capacity
+MUST remain binding. Model and effort MUST be selected automatically from
+recipient role without asking the user to choose or reconfirm, subject to the
+actual tool contract.
 
 ### Planning and execution boundary
 
