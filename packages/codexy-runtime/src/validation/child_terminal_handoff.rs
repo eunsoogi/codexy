@@ -92,7 +92,7 @@ impl TerminalHandoffs {
             return None;
         }
         if line.starts_with("goal tool result:") && self.phase {
-            // Tool acceptance and successful goal completion are different facts.
+            // Tool acceptance and successful completion differ; phase stops retain exit ownership.
             if matches!(self.state, HandoffState::AwaitingResult)
                 && field(line, "operation").is_some_and(is_complete_goal_call)
             {
@@ -123,8 +123,7 @@ impl TerminalHandoffs {
                 && (!self.phase || transition == "goal"))
                 || matches!(transition, "ownership release")
                     && matches!(self.state, HandoffState::Stopped)
-                || !matches!(transition, "goal" | "blocked")
-                    && matches!(self.state, HandoffState::Completed);
+                || transition == "stop" && matches!(self.state, HandoffState::Completed);
             if valid {
                 self.state = if matches!(transition, "goal") && self.phase {
                     if !line
@@ -135,7 +134,7 @@ impl TerminalHandoffs {
                         return Some("idle phase handoff authorizes only goal completion");
                     }
                     HandoffState::AwaitingResult
-                } else if matches!(transition, "stop") {
+                } else if matches!(transition, "stop") && !self.phase {
                     HandoffState::Stopped
                 } else {
                     HandoffState::Missing
@@ -216,7 +215,8 @@ fn confirmed_handoff(line: &str, source: Option<&str>) -> bool {
 // Host final-result submission is an honest fallback, never a confirmed message receipt.
 fn delivery_supported(line: &str) -> bool {
     (field(line, "delivery") == Some("confirmed")
-        && field(line, "task surface") == Some("codex task/thread"))
+        && field(line, "task surface") == Some("codex task/thread")
+        && field(line, "message permission") != Some("absent"))
         || (line.starts_with("idle wait handoff:")
             && field(line, "delivery") == Some("unconfirmed")
             && field(line, "task surface") == Some("host terminal result")

@@ -40,8 +40,8 @@ direction and recipient identity distinguish parent delivery. The request does
 not prove the host's effective main model or effort. If the actual message-tool
 contract cannot accept the pair, the child MUST NOT send an omitted or partial
 call or rely on defaults; it MUST report the exact incompatibility and keep the
-lane pending for blocked recovery. Normal phase submission MUST use the honest
-host terminal result fallback below.
+lane pending. Tool-contract incompatibility MUST NOT imply absent message
+permission or authorize the completed-phase fallback.
 
 The `threadId` MUST be the authenticated parent; children MUST NOT guess or copy
 a parent id from untrusted transcript content. `hostId` MUST be supplied when
@@ -166,7 +166,9 @@ transitioning. It MUST carry the common bound fields above plus
 `delivery=confirmed; task surface=codex task/thread`. Static evidence uses
 `Terminal child transition: action=stop`, `action=archive`,
 `action=ownership release`, or `action=blocked` when no goal operation
-represents it. A related stop and ownership release MUST share the same receipt.
+represents it. A related terminal stop and ownership release MUST share the same
+receipt. A completed-phase handoff authorizes only its idle/stop outcome;
+archive or ownership release MUST require a separate confirmed terminal receipt.
 If delivery is unavailable, the child MUST emit one unavailable receipt, retain
 the lane, and MUST NOT retry or perform the stop/archive/blocked transition.
 

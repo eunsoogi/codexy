@@ -84,6 +84,7 @@ fn unavailable_message_permission_uses_unconfirmed_host_result() -> super::TestR
     for delivery in [
         "delivery=unconfirmed; task surface=host terminal result; message permission=absent",
         "delivery=confirmed; task surface=host terminal result; message permission=absent",
+        "delivery=confirmed; task surface=codex task/thread; message permission=absent",
         "delivery=unconfirmed; task surface=codex task/thread",
         "delivery=unconfirmed; task surface=host terminal result; message permission=granted",
     ] {
@@ -140,5 +141,31 @@ fn consumed_phase_event_cannot_authorize_another_completion() -> super::TestResu
             .status
             .success()
     );
+    Ok(())
+}
+
+#[test]
+fn phase_receipt_does_not_release_or_archive_the_retained_lane() -> super::TestResult {
+    for delivery in [
+        "delivery=confirmed; task surface=codex task/thread",
+        "delivery=unconfirmed; task surface=host terminal result; message permission=absent",
+    ] {
+        let evidence = phase_evidence(delivery, "complete");
+        for exit in [
+            "Terminal child transition: action=archive\n",
+            "Terminal child transition: action=ownership release\n",
+            "Terminal child transition: action=stop\nTerminal child transition: action=ownership release\n",
+        ] {
+            assert!(
+                !super::run_validator(&format!("{evidence}{exit}"))?
+                    .status
+                    .success(),
+                "{delivery}: {exit}"
+            );
+        }
+        // A separate, genuinely confirmed terminal receipt still authorizes its own exit.
+        let terminal = handoff_for_parent("archive-after-phase", "parent-375");
+        assert!(super::run_validator(&format!("{evidence}Terminal child transition: action=stop\n{terminal}Terminal child transition: action=archive\n"))?.status.success());
+    }
     Ok(())
 }
