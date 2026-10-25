@@ -20,16 +20,21 @@ active task thread through a same-directory fork and archive.
 
 ## Delegated assignment authorization
 
-A concrete delegated task assignment is explicit authorization for the assigned
-child to create one finite execution goal for that same work. The assignment
-MUST name the authorized objective and success criteria; an issue-sized handoff
-that also supplies scope, verification, and a stop condition satisfies this
-contract. The child MUST NOT require a second instruction containing the word
-`goal` or another opt-in phrase.
+A delegated assignment MUST distinguish the overall issue outcome from the
+child's currently executable phase. The parent MUST state the phase objective
+once as `Assignment objective:`, with bounded scope, success criteria,
+verification, handoff, and a stop condition. Preparation, implementation, or
+verification MAY be separate phases only when explicitly assigned; the child
+MUST NOT invent a narrower phase to clear an unfinished goal. Parent merge,
+acknowledgement, or future instructions MUST NOT be phase completion criteria.
 
-The parent handoff MUST state the assigned objective once as
-`Assignment objective:`. The child MUST use that exact value for its finite goal
-and MUST NOT broaden it or treat it as a second authorization or user opt-in.
+The child MUST use that exact phase objective for its finite goal. Assignment
+authority MUST NOT override the host's goal-creation rules. When the host
+requires an explicit user or system goal request, the task MUST NOT infer that
+authority from delegation alone or require a forbidden `create_goal` call. It
+MUST preserve the readback and report missing authority before task work. When
+goal creation is authorized, it MUST NOT require another opt-in for that same
+phase. Ordinary questions and unassigned suggestions MUST NOT create a goal.
 
 For an Orchestrator/Worker arrangement, the Orchestrator MUST establish or
 continue its exact overall goal before its task work and before Worker dispatch.
@@ -39,13 +44,11 @@ explicit direction to complete the Worker's own first transition before
 task-specific work. A parent goal MUST NOT stand in for a Worker's task-scoped
 goal.
 
-The finite goal MUST match the assignment and MUST NOT broaden scope, invent
-work, replace external proof, or override the authoritative lifecycle state. A
-parent instruction that requires non-trivial child implementation while saying
-that available goal tools are unauthorized is contradictory and MUST be
-rejected; the child MUST NOT follow that prohibition. Ambiguous conversation,
-incidental discussion, and unassigned suggestions are not delegated task
-assignments and MUST NOT create a goal.
+The finite goal MUST NOT broaden scope, invent work, replace external proof, or
+override native lifecycle state. An existing broader active objective MUST NOT
+be narrowed, replaced, or marked complete to adopt a phase; the child MUST
+preserve it and report the mismatch for explicit supported lifecycle
+disposition.
 
 ### External Watcher exception
 
@@ -64,7 +67,8 @@ task work, the task MUST call `get_goal` and MUST use its current result:
 
 1. If the result is exactly `null`, is a host response envelope whose top-level
    `goal` is exactly `null`, or has exactly `status=complete`, the task MUST
-   create the new finite goal for the authorized assignment.
+   create the finite phase goal only when the host permits its creation under
+   the authorization boundary above; otherwise it MUST stop and report.
 2. If the result is `active`, the task MUST compare its objective with the
    requested work. The task MUST continue only when it is the exact active
    objective. Otherwise the task MUST stop and MUST obtain an explicit lifecycle
@@ -186,10 +190,22 @@ clear the goal to resume the same assignment or use a fabricated `complete`,
 
 ## Completion boundary
 
-The task MUST NOT use a `complete` transition to recover a blocked goal. The
-task MUST use `$proof-driven-completion` for every ordinary completion claim. A
-normal finite goal MUST NOT become complete until its objective is achieved and
-ordinary proof and handoff rules are satisfied.
+The task MUST use `$proof-driven-completion` and compare the actual active
+objective with its stated phase criteria before completion. It MUST complete
+only when every criterion, required proof, and handoff is satisfied. A submitted
+result alone is insufficient when verification or review remains in that phase.
+An external wait, lack of immediate work, or parent silence MUST NOT substitute
+for satisfied criteria or justify a false `complete`, `paused`, or `blocked`.
+
+Once the phase criteria and required handoff delivery are satisfied, the child
+MUST complete that phase and leave the task idle without waiting for a parent
+reply or merge. It MUST preserve issue ownership, branch, worktree, artifacts,
+remaining external gates, and the parent-owned next action. Phase completion
+MUST NOT imply issue closure, PR merge, release, or parent acceptance. Follow-up
+fixes MUST use the same owner and actual lifecycle readback: continue a matching
+active objective, or create an authorized fresh phase on null/complete and read
+back active before work. A different unfinished objective MUST stop; blocked
+recovery MUST follow the existing fork/archive rules, never false completion.
 
 Between observing `blocked` and confirming the fork's goal is `active`, only the
 fork/archive, required parent handoff, and native goal readback steps above are
