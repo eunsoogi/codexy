@@ -4,6 +4,23 @@ use super::{
     Policy,
     thread_capabilities::{self, RecipientAssignment, ThreadCapabilities},
 };
+
+pub(super) fn bounded_evidence_is_complete(predicates: Option<&super::Predicates>) -> bool {
+    // Human-judged summaries may lack a deterministic oracle; scope, safety and decisions cannot relax.
+    predicates.is_some_and(|item| {
+        item.fixed_scope
+            && item.low_risk_reversible
+            && item.no_unresolved_decision
+            && item.bounded_evidence.as_ref().is_some_and(|bounds| {
+                bounds.read_only
+                    && bounds.supplied_inputs_only
+                    && (1..=3).contains(&bounds.input_count)
+                    && (1..=12_000).contains(&bounds.input_char_count)
+                    && (1..=20).contains(&bounds.output_item_limit)
+            })
+    })
+}
+
 pub(super) fn simple_route(
     policy: &Policy,
     capabilities: Option<&ThreadCapabilities>,
