@@ -34,11 +34,12 @@ the invocation route:
    Conventional Commit and exact PR-number rules. MUST reject a missing,
    different, or duplicate suffix even when the PR title itself is valid.
 4. Send that exact validated subject through the normal merge route: connector
-   `commit_title` or `gh pr merge --subject`. MUST preserve the captured body
-   exactly as connector `commit_message` or CLI `--body`, and bind the request
-   to the captured repository, PR number, and head using the route's head-match
-   guard when available. MUST NOT reconstruct, shorten, or substitute the
-   subject after validation. Arbitrary local body or authorization files are not
+   `commit_title` with explicit `merge_method=squash`, or
+   `gh pr merge --squash --subject`. MUST preserve the captured body exactly as
+   connector `commit_message` or CLI `--body`, and bind the request to the
+   captured repository, PR number, and head using the route's head-match guard
+   when available. MUST NOT reconstruct, shorten, or substitute the subject
+   after validation. Arbitrary local body or authorization files are not
    authority.
 
 If remote metadata changes or a head-match guard fails before mutation, MUST
@@ -48,6 +49,10 @@ subject from the old capture or claim both captures are one. A fresh read does
 not make title/body updates atomic with merge; an unavailable head-match guard
 MUST remain an explicit limitation, not a server-side guarantee.
 
+The direct connector hook MUST require an explicit merge method: omitted or
+unknown methods MUST be rejected because the repository default may squash.
+Explicit `merge` and `rebase` requests keep their existing behavior.
+
 A hook returning no denial MUST NOT substitute for explicit validation of the
 final value. Arbitrary Python subprocess construction and other unsupported
 dynamic execution are not inspected, and a hook replay does not prove live host
@@ -55,17 +60,17 @@ dispatch or denial consumption.
 
 ### Worked subject checks
 
-For a fresh PR #321 with title `ci(ios): add Duo validation profile` and head
-`H`, the title check passes. The final subject check is a separate step:
+For a fresh PR #321 with title `fix(sample): sample change` and head `H`, the
+title check passes. The final subject check is a separate step:
 
-| Candidate subject or changed metadata                                       | Required result                                                                                                                                                     |
-| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ci(ios): add Duo validation profile (#321)`                                | Accept; pass this exact string as `commit_title` or `--subject` for PR #321 at `H`.                                                                                 |
-| `ci(ios): add Duo validation profile`                                       | Reject: missing suffix despite a valid title.                                                                                                                       |
-| `ci(ios): add Duo validation profile (#320)`                                | Reject: wrong PR number.                                                                                                                                            |
-| `ci(ios): add Duo validation profile (#321) (#321)`                         | Reject: duplicate suffix.                                                                                                                                           |
-| Missing title/number/head, or title `add Duo validation profile`            | Stop: metadata or PR-title validation failed before subject construction.                                                                                           |
-| Title becomes `ci(ios): refine Duo validation profile` or head becomes `H2` | Discard the old request; recapture and revalidate before sending. For the new title, send only the newly validated `ci(ios): refine Duo validation profile (#321)`. |
+| Candidate subject or changed metadata                                   | Required result                                                                                                                                                 |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fix(sample): sample change (#321)`                                     | Accept; pass this exact string as `commit_title` or `--subject` for PR #321 at `H`.                                                                             |
+| `fix(sample): sample change`                                            | Reject: missing suffix despite a valid title.                                                                                                                   |
+| `fix(sample): sample change (#320)`                                     | Reject: wrong PR number.                                                                                                                                        |
+| `fix(sample): sample change (#321) (#321)`                              | Reject: duplicate suffix.                                                                                                                                       |
+| Missing title/number/head, or title `sample change`                     | Stop: metadata or PR-title validation failed before subject construction.                                                                                       |
+| Title becomes `fix(sample): refined sample change` or head becomes `H2` | Discard the old request; recapture and revalidate before sending. For the new title, send only the newly validated `fix(sample): refined sample change (#321)`. |
 
 ## Post-Merge Proof
 

@@ -91,12 +91,15 @@ def _merge(request: Request) -> bool:
     data = _mapping(request.tool_input)
     if data is None:
         return True
-    # This check owns generated squash subjects; other merge methods have no squash title contract.
-    if (
-        _operation(request.tool) != "merge_pull_request"
-        or data.get("merge_method") != "squash"
-    ):
+    if _operation(request.tool) != "merge_pull_request":
         return False
+    method = data.get("merge_method")
+    # A repository default may select squash. Require an explicit method so an
+    # omitted or unknown method cannot skip validation of the final subject.
+    if method in ("merge", "rebase"):
+        return False
+    if method != "squash":
+        return True
     return not squash_subject(data.get("commit_title"), data.get("pr_number"))
 
 
