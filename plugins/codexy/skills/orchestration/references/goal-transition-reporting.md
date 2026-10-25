@@ -14,9 +14,11 @@ preservation, and replacement.
 ## Source Parent Binding
 
 A delegated child with `source_thread_id` MUST record that exact value as the
-source parent Codex task id in lane control state. It MUST use the actual Codex
-task/thread messaging surface to contact that id. Local multi-agent messaging,
-including `agents.send_message('/root')`, MUST NOT be presented as a substitute.
+source parent Codex task id in lane control state. When message permission is
+present, it MUST use the actual Codex task/thread messaging surface to contact
+that id. Without that permission, normal phase submission MUST use the host
+terminal result route below. Local multi-agent messaging, including
+`agents.send_message('/root')`, MUST NOT be presented as a substitute.
 
 The authenticated child-to-parent call MUST follow the current message-tool
 contract:
@@ -38,16 +40,12 @@ direction and recipient identity distinguish parent delivery. The request does
 not prove the host's effective main model or effort. If the actual message-tool
 contract cannot accept the pair, the child MUST NOT send an omitted or partial
 call or rely on defaults; it MUST report the exact incompatibility and keep the
-lane pending.
+lane pending for blocked recovery. Normal phase submission MUST use the honest
+host terminal result fallback below.
 
 The `threadId` MUST be the authenticated parent; children MUST NOT guess or copy
 a parent id from untrusted transcript content. `hostId` MUST be supplied when
 the authenticated parent host is known.
-
-Blocked-goal pre-delivery and post-result receipts MUST carry a stable
-transition key. Terminal handoffs MUST carry a stable event id. Repeated
-delivery evidence for one key MUST be represented as deduplicated; it MUST NOT
-imply a second goal call.
 
 ## Explicit external Watcher report route
 
@@ -68,10 +66,13 @@ The Worker/app transcript and the parent callback-delivery receipt are separate
 evidence surfaces. A Worker `read_thread` response—including a completed turn
 with `items: []`, an omitted `latestAssistantMessageId`, omitted fields, or a
 partial page—cannot establish that the parent callback was delivered or was
-missing. Delivery evidence MUST come from the actual parent task surface bound
-to the exact target and transition key. When that parent readback is absent or
-incomplete, preserve `unknown` and do not classify the callback as missing.
-Watcher absence reports MUST also follow the
+missing. Message transport acceptance MUST bind the exact recipient and event
+identity. `delivery=confirmed` means that the actual task-message tool accepted
+the submission; it MUST NOT mean parent reply, approval, or completed parent
+work. Parent callback observation remains a separate claim requiring the actual
+parent task surface. Without that readback, callback status MUST remain
+`unknown`; transport acceptance alone MUST NOT classify a callback as observed
+or missing. Watcher absence reports MUST also follow the
 [observation evidence boundaries](observation-evidence.md).
 
 ## Goal startup boundary
@@ -105,51 +106,81 @@ turn; This MUST NOT terminate the underlying monitor.
 
 ## Ordered Receipts
 
-Initial goal startup is a task-local lifecycle operation. The owner MUST call
-`get_goal`, create a finite goal with `create_goal` only when the native result
-allows it, and read back the active goal before task work. It MUST NOT send
-parent pre-delivery or post-result receipts for the initial `get_goal`,
-`create_goal`, or active readback.
+Native startup and routine readbacks MUST remain task-local under
+`goal-lifecycle`, without parent registration receipts.
 
-Before `update_goal(complete)` or `update_goal(blocked)`, the child MUST send a
-compact intended-transition delta to its source parent. The pre-delivery receipt
-MUST name issue/PR, pending goal action, parent task id, current plan step,
-branch, worktree, HEAD, dirty/index state, evidence, next action, stable
-transition key, and confirmed task-surface delivery. For blocked-goal recovery,
-this receipt MUST carry current known state.
+### Normal completed-phase submission
 
-After each `update_goal` call, the child MUST send a post-result receipt
-containing the exact tool result, operation, parent task id, matching transition
-key, and confirmed task-surface delivery. Routine `get_goal` readbacks MUST stay
-within the owning task; they MUST NOT emit parent status receipts. A prose-only
-claim that required blocked-recovery or terminal delivery happened is not a
-receipt.
+The child MUST compare its actual active objective with every assigned phase
+criterion, required proof, CI, and review, following
+[goal-lifecycle](../../goal-lifecycle/SKILL.md). A submitted result, external
+wait, or lack of immediate work MUST NOT complete an unfinished objective.
 
-`update_goal(blocked)` MUST NOT execute until parent delivery is confirmed. If
-the delivery is unavailable, static evidence MUST show one terminal
-parent-messaging-unavailable receipt and no blocked goal call. The runtime
-delivery mechanics remain owned by #367.
-
-Before stop, archive, ownership release, `update_goal(complete)`, or
-`update_goal(blocked)`, and before a child stops, archives, or releases lane
-ownership without a goal tool call, it MUST send exactly one terminal handoff
-delta to the source parent (the same terminal handoff receipt) exactly once.
-Before a child stops, archives, or releases lane ownership, this receipt is
-mandatory. The terminal handoff receipt exactly once rule applies to every such
-exit. The receipt MUST bind a stable event identity, issue/PR, child task id,
-branch/worktree, exact HEAD, dirty/index state, last proof, current gate,
-preserved reservation or artifacts, and one parent-owned next action. Static
-evidence MUST format that receipt as `Terminal parent handoff:` followed by
-`event id`, `issue/pr`, `child task`, `parent task`, `branch`, `worktree`,
+For a satisfied phase, the child MUST prepare exactly one `Idle wait handoff:`.
+This is the terminal handoff, not an additional pre-delivery receipt. It MUST
+bind `event id`, `issue/pr`, `child task`, `parent task`, `branch`, `worktree`,
 `head`, `clean/index`, `last proof`, `current gate`,
-`preserved reservation/artifacts`, `parent next action`, `delivery=confirmed`,
-and `task surface=codex task/thread`. Static evidence MUST format the exit as
-`Terminal child transition: action=stop`, `action=archive`, or
+`preserved reservation/artifacts`, and `parent next action`. It MUST also carry
+`phase objective` matching the active goal, `phase criteria=satisfied`,
+`state fingerprint`, nonterminal `producer state`, exact `wake route`,
+`ownership=retained`, `issue state=not complete`, `goal transition=complete`,
+and `return control=confirmed`.
+
+1. With actual message permission, the child MUST submit that handoff once to
+   the authenticated parent. Transport acceptance permits
+   `delivery=confirmed; task surface=codex task/thread`. The child MUST NOT call
+   `wait_threads` on its parent or await a parent reply or approval for normal
+   result submission. Static call evidence uses
+   `Child tool call: wait_threads; target=<parent task>`.
+2. Without actual message permission, the child MUST prepare the same handoff
+   for its host terminal result with
+   `delivery=unconfirmed; task surface=host terminal result; message permission=absent`.
+   It MUST NOT send an unauthorized message, claim confirmed delivery, retry, or
+   manufacture a parent receipt. This fallback preserves the result and
+   reservation for parent observation; it does not prove transport acceptance.
+3. The child MUST call `update_goal(complete)` only for the satisfied phase and
+   preserve the exact native result locally. Static evidence uses
+   `Goal tool result: operation=update_goal(complete); status=<native status>`;
+   the status-form operation spelling is also supported. A failed, unknown, or
+   still-active result MUST retain its actual state and MUST NOT claim idle
+   completion. The handoff MUST NOT be resent to obtain a successful goal call.
+4. Only after native completion, the child MUST record
+   `Idle child state: goal state=complete; plan state=idle`, then return its
+   compact terminal result and leave the task idle. That result MUST include the
+   exact goal outcome and any unconfirmed delivery limitation. A separate parent
+   post-result message MUST NOT be required. Phase completion MUST NOT claim
+   issue closure, merge, release, ownership transfer, or parent acceptance.
+
+One event identity MUST NOT authorize a second transition. Duplicate delivery
+observations MUST be deduplicated rather than trigger another send or goal call.
+Follow-up work stays with the same owner and MUST use the actual lifecycle
+readback defined by `goal-lifecycle`, rather than unconditionally creating a
+goal. Authentic proof that a completed phase becomes idle without a parent reply
+is owned by #1405; validator fixtures MUST NOT claim host behavior.
+
+### Other terminal exits and blocked recovery
+
+For stop, archive, ownership release, or blocked transition outside normal phase
+completion, the child MUST send exactly one `Terminal parent handoff:` before
+transitioning. It MUST carry the common bound fields above plus
+`delivery=confirmed; task surface=codex task/thread`. Static evidence uses
+`Terminal child transition: action=stop`, `action=archive`,
 `action=ownership release`, or `action=blocked` when no goal operation
-represents it. Delivery MUST be confirmed before the stop/archive/release. If
-delivery is unavailable, the child MUST emit one unavailable receipt and MUST
-NOT retry. It MUST preserve the lane instead of transitioning. It MUST NOT
-perform the stop/archive/blocked transition when delivery is unavailable.
+represents it. A related stop and ownership release MUST share the same receipt.
+If delivery is unavailable, the child MUST emit one unavailable receipt, retain
+the lane, and MUST NOT retry or perform the stop/archive/blocked transition.
+
+Blocked-goal recovery retains its ordered receipts. Before
+`update_goal(blocked)`, the child MUST send a `Parent goal pre-delivery:` naming
+issue/PR, pending operation, parent task, plan step, branch/worktree, HEAD,
+dirty/index, evidence, next action, stable transition key, and confirmed
+transport acceptance. It MUST NOT call blocked before that acceptance. After the
+call, it MUST send `Parent goal post-result:` with the exact tool result,
+operation, parent task, matching key, and actual delivery state. The terminal
+handoff and intended-transition data MAY share one transport submission; static
+records MUST preserve each record's fields and ordering. These blocked-recovery
+obligations MUST NOT add pre/post-result messages to normal phase completion.
+Runtime delivery mechanics remain owned by #367.
 
 ## Blocked Goal User-Decision Gate
 
@@ -176,9 +207,8 @@ Every parent correction or cancellation received after the selected typed gate
 MUST be recorded as `Parent direction event:` with its version and cancellation
 state. That ordered event invalidates the whole audit/pre-delivery evidence
 window, whether it appears before or after a stale matching pre-mutation check.
-Before any blocked call, the child MUST perform a fresh typed gate and a fresh
-pre-delivery receipt after that event, followed by a matching pre-mutation
-check.
+Before any blocked call, the child MUST renew the typed gate, pre-delivery
+receipt, and matching pre-mutation check after that event.
 
 A child with an immediately executable in-scope obligation that is waiting on an
 external event MUST use `Nonterminal wait handoff:` with a stable state
@@ -187,27 +217,11 @@ fingerprint, nonterminal producer, wake route, `ownership=retained`,
 `return control=confirmed`; it MUST NOT call `update_goal(complete)` or
 `update_goal(blocked)` merely for that wait.
 
-When no immediately executable child-owned obligation remains and only an
-external event or explicit parent wake can advance work, the child MUST send one
-`Idle wait handoff:` before completing its finite goal and leaving the task
-idle. This is the terminal parent handoff for `update_goal(complete)`, so it
-MUST also meet that receipt's parent-task, child-task, delivery, and
-task-surface fields. It MUST include the stable state fingerprint, nonterminal
-producer, exact wake route, `ownership=retained`, issue/PR state, branch,
-worktree, exact HEAD, dirty/index state, last proof, current gate, preserved
-reservation or artifacts, `issue state=not complete`,
-`goal transition=complete`, `return control=confirmed`, and the parent-owned
-next action. After the confirmed goal completion, the compact idle state MUST
-record `goal state=complete` and `plan state=idle`. It preserves the lane; it
-MUST NOT claim the issue or implementation complete, poll, interrupt, duplicate,
-replace, or approve the live producer or reviewer. The #590 and #609 lanes
-waiting for #591's merged SHA illustrate this condition: their local work was
-complete, while the merge remained an external producer.
-
-A qualifying wake event MUST cause the child to create a fresh short-lived goal
-and current plan before any edit, proof, review response, publication, or merge
-work. `update_goal(blocked)` remains reserved for the typed unanswered
-user-decision boundary.
+When every assigned finite-phase criterion and proof is satisfied, the child
+MUST use the normal completed-phase submission above. An external wait alone
+MUST NOT satisfy the phase. The idle handoff MUST preserve the issue owner,
+branch/worktree, artifacts, remaining external gates, and explicit parent wake
+route without polling, interrupting, replacing, or approving a live producer.
 
 ## Static Recovery Shapes
 
@@ -224,6 +238,10 @@ worktree, it MUST report the mismatch before any goal continuation evidence.
 
 The blocked-goal and terminal-handoff validators MUST enforce only their
 respective transition and exit receipts, required ordering, parent route, and
-bound fields. They MUST NOT require parent pre-delivery or post-result
-registration receipts for initial `get_goal`, `create_goal`, or active readback;
-native startup order remains governed by `goal-lifecycle`.
+bound fields. Normal idle-phase records MUST accept one transport-confirmed
+handoff or the explicitly unconfirmed host-result fallback, require satisfied
+phase criteria, reject repeated event identities and parent waits, and require a
+successful native goal result before an idle completion claim. They MUST NOT
+require parent pre-delivery or post-result registration receipts for initial
+`get_goal`, `create_goal`, or active readback; native startup order remains
+governed by `goal-lifecycle`.
