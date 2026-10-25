@@ -94,6 +94,26 @@
    - MUST give each lane an assignment, issue, branch, worktree path, allowed
      paths, read-first files, deliverable, required evidence, verification
      command or surface, stop condition, and return format.
+   - The initial assignment MUST carry the issue outcome, executable phase
+     objective and completion criteria from
+     [goal-lifecycle](../../goal-lifecycle/SKILL.md), the
+     [terminal handoff route](goal-transition-reporting.md), and the
+     [supervised slot reservation](parent-supervision.md#supervised-app-child-capacity).
+     At capacity, MUST retain ready work in the parent backlog without creating
+     a child or activating its goal; batching waits MUST NOT expand capacity.
+   - If parent environment validation is required after creation, MUST assign a
+     short setup phase naming its check, evidence, and parent release condition.
+     The parent MUST verify actual task state and permissions before releasing
+     the already-scoped execution phase; the same owner MUST use actual goal
+     lifecycle readback. Setup completion alone MUST NOT authorize execution.
+   - A ready independent lane MUST continue through implementation,
+     verification, selected review, and handoff within its existing authority.
+     MUST NOT split it into routine sequential read-only, plan-approval, or
+     code-only prompts. Shared migrations, Simulator reservations, other
+     shared-file/resource conflicts, missing authority, and material safety
+     decisions MUST retain parent gates. MUST stop only the affected work and
+     continue independent authorized work; required review, routing, and slot
+     limits remain binding.
    - If the current task is already explicitly assigned as implementation owner
      for the lane and no new task was explicitly requested, MUST continue in the
      current task under its native goal and MUST NOT create another app task. If
@@ -105,7 +125,9 @@
      `create_thread` contract, verify the returned task and owner before
      execution, and MUST NOT use an app-server/CLI bypass or fake task.
 4. Integrate:
-   - MUST re-read files and outputs before trusting child results.
+   - MUST process actionable compact child results before re-reading
+     transcripts; MUST verify the linked current artifacts and missing or
+     contradictory proof.
    - MUST preserve user changes and unrelated work.
    - MUST treat Worker callbacks and Watcher observations as signals, not
      acceptance. For a Watcher drift signal, the observed artifact, diff, or
@@ -189,57 +211,28 @@ Required evidence:
 Classification evidence:
 Review feedback route:
 Parent verification:
-Return evidence for strict or explicitly audited lanes:
-  - Native goal-tool usage and active-state readback; if the required native
-    goal surface is unavailable, record the exact limitation and required
-    action without claiming execution proof
-  - Todo/plan tool usage or unavailable-todo-tool fallback
-  - Touched implementation-file LOC gate output or not-applicable rationale
-  - Codegraph findings and LSP status or unavailable/not-applicable evidence
-  - Multi-agent usage for separable subtasks, or a concrete not-useful
-    rationale tied to atomicity, tiny scope, or unavailable tooling
-  - Packaged Codexy reviewer gate result for the current diff, exact head or
-    file state, scope, verification outputs, and evidence
-For light and standard lanes, return only evidence required by the selected
-route; do not create a universal receipt or evaluation gate.
+Initial phase contract: issue outcome; Assignment objective; phase criteria
+Capacity: reserved slot; shared-file/resource reservations; parent gates
+Setup phase: only if required; check, evidence, release condition
+Completion route: goal-transition-reporting.md; compact current-head result
+Return evidence: selected route/profile only; exact head, checks, findings,
+  external gates, and one parent-owned next action
+  Strict/audited lanes: native goal and active readback; todo/plan state or
+  unavailable fallback; touched LOC; Codegraph/LSP evidence or applicability;
+  multi-agent use or concrete scope/tool rationale; current-head packaged review.
+  Light/standard: only selected-route evidence; light has no LLM reviewer.
 Child execution discipline:
 Stop if:
 ```
 
 ## Codex Thread And Worktree Handoff
 
-MUST use this for any lane that needs its own branch, PR, or long-running
-implementation context:
-
-```text
-Issue:
-Branch:
-Worktree path:
-Task classification:
-First message:
-Allowed files or paths:
-Read first:
-Acceptance criteria:
-Required evidence:
-Stop condition:
-Parent verification:
-Return format:
-  - MUST include native goal-tool usage and active-state readback; if the
-    required native goal surface is unavailable, include the exact limitation
-    and required action without claiming execution proof.
-  - MUST include todo/plan tool usage or unavailable-todo-tool fallback.
-  - MUST include multi-agent usage or a concrete not-useful/unavailable-tool
-    rationale.
-  - MUST include codegraph findings and LSP status or unavailable/not applicable
-    evidence for code-touching lanes.
-  - MUST include touched implementation-file LOC gate output for non-trivial code,
-    validator, harness, or workflow-rule lanes.
-  - When the selected review profile requires a reviewer, MUST include packaged
-    Codexy reviewer gate findings or approval for the current diff, exact head or
-    file state, scope, verification outputs, and evidence. `light` lanes MUST
-    NOT require an LLM reviewer; `strict` lanes MUST retain the one selected
-    `codexy-sentinel` gate.
-```
+For any lane needing its own branch, PR, or long-running implementation context,
+MUST use the dispatch template above as its first message and retain the same
+owner for follow-up work. The return MUST include native goal readback and
+todo/plan fallback; multi-agent use or rationale; Codegraph/LSP for code;
+touched LOC for non-trivial code/harness/workflow rules; and the current-head
+packaged reviewer result when selected (strict: Sentinel).
 
 The child thread MUST NOT merge, close issues, or claim final completion. It
 returns evidence and a commit-ready branch to the invoking orchestrator thread.

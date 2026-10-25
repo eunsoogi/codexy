@@ -90,9 +90,13 @@ before execution.
 Before dispatching a Worker, the Orchestrator MUST have an active `get_goal`
 readback for its exact overall assignment. Each Worker prompt MUST contain one
 exact `Assignment objective:`, bounded scope, success criteria, verification,
-and a stop condition, and MUST direct the Worker to load goal-lifecycle and
-complete its own first transition before task-specific work. The Orchestrator's
-goal MUST NOT stand in for the Worker's task-scoped goal.
+handoff, and a stop condition. The initial assignment MUST distinguish the issue
+outcome from the executable finite phase under
+[goal-lifecycle](../goal-lifecycle/SKILL.md), carry the
+[terminal handoff](references/goal-transition-reporting.md) route, and bind the
+[supervised slot](references/parent-supervision.md#supervised-app-child-capacity)
+reservation. It MUST direct the Worker to complete its own first goal transition
+before task-specific work. The parent goal MUST NOT stand in for the child goal.
 
 For selected child-owned issue lanes, the Orchestrator MUST assign one Worker
 before implementation; that Worker owns implementation and review-response
@@ -102,8 +106,18 @@ verify; merge and publication remain separately authorized. Each implementation
 Worker MUST start in an app-managed project worktree requested in its initial
 `create_thread` call. A local or projectless task MUST NOT be retrofitted with a
 different worktree route. The parent MUST verify actual task state and exposed
-permissions before the Worker begins implementation. Model and effort MUST be
-selected automatically from recipient role without asking the user to choose or
+permissions before implementation; when this requires post-creation parent
+environment validation, it MUST assign a short setup phase with the exact check,
+evidence, and parent-owned release condition. Otherwise, a ready independent
+lane MUST proceed through implementation, verification, selected review, and
+handoff within its initial authority, without routine read-only, plan-review, or
+code-only approval prompts. The setup release MUST carry the already-defined
+execution scope; follow-up goal startup MUST use actual lifecycle readback.
+Shared-file or resource conflicts (including shared migrations or Simulator
+reservations), missing authority, and material safety decisions MUST remain
+parent gates; independent authorized work MUST continue. Required review and
+slot capacity MUST remain binding. Model and effort MUST be selected
+automatically from recipient role without asking the user to choose or
 reconfirm, subject to the actual tool contract.
 
 ### Planning and execution boundary

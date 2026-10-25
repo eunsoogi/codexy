@@ -12,6 +12,14 @@ no-change parent-turn savings remain unmeasured.
 
 ## Same-Turn Execution Default
 
+- MUST carry finite-phase criteria, terminal submission route, and the reserved
+  supervised slot in the initial assignment by reference to their canonical
+  contracts. A ready independent Worker MUST execute its authorized
+  implementation, verification, selected review, and handoff without routine
+  parent approvals. Only required parent environment validation needs a short
+  setup phase with an explicit release condition. Shared-file/resource
+  conflicts, actual authority, safety decisions, required review, and slot
+  capacity MUST remain gates.
 - While authorized work or observation remains actionable, preserve the full
   assignment, active goal owner, and next action. Same-turn waiting applies only
   while the host keeps its supported route; it does not imply runtime suspension
@@ -74,16 +82,9 @@ Worker host observation.
 
 ## Proof State To Retain
 
-MUST retain these state slots for an active lane:
-
-- issue and PR numbers,
-- branch and worktree path,
-- owner boundary and Worker task id,
-- current head SHA and base SHA,
-- current check state,
-- unresolved review thread ids and whether they are outdated,
-- verification commands and results,
-- merge readiness or explicit wait/stop condition.
+MUST retain issue/PR, branch/worktree, owner boundary and Worker task id,
+head/base SHAs, checks, unresolved review ids and outdated state, verification
+commands/results, and merge readiness or explicit wait/stop condition.
 
 Some lane gates may legitimately be absent, especially in issue-only, pre-PR,
 Orchestrator-owned, or pre-review loops. MUST record those slots explicitly as
@@ -168,18 +169,14 @@ MUST use this flow after compaction and before handoff:
    when an explicit Orchestrator/user message arrives. This rule MUST NOT
    terminate or cancel the underlying wait/monitor session.
 
-Before a Worker stops, archives, yields ownership, or calls
-`update_goal(complete)` or `update_goal(blocked)`, it MUST send exactly one
-terminal handoff delta to the source Orchestrator. `update_goal(blocked)`
-additionally requires the typed unanswered user-decision gate; token pressure,
-repeated continuations, unchanged fingerprints, external producers, and
-coordination waits MUST NOT authorize a blocked goal. That delta MUST include
-the stable event identity, issue/PR, child task id, branch/worktree, exact HEAD
-and dirty/index state, last completed proof, current external gate, preserved
-artifacts or reservation, and one Orchestrator-owned next action. The Worker
-MUST confirm task-surface delivery before the stop/archive or goal transition. A
-failed delivery MUST emit one unavailable receipt and MUST NOT retry or
-transition.
+Worker terminal submission MUST follow
+[goal-transition-reporting.md](goal-transition-reporting.md): one
+satisfied-phase handoff, transport acceptance when messaging is authorized, or
+the explicitly unconfirmed host terminal result when permission is absent. MUST
+NOT wait on the parent or require its reply/approval for normal submission.
+Native goal completion MUST precede an idle-complete claim; unmet objectives,
+failed transitions, other terminal exits, and blocked recovery retain that
+contract's distinct requirements. MUST retain ownership and external gates.
 
 ## Event Delta Shape
 
@@ -206,13 +203,10 @@ shared message rule.
 
 ## Runtime Heartbeats
 
-Heartbeat registration, bounded schedules, state fingerprints, cleanup, ordinary
-Worker lifecycle, and idle-wait handoffs are defined in
-[runtime-heartbeats.md](runtime-heartbeats.md). MUST read that reference before
-using a heartbeat or handling an ordinary Worker idle-wait handoff. A heartbeat
-MUST NOT replace an explicitly assigned Watcher route or the live Sentinel's
-event-driven no-poll boundary. The Orchestrator retains the active overall goal
-during a separate Watcher assignment and MUST record both states separately.
+MUST use [runtime-heartbeats.md](runtime-heartbeats.md) for registration,
+schedules, fingerprints, cleanup, and Worker idle handoffs. A heartbeat MUST NOT
+replace an assigned Watcher or live Sentinel's no-poll route. MUST record the
+Orchestrator's active overall goal separately from any Watcher assignment.
 
 For repeat handoffs, copy [the delta-poll template](../templates/delta-poll.md)
 and fill only the current slots. MUST keep the template output in the thread or
@@ -236,6 +230,11 @@ For a Worker handoff or Orchestrator status, include:
 - `forget`: resolved, outdated, superseded, or irrelevant details; MUST NOT
   drive work unless a fresh poll makes them current again,
 - `next`: one action with the owner.
+
+The parent MUST handle actionable results from this compact current-head state
+first, reading linked artifacts or bounded transcript details only for missing,
+truncated, contradictory, or unbound evidence. MUST NOT require prolonged
+transcript re-reading as a routine phase-approval step.
 
 ## Stop Conditions
 
