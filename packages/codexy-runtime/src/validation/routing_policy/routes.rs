@@ -1,9 +1,27 @@
+use serde::{Deserialize, de::Error as _};
 use serde_json::{Value, json};
 
 use super::{
     Policy,
     thread_capabilities::{self, RecipientAssignment, ThreadCapabilities},
 };
+
+pub(super) fn deserialize_bounds<'de, D>(
+    deserializer: D,
+) -> Result<Option<super::BoundedEvidence>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    // Serde structs also accept positional sequences; only named JSON facts certify these bounds.
+    Option::<Value>::deserialize(deserializer)?
+        .map(|value| {
+            if !value.is_object() {
+                return Err(D::Error::custom("bounded_evidence must be a JSON object"));
+            }
+            serde_json::from_value(value).map_err(D::Error::custom)
+        })
+        .transpose()
+}
 
 pub(super) fn bounded_evidence_is_complete(predicates: Option<&super::Predicates>) -> bool {
     // Human-judged summaries may lack a deterministic oracle; scope, safety and decisions cannot relax.

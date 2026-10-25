@@ -89,7 +89,7 @@ fn issue_1412_bounds_safety_and_capabilities_cannot_relax() -> TestResult {
     unsupported["codex_thread_capabilities"] = Value::Null;
     check(unsupported, fallback())?;
     // Typed, closed bounds reject malformed or invented authority/capability claims.
-    for value in [json!({}), json!({"read_only":true,"authority":"assumed"}), json!(true)] {
+    for value in [json!({}), json!({"read_only":true,"authority":"assumed"}), json!(true), json!([true,true,2,234,4])] {
         let mut malformed = bounded_request();
         malformed["simple_predicates"]["bounded_evidence"] = value;
         rejects(malformed, "")?;

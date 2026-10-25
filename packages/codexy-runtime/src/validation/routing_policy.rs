@@ -66,7 +66,7 @@ struct Predicates {
     low_risk_reversible: bool,
     no_unresolved_decision: bool,
     // Optional evidence bounds extend the legacy container without changing old simple requests.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "routes::deserialize_bounds")]
     bounded_evidence: Option<BoundedEvidence>,
 }
 
