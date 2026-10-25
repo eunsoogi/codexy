@@ -10,7 +10,7 @@ use crate::support::FixtureCommand as Command;
 pub(super) type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
-fn issue_1397_final_subject_is_checked_before_direct_squash_merge() -> TestResult {
+fn final_subject_is_checked_before_direct_squash_merge() -> TestResult {
     // Source-launcher proof only: host dispatch and denial consumption are separate gates.
     for event in ["PermissionRequest", "PreToolUse"] {
         for tool in ["mcp__codex_apps__github_merge_pull_request", "github.merge_pull_request", "github_merge_pull_request"] {
