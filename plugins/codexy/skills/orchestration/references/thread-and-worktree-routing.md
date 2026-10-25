@@ -170,10 +170,6 @@ diagnostic for known ownership and setup state.
    permission-setting API, bypass approval, or declare creation failed because a
    task is temporarily absent from a list view.
 
-- The root orchestrator MUST inspect current child owner state before creating
-  or resuming a child Codex thread. The preflight evidence MUST include the
-  current active child Codex thread count and whether an existing thread owns
-  the same issue or PR.
 - The parent MAY start dependency-ready, disjoint work only within the combined
   reserved/setup/active ceiling. MUST preserve reservations across turns and
   MUST NOT bypass the ceiling by splitting `wait_threads` batches.
@@ -209,9 +205,6 @@ git rev-parse --verify origin/<branch>
 - A `pendingWorktreeId` MUST follow the same pending identity and retained-slot
   rules above. Retry or reassignment MUST additionally reconcile actual setup
   and owner state; a bounded search or timeout MUST NOT free a slot.
-- MUST keep exactly one active owner for each issue-sized lane. Before retrying
-  or reassigning after pending or failed setup, list current child threads,
-  pending worktrees, branches, and worktree paths when the tools expose them.
 - Handoff evidence for Codex app worktree setup MUST include starting ref,
   branch preflight result, pending/final worktree result, active owner identity,
   and duplicate-owner cleanup if any.
@@ -240,10 +233,18 @@ git rev-parse --verify origin/<branch>
 - Existing issue or PR owner threads MUST be reused when present and usable;
   replacement owner threads MUST require old-owner stop, unusable, or
   supersession evidence.
-- Worktree-based implementation lanes MUST require a Codex thread when thread
-  tools are available.
 - Worktree-based implementation lanes MUST require lane ownership before edits:
   parent coordination first, child implementation second.
 - Shared files MUST have a named owner before parallel edits begin.
 - MUST NOT merge child work locally as a substitute for the repository PR flow.
 - After merge, synchronize the main worktree before starting dependent work.
+
+## Completed Child Cleanup
+
+MUST follow
+[accepted-child cleanup](../../../../codexy-github/skills/git-workflow/references/local-git-and-branches.md#accepted-child-cleanup):
+verify completion/acceptance and no outstanding work; preserve ignored data and
+confirm `archive_worktree`'s recoverable snapshot before `set_thread_archived`;
+read back both before safe local issue-branch removal. MUST preserve uncertain
+resources and report the exact gap. Default/shared/remote branches stay out of
+scope.
