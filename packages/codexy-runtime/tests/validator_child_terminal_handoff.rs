@@ -1,6 +1,7 @@
 //! Requires one delivered parent handoff before terminal exits and goal
 //! transitions; blocked transitions also need a typed user-decision gate.
 
+use records::terminal_goal_transition;
 use std::process::Output;
 
 #[path = "validator_child_terminal_handoff/blocked_goal.rs"]
@@ -183,10 +184,12 @@ fn validator_requires_a_fresh_handoff_for_each_terminal_goal_transition() -> Tes
     Ok(())
 }
 
-fn validator_requires_typed_user_decision_gate_for_blocked_terminal_goal_transition() -> TestResult {
+fn validator_requires_typed_user_decision_gate_for_blocked_terminal_goal_transition() -> TestResult
+{
     let evidence = format!(
         "Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\n{}",
-        terminal_goal_transition("blocked", "without-gate", true).replace(&blocked_goal::gate(), ""),
+        terminal_goal_transition("blocked", "without-gate", true)
+            .replace(&blocked_goal::gate(), ""),
     );
     let output = run_validator(&evidence)?;
     assert!(!output.status.success());
@@ -210,23 +213,6 @@ fn terminal_only_evidence_for_tasks(parent_task: &str, child_task: &str) -> Stri
 
 fn terminal_handoff(event: &str) -> String {
     records::handoff_for_parent(event, "parent-375")
-}
-
-fn terminal_goal_transition(status: &str, key: &str, include_handoff: bool) -> String {
-    let operation = format!("update_goal(status=\"{status}\")");
-    let transition_key = format!("375:{status}:{key}");
-    let handoff = include_handoff.then(|| terminal_handoff(&format!("{status}|{key}")));
-    let gate = (status == "blocked").then(blocked_goal::gate).unwrap_or_default();
-    let parent_direction = (status == "blocked")
-        .then_some("; parent direction version=direction-375")
-        .unwrap_or_default();
-    let pre_mutation = (status == "blocked")
-        .then_some(blocked_goal::pre_mutation_check())
-        .unwrap_or_default();
-    format!(
-        "Goal transition key: {transition_key}\n{gate}Parent goal pre-delivery: operation={operation}; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=verify; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; evidence=proof; next action=complete{parent_direction}; transition key={transition_key}\n{pre_mutation}{}Goal tool call: {operation}\nParent goal post-result: operation={operation}; exact tool result={status}; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; transition key={transition_key}\n",
-        handoff.unwrap_or_default(),
-    )
 }
 
 fn run_validator(evidence: &str) -> Result<Output, Box<dyn std::error::Error>> {
