@@ -145,18 +145,22 @@ diagnostic for known ownership and setup state.
    the path internally, MUST invoke the supported worktree tool after this
    project preflight; local checks MUST NOT be described as host-level atomicity
    proof.
-3. MUST keep exactly one active owner for each issue-sized lane. The parent MAY
-   start all dependency-ready, disjoint child lanes it can supervise with
-   available resources. Actual resource exhaustion, unresolved ownership,
-   dirty/locked worktree collisions, or unallocated shared writes MAY defer a
-   lane; child count alone MUST NOT. If setup returns a `clientThreadId` or
-   `pendingWorktreeId`, MUST retain it as a pending setup identity, not as a
-   `threadId`. MUST wait for an authoritative ready or failed setup result; an
-   observation timeout or an omitted list result is not by itself failure. While
-   pending, MUST search by the pending identity, branch, issue/PR, SHA, and
-   available review-thread id. Only a surfaced thread with an active owner, an
-   actionable setup failure, or a bounded `not-surfaced-after-bounded-wait`
-   state may end pending setup; any retry or reassignment MUST name that state.
+3. MUST keep exactly one active owner for each issue-sized lane. Before creating
+   or resuming a child, MUST reconcile reserved, setting-up, and active slots
+   against the
+   [supervised-child ceiling](parent-supervision.md#supervised-app-child-capacity).
+   At capacity, MUST retain excess work in the parent backlog without a child
+   thread or active child goal. Resource exhaustion, unresolved ownership,
+   dirty/locked collisions, or unallocated shared writes MUST defer a lane. If
+   setup returns a `clientThreadId` or `pendingWorktreeId`, MUST retain it as a
+   pending setup identity, not as a `threadId`. MUST wait for an authoritative
+   ready or failed setup result; an observation timeout or an omitted list
+   result is not by itself failure. While pending, MUST search by the pending
+   identity, branch, issue/PR, SHA, and available review-thread id. Only a
+   surfaced thread with an active owner, an actionable setup failure, or a
+   bounded `not-surfaced-after-bounded-wait` state may end a setup search; any
+   retry or reassignment MUST name that state. Ending the search MUST NOT by
+   itself release the reserved capacity.
 4. When setup is ready, MUST verify the returned task identity, CWD, HEAD, clean
    state, and owner before implementation starts. If the result conflicts with
    the ownership map or exposes unexpected dirty/locked state, MUST stop the
@@ -166,14 +170,9 @@ diagnostic for known ownership and setup state.
    permission-setting API, bypass approval, or declare creation failed because a
    task is temporarily absent from a list view.
 
-- The root orchestrator MUST inspect current child owner state before creating
-  or resuming a child Codex thread. The preflight evidence MUST include the
-  current active child Codex thread count and whether an existing thread owns
-  the same issue or PR.
-- The parent MUST NOT defer dependency-ready, disjoint child work solely because
-  other child threads are active. It MAY defer work for actual resource
-  exhaustion or unresolved ownership, dirty/locked collision, or shared-file
-  allocation conflicts.
+- The parent MAY start dependency-ready, disjoint work only within the combined
+  reserved/setup/active ceiling. MUST preserve reservations across turns and
+  MUST NOT bypass the ceiling by splitting `wait_threads` batches.
 - If an existing usable thread already owns the same issue or PR, MUST reuse
   that owner thread or MUST continue that owner thread instead of creating a
   replacement. Replacement child threads MUST require inspected existing-owner
@@ -203,16 +202,9 @@ git rev-parse --verify origin/<branch>
 - Waiting for pending worktree setup is an active orchestration state. Poll or
   wait for the pending result; MUST NOT judge the lane failed just because setup
   has not completed quickly.
-- If `create_thread` or `fork_thread` returns a `pendingWorktreeId`, active lane
-  accounting MUST keep the pending id until one of these explicit states is
-  observed: surfaced thread id with active owner, failed setup with actionable
-  error, or `not-surfaced-after-bounded-wait` after bounded searches by pending
-  id, branch, PR/issue, SHA, and available review-thread id. Only the bounded
-  not-surfaced state may allow safe retry or reassignment, and the handoff MUST
-  name that retry/reassignment decision.
-- MUST keep exactly one active owner for each issue-sized lane. Before retrying
-  or reassigning after pending or failed setup, list current child threads,
-  pending worktrees, branches, and worktree paths when the tools expose them.
+- A `pendingWorktreeId` MUST follow the same pending identity and retained-slot
+  rules above. Retry or reassignment MUST additionally reconcile actual setup
+  and owner state; a bounded search or timeout MUST NOT free a slot.
 - Handoff evidence for Codex app worktree setup MUST include starting ref,
   branch preflight result, pending/final worktree result, active owner identity,
   and duplicate-owner cleanup if any.
@@ -241,10 +233,18 @@ git rev-parse --verify origin/<branch>
 - Existing issue or PR owner threads MUST be reused when present and usable;
   replacement owner threads MUST require old-owner stop, unusable, or
   supersession evidence.
-- Worktree-based implementation lanes MUST require a Codex thread when thread
-  tools are available.
 - Worktree-based implementation lanes MUST require lane ownership before edits:
   parent coordination first, child implementation second.
 - Shared files MUST have a named owner before parallel edits begin.
 - MUST NOT merge child work locally as a substitute for the repository PR flow.
 - After merge, synchronize the main worktree before starting dependent work.
+
+## Completed Child Cleanup
+
+MUST follow
+[accepted-child cleanup](../../../../codexy-github/skills/git-workflow/references/local-git-and-branches.md#accepted-child-cleanup):
+verify completion/acceptance and no outstanding work; preserve ignored data and
+confirm `archive_worktree`'s recoverable snapshot before `set_thread_archived`;
+read back both before safe local issue-branch removal. MUST preserve uncertain
+resources and report the exact gap. Default/shared/remote branches stay out of
+scope.

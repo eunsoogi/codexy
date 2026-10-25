@@ -25,6 +25,16 @@ findings remain unresolved states rather than reasons to silently pass or hide
 the gap.
 
 - Non-Sentinel fanout MUST be no more than three concurrent helpers.
+- Supervised app children MUST share one ceiling of
+  `min(8, any explicitly lower host limit, resource limit)` across reserved,
+  setting-up, and active slots. MUST apply the stricter applicable helper budget
+  as well. MUST reconcile ownership and reserve a slot before creation or resume
+  under
+  [parent supervision](parent-supervision.md#supervised-app-child-capacity).
+  Excess work MUST stay in the parent backlog without a child thread or active
+  goal. Multiple eight-target waits MUST NOT expand capacity. Pending setup,
+  timeout, or attention MUST NOT release a slot; confirmed release and retained
+  per-target cursors MUST follow that same supervision contract across turns.
 - The normal current-head path uses one selected proportionate reviewer when the
   chosen profile requires one. `PASS`, `BLOCK`, and `UNOBSERVABLE` are actual
   results; `PENDING` and `RUNNING` remain observations of that same reviewer.
