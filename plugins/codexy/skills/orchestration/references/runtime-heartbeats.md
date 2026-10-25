@@ -144,10 +144,11 @@ A live Sentinel, pending Worker, queued CI, pending connector review,
 Orchestrator authorization, dependency integration, or resource slot is a
 nonterminal producer. The owner MUST preserve ownership through a nonterminal
 wait handoff while immediately executable work remains, or through an idle-wait
-handoff after that finite work is complete, and MUST use its event route rather
-than declaring an execution impasse. An unavailable wake route does not
-authorize a blocked goal; only an unanswered material user decision or missing
-user information can do so.
+handoff only after the assigned finite phase's criteria, proof, and handoff are
+satisfied. A wait alone MUST NOT satisfy those criteria. The owner MUST use its
+event route rather than declaring an execution impasse. An unavailable wake
+route does not authorize a blocked goal; only an unanswered material user
+decision or missing user information can do so.
 
 ## Goal And Terminal Lifecycle
 
@@ -155,38 +156,42 @@ The following lifecycle applies to ordinary Workers and other owners; the
 Orchestrator remains the owner of the overall goal while a Watcher subagent is
 active. A Watcher report MUST NOT create, replace, or transfer that goal.
 
-A successfully registered heartbeat is runtime-owned waiting. An ordinary Worker
-or other non-Orchestrator owner MUST retain its active goal and plan only while
-an immediately executable in-scope obligation remains, record
-`goal state=active` and `goal transition=none`, and return control without
-completing or blocking the goal. When no immediately executable obligation
-remains and only an external event or explicit Orchestrator wake can advance
-work, the owner MUST first determine whether the current finite execution phase
-is satisfied. If satisfied, it MUST send the idle-wait handoff defined in
-`goal-transition-reporting.md`, complete only that finite phase, and leave the
-task idle without claiming issue, implementation, transfer, or release
-completion. If unmet, it MUST retain the honest goal state required by the
-existing lifecycle authority and return through a supported wait or
-terminal-delivery path; it MUST NOT use administrative completion merely to
-clear the handoff. This finite phase is distinct from the Orchestrator's overall
-goal and a Watcher's bounded observation assignment; neither a phase completion
-nor a Watcher report proves release completion. After a finite phase completes
-with no active execution goal, a qualifying event MUST create a fresh
-short-lived execution goal and current plan before any edit, proof, review
-response, publication, or merge work. If an unmet active finite goal was
-retained, a qualifying event MUST resume its existing authorized goal and plan
-instead of creating a duplicate. The awakened owner MUST first read the actual
-lifecycle state and MUST continue a matching active objective; if the state is
-null or complete, it MAY create the fresh goal and MUST read back `active`. A
-different unfinished objective requires a supported lifecycle disposition and
-MUST NOT be overwritten. An observed `blocked` state remains governed by the
-existing `goal-lifecycle` recovery authority; this reference MUST NOT replace or
-restate that recovery sequence. The awakened owner MUST consume the event in the
-same turn and MUST delete or disable the heartbeat when no further observation
-is required. It MUST record the resulting lifecycle state in the compact lane
-delta. When cleanup is needed, the owner MUST delete the heartbeat by id or
-disable it with a paused status and the heartbeat's full update fields; it MUST
-record which terminal action occurred.
+A successfully registered heartbeat is runtime-owned waiting; it does not
+authorize goal creation or prove phase completion. Ordinary Worker phases MUST
+follow [goal-lifecycle](../../goal-lifecycle/SKILL.md): the assignment's exact
+phase objective and criteria are distinct from the overall issue outcome.
+
+- During preparation, implementation, or verification, the owner MUST retain its
+  matching active goal while any assigned criterion or proof remains unmet,
+  including required CI or review. It MUST record `goal state=active` and
+  `goal transition=none` and use the supported wait/return route when needed.
+- An external wait or no immediately executable work MUST NOT turn an unmet
+  phase into a complete one. The owner MUST preserve the actual goal state and
+  remaining proof; it MUST NOT narrow a broader active goal, invent a completed
+  subphase, or use false `complete`, `paused`, or `blocked` to clear a wait.
+- Once all stated phase criteria, proof, and required handoff delivery are
+  satisfied, the owner MUST complete only that finite phase and leave the task
+  idle. It MUST NOT wait for a parent reply, merge, or future instructions to
+  complete the phase. The idle-wait handoff in `goal-transition-reporting.md`
+  MUST preserve ownership, branch/worktree, artifacts, external gates, and the
+  parent-owned next action. No heartbeat is required for an explicit parent
+  wake.
+- Phase completion MUST NOT claim overall issue completion, PR merge, release,
+  transfer, or parent acceptance. The Orchestrator's overall goal and a
+  Watcher's observation assignment retain their separate boundaries.
+- For follow-up fixes or another qualifying event, the same owner MUST first
+  read the actual lifecycle state. It MUST resume a matching active objective;
+  on null/complete it MUST create the authorized fresh phase and read back
+  `active` before edits, proof, or review responses. Creation MUST remain
+  subject to host authority, including any explicit user/system goal-request
+  rule. A different unfinished objective MUST stop for supported disposition;
+  `blocked` MUST follow the existing goal-lifecycle recovery sequence.
+
+The awakened owner MUST consume the event in the same turn and record the
+resulting lifecycle state in the compact lane delta. When no further observation
+is required, it MUST delete the heartbeat by id or disable it with a paused
+automation status and its full update fields, and record the cleanup. Automation
+status MUST NOT be confused with a goal's lifecycle state.
 
 ## Unavailable And Sentinel Boundaries
 
