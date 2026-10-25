@@ -11,6 +11,11 @@
      [parent supervision](parent-supervision.md) and distinguish the
      Orchestrator, Worker, Watcher, and native-reviewer surfaces before routing
      work.
+   - For orchestration requests, MUST apply the
+     [orchestration-request ownership boundary](task-classification.md#orchestration-request-ownership):
+     parent coordination and acceptance; child investigation, design, execution,
+     tests, and verification. Small, urgent, or read-only work MUST NOT be
+     exempt.
    - MUST separate hard requirements, preferences, assumptions, and non-goals.
    - MUST identify the observable surface that proves the request worked.
    - MUST decide separate app-task creation from branch/worktree/PR need by
@@ -49,8 +54,9 @@
      goal.
    - MUST split independent outcomes into separate issues and lanes unless a
      maintainer explicitly scopes them as one atomic lane.
-   - MUST mark each lane as parent-owned or child-owned before any
-     implementation patch is made.
+   - MUST mark ownership before substantive work. Under an orchestration
+     request, independent non-coordination work MUST be child-assigned under
+     [child routing](child-routing-policy.md#orchestration-request-dispatch).
 3. Dispatch:
    - MUST NOT dispatch until classification proves lane type, owner, atomicity,
      required skills, required tools, and first allowed action.
@@ -67,17 +73,12 @@
      orchestrator MUST start or fork a separate Codex thread in a worktree when
      the tool is available. A current-task-owned lane MUST NOT be dispatched to
      another task merely because it needs a branch, worktree, or PR.
-   - A request to orchestrate or coordinate independent issue outcomes MUST
-     resolve implementation ownership for each lane before dispatch or source
-     edits. Generic orchestration wording alone MUST NOT authorize
-     `create_thread` or assign implementation to the parent. The parent's
-     coordinator role, active overall goal, or presence of the current task MUST
-     NOT substitute for a lane-specific implementation assignment. If the
-     current task has not been explicitly designated as implementer for that
-     lane, no active child already owns it, and child-task authority is absent
-     or ambiguous, implementation MUST remain pending while the parent resolves
-     the intended topology; a selected child-owned lane MUST NOT be silently
-     relabeled for parent implementation.
+   - For orchestration requests, MUST resolve a suitable child and authority
+     before independent investigation or execution. MUST reuse existing owners.
+     Generic orchestration wording MUST NOT override the actual `create_thread`
+     contract or designate the parent as implementer. Missing authority or an
+     unavailable child surface MUST leave that work pending; MUST NOT relabel it
+     for parent execution or use unsupported CLI/app-server substitutes.
    - Ordinary Worker observation belongs to the Orchestrator, which MUST use
      native cursor-based `wait_threads` for its assigned targets. Routine
      observation MUST NOT require a Watcher relay. A separately assigned Watcher
@@ -91,9 +92,11 @@
      Orchestrator may prepare issue text, branch name, worktree path, and
      handoff text, but MUST NOT patch implementation files for the child-owned
      lane.
-   - MUST give each lane an assignment, issue, branch, worktree path, allowed
-     paths, read-first files, deliverable, required evidence, verification
-     command or surface, stop condition, and return format.
+   - MUST give each child an exact objective, scope, input evidence,
+     deliverable, success criteria, verification, and stop/report conditions.
+     Issue lanes MUST also carry issue, branch/worktree, allowed paths, and
+     read-first files. A status-only child MUST NOT mask substantive parent
+     execution.
    - The initial assignment MUST carry the issue outcome, executable phase
      objective and completion criteria from
      [goal-lifecycle](../../goal-lifecycle/SKILL.md), the
@@ -127,7 +130,9 @@
 4. Integrate:
    - MUST process actionable compact child results before re-reading
      transcripts; MUST verify the linked current artifacts and missing or
-     contradictory proof.
+     contradictory proof. Parent acceptance MUST stay within minimum existing
+     artifact/diff/evidence readbacks. New investigation, reproduction, or test
+     execution MUST go to the owner or a bounded investigation child.
    - MUST preserve user changes and unrelated work.
    - MUST treat Worker callbacks and Watcher observations as signals, not
      acceptance. For a Watcher drift signal, the observed artifact, diff, or
@@ -148,9 +153,12 @@
      review, and `$proof-driven-completion` owns final claims. This loop MUST
      NOT add a universal test, review, or evidence checklist.
    - MUST run local checks in the owning worktree.
-   - MUST drive the selected external surface directly when the task changes
-     GitHub, browser/desktop, CLI, plugin, marketplace, documents/artifacts,
-     spreadsheets/data, research/wiki, or project settings behavior.
+   - Execution verification MUST run in the owning child/worktree for an
+     orchestration request; parent acceptance MUST judge its returned proof.
+   - The assigned execution owner MUST drive the selected external surface when
+     changing GitHub, browser/desktop, CLI, plugin, marketplace,
+     documents/artifacts, spreadsheets/data, research/wiki, or project settings
+     behavior.
    - MUST keep evidence tied to the exact commit, PR head, file state, or
      runtime surface being claimed.
    - An app-task creation claim MUST use actual host creation and ownership

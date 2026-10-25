@@ -3,6 +3,39 @@
 This reference keeps the `child-routing-policy.md` filename for compatibility;
 the product role described by the ordinary route is Worker.
 
+## Orchestration-request dispatch
+
+For an orchestration request, MUST apply the
+[ownership boundary](task-classification.md#orchestration-request-ownership)
+before dispatch, including independent read-only work. MUST reuse an existing
+suitable child owner. Otherwise, MUST select an authorized current host route: a
+matching bounded specialist helper for research/review without its own branch or
+PR, or the app-managed task/worktree route for an issue implementation owner. A
+helper MUST NOT replace, duplicate, or patch an implementation owner. Ordinary
+single-task requests MUST NOT acquire mandatory delegation from this policy.
+
+Each assignment MUST name the exact objective, scope, input evidence,
+deliverable and success criteria, verification, and stop/report conditions.
+Creating a child only to report status while the parent does the substantive
+work MUST NOT count as delegation. The parent MUST evaluate actual child work
+and returned evidence; a prompt or task-creation result alone MUST NOT prove
+execution.
+
+MUST preserve current task-creation/message authority and the
+[thread/worktree rules](thread-and-worktree-routing.md). Already authorized
+child calls MUST NOT require repeated confirmation. Before app-child creation or
+resume, MUST reconcile ownership and reserve capacity under the
+[supervised eight-slot ceiling](parent-supervision.md#supervised-app-child-capacity)
+and applicable helper budget. At capacity, unstarted work MUST stay in backlog.
+If the required child surface or authority is unavailable, MUST report the exact
+limitation and required owner decision and keep the work pending; parent
+execution, an unsupported CLI/app-server route, or another owner MUST NOT be a
+fallback. A blocked child MUST follow the
+[Advisor-assisted supervision route](parent-supervision.md#waiting-and-direct-correction);
+the parent MUST retain the owner and direct recovery rather than do its work.
+
+## Recipient routing
+
 Named packaged specialists MUST be selected when their role matches the task;
 their catalogued model and effort apply automatically, and callers MUST NOT
 override them. Ordinary Worker selection is difficulty based: a clearly scoped
