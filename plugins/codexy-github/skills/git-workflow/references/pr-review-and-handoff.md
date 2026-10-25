@@ -40,6 +40,16 @@ captured PR title has passed validation. These retained title checks do not
 impose a body template, review quota, fixed approval phrase, or exclusive
 mutation route.
 
+A valid PR title alone MUST NOT prove the final squash subject is valid. The
+merging owner MUST follow the ordered
+[final-subject sequence](merge-and-main-sync.md#authorized-squash-mutation)
+immediately before merge: fresh-read title/actual PR number/head, validate the
+title, build and validate the full subject, then send that same value. A child
+handoff's suggested subject MUST NOT replace this fresh capture. Metadata
+changes MUST invalidate the prepared request; hook silence MUST NOT count as
+validation. After merging, MUST compare the remote merge commit subject with the
+validated value before claiming success.
+
 ## Current-head review and ownership
 
 The normal review path uses the current change as its evidence boundary. Read

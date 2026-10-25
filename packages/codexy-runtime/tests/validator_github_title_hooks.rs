@@ -10,6 +10,36 @@ use crate::support::FixtureCommand as Command;
 pub(super) type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+fn final_subject_is_checked_before_direct_squash_merge() -> TestResult {
+    // Source-launcher proof only: host dispatch and denial consumption are separate gates.
+    for event in ["PermissionRequest", "PreToolUse"] {
+        for tool in ["mcp__codex_apps__github_merge_pull_request", "github.merge_pull_request", "github_merge_pull_request"] {
+            for (method, subject, denied) in [
+                (json!("squash"), json!("fix(sample): sample change (#123)"), false),
+                (json!("squash"), Value::Null, true),
+                (json!("squash"), json!("fix(sample): sample change"), true),
+                (json!("squash"), json!("fix(sample): sample change (#122)"), true),
+                (json!("squash"), json!("fix(sample): sample change (#123) (#123)"), true),
+                (json!("squash"), json!("sample change (#123)"), true),
+                (Value::Null, Value::Null, true),
+                (Value::Null, json!("fix(sample): sample change (#123)"), true),
+                (json!("unknown"), Value::Null, true),
+                (json!("merge"), Value::Null, false),
+                (json!("rebase"), Value::Null, false),
+            ] {
+                let mut input = json!({"pr_number": 123});
+                if !subject.is_null() { input["commit_title"] = subject; }
+                if !method.is_null() { input["merge_method"] = method; }
+                assert_title(event, "merge", json!({
+                    "hook_event_name": event, "tool_name": tool, "tool_input": input,
+                }), denied)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn title_hook_preserves_only_the_three_title_contracts() -> TestResult {
     for event in ["PermissionRequest", "PreToolUse"] {
         assert_title(event, "issue", json!({
@@ -37,11 +67,6 @@ fn title_hook_preserves_only_the_three_title_contracts() -> TestResult {
             "tool_name": "mcp__codex_apps__github_merge_pull_request",
             "tool_input": {"pr_number": 42, "merge_method": "squash", "commit_title": "fix(hooks): free body (#42)", "commit_message": "anything"},
         }), false)?;
-        assert_title(event, "merge", json!({
-            "hook_event_name": event,
-            "tool_name": "mcp__codex_apps__github_merge_pull_request",
-            "tool_input": {"pr_number": 42, "merge_method": "squash", "commit_title": "Merge pull request (#42)", "commit_message": "anything"},
-        }), true)?;
         assert_title(event, "shell", json!({
             "hook_event_name": event,
             "tool_name": "Bash",
@@ -160,6 +185,8 @@ pub(super) fn assert_title(
     if denied {
         let denial: Value = serde_json::from_slice(&output.stdout)?;
         let specific = &denial["hookSpecificOutput"];
+        assert_eq!(specific["hookEventName"], event);
+        assert!(specific["decision"]["behavior"] == "deny" || specific["permissionDecision"] == "deny");
         let reason = if event == "PermissionRequest" {
             specific["decision"]["message"].as_str().unwrap_or_default()
         } else {
