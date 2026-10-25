@@ -18,11 +18,8 @@ pub(super) fn check(lines: &[&str], source: Option<&str>) -> Vec<String> {
     let mut handoffs = TerminalHandoffs::default();
     let mut errors: Vec<String> = lines
         .iter()
-        .filter_map(|line| {
-            handoffs
-                .observe(without_metadata_prefix(line), source)
-                .map(str::to_owned)
-        })
+        .filter_map(|line| handoffs.observe(without_metadata_prefix(line), source))
+        .map(str::to_owned)
         .collect();
     if matches!(handoffs.state, HandoffState::AwaitingResult) {
         errors.push("phase completion requires its native goal result".into());
@@ -181,12 +178,7 @@ fn terminal_transition(line: &str) -> Option<&str> {
     }
     line.strip_prefix("terminal child transition: action=")
         .and_then(|value| value.split(';').next())
-        .filter(|action| {
-            matches!(
-                *action,
-                "stop" | "archive" | "ownership release" | "blocked"
-            )
-        })
+        .filter(|action| ["stop", "archive", "ownership release", "blocked"].contains(action))
 }
 
 pub(super) fn is_terminal_goal_call(operation: &str) -> bool {
@@ -212,11 +204,19 @@ fn confirmed_handoff(line: &str, source: Option<&str>) -> bool {
             .all(|name| field(line, name).is_some_and(valid_value))
 }
 
+// Omitted permission remains legacy-compatible; duplicate fields are not omission.
 // Host final-result submission is an honest fallback, never a confirmed message receipt.
 fn delivery_supported(line: &str) -> bool {
     (field(line, "delivery") == Some("confirmed")
         && field(line, "task surface") == Some("codex task/thread")
-        && field(line, "message permission") != Some("absent"))
+        && field(line, "message permission").map_or_else(
+            || {
+                !line
+                    .split(';')
+                    .any(|part| part.trim().starts_with("message permission="))
+            },
+            |permission| permission == "granted",
+        ))
         || (line.starts_with("idle wait handoff:")
             && field(line, "delivery") == Some("unconfirmed")
             && field(line, "task surface") == Some("host terminal result")

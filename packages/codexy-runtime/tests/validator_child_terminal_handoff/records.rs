@@ -55,6 +55,11 @@ fn completed_phase_submission_does_not_need_parent_response() -> super::TestResu
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
+    let explicit_permission = evidence.replace(
+        "delivery=confirmed",
+        "delivery=confirmed; message permission=granted",
+    );
+    assert!(super::run_validator(&explicit_permission)?.status.success());
     let status_form = evidence.replace("update_goal(complete)", "update_goal(status=\"complete\")");
     assert!(super::run_validator(&status_form)?.status.success());
     Ok(())
@@ -85,6 +90,10 @@ fn unavailable_message_permission_uses_unconfirmed_host_result() -> super::TestR
         "delivery=unconfirmed; task surface=host terminal result; message permission=absent",
         "delivery=confirmed; task surface=host terminal result; message permission=absent",
         "delivery=confirmed; task surface=codex task/thread; message permission=absent",
+        "delivery=confirmed; task surface=codex task/thread; message permission=absent; message permission=absent",
+        "delivery=confirmed; task surface=codex task/thread; message permission=granted; message permission=absent",
+        "delivery=confirmed; task surface=codex task/thread; message permission=granted; message permission=granted",
+        "delivery=confirmed; task surface=codex task/thread; message permission=unknown",
         "delivery=unconfirmed; task surface=codex task/thread",
         "delivery=unconfirmed; task surface=host terminal result; message permission=granted",
     ] {
