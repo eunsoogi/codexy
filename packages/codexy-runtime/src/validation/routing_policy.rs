@@ -7,7 +7,10 @@ use super::routing_json;
 
 mod routes;
 mod thread_capabilities;
-use routes::{child_to_root_route, parent_to_generic_route, selected_general_route, simple_route};
+use routes::{
+    bounded_evidence_is_complete, child_to_root_route, parent_to_generic_route,
+    selected_general_route, simple_route,
+};
 use thread_capabilities::ThreadDirection;
 
 // The schema string, policy field names, and route labels are serialized
@@ -62,6 +65,19 @@ struct Predicates {
     deterministic_oracle: bool,
     low_risk_reversible: bool,
     no_unresolved_decision: bool,
+    // Optional evidence bounds extend the legacy container without changing old simple requests.
+    #[serde(default, deserialize_with = "routes::deserialize_bounds")]
+    bounded_evidence: Option<BoundedEvidence>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BoundedEvidence {
+    read_only: bool,
+    supplied_inputs_only: bool,
+    input_count: u8,
+    input_char_count: u16,
+    output_item_limit: u8,
 }
 
 pub(super) fn check(plugin_root: &Path) -> Vec<String> {
@@ -104,6 +120,13 @@ pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
         ));
     }
     match request.classification.as_str() {
+        "bounded_evidence" if bounded_evidence_is_complete(request.simple_predicates.as_ref()) => {
+            Ok(simple_route(
+                &policy,
+                request.codex_thread_capabilities.as_ref(),
+                &request.codex_thread_operation,
+            ))
+        }
         "simple" if simple_is_complete(request.simple_predicates.as_ref()) => Ok(simple_route(
             &policy,
             request.codex_thread_capabilities.as_ref(),
@@ -114,7 +137,9 @@ pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
             request.codex_thread_capabilities.as_ref(),
             &request.codex_thread_operation,
         )),
-        "simple" | "ambiguous" | "high_risk" | "incomplete" => Ok(json!({"route":policy.fallback})),
+        "simple" | "bounded_evidence" | "ambiguous" | "high_risk" | "incomplete" => {
+            Ok(json!({"route":policy.fallback}))
+        }
         _ => bail!("Worker routing request classification is not recognized"),
     }
 }
