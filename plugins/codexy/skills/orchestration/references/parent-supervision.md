@@ -65,8 +65,6 @@ alter protected technical text.
   unavailable channel. It MUST NOT edit worker files, direct or message a Worker
   to change course, supply a repair directive, correct a Worker, decide
   acceptance, verify a correction, replace a Worker, or recruit another Watcher.
-- Codex MUST use the canonical role mapping and separate configuration metadata
-  above for Orchestrator, Watcher, and Worker routing.
 - Codex MUST distinguish app workers and app watchers from native subagents and
   packaged reviewers at the actual creating and readback tools. Codex MUST
   preserve native BLOCK, PASS, UNOBSERVABLE, and closed-handle history and MUST
@@ -200,15 +198,15 @@ reconciling setup and duplicate-owner evidence.
   limits and quiet-wait rules. An empty wait result or tool output yield MUST
   NOT end the turn, narrow the objective, or trigger a final status.
 
-## External Watcher MCP flow
-
-The [external Watcher MCP flow](external-watcher-mcp-flow.md) defines the
-bounded transport, lifecycle, callback, cancellation, and fallback rules for a
-separately assigned Watcher when its host explicitly configures the retained
-transport. This reference does not register a native Watcher specialist.
-
 ## Recovery, evaluation, and handoff
 
+- Before cleanup, the Orchestrator MUST verify native goal completion, accept
+  the result, and confirm no pending PR, CI, review, fixup, follow-up, or
+  delivery work. Idle, blocked, a terminal report, or a clean worktree is
+  insufficient. MUST retain the task, worktree, and branch through merge
+  readback (#289). MUST follow
+  [cleanup procedure](../../../../codexy-github/skills/git-workflow/references/local-git-and-branches.md#accepted-child-cleanup):
+  worktree snapshot before task archive (#330), then safe local branch removal.
 - Missing output, truncated extraction, or a wrong item-type filter does not
   prove that host evidence is absent. Codex MUST check the actual saved
   artifact, worktree, source record, and creating surface. Codex MUST NOT invent
