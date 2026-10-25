@@ -47,8 +47,8 @@ limit the proposed action until the owner supplies the authoritative readback.
   become a fabricated terminal goal transition.
 - An unanswered material user decision, missing user information, or missing
   permission MUST retain the exact unresolved boundary. The Orchestrator MUST
-  report the needed decision or authority and execution condition to the user
-  or responsible owner, and continue only independent authorized work.
+  report the needed decision or authority and execution condition to the user or
+  responsible owner, and continue only independent authorized work.
 
 The consultation MUST carry the original objective and success criteria; the
 child's identity, owned scope, branch/worktree, and goal-state evidence; actual
@@ -67,25 +67,26 @@ verification, next allowed phase, and stop condition. A generic "continue"
 message MUST NOT substitute for that instruction. Native blocked-goal recovery
 MUST use its lifecycle route before implementation; other cases MUST retain the
 same child owner. The Orchestrator MUST reconcile capacity before any resume
-under [supervised app-child capacity](parent-supervision.md#supervised-app-child-capacity).
+under
+[supervised app-child capacity](parent-supervision.md#supervised-app-child-capacity).
 
 The Orchestrator MUST confirm the child's actual next relevant call, diff, or
 verification result against that instruction before claiming resumption or
-resolution. Advice, message acceptance, and child acknowledgement alone MUST
-NOT prove recovery. Handoffs and external waits MUST continue to follow
+resolution. Advice, message acceptance, and child acknowledgement alone MUST NOT
+prove recovery. Handoffs and external waits MUST continue to follow
 [goal-transition reporting](goal-transition-reporting.md); this procedure MUST
 NOT add a parent-reply requirement or complete an unfinished phase.
 
 For the same incident, the Orchestrator MUST reuse an accessible Advisor under
 the reuse rules below. A follow-up MUST have new evidence, a distinct actual
-failure, or changed constraints; unchanged reports MUST NOT restart the loop.
-If the Advisor or a required messaging/recovery tool is unavailable, it MUST
-report the exact limitation once, retain ownership and the unmet condition, and
-stop unsupported changes. It MUST NOT implement an Advisor substitute, create
-an arbitrary heartbeat, or repeat unchanged continuation turns. Issue
-registration alone MUST NOT authorize contacting unrelated live tasks or
-starting new children. Recovery MUST NOT shrink the objective, weaken checks,
-change models, patch a child's files from the parent, or create duplicate owners.
+failure, or changed constraints; unchanged reports MUST NOT restart the loop. If
+the Advisor or a required messaging/recovery tool is unavailable, it MUST report
+the exact limitation once, retain ownership and the unmet condition, and stop
+unsupported changes. It MUST NOT implement an Advisor substitute, create an
+arbitrary heartbeat, or repeat unchanged continuation turns. Issue registration
+alone MUST NOT authorize contacting unrelated live tasks or starting new
+children. Recovery MUST NOT shrink the objective, weaken checks, change models,
+patch a child's files from the parent, or create duplicate owners.
 
 ## Repeated and chained repair failures
 
