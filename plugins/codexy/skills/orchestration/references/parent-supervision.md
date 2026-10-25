@@ -154,6 +154,18 @@ reconciling setup and duplicate-owner evidence.
 
 ## Waiting and direct correction
 
+- A new child blocked report MUST follow the
+  [Advisor consultation procedure](advisor-consultation.md#a-new-child-blocked-report)
+  before disposition, without waiting for three failures. The Orchestrator MUST
+  distinguish blocked prose, native goal state, reviewer `BLOCK`, and dependency
+  waits using authoritative evidence. It MUST deduplicate unchanged reports,
+  preserve ownership and capacity, evaluate the read-only advice, and send an
+  authorized concrete next action, verification, allowed phase, and stop
+  condition to the existing child when possible. It MUST confirm the child's
+  actual next call, diff, or result before claiming recovery. Native blocked
+  recovery and terminal handoff MUST retain their existing lifecycle and
+  [reporting](goal-transition-reporting.md) contracts; advice MUST NOT supply
+  missing permission, bypass user decisions, or invent a goal transition.
 - For ordinary Orchestrator-owned Worker waits, the owner MUST use cursor-based
   `wait_threads` with targets within the supervised-child ceiling and the latest
   cursor for each target. Multiple batches MUST NOT bypass that ceiling. An
