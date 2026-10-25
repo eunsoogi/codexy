@@ -78,23 +78,23 @@ Before creating or resuming a supervised app child, the Orchestrator MUST
 reconcile its retained owner/slot ledger with actual task and setup readbacks.
 The ceiling MUST be `min(8, any explicitly lower host limit, resource limit)`;
 an unspecified lower limit MUST NOT be invented. Reserved, setting-up, and
-active children MUST count together, once per child, across all wait batches
-and turns. Moving a reservation to setup or active MUST NOT allocate a second
-slot. This ceiling applies to supervised app children, not unrelated app tasks
-or native `spawn_agent` concurrency. A lower helper budget still applies.
+active children MUST count together, once per child, across all wait batches and
+turns. Moving a reservation to setup or active MUST NOT allocate a second slot.
+This ceiling applies to supervised app children, not unrelated app tasks or
+native `spawn_agent` concurrency. A lower helper budget still applies.
 
 The Orchestrator MUST reserve capacity before dispatch. At capacity it MUST
 leave excess dependency-ready work in its own backlog without creating a child
 thread or activating a child goal. It MUST NOT run sixteen children by dividing
-them into two eight-target waits. If already above the ceiling, it MUST stop
-new dispatch and preserve existing owners rather than cancel or replace them.
+them into two eight-target waits. If already above the ceiling, it MUST stop new
+dispatch and preserve existing owners rather than cancel or replace them.
 
 Pending setup identities MUST retain their reservations until authoritative
 ready or failed setup evidence is reconciled. A timeout, omitted list entry,
 attention event, or idle child MUST NOT release a slot. A surfaced thread MUST
-replace its pending identity in the same slot. A confirmed setup failure with
-no live owner MAY release that slot; an ambiguous failure MUST retain it. A
-bounded not-surfaced search alone MUST NOT prove capacity was returned.
+replace its pending identity in the same slot. A confirmed setup failure with no
+live owner MAY release that slot; an ambiguous failure MUST retain it. A bounded
+not-surfaced search alone MUST NOT prove capacity was returned.
 
 Before reuse, the Orchestrator MUST confirm completion or explicit stop/release
 and no remaining live owner for the released execution. It MUST retain the
