@@ -6,13 +6,9 @@ long-lived release goal. It is the canonical detailed source for delegated
 supervision, evidence, and authority boundaries; it does not create a scheduler,
 replace goal-lifecycle, or choose a repository's GitHub policy.
 
-Codexy no longer packages a native Watcher specialist or registers Watcher MCP
-in the core plugin. Watcher-specific flows below apply only when a Watcher is
-supplied and assigned outside the packaged specialist catalog; ordinary Worker
-observation remains direct. The Rust Watcher runtime and its interrupt-hook
-compatibility code have been removed from the repository. Hosts using the
-compatibility transport must supply their own compatible implementation and
-entrypoint.
+Codexy packages no Watcher specialist, MCP, or runtime. Watcher flows require an
+externally supplied, explicitly assigned compatible transport and entrypoint;
+ordinary Worker observation remains direct.
 
 ## Canonical role mapping
 
@@ -42,6 +38,10 @@ blocked-goal fork continuation MUST preserve the source settings under that
 policy; role defaults and sender settings MUST NOT override them.
 
 ## Message visibility and style
+
+The [scoped assignment authority](child-routing-policy.md) covers necessary task
+creation and assignment, follow-up, reporting, and recovery messages. Codex MUST
+NOT ask for approval again per child or message, or treat it as host permission.
 
 Task-to-task prompts, delegated instructions, callbacks, progress updates,
 corrections, and handoffs, including their tool prompt fields, MUST be treated
@@ -81,11 +81,15 @@ turns. Moving a reservation to setup or active MUST NOT allocate a second slot.
 This ceiling applies to supervised app children, not unrelated app tasks or
 native `spawn_agent` concurrency. A lower helper budget still applies.
 
-The Orchestrator MUST reserve capacity before dispatch. At capacity it MUST
-leave excess dependency-ready work in its own backlog without creating a child
-thread or activating a child goal. It MUST NOT run sixteen children by dividing
-them into two eight-target waits. If already above the ceiling, it MUST stop new
-dispatch and preserve existing owners rather than cancel or replace them.
+The Orchestrator MUST reserve capacity before dispatch. It MUST start ready
+same-wave work concurrently without scanning paths or gating on path overlap;
+actual prerequisites, permissions, and shared-resource reservations still bind.
+Real integration conflicts MUST return to the owning branch before merge and
+preserve both changes. At capacity it MUST leave excess dependency-ready work in
+its own backlog without creating a child thread or activating a child goal. It
+MUST NOT run sixteen children by dividing them into two eight-target waits. If
+already above the ceiling, it MUST stop new dispatch and preserve existing
+owners rather than cancel or replace them.
 
 Pending setup identities MUST retain their reservations until authoritative
 ready or failed setup evidence is reconciled. A timeout, omitted list entry,

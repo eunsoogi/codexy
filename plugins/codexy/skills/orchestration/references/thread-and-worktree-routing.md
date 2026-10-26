@@ -40,16 +40,16 @@ child-owned implementation lane through another surface.
 
 ## App Task Creation Route
 
-`create_thread` is a separate-task creation operation, not a branch/worktree
-allocator. Its callable contract permits it only for an explicit current user
-request for a new app task. A need for an issue branch, worktree, PR, or
-implementation assignment, task complexity, or a generic request to orchestrate
-or coordinate independent issues MUST NOT be treated as that request.
+`create_thread` creates a separate app task. An explicit scoped orchestration
+assignment authorizes the required bounded child tasks and necessary messages
+under the [authority contract](child-routing-policy.md), without per-call
+approval. A branch/worktree need, task complexity, or vague coordination request
+alone MUST NOT authorize creation. Actual callable host limits still apply.
 
 Before calling `create_thread`, the Orchestrator MUST read back separately:
 
 - the actual callable tool and its invocation contract;
-- the current user authority for a separate new task; and
+- the explicit task request or scoped orchestration authority; and
 - the current task and existing active owner for the same issue or lane.
 
 The Orchestrator MUST verify its actual task CWD before child creation. If the
@@ -94,7 +94,7 @@ task, and MUST NOT implement in the parent or create a duplicate owner. A GitHub
 assignee, issue, branch, PR, or delegated prompt MUST NOT substitute for an
 active-owner readback.
 
-When a separate task was explicitly requested and no existing owner conflict
+When separate task creation is authorized and no existing owner conflict
 remains, the Orchestrator MUST use the actual `create_thread` tool and read back
 the returned task identity, owner, project, actual CWD, starting HEAD, app
 worktree environment, exposed permissions and model settings, and native goal
@@ -151,15 +151,15 @@ diagnostic for known ownership and setup state.
    [supervised-child ceiling](parent-supervision.md#supervised-app-child-capacity).
    At capacity, MUST retain excess work in the parent backlog without a child
    thread or active child goal. Resource exhaustion, unresolved ownership,
-   dirty/locked collisions, or unallocated shared writes MUST defer a lane. If
-   setup returns a `clientThreadId` or `pendingWorktreeId`, MUST retain it as a
-   pending setup identity, not as a `threadId`. MUST wait for an authoritative
-   ready or failed setup result; an observation timeout or an omitted list
-   result is not by itself failure. While pending, MUST search by the pending
-   identity, branch, issue/PR, SHA, and available review-thread id. Only a
-   surfaced thread with an active owner, an actionable setup failure, or a
-   bounded `not-surfaced-after-bounded-wait` state may end a setup search; any
-   retry or reassignment MUST name that state. Ending the search MUST NOT by
+   dirty/locked checkout collisions, or actual shared-resource conflicts MUST
+   defer a lane. If setup returns a `clientThreadId` or `pendingWorktreeId`,
+   MUST retain it as a pending setup identity, not as a `threadId`. MUST wait
+   for an authoritative ready or failed setup result; an observation timeout or
+   an omitted list result is not by itself failure. While pending, MUST search
+   by the pending identity, branch, issue/PR, SHA, and available review-thread
+   id. Only a surfaced thread with an active owner, an actionable setup failure,
+   or a bounded `not-surfaced-after-bounded-wait` state may end a setup search;
+   any retry or reassignment MUST name that state. Ending the search MUST NOT by
    itself release the reserved capacity.
 4. When setup is ready, MUST verify the returned task identity, CWD, HEAD, clean
    state, and owner before implementation starts. If the result conflicts with
@@ -170,9 +170,10 @@ diagnostic for known ownership and setup state.
    permission-setting API, bypass approval, or declare creation failed because a
    task is temporarily absent from a list view.
 
-- The parent MAY start dependency-ready, disjoint work only within the combined
-  reserved/setup/active ceiling. MUST preserve reservations across turns and
-  MUST NOT bypass the ceiling by splitting `wait_threads` batches.
+- The parent MUST dispatch dependency-ready same-wave work concurrently within
+  the combined reserved/setup/active ceiling, even when owned paths overlap.
+  MUST NOT scan or compare paths as a dispatch gate. MUST preserve reservations
+  across turns; splitting `wait_threads` batches MUST NOT bypass capacity.
 - If an existing usable thread already owns the same issue or PR, MUST reuse
   that owner thread or MUST continue that owner thread instead of creating a
   replacement. Replacement child threads MUST require inspected existing-owner
@@ -209,17 +210,8 @@ git rev-parse --verify origin/<branch>
   branch preflight result, pending/final worktree result, active owner identity,
   and duplicate-owner cleanup if any.
 
-## Child Thread Titles
-
-- After a forked Codex worktree child thread finishes setup and a thread id is
-  available, the orchestrator MUST rename it with `set_thread_title` when that
-  tool is available.
-- The child thread title MUST clearly include the project, issue number, and
-  lane purpose, such as `<project> #<issue> implementation lane`.
-- If title renaming is unavailable, mention that limitation in orchestration
-  status or child handoff and continue the lane.
-- Child thread title renaming is a clarity policy, not a merge blocker for
-  otherwise complete implementation work.
+Child titles MUST follow the
+[title policy](child-routing-policy.md#child-thread-titles).
 
 ## Worktree Rules
 
@@ -227,15 +219,16 @@ git rev-parse --verify origin/<branch>
 - One branch per pull request.
 - One independent requested outcome per child lane unless a maintainer
   explicitly scoped multiple outcomes as one atomic lane before implementation.
-- Orchestrators MUST preserve one owner per issue-sized lane; dependency-ready,
-  disjoint lanes MAY run concurrently when resources and ownership/file
-  allocation permit.
+- Orchestrators MUST preserve one owner and isolated app-managed worktree per
+  issue. Path overlap MUST NOT serialize ready lanes; actual dependencies,
+  capacity, permissions, and shared-resource reservations remain binding.
 - Existing issue or PR owner threads MUST be reused when present and usable;
   replacement owner threads MUST require old-owner stop, unusable, or
   supersession evidence.
 - Worktree-based implementation lanes MUST require lane ownership before edits:
   parent coordination first, child implementation second.
-- Shared files MUST have a named owner before parallel edits begin.
+- Real integration conflicts MUST be resolved before merge through the owning
+  task's branch, preserving both changes and rerunning affected verification.
 - MUST NOT merge child work locally as a substitute for the repository PR flow.
 - After merge, synchronize the main worktree before starting dependent work.
 

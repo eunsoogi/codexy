@@ -5,6 +5,9 @@ use std::{path::PathBuf, process::Command};
 use serde_json::{json, Value};
 use crate::support::TestResult;
 
+#[path = "validator_child_routing_policy/authorized_dispatch.rs"]
+mod authorized_dispatch;
+
 const LUNA: (&str, &str) = ("gpt-6-luna", "max");
 const SOL: (&str, &str) = ("gpt-6.1-sol", "medium");
 
