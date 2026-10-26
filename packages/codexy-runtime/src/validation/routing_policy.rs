@@ -24,9 +24,9 @@ const ASSIGNED_WORKER_ROUTES: [(&str, &str); 2] = [
     (SIMPLE_WORKER_MODEL, SIMPLE_WORKER_THINKING),
     (GENERAL_WORKER_MODEL, GENERAL_WORKER_THINKING),
 ];
-// The authenticated direction distinguishes the main recipient from a simple Worker.
-const ORCHESTRATOR_MODEL: &str = SIMPLE_WORKER_MODEL;
-const ORCHESTRATOR_THINKING: &str = SIMPLE_WORKER_THINKING;
+// Parent requests use Sol/Light; Worker selection and authenticated directions stay distinct.
+const ORCHESTRATOR_MODEL: &str = "gpt-6.1-sol";
+const ORCHESTRATOR_THINKING: &str = "low";
 
 pub(super) struct Policy {
     pub(super) schema: String,

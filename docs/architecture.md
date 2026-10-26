@@ -45,17 +45,20 @@ Removed-role rationale and the Inspector distinction are in
 
 The packaged specialists above are separate from issue-task ownership roles. The
 Orchestrator owns the overall goal, coordination, verification, correction, and
-acceptance; its configured pair is `gpt-6-luna` / `max`. The Advisor uses
+acceptance; its requested pair is `gpt-6.1-sol` / `low` (Sol / Light), also used
+for authenticated Worker-to-Orchestrator delivery. The Advisor uses
 `gpt-6-astra` / `medium` for bounded, instruction-based read-only advice; this
 boundary does not enforce host permissions. A Worker owns one issue lane, its
 branch/worktree, and its finite goal. Clearly scoped general implementation uses
-`gpt-6.1-sol` / `medium`; `gpt-6-luna` / `max` is selected only for simple work
-that satisfies all four predicates in the
+`gpt-6.1-sol` / `medium`; `gpt-6-luna` / `max` is selected for simple work that
+satisfies all four predicates or bounded read-only evidence summaries in the
 [Worker routing policy](../plugins/codexy/skills/orchestration/references/child-routing-policy.md).
 Role ownership is defined in the
 [supervision reference](../plugins/codexy/skills/orchestration/references/parent-supervision.md).
-These pairs describe routing; they do not establish comparative model cost or
-output quality.
+Orchestrator-to-Worker follow-ups preserve the authenticated Worker recipient's
+assigned pair. These are requested settings; effective host values remain
+unavailable when unexposed. Policy or installed updates do not change an
+already-running session or establish comparative performance, cost, or quality.
 
 For ordinary Worker observation, the Orchestrator uses native `wait_threads`
 with each task's latest cursor and retains judgement and acceptance. A single

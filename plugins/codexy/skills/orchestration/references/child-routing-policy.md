@@ -95,15 +95,20 @@ Orchestrator-to-Worker delivery using the authenticated recipient's assigned
 Worker pair (`gpt-6-luna` at `max` or `gpt-6.1-sol` at `medium`); ordinary
 Worker creation selects Luna/Max for simple work with all four predicates or the
 bounded evidence class, and Sol/Medium for clearly scoped general work.
-`child_to_parent` represents Worker-to-Orchestrator delivery using `gpt-6-luna`
-at `max`, the same pair used by simple Workers. Authenticated direction and
-recipient identity distinguish the parent recipient; the pair alone does not.
-The runtime request's serialized `parent_to_generic` and `child_to_root`
-directions remain unchanged for these delivery routes. These serialized
-identifiers do not authorize parameters that the actual tool contract forbids.
-Unsupported or mismatched recipient settings MUST leave the lane pending with
-the exact limitation. Missing observations MUST be reported as unavailable/not
-observed. Codex MUST NOT fall back to the sender route.
+`child_to_parent` represents Worker-to-Orchestrator delivery using `gpt-6.1-sol`
+at `low` (Sol / Light), the requested main Orchestrator pair. Stale parent
+Luna/Max and Luna/Medium pairs MUST be rejected on this authenticated direction.
+Authenticated direction and recipient identity MUST remain enforced; recognizing
+a model pair alone MUST NOT authorize delivery. Requested settings MUST remain
+separate from effective host readback; unavailable effective values MUST stay
+unavailable. A policy or installed update MUST NOT imply a running task changed
+or prove comparative performance. The runtime request's serialized
+`parent_to_generic` and `child_to_root` directions remain unchanged for these
+delivery routes. These serialized identifiers do not authorize parameters that
+the actual tool contract forbids. Unsupported or mismatched recipient settings
+MUST leave the lane pending with the exact limitation. Missing observations MUST
+be reported as unavailable/not observed. Codex MUST NOT fall back to the sender
+route.
 
 The runtime keeps `codexy.child-routing-request.v1` for thread creation,
 Worker-to-Orchestrator delivery, and other existing routing requests. A v1

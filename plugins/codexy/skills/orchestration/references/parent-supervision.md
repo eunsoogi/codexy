@@ -31,10 +31,15 @@ When this arrangement is authorized, Codex MUST keep these roles distinct:
 
 Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
 
-- Orchestrator and Worker-to-Orchestrator: `gpt-6-luna` / `max`.
+- Orchestrator and Worker-to-Orchestrator: `gpt-6.1-sol` / `low` (Sol / Light).
 - Worker creation MUST use [routing](child-routing-policy.md); parent-to-Worker
   follow-ups MUST preserve the authenticated recipient's pair.
 - Inspector: `gpt-6.1-sol` / `medium`.
+
+These are requested role settings. Codex MUST keep effective host readback
+separate and MUST report it unavailable when unexposed. A policy or installed
+update MUST NOT imply that an already-running session changed or that Sol /
+Light improves performance without measurement.
 
 New-role thread creation and delivery MUST use the explicit model/effort pair
 from the [child-routing policy](child-routing-policy.md). Authorized
