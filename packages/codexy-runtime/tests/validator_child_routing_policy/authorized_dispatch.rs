@@ -6,7 +6,7 @@ use crate::support::TestResult;
 use serde_json::json;
 
 #[test]
-fn issue_1424_routing_needs_no_extra_approval_or_path_allocation_fields() -> TestResult {
+fn routing_needs_no_extra_approval_or_path_allocation_fields() -> TestResult {
     // The resolver chooses recipients; actual authority, capacity and worktrees
     // belong to the host/supervisor, so no duplicate approval oracle is added.
     for pair in [LUNA, SOL] {
@@ -27,7 +27,7 @@ fn issue_1424_routing_needs_no_extra_approval_or_path_allocation_fields() -> Tes
 }
 
 #[test]
-fn issue_1424_canonical_guidance_preserves_scoped_authority_and_parallel_dispatch() -> TestResult {
+fn canonical_guidance_preserves_scoped_authority_and_parallel_dispatch() -> TestResult {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy/skills");
     // Guard the contradictory source clauses seen in #1424, while keeping live
     // app evidence a separate parent-owned acceptance gate.
