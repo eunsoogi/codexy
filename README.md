@@ -30,13 +30,6 @@ executable contracts live in the linked guides.
 component dependencies, records the installed inventory, and exposes
 transactional lifecycle commands.
 
-This README describes the checked-in 2.0.0 source. The install example is pinned
-to `getcodexy==2.0.0` and can run only after that package is published. An
-unpinned `uv tool install getcodexy` selects the latest published package; check
-[Releases](https://github.com/eunsoogi/codexy/releases) for a matching version
-before using these 2.0.0 commands. A source checkout or CI result does not prove
-public installation or active-session exposure.
-
 ### Default installation
 
 Install the complete Codexy product:
@@ -51,14 +44,6 @@ Add uv's tool bin directory to `PATH`, then restart or reload your shell if
 needed. The default selection installs `core`, `github`, and `devtools`; open a
 fresh Codex session after installation or update so the host can expose new
 plugins, skills, hooks, agents, and MCP servers.
-
-For a 1.x-to-2.0.0 transition, finish or hand off active 1.x work first. After
-2.0.0 is published, upgrade the CLI with `uv tool upgrade getcodexy==2.0.0`
-before running component commands. Use `getcodexy update` for an existing split
-installation. Use `getcodexy --codex /absolute/path/to/codex migrate` only for
-the exact supported legacy monolith described below. Open a fresh Codex session
-afterward. Migration changes the installed configuration; it does not migrate an
-active task or session.
 
 ### Select components
 
@@ -133,11 +118,6 @@ bootstrap resolves the selected release with `uvx`. Ensure both `uv` and `uvx`
 are on the `PATH` of the host that starts Codex before opening a session. Check
 with `command -v uv` and `command -v uvx` (or `Get-Command uv` and
 `Get-Command uvx` in PowerShell).
-
-Run the `v2.0.0` example only after that release is published. Otherwise choose
-a tag available from [Releases](https://github.com/eunsoogi/codexy/releases).
-Candidate source and CI do not establish public installation or active-session
-exposure.
 
 ## What Codexy does
 
@@ -260,11 +240,12 @@ Codexy separates task ownership from bundled specialist roles. These are the
 project's role settings; installation does not change a host's default model or
 opt a user into another repository's GitHub policy.
 
-| Role                       | Model                                                         | Reasoning effort                        | Responsibility                                                                                                                                                                                                                                                                                                                              |
-| -------------------------- | ------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Orchestrator / parent      | `gpt-6.1-sol`                                                 | `low` (Sol / Light)                     | Assigns and follows Worker work, owns the overall task goal, corrects deviations, verifies reports, and accepts results.                                                                                                                                                                                                                    |
-| Advisor / `codexy-advisor` | `gpt-6-astra`                                                 | `medium`                                | Instruction-bounded analysis and advice; does not edit, delegate, change ownership, or grant final approval.                                                                                                                                                                                                                                |
-| Worker / ordinary child    | `gpt-6-luna` (default) or `gpt-6.1-sol` (evidenced hard work) | `max` (default) or `medium` (hard work) | Separate app task that owns its implementation branch/worktree. The Orchestrator observes ordinary events directly. Luna/Max is the default for ordinary, simple, bounded, and general implementation work. Sol/Medium requires an explicit evidenced hard-work criterion. Ambiguous scope, authority, or required inputs stay fail-closed. |
+| Role                       | Model                     | Reasoning effort     | Responsibility                                                                                                                                                                                                                                                                                                                    |
+| -------------------------- | ------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Orchestrator / parent      | `gpt-6.1-sol`             | `low`                | Assigns and follows Worker work, owns the overall task goal, corrects deviations, verifies reports, and accepts results.                                                                                                                                                                                                          |
+| Advisor / `codexy-advisor` | `gpt-6-astra`             | `medium`             | Instruction-bounded analysis and advice; does not edit, delegate, change ownership, or grant final approval.                                                                                                                                                                                                                      |
+| Worker / ordinary child    | `gpt-6-luna` (default)    | `max` (default)      | Separate app task that owns its implementation branch/worktree. The Orchestrator observes ordinary events directly. Luna/Max is the default for ordinary, simple, bounded, and general implementation work. Sol/Medium requires an explicit hard-work criterion. Ambiguous scope, authority, or required inputs stay fail-closed. |
+|                            | `gpt-6.1-sol` (hard work) | `medium` (hard work) |                                                                                                                                                                                                                                                                                                                                   |
 
 Role pairs are requested settings. Effective host settings remain unavailable
 when unexposed; policy updates do not change an already-running session or
