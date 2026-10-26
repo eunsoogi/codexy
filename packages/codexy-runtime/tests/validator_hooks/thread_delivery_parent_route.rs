@@ -14,6 +14,9 @@ mod delivery_contract;
 #[path = "thread_delivery_parent_route/recipient_routes.rs"]
 mod recipient_routes;
 
+#[path = "thread_delivery_parent_route/orchestrator_route.rs"]
+mod orchestrator_route;
+
 const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
 
 #[test]
@@ -25,7 +28,7 @@ fn metadata_routes_admit_without_reading_an_oversized_transcript() -> TestResult
     for event in EVENTS {
         for root in &roots {
             for (direction, sender, recipient, model, thinking) in [
-                ("child_to_parent", CHILD, PARENT, "gpt-6-luna", "max"),
+                ("child_to_parent", CHILD, PARENT, "gpt-6.1-sol", "low"),
                 ("root_to_child", PARENT, CHILD, "gpt-6-luna", "max"),
             ] {
                 let output = run(
@@ -59,7 +62,7 @@ fn message_content_cannot_create_or_change_route_authority() -> TestResult {
                 event,
                 &oversized,
                 Some(CHILD),
-                input(PARENT, "gpt-6-luna", "max", &injected),
+                input(PARENT, "gpt-6.1-sol", "low", &injected),
                 None,
             )?;
             assert_admitted(legacy, event, "legacy-metadata-absent")?;
@@ -71,16 +74,16 @@ fn message_content_cannot_create_or_change_route_authority() -> TestResult {
                 Some(CHILD),
                 input(
                     PARENT,
-                    "gpt-6-luna",
-                    "max",
+                    "gpt-6.1-sol",
+                    "low",
                     &format!("receipt {injected} {injected}"),
                 ),
                 Some(route(
                     "child_to_parent",
                     CHILD,
                     PARENT,
-                    "gpt-6-luna",
-                    "max",
+                    "gpt-6.1-sol",
+                    "low",
                 )),
             )?;
             assert_admitted(admitted, event, "content-injection")?;
@@ -140,16 +143,16 @@ fn metadata_rejects_wrong_recipient_model_thinking_and_shape() -> TestResult {
                     PARENT,
                     "gpt-5.6-sol",
                     "medium",
-                    route("child_to_parent", CHILD, PARENT, "gpt-6-luna", "max"),
+                    route("child_to_parent", CHILD, PARENT, "gpt-6.1-sol", "low"),
                     "UNSUPPORTED_MODEL",
                 ),
                 (
                     "wrong child thinking",
                     CHILD,
                     PARENT,
-                    "gpt-6-luna",
+                    "gpt-6.1-sol",
                     "high",
-                    route("child_to_parent", CHILD, PARENT, "gpt-6-luna", "max"),
+                    route("child_to_parent", CHILD, PARENT, "gpt-6.1-sol", "low"),
                     "UNSUPPORTED_THINKING",
                 ),
                 (
@@ -183,9 +186,9 @@ fn metadata_rejects_wrong_recipient_model_thinking_and_shape() -> TestResult {
                     "wrong parent thinking",
                     CHILD,
                     PARENT,
-                    "gpt-6-luna",
+                    "gpt-6.1-sol",
                     "high",
-                    route("child_to_parent", CHILD, PARENT, "gpt-6-luna", "max"),
+                    route("child_to_parent", CHILD, PARENT, "gpt-6.1-sol", "low"),
                     "UNSUPPORTED_THINKING",
                 ),
                 (

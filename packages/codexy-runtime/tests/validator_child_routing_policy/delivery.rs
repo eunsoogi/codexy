@@ -2,9 +2,18 @@
 
 use super::*;
 
+// The parent pair is independent of both assigned Worker pairs.
+const PARENT: (&str, &str) = ("gpt-6.1-sol", "low");
+
 #[test]
 fn resolver_keeps_recipient_settings_for_both_worker_pairs() -> TestResult {
-    for pair in [LUNA, SOL, ("gpt-6.1-sol", "max"), ("gpt-6-astra", "medium")] {
+    for pair in [
+        LUNA,
+        SOL,
+        PARENT,
+        ("gpt-6.1-sol", "max"),
+        ("gpt-6-astra", "medium"),
+    ] {
         let mut followup = bounded_request();
         followup["schema"] = json!("codexy.child-routing-request.v2");
         followup["codex_thread_operation"] = json!("send_message_to_thread");
@@ -37,6 +46,7 @@ fn resolver_keeps_recipient_settings_for_both_worker_pairs() -> TestResult {
         json!({"route":"root_or_named_specialist","reason":"Version 1 cannot identify a follow-up recipient; use schema v2 with recipient_assignment."}),
     )?;
     for pair in [
+        PARENT,
         LUNA,
         SOL,
         ("gpt-6-astra", "medium"),
@@ -47,8 +57,8 @@ fn resolver_keeps_recipient_settings_for_both_worker_pairs() -> TestResult {
         to_parent["codex_thread_direction"] = json!("child_to_root");
         check(
             to_parent,
-            if pair == LUNA {
-                selected("child_to_root", "send_message_to_thread", LUNA)
+            if pair == PARENT {
+                selected("child_to_root", "send_message_to_thread", PARENT)
             } else {
                 fallback()
             },

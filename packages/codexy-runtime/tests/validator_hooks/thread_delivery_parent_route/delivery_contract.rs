@@ -56,8 +56,8 @@ fn both_worker_pairs_and_parent_route_preserve_authenticated_settings() -> TestR
             "child_to_parent",
             WORKER_ID,
             ORCHESTRATOR_ID,
-            "gpt-6-luna",
-            "max",
+            "gpt-6.1-sol",
+            "low",
         ),
     ];
 
