@@ -32,11 +32,6 @@ Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
   follow-ups MUST preserve the authenticated recipient's pair.
 - Inspector: `gpt-6.1-sol` / `medium`.
 
-These are requested role settings. Codex MUST keep effective host readback
-separate and MUST report it unavailable when unexposed. A policy or installed
-update MUST NOT imply that an already-running session changed or that Sol /
-Light improves performance without measurement.
-
 New-role thread creation and delivery MUST use the explicit model/effort pair
 from the [child-routing policy](child-routing-policy.md). Authorized
 blocked-goal fork continuation MUST preserve the source settings under that
@@ -214,45 +209,7 @@ reconciling setup and duplicate-owner evidence.
 
 ## Recovery, evaluation, and handoff
 
-- Before cleanup, the Orchestrator MUST verify native goal completion, accept
-  the result, and confirm no pending PR, CI, review, fixup, follow-up, or
-  delivery work. Idle, blocked, a terminal report, or a clean worktree is
-  insufficient. MUST retain the task, worktree, and branch through merge
-  readback (#289). MUST follow
-  [cleanup procedure](../../../../codexy-github/skills/git-workflow/references/local-git-and-branches.md#accepted-child-cleanup):
-  worktree snapshot before task archive (#330), then safe local branch removal.
-- Missing output, truncated extraction, or a wrong item-type filter does not
-  prove that host evidence is absent. Codex MUST check the actual saved
-  artifact, worktree, source record, and creating surface. Codex MUST NOT invent
-  a checkpoint path, retry a known-absent path, or restart completed proof after
-  compaction without a concrete reason.
-- When evaluation of this guidance is explicitly in scope, Codex MUST use the
-  existing bounded private skill-evaluation workflow. The evaluator MUST keep
-  cases, holdout inputs, expected behavior, exact invocations, raw measurements,
-  and complete results in evaluator-controlled private artifacts and MUST
-  publish only the allowed hash/status/failure-dimension/cost summary. The
-  ordinary supervision loop MUST NOT require a private campaign, answer table,
-  fixed case matrix, or unmeasured savings claim.
-- When evaluation is in scope, the evaluator MUST use actual Orchestrator,
-  Worker, and Watcher calls with the configured model/effort where those roles
-  matter and MUST report unavailable telemetry as unmeasured. The evaluator MUST
-  choose cases and comparisons proportionate to the changed boundary rather than
-  copying a hidden answer. Observed cumulative usage totals MUST NOT be
-  presented as priced, cached, or proven savings without the corresponding
-  measurement.
-- The bounded real-drift/correction evaluation MUST distinguish Watcher-first
-  artifact or tool-call detection from a Worker or Orchestrator finding merely
-  relayed through the Watcher. Where a real current fault is available, it MUST
-  label the actor-separated sequence as Watcher detection/report, Orchestrator
-  judgement/instruction, Worker repair, and Orchestrator verification, and
-  require the actual report and next relevant readback; it MUST NOT manufacture
-  a production fault when none exists. Legitimate in-scope progress and no-drift
-  checkpoints MUST control false alarms. The evaluator MUST report detection and
-  correction latency, extra reads, and role-separated usage when available;
-  missing telemetry remains unmeasured, and no savings or coverage claim may be
-  forced.
-- Codex MUST finish with current branch, PR state, exact head/base, changed
-  files, actual app observations, evaluation limitations, measured versus
-  unmeasured usage, retained review history, unresolved findings, and one
-  Orchestrator-owned next action. A passing test, callback, Watcher result, open
-  PR, or merged change is not a substitute for the other required evidence.
+Read the
+[recovery, evaluation, and handoff
+reference](parent-supervision/recovery-evaluation-and-handoff.md) for cleanup,
+evaluation, and terminal-report requirements.

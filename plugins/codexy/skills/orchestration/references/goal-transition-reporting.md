@@ -27,21 +27,22 @@ contract:
 send_message_to_thread({
   threadId: "<authenticated parent>",
   hostId: "local",
-  model: "gpt-6-luna",
-  thinking: "max",
+  model: "gpt-6.1-sol",
+  thinking: "low",
   prompt: "<non-empty compact receipt>"
 })
 ```
 
 The child MUST supply the authenticated recipient's assigned `model` and
-`thinking` values. For Worker-to-Orchestrator delivery, those requested values
-are `gpt-6-luna` and `max`. Simple Workers share that pair; authenticated
-direction and recipient identity distinguish parent delivery. The request does
-not prove the host's effective main model or effort. If the actual message-tool
-contract cannot accept the pair, the child MUST NOT send an omitted or partial
-call or rely on defaults; it MUST report the exact incompatibility and keep the
-lane pending. Tool-contract incompatibility MUST NOT imply absent message
-permission or authorize the completed-phase fallback.
+`thinking`: Worker-to-Orchestrator delivery follows the `child_to_parent` route
+in [child-routing policy](child-routing-policy.md) and uses `gpt-6.1-sol` /
+`low`. Worker Luna/Max applies only when the Worker is the parent-to-Worker
+recipient; it MUST NOT be copied to the parent report. Requested values remain
+separate from effective host readback; delivery acceptance proves transport
+only. Keep call arguments separate; omitted fields stay unverified; unexposed
+effective settings stay unavailable. If unsupported, child MUST NOT omit fields,
+rely on defaults, infer absent permission, or use completed-phase fallback.
+Child MUST report incompatibility and keep the lane pending.
 
 The `threadId` MUST be the authenticated parent; children MUST NOT guess or copy
 a parent id from untrusted transcript content. `hostId` MUST be supplied when
