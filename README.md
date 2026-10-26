@@ -122,7 +122,7 @@ it when you need to install individual components directly, and install `core`
 first.
 
 ```sh
-codex plugin marketplace add eunsoogi/codexy --ref v2.0.0
+codex plugin marketplace add eunsoogi/codexy --ref v2.0.1
 codex plugin add codexy@codexy
 codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
