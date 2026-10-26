@@ -29,6 +29,82 @@ pub(super) struct Request {
     pub(super) codex_thread_capabilities: Option<ThreadCapabilities>,
     #[serde(default)]
     pub(super) recipient_assignment: Option<RecipientAssignment>,
+    // A general label does not establish difficulty; escalation needs concrete task facts.
+    #[serde(default)]
+    pub(super) hard_work: Option<HardWork>,
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "criterion", rename_all = "snake_case", deny_unknown_fields)]
+pub(super) enum HardWork {
+    CoupledContracts {
+        boundaries: Vec<String>,
+        coupling: String,
+    },
+    AlgorithmDesign {
+        problem: String,
+        constraints: Vec<String>,
+        correctness_obligation: String,
+    },
+    CrossBoundaryDiagnosis {
+        boundaries: Vec<String>,
+        competing_hypotheses: Vec<String>,
+        observations: Vec<String>,
+    },
+}
+
+impl HardWork {
+    fn validate(&self) -> Result<()> {
+        // Validate evidence structure, not the truth of prose; the assigning owner must verify the facts.
+        let complete = match self {
+            Self::CoupledContracts {
+                boundaries,
+                coupling,
+            } => distinct_facts(boundaries, 3) && !coupling.trim().is_empty(),
+            Self::AlgorithmDesign {
+                problem,
+                constraints,
+                correctness_obligation,
+            } => {
+                !problem.trim().is_empty()
+                    && distinct_facts(constraints, 2)
+                    && !correctness_obligation.trim().is_empty()
+            }
+            Self::CrossBoundaryDiagnosis {
+                boundaries,
+                competing_hypotheses,
+                observations,
+            } => {
+                distinct_facts(boundaries, 2)
+                    && distinct_facts(competing_hypotheses, 2)
+                    && distinct_facts(observations, 2)
+            }
+        };
+        if !complete {
+            bail!(
+                "Hard-work routing requires complete, distinct evidence for the selected criterion"
+            )
+        }
+        Ok(())
+    }
+}
+
+fn distinct_facts(facts: &[String], minimum: usize) -> bool {
+    let facts: Vec<_> = facts.iter().map(|fact| fact.trim()).collect();
+    facts.len() >= minimum
+        && facts.iter().all(|fact| !fact.is_empty())
+        && facts.iter().collect::<std::collections::HashSet<_>>().len() == facts.len()
+}
+
+pub(super) fn worker_scope_is_complete(predicates: Option<&Predicates>) -> bool {
+    // Difficulty evidence cannot repair missing authority, unsettled scope or an unsafe assignment.
+    predicates.is_some_and(|item| {
+        item.fixed_scope && item.low_risk_reversible && item.no_unresolved_decision
+    })
+}
+
+pub(super) fn simple_is_complete(predicates: Option<&Predicates>) -> bool {
+    worker_scope_is_complete(predicates) && predicates.is_some_and(|item| item.deterministic_oracle)
 }
 
 #[derive(Deserialize)]
@@ -66,6 +142,9 @@ pub(super) fn parse_request(text: &str) -> Result<Request> {
     let value = routing_json::parse(text).map_err(anyhow::Error::msg)?;
     reject_sender_settings(&value)?;
     let request = serde_json::from_value::<Request>(value)?;
+    if let Some(hard_work) = &request.hard_work {
+        hard_work.validate()?;
+    }
     validate_operation(&request.codex_thread_operation)?;
     let parent_follow_up = matches!(
         (
