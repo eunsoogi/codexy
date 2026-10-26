@@ -11,18 +11,18 @@ use routes::{
     bounded_evidence_is_complete, child_to_root_route, parent_to_generic_route,
     selected_general_route, simple_route,
 };
-use thread_capabilities::ThreadDirection;
+use thread_capabilities::{ThreadDirection, simple_is_complete, worker_scope_is_complete};
 
 // The schema string, policy field names, and route labels are serialized
 // compatibility identifiers; product-role terminology is standardized in
 // diagnostics and model constants below.
 const SIMPLE_WORKER_MODEL: &str = "gpt-6-luna";
 const SIMPLE_WORKER_THINKING: &str = "max";
-const GENERAL_WORKER_MODEL: &str = "gpt-6.1-sol";
-const GENERAL_WORKER_THINKING: &str = "medium";
+const HARD_WORKER_MODEL: &str = "gpt-6.1-sol";
+const HARD_WORKER_THINKING: &str = "medium";
 const ASSIGNED_WORKER_ROUTES: [(&str, &str); 2] = [
     (SIMPLE_WORKER_MODEL, SIMPLE_WORKER_THINKING),
-    (GENERAL_WORKER_MODEL, GENERAL_WORKER_THINKING),
+    (HARD_WORKER_MODEL, HARD_WORKER_THINKING),
 ];
 // Parent requests use Sol/Light; Worker selection and authenticated directions stay distinct.
 const ORCHESTRATOR_MODEL: &str = "gpt-6.1-sol";
@@ -30,7 +30,7 @@ const ORCHESTRATOR_THINKING: &str = "low";
 
 pub(super) struct Policy {
     pub(super) schema: String,
-    pub(super) general: Route,
+    pub(super) hard_work: Route,
     pub(super) named_specialist: Specialist,
     pub(super) simple: Simple,
     pub(super) fallback: String,
@@ -132,12 +132,15 @@ pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
             request.codex_thread_capabilities.as_ref(),
             &request.codex_thread_operation,
         )),
-        "general" => Ok(selected_general_route(
-            &policy,
-            request.codex_thread_capabilities.as_ref(),
-            &request.codex_thread_operation,
-        )),
-        "simple" | "bounded_evidence" | "ambiguous" | "high_risk" | "incomplete" => {
+        "general" if worker_scope_is_complete(request.simple_predicates.as_ref()) => {
+            Ok(selected_general_route(
+                &policy,
+                request.codex_thread_capabilities.as_ref(),
+                &request.codex_thread_operation,
+                request.hard_work.is_some(),
+            ))
+        }
+        "general" | "simple" | "bounded_evidence" | "ambiguous" | "high_risk" | "incomplete" => {
             Ok(json!({"route":policy.fallback}))
         }
         _ => bail!("Worker routing request classification is not recognized"),
@@ -157,9 +160,9 @@ fn known_specialist(plugin_root: &Path, policy: &Policy, agent_type: &str) -> Re
 fn contract() -> Policy {
     Policy {
         schema: "codexy.child-routing-policy.v1".to_owned(),
-        general: Route {
-            model: GENERAL_WORKER_MODEL.to_owned(),
-            thinking: GENERAL_WORKER_THINKING.to_owned(),
+        hard_work: Route {
+            model: HARD_WORKER_MODEL.to_owned(),
+            thinking: HARD_WORKER_THINKING.to_owned(),
         },
         named_specialist: Specialist {
             catalog: "agents/catalog.toml".to_owned(),
@@ -204,8 +207,8 @@ fn validate(policy: &Policy) -> Result<()> {
         "no_unresolved_decision",
     ];
     if policy.schema != "codexy.child-routing-policy.v1"
-        || policy.general.model != GENERAL_WORKER_MODEL
-        || policy.general.thinking != GENERAL_WORKER_THINKING
+        || policy.hard_work.model != HARD_WORKER_MODEL
+        || policy.hard_work.thinking != HARD_WORKER_THINKING
         || policy.named_specialist.catalog != "agents/catalog.toml"
         || policy.named_specialist.caller_overrides != "forbidden"
         || policy.simple.model != SIMPLE_WORKER_MODEL
@@ -231,13 +234,4 @@ fn validate(policy: &Policy) -> Result<()> {
         );
     }
     Ok(())
-}
-
-fn simple_is_complete(predicates: Option<&Predicates>) -> bool {
-    predicates.is_some_and(|item| {
-        item.fixed_scope
-            && item.deterministic_oracle
-            && item.low_risk_reversible
-            && item.no_unresolved_decision
-    })
 }

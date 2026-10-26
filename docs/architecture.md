@@ -49,9 +49,11 @@ acceptance; its requested pair is `gpt-6.1-sol` / `low` (Sol / Light), also used
 for authenticated Worker-to-Orchestrator delivery. The Advisor uses
 `gpt-6-astra` / `medium` for bounded, instruction-based read-only advice; this
 boundary does not enforce host permissions. A Worker owns one issue lane, its
-branch/worktree, and its finite goal. Clearly scoped general implementation uses
-`gpt-6.1-sol` / `medium`; `gpt-6-luna` / `max` is selected for simple work that
-satisfies all four predicates or bounded read-only evidence summaries in the
+branch/worktree, and its finite goal. Ordinary, simple, bounded, and general
+implementation work defaults to `gpt-6-luna` / `max`. Selecting `gpt-6.1-sol` /
+`medium` requires explicit facts for coupled contract changes, algorithm design,
+or cross-boundary diagnosis. Ambiguous authority, inputs, and ownership remain
+fail-closed under the
 [Worker routing policy](../plugins/codexy/skills/orchestration/references/child-routing-policy.md).
 Role ownership is defined in the
 [supervision reference](../plugins/codexy/skills/orchestration/references/parent-supervision.md).

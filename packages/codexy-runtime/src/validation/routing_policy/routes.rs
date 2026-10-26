@@ -114,14 +114,20 @@ pub(super) fn selected_general_route(
     policy: &Policy,
     capabilities: Option<&ThreadCapabilities>,
     operation: &str,
+    hard_work: bool,
 ) -> Value {
-    selected_route(
-        policy,
-        capabilities,
-        operation,
-        &policy.general.model,
-        &policy.general.thinking,
-    )
+    // Ordinary implementation is the default Worker route; only evidenced hard work may escalate.
+    if hard_work {
+        selected_route(
+            policy,
+            capabilities,
+            operation,
+            &policy.hard_work.model,
+            &policy.hard_work.thinking,
+        )
+    } else {
+        simple_route(policy, capabilities, operation)
+    }
 }
 
 // Difficulty chooses the pair, while capability checks still fail closed on that exact pair.
