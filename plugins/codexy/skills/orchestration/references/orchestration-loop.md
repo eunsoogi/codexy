@@ -135,15 +135,15 @@
      artifact/diff/evidence readbacks. New investigation, reproduction, or test
      execution MUST go to the owner or a bounded investigation child.
    - MUST preserve user changes and unrelated work.
-   - MUST treat Worker callbacks and Watcher observations as signals, not acceptance.
-     For a Watcher drift signal, compare the observed artifact, diff, or call with
-     current scope, ownership, and user constraints. Only the Orchestrator may
-     judge and give criteria-based direction; the Worker MUST choose and implement
-     its repair. The Orchestrator MUST verify the next relevant call, diff, or
-     result and MUST preserve the creating surface and native review history.
+   - MUST treat Worker callbacks and Watcher observations as signals, not
+     acceptance. For drift, the Orchestrator MUST compare the observed evidence
+     with current scope, ownership, and user constraints. It MUST give
+     criteria-based direction; the Worker MUST choose and implement repairs. The
+     Orchestrator MUST verify the next relevant call, diff, or result and
+     preserve the creating surface and native review history.
    - MUST resolve cross-lane conflicts in the orchestrator thread and route
-     child-owned issue findings to the owning Worker under [issue-owned
-     implementation decisions](task-classification.md#issue-owned-implementation-decisions).
+     child-owned issue findings to the owning Worker under
+     [issue-owned implementation decisions](task-classification.md#issue-owned-implementation-decisions).
      Feedback MUST identify an unmet criterion or verified constraint and its
      evidence gap; the Worker chooses the repair.
    - If the child owner stops responding, MUST stop and report the PR head,

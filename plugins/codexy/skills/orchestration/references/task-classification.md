@@ -59,16 +59,16 @@ shared-path ownership, compare returned evidence with acceptance criteria, and
 retain merge and publication authority. Parent feedback MUST identify an unmet
 criterion or verified ownership, safety, or dependency constraint, plus the
 evidence gap. The Orchestrator MUST route actionable review findings to the
-owning Worker, who MUST choose the repair. A parent diagnosis without
-supporting evidence MUST be presented as a hypothesis for the Worker to assess,
-not an edit directive.
+owning Worker, who MUST choose the repair. A parent diagnosis without supporting
+evidence MUST be presented as a hypothesis for the Worker to assess, not an edit
+directive.
 
 On a shared-path conflict, cross-lane finding, or discovery outside the issue,
 the Worker MUST pause only the affected change and report its path/finding,
 evidence, and decision needed. The Orchestrator MUST resolve ownership or
-scope/acceptance; the Worker MUST retain its lane and resume after clarification.
-A discovery MUST NOT expand the Worker's issue or transfer its implementation to
-the parent.
+scope/acceptance; the Worker MUST retain its lane and resume after
+clarification. A discovery MUST NOT expand the Worker's issue or transfer its
+implementation to the parent.
 
 ### Coordination and execution examples
 
