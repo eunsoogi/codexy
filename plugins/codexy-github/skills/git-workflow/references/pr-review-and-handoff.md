@@ -21,13 +21,15 @@ the host, connector, and GitHub response.
 
 Prefer an existing repository template when one is selected. If none is
 selected, offer a concise `Summary` and `Verification` example and expand it
-only as needed. The installed component separately retains its existing PR-title
-check on supported creation and edit paths and its squash-subject check on
-squash merges. Those checks are limited to the existing title contracts and do
-not impose a body template, review quota, or fixed approval phrase. An adequate
-free-form description, renamed/omitted/reordered sections, or another language
-MUST NOT be blocked, rewritten, or sent for extra approval by the distributed
-default.
+only as needed. The source contract retains its PR-title rule on supported
+creation and edit paths and its squash-subject rule on squash merges. Those
+rules are limited to the existing title contracts and do not impose a body
+template, review quota, or fixed approval phrase. Source presence or a replay
+MUST NOT be reported as proof that a particular host invoked a check or consumed
+its denial; without request-correlated host evidence, host enforcement MUST
+remain unverified. An adequate free-form description, renamed/omitted/reordered
+sections, or another language MUST NOT be blocked, rewritten, or sent for extra
+approval by the distributed default.
 
 The retained PR-title check applies on supported PR creation and title-edit
 paths. On those paths, the PR title MUST use `type(scope): description`, with a

@@ -171,6 +171,10 @@ blocked criteria. The task MUST also meet every current host criterion,
 including the distinct inability to make meaningful progress without user input
 or an external state change.
 
+Parent-reported pauses MUST stay parent-sourced; only a direct user message or
+authenticated reference establishes intent. Parent direction stays scoped; child
+reports or message acceptance MUST NOT prove host state or justify a block.
+
 Ordinary CI, review, dependency, resource, and parent-coordination waits,
 retryable errors, and unfinished but actionable authorized work are nonterminal.
 While work remains, the task MUST retain ownership of the exact active

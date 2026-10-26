@@ -171,10 +171,11 @@ re-enter planning when it is already selected and in progress.
   detail, a parent correction, or a changed internal record MUST NOT by itself
   become a permission gate. It MAY require more evidence or MAY withhold a
   completion/readiness claim.
-- Quoted, historical, or negated text MUST be classified by its source and
-  operative scope: a quoted prior statement or example MUST NOT be treated as a
-  new user decision, while an explicit current-user prohibition MUST remain
-  binding.
+- Parent instructions, direct user messages, and child self-reports MUST retain
+  source and scope. A parent report MUST NOT be presented as a direct-user
+  decision without its message or an authenticated reference; child self-reports
+  MUST NOT be treated as host/runtime proof. Quoted, historical, or negated text
+  MUST NOT become a new decision; current-user prohibitions MUST remain binding.
 - MUST ask only when the next action has a concrete material user decision or
   requires authority not already provided, including external/destructive
   authority. The request MUST name the precise decision or missing authority and
