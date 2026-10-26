@@ -25,6 +25,7 @@ from packages.getcodexy.tests.component_marketplace_fixture import (
     populate_plugins,
 )
 from packages.getcodexy.tests.component_watcher_fixture import (
+    LEGACY_VERSION,
     verified_legacy_marketplace_root,
 )
 
@@ -67,7 +68,11 @@ class VerifiedLegacyUpgradeTests(unittest.TestCase):
         if legacy_root is None:
             self.skipTest("no verified 1.13.4 public bundle is configured")
 
-        with fixture({"core"}, real_registration=True) as state:
+        # The host starts on the verified legacy version; the candidate below
+        # follows the current selected release rather than a fixed target version.
+        with fixture(
+            {"core"}, versions={"core": LEGACY_VERSION}, real_registration=True
+        ) as state:
             # Seed the authenticated old package, then model the host's package fetch
             # only after its marketplace upgrade succeeds.
             shutil.rmtree(state.marketplace / "plugins")
@@ -81,7 +86,7 @@ class VerifiedLegacyUpgradeTests(unittest.TestCase):
             populate_plugins(candidate)
             candidate_core = candidate / "plugins/codexy"
             candidate_version, candidate_manifest = make_no_mcp_core_package(
-                candidate_core, "2.0.0"
+                candidate_core
             )
             original_run = state.run
 
