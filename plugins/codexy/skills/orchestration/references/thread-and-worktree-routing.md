@@ -210,8 +210,7 @@ git rev-parse --verify origin/<branch>
   branch preflight result, pending/final worktree result, active owner identity,
   and duplicate-owner cleanup if any.
 
-Child titles MUST follow the
-[title policy](child-routing-policy.md#child-thread-titles).
+Child titles MUST follow the [title policy](child-thread-titles.md).
 
 ## Worktree Rules
 

@@ -46,22 +46,20 @@ the parent MUST retain the owner and direct recovery rather than do its work.
 
 Named packaged specialists MUST be selected when their role matches the task;
 their catalogued model and effort apply automatically, and callers MUST NOT
-override them. Ordinary Worker selection is difficulty based: a clearly scoped
-general implementation task uses `gpt-6.1-sol` at `medium`; a simple task uses
-`gpt-6-luna` at `max` when all four `simple_predicates` are true. The additional
-`bounded_evidence` class below also selects Luna/Max without requiring a
-deterministic oracle. General integrations, unresolved decisions, higher risk,
-and work with a larger scope or verification burden MUST retain Sol/Medium or
-the fail-closed outcome required by the uncertainty. Difficulty uncertainty may
-support a general classification, but ambiguous scope, unknown authority, or
-missing required inputs MUST stay fail-closed as `ambiguous`, `incomplete`, or
-`high_risk`. Unsupported model or reasoning capabilities MUST keep the route
-pending with an explicit safe outcome. Codex MUST NOT ask the user to choose or
-reconfirm a defined pair. If the selected host or tool cannot honor it, Codex
-MUST report the exact limitation and keep the lane pending; it MUST NOT silently
-substitute a model, sender settings, parent implementation, or duplicate Worker.
-A specialist is a separate route only when its role matches the task, not a
-fallback for model unavailability.
+override them. Ordinary, bounded, and simple Worker assignments MUST default to
+`gpt-6-luna` / `max`. The `general` classification alone MUST NOT select
+`gpt-6.1-sol` / `medium`; that pair requires the explicit hard-work facts below.
+For general work, `fixed_scope`, `low_risk_reversible`, and
+`no_unresolved_decision` MUST be true; `deterministic_oracle` MUST be supplied
+but MAY be false. Missing safety facts, ambiguous scope or authority, missing
+inputs, and unresolved ownership MUST stay fail-closed. Difficulty evidence MUST
+NOT substitute for those decisions. Unsupported model or reasoning capabilities
+MUST keep the route pending with an explicit safe outcome. Codex MUST NOT ask
+the user to choose or reconfirm a defined pair. If the selected host or tool
+cannot honor it, Codex MUST report the exact limitation and keep the lane
+pending; it MUST NOT silently substitute a model, sender settings, parent
+implementation, or duplicate Worker. A specialist is a separate route only when
+its role matches the task, not a fallback for model unavailability.
 
 The native `create_thread` admission hook MUST enforce the selected Worker pair
 and the app-managed project worktree environment before mutation. Every Worker
@@ -101,17 +99,17 @@ existing host-envelope directions `root_to_child` and `child_to_parent` are
 serialized compatibility identifiers. `root_to_child` represents
 Orchestrator-to-Worker delivery using the authenticated recipient's assigned
 Worker pair (`gpt-6-luna` at `max` or `gpt-6.1-sol` at `medium`); ordinary
-Worker creation selects Luna/Max for simple work with all four predicates or the
-bounded evidence class, and Sol/Medium for clearly scoped general work.
-`child_to_parent` represents Worker-to-Orchestrator delivery using `gpt-6-luna`
-at `max`, the same pair used by simple Workers. Authenticated direction and
-recipient identity distinguish the parent recipient; the pair alone does not.
-The runtime request's serialized `parent_to_generic` and `child_to_root`
-directions remain unchanged for these delivery routes. These serialized
-identifiers do not authorize parameters that the actual tool contract forbids.
-Unsupported or mismatched recipient settings MUST leave the lane pending with
-the exact limitation. Missing observations MUST be reported as unavailable/not
-observed. Codex MUST NOT fall back to the sender route.
+Worker creation defaults to Luna/Max, including general implementation;
+Sol/Medium requires validated hard-work facts. `child_to_parent` represents
+Worker-to-Orchestrator delivery using `gpt-6-luna` at `max`, the same pair used
+by simple Workers. Authenticated direction and recipient identity distinguish
+the parent recipient; the pair alone does not. The runtime request's serialized
+`parent_to_generic` and `child_to_root` directions remain unchanged for these
+delivery routes. These serialized identifiers do not authorize parameters that
+the actual tool contract forbids. Unsupported or mismatched recipient settings
+MUST leave the lane pending with the exact limitation. Missing observations MUST
+be reported as unavailable/not observed. Codex MUST NOT fall back to the sender
+route.
 
 The runtime keeps `codexy.child-routing-request.v1` for thread creation,
 Worker-to-Orchestrator delivery, and other existing routing requests. A v1
@@ -137,8 +135,9 @@ recommendations, and decisions. Input scope and access authority MUST already be
 established. Unknown authority or missing inputs MUST remain fail-closed. The
 caller MUST count the complete supplied inputs, not selected excerpts from
 larger material that the Worker would need to explore. Work exceeding these
-bounds or requiring integration, investigation, or substantial verification MUST
-use general Sol/Medium or the applicable named specialist.
+bounds MUST use the general classification or an applicable named specialist.
+General work still defaults to Luna/Max unless a hard-work criterion is
+evidenced.
 
 For example, summarizing two supplied release notes into ten factual bullets, or
 restating three supplied product descriptions in a comparison table, qualifies.
@@ -165,13 +164,37 @@ true; they certify the scope, safety, and settled decisions above.
 Both booleans MUST be true. Counts MUST be integers in the limits above. Absent
 bounds or out-of-range values MUST select the safe fallback; malformed or
 unknown fields MUST be rejected. The old `simple` class still requires all four
-original predicates. General classification MUST NOT be downgraded merely
-because bounded facts are present. A capability mismatch MUST NOT substitute
-Sol/Medium, a default model, or a specialist whose role does not match. Creation
-MUST send the selected Luna/Max pair explicitly; recipient-bound follow-ups MUST
-preserve the assigned pair through the existing v2 route. Requested settings and
-authentic task-creation readback MUST remain distinct from effective host
-settings, which MUST be reported unavailable when unexposed.
+original predicates. A general request MUST be evaluated by its own safety and
+hard-work facts; bounded facts MUST NOT override an evidenced hard-work
+selection. A capability mismatch MUST NOT substitute Sol/Medium, a default
+model, or a specialist whose role does not match. Creation MUST send the
+selected Luna/Max pair explicitly; recipient-bound follow-ups MUST preserve the
+assigned pair through the existing v2 route. Requested settings and authentic
+task-creation readback MUST remain distinct from effective host settings, which
+MUST be reported unavailable when unexposed.
+
+### Evidenced hard work
+
+Only a general Worker MAY escalate to Sol/Medium by supplying `hard_work` with
+one closed `criterion` and its complete facts:
+
+| Criterion                  | Required evidence                                                                                                                                                                                                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `coupled_contracts`        | `boundaries`: at least three distinct executable contracts that must change together; `coupling`: why changing one independently would violate the shared invariant.                                                 |
+| `algorithm_design`         | `problem`: a new algorithm to derive; `constraints`: at least two distinct technical constraints; `correctness_obligation`: the invariant or proof needed beyond applying an existing pattern.                       |
+| `cross_boundary_diagnosis` | `boundaries`: at least two affected technical boundaries; `competing_hypotheses`: at least two distinct plausible causes; `observations`: at least two concrete observations that discriminate between those causes. |
+
+The assigning owner MUST verify these facts against supplied task evidence.
+Lists MUST contain distinct nonempty facts; required prose MUST be nonempty. The
+parser validates structure, not semantic truth. File count, a general
+implementation label, an unfamiliar library, long prose, or model availability
+alone MUST NOT count as evidence. Routine edits, bounded summaries,
+known-pattern implementations and single-boundary fixes retain Luna/Max. A
+malformed, unknown, or incomplete hard-work object MUST be rejected; missing
+hard-work evidence MUST NOT cause escalation. Valid evidence MUST NOT change a
+simple, bounded, ambiguous, incomplete, or high-risk request into a general
+assignment. Capability checks MUST apply to the selected exact pair without
+substitution.
 
 ### Blocked-goal fork recovery
 
@@ -194,17 +217,7 @@ finite-work, review, and final-proof references only when applicable.
 Collaboration shape requires ownership metadata where the contract says so, but
 MUST NOT by itself select a strict profile or historical-review path.
 
-## Child Thread Titles
-
-- After a forked Codex worktree child thread finishes setup and a thread id is
-  available, the orchestrator MUST rename it with `set_thread_title` when that
-  tool is available.
-- The child thread title MUST clearly include the project, issue number, and
-  lane purpose, such as `<project> #<issue> implementation lane`.
-- If title renaming is unavailable, mention that limitation in orchestration
-  status or child handoff and continue the lane.
-- Child thread title renaming is a clarity policy, not a merge blocker for
-  otherwise complete implementation work.
+Child titles MUST follow the [title policy](child-thread-titles.md).
 
 ## Review routing
 
