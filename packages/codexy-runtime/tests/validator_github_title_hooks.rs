@@ -9,31 +9,78 @@ use crate::support::FixtureCommand as Command;
 
 pub(super) type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+const MERGE_PULL_REQUEST_TOOL: &str = "mcp__codex_apps__github_merge_pull_request";
+const AUTO_MERGE_TOOL: &str = "mcp__codex_apps__github_enable_auto_merge";
+const VALID_SUBJECT: &str = "fix(sample): sample change (#123)";
+
+fn assert_hook_input(event: &str, kind: &str, tool: &str, input: Value, denied: bool) -> TestResult {
+    assert_title(event, kind, json!({"hook_event_name": event, "tool_name": tool, "tool_input": input}), denied)
+}
+
+fn assert_shell_case(event: &str, command: &str, denied: bool) -> TestResult {
+    assert_hook_input(event, "shell", "Bash", json!({"command": command}), denied)
+}
+
+fn assert_nested_case(event: &str, code: &str, denied: bool) -> TestResult {
+    assert_hook_input(event, "nested", "functions.exec", json!({"code": code}), denied)
+}
+
 #[test]
-fn final_subject_is_checked_before_direct_squash_merge() -> TestResult {
-    // Source-launcher proof only: host dispatch and denial consumption are separate gates.
+fn supported_merge_routes_control_the_squash_subject() -> TestResult {
+    // This source-launcher proof does not establish host dispatch or denial consumption.
     for event in ["PermissionRequest", "PreToolUse"] {
-        for tool in ["mcp__codex_apps__github_merge_pull_request", "github.merge_pull_request", "github_merge_pull_request"] {
-            for (method, subject, denied) in [
-                (json!("squash"), json!("fix(sample): sample change (#123)"), false),
-                (json!("squash"), Value::Null, true),
-                (json!("squash"), json!("fix(sample): sample change"), true),
-                (json!("squash"), json!("fix(sample): sample change (#122)"), true),
-                (json!("squash"), json!("fix(sample): sample change (#123) (#123)"), true),
-                (json!("squash"), json!("sample change (#123)"), true),
-                (Value::Null, Value::Null, true),
-                (Value::Null, json!("fix(sample): sample change (#123)"), true),
-                (json!("unknown"), Value::Null, true),
-                (json!("merge"), Value::Null, false),
-                (json!("rebase"), Value::Null, false),
-            ] {
-                let mut input = json!({"pr_number": 123});
-                if !subject.is_null() { input["commit_title"] = subject; }
-                if !method.is_null() { input["merge_method"] = method; }
-                assert_title(event, "merge", json!({
-                    "hook_event_name": event, "tool_name": tool, "tool_input": input,
-                }), denied)?;
-            }
+        // Explicit squash and default-method requests need a caller-controlled final subject.
+        for (tool, input, denied) in [
+            (MERGE_PULL_REQUEST_TOOL, json!({"pr_number": 123, "merge_method": "squash", "commit_title": VALID_SUBJECT}), false),
+            (MERGE_PULL_REQUEST_TOOL, json!({"pr_number": 123, "merge_method": "squash"}), true),
+            (MERGE_PULL_REQUEST_TOOL, json!({"pr_number": 123, "commit_title": VALID_SUBJECT}), false),
+            (MERGE_PULL_REQUEST_TOOL, json!({"pr_number": 123}), true),
+            (MERGE_PULL_REQUEST_TOOL, json!({"pr_number": 123, "merge_method": null, "commit_title": VALID_SUBJECT}), false),
+            (MERGE_PULL_REQUEST_TOOL, json!({"pr_number": 123, "merge_method": null}), true),
+            (MERGE_PULL_REQUEST_TOOL, json!({"pr_number": 123, "merge_method": "squash", "commit_title": "fix(sample): missing suffix"}), true),
+        ] {
+            assert_hook_input(event, "merge", tool, input, denied)?;
+        }
+        // Explicit non-squash methods intentionally stay outside squash-subject policy.
+        for method in ["merge", "rebase"] {
+            assert_hook_input(event, "merge", MERGE_PULL_REQUEST_TOOL,
+                json!({"pr_number": 123, "merge_method": method, "commit_title": "plain title"}), false)?;
+        }
+        for (tool, input) in [
+            (MERGE_PULL_REQUEST_TOOL, json!({"pr_number": 123, "merge_method": "unknown", "commit_title": VALID_SUBJECT})),
+            (AUTO_MERGE_TOOL, json!({"pr_number": 123, "repository_full_name": "owner/repo"})),
+        ] {
+            assert_hook_input(event, "merge", tool, input, true)?;
+        }
+
+        // Literal CLI routes mirror the connector boundary; --auto is not safely inspectable.
+        for (command, denied) in [
+            ("gh pr merge 123 --squash --subject 'fix(sample): sample change (#123)'", false),
+            ("gh pr merge 123 --subject 'fix(sample): sample change (#123)'", false),
+            ("gh pr merge 123", true),
+            ("gh pr merge 123 --auto --squash --subject 'fix(sample): sample change (#123)'", true),
+            ("gh pr merge 123 --merge --subject 'plain title'", false),
+            ("gh pr merge 123 --rebase --subject 'plain title'", false),
+            ("gh pr merge 123 -s -t 'fix(sample): sample change (#123)'", false),
+            ("gh pr merge 123 -t 'fix(sample): sample change (#123)'", false),
+            ("gh pr merge 123 -m -t 'plain title'", false),
+            ("gh pr merge 123 -r -t 'plain title'", false),
+            ("gh pr merge 123 --squash --subject \"$SUBJECT\"", true),
+        ] {
+            assert_shell_case(event, command, denied)?;
+        }
+
+        // Nested checks cover only these literal supported calls and unresolved arguments.
+        for (code, denied) in [
+            ("await tools.mcp__codex_apps__github_merge_pull_request({pr_number: 123, merge_method: 'squash', commit_title: 'fix(sample): sample change (#123)'});", false),
+            ("await tools.mcp__codex_apps__github_merge_pull_request({pr_number: 123, commit_title: 'fix(sample): sample change (#123)'});", false),
+            ("await tools.mcp__codex_apps__github_merge_pull_request({pr_number: 123});", true),
+            ("await tools.mcp__codex_apps__github_merge_pull_request({pr_number: 123, merge_method: 'rebase'});", false),
+            ("await tools.mcp__codex_apps__github_enable_auto_merge({pr_number: 123, repository_full_name: 'owner/repo'});", true),
+            ("await tools.exec_command({cmd: 'gh pr merge 123 --auto'});", true),
+            ("await tools.mcp__codex_apps__github_merge_pull_request({pr_number: 123, merge_method: method, commit_title: 'fix(sample): sample change (#123)'});", true),
+        ] {
+            assert_nested_case(event, code, denied)?;
         }
     }
     Ok(())
@@ -42,52 +89,22 @@ fn final_subject_is_checked_before_direct_squash_merge() -> TestResult {
 #[test]
 fn title_hook_preserves_only_the_three_title_contracts() -> TestResult {
     for event in ["PermissionRequest", "PreToolUse"] {
-        assert_title(event, "issue", json!({
-            "hook_event_name": event,
-            "tool_name": "mcp__codex_apps__github_create_issue",
-            "tool_input": {"title": "Valid issue", "body": "free form"},
-        }), false)?;
-        assert_title(event, "issue", json!({
-            "hook_event_name": event,
-            "tool_name": "mcp__codex_apps__github_create_issue",
-            "tool_input": {"title": "fix: not an issue title", "body": "free form"},
-        }), true)?;
-        assert_title(event, "pr", json!({
-            "hook_event_name": event,
-            "tool_name": "github.update_pull_request",
-            "tool_input": {"body": "any free-form body"},
-        }), false)?;
-        assert_title(event, "pr", json!({
-            "hook_event_name": event,
-            "tool_name": "github.update_pull_request",
-            "tool_input": {"title": "plain title", "body": "any free-form body"},
-        }), true)?;
-        assert_title(event, "merge", json!({
-            "hook_event_name": event,
-            "tool_name": "mcp__codex_apps__github_merge_pull_request",
-            "tool_input": {"pr_number": 42, "merge_method": "squash", "commit_title": "fix(hooks): free body (#42)", "commit_message": "anything"},
-        }), false)?;
-        assert_title(event, "shell", json!({
-            "hook_event_name": event,
-            "tool_name": "Bash",
-            "tool_input": {"command": "gh pr create --title 'fix(hooks): free body' --body 'any text'"},
-        }), false)?;
-        assert_title(event, "shell", json!({
-            "hook_event_name": event,
-            "tool_name": "Bash",
-            "tool_input": {"command": "gh pr create --title 'plain title' --body 'any text'"},
-        }), true)?;
-        assert_title(event, "shell", json!({
-            "hook_event_name": event,
-            "tool_name": "Bash",
-            "tool_input": {"command": "gh api --method POST graphql -f query='mutation { createIssue(input: {title: \"plain title\"}) { issue { id } } }'"},
-        }), true)?;
-        assert_title(event, "shell", json!({
-            "hook_event_name": event,
-            "tool_name": "Bash",
-            "tool_input": {"command": "gh api --method POST graphql -f query='mutation { createIssue(input: {title: \"Valid issue\"}) { issue { id } } }'"},
-        }), false)?;
+        assert_hook_input(event, "issue", "mcp__codex_apps__github_create_issue", json!({"title": "Valid issue", "body": "free form"}), false)?;
+        assert_hook_input(event, "issue", "mcp__codex_apps__github_create_issue", json!({"title": "fix: not an issue title", "body": "free form"}), true)?;
+        assert_hook_input(event, "pr", "github.update_pull_request", json!({"body": "any free-form body"}), false)?;
+        assert_hook_input(event, "pr", "github.update_pull_request", json!({"title": "plain title", "body": "any free-form body"}), true)?;
+        assert_hook_input(
+            event,
+            "merge",
+            MERGE_PULL_REQUEST_TOOL,
+            json!({"pr_number": 123, "merge_method": "squash", "commit_title": "fix(hooks): free body (#123)"}),
+            false,
+        )?;
+        assert_shell_case(event, "gh pr create --title 'fix(hooks): free body' --body 'any text'", false)?;
+        assert_shell_case(event, "gh pr create --title 'plain title' --body 'any text'", true)?;
         for (command, denied) in [
+            ("gh api --method POST graphql -f query='mutation { createIssue(input: {title: \"plain title\"}) { issue { id } } }'", true),
+            ("gh api --method POST graphql -f query='mutation { createIssue(input: {title: \"Valid issue\"}) { issue { id } } }'", false),
             ("gh issue new --title 'fix: invalid issue' --body note", true),
             ("gh issue new --title 'Valid issue' --body note", false),
             ("gh pr new --title 'plain title' --body note", true),
@@ -101,11 +118,7 @@ fn title_hook_preserves_only_the_three_title_contracts() -> TestResult {
             ("gh pr merge https://github.com/o/r/pull/42 --squash --subject 'fix(hooks): valid title (#42)'", false),
             ("gh pr merge --body 17 42 --squash --subject 'fix(hooks): valid title (#17)'", true),
         ] {
-            assert_title(event, "shell", json!({
-                "hook_event_name": event,
-                "tool_name": "Bash",
-                "tool_input": {"command": command},
-            }), denied)?;
+            assert_shell_case(event, command, denied)?;
         }
         for (command, denied) in [
             ("gh api repos/eunsoogi/codexy/issues -f title='plain title'", true),
@@ -114,22 +127,10 @@ fn title_hook_preserves_only_the_three_title_contracts() -> TestResult {
             ("gh api repos/eunsoogi/codexy/issues -F title='plain title'", true),
             ("gh api --method GET repos/eunsoogi/codexy/issues -f title='plain title'", false),
         ] {
-            assert_title(event, "shell", json!({
-                "hook_event_name": event,
-                "tool_name": "Bash",
-                "tool_input": {"command": command},
-            }), denied)?;
+            assert_shell_case(event, command, denied)?;
         }
-        assert_title(event, "nested", json!({
-            "hook_event_name": event,
-            "tool_name": "functions.exec",
-            "tool_input": {"code": "await tools.mcp__codex_apps__github_create_pull_request({title: 'fix(hooks): nested title', body: 'any text'});"},
-        }), false)?;
-        assert_title(event, "nested", json!({
-            "hook_event_name": event,
-            "tool_name": "functions.exec",
-            "tool_input": {"code": "await tools.mcp__codex_apps__github_create_pull_request({title: 'plain title', body: 'any text'});"},
-        }), true)?;
+        assert_nested_case(event, "await tools.mcp__codex_apps__github_create_pull_request({title: 'fix(hooks): nested title', body: 'any text'});", false)?;
+        assert_nested_case(event, "await tools.mcp__codex_apps__github_create_pull_request({title: 'plain title', body: 'any text'});", true)?;
     }
     Ok(())
 }
@@ -142,11 +143,7 @@ fn nested_title_fallback_preserves_supported_calls_at_size_boundary() -> TestRes
         for (source, expected) in [(invalid, true), (valid, false)] {
             let code = format!("{}{}", " ".repeat(size - source.len()), source);
             for event in ["PermissionRequest", "PreToolUse"] {
-                assert_title(event, "nested", json!({
-                    "hook_event_name": event,
-                    "tool_name": "functions.exec",
-                    "tool_input": {"code": code.clone()},
-                }), expected)?;
+                assert_nested_case(event, &code, expected)?;
             }
         }
     }

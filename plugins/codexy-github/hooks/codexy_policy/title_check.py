@@ -91,14 +91,18 @@ def _merge(request: Request) -> bool:
     data = _mapping(request.tool_input)
     if data is None:
         return True
-    if _operation(request.tool) != "merge_pull_request":
+    operation = _operation(request.tool)
+    if operation == "enable_auto_merge":
+        # This wrapper accepts neither a merge method nor a final commit title.
+        return True
+    if operation != "merge_pull_request":
         return False
     method = data.get("merge_method")
-    # A repository default may select squash. Require an explicit method so an
-    # omitted or unknown method cannot skip validation of the final subject.
+    # Omitted/null methods may resolve to a repository-selected squash, so require
+    # a caller-supplied subject; explicit merge/rebase stay outside this policy.
     if method in ("merge", "rebase"):
         return False
-    if method != "squash":
+    if method not in ("squash", None):
         return True
     return not squash_subject(data.get("commit_title"), data.get("pr_number"))
 
