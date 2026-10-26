@@ -76,7 +76,9 @@ required bounded child tasks and necessary task messages under the
 [authority contract](references/child-routing-policy.md). Codex MUST NOT ask for
 approval again per child or message. Delegation MUST preserve host/user
 permissions, prerequisites, owners, setup, goals, review, and capacity; missing
-authority or tools MUST NOT authorize parent execution.
+authority or tools MUST NOT authorize parent execution. For scoped assignments,
+this authority supersedes the task-creation exclusions in
+`classification-and-control.md`.
 
 ### Delegated supervision route
 

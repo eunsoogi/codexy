@@ -33,6 +33,7 @@ fn issue_1424_canonical_guidance_preserves_scoped_authority_and_parallel_dispatc
     // app evidence a separate parent-owned acceptance gate.
     for (path, required, obsolete) in [
         ("orchestration/SKILL.md", "MUST NOT scan or compare paths as a dispatch gate", "Shared-file or resource conflicts"),
+        ("orchestration/SKILL.md", "this authority supersedes the task-creation exclusions in `classification-and-control.md`", ""),
         ("orchestration/references/child-routing-policy.md", "MUST NOT ask for approval again per child or per message", "MUST preserve current task-creation/message authority"),
         ("orchestration/references/thread-and-worktree-routing.md", "even when owned paths overlap", "disjoint lanes MAY run concurrently"),
         ("orchestration/references/parent-supervision.md", "without scanning paths or gating on path overlap", ""),
