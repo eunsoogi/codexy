@@ -21,6 +21,14 @@ work MUST NOT count as delegation. The parent MUST evaluate actual child work
 and returned evidence; a prompt or task-creation result alone MUST NOT prove
 execution.
 
+Every app-managed child assignment governed by a native goal MUST explicitly
+direct the child to read the
+[goal-lifecycle skill](../../goal-lifecycle/SKILL.md), call native `get_goal`
+before any task-specific work, and complete the skill's required first
+transition. The assignment MUST make clear that `get_goal` precedes issue or
+repository reads, commands, verification, delegation, and edits; later goal
+activation MUST NOT satisfy the required ordering.
+
 An explicit user assignment to orchestrate a defined outcome, including
 directing non-orchestration work to children, authorizes the necessary bounded
 child tasks and assignment, follow-up, reporting, and recovery messages within
