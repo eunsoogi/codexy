@@ -3,6 +3,18 @@
 use super::*;
 
 #[test]
+fn issue_1423_rejects_positional_hard_work_evidence() -> TestResult {
+    // Sentinel's populated sequence must not certify the closed named-facts contract.
+    let mut positional = request("general", SOL);
+    positional["hard_work"] = json!([
+        "coupled_contracts",
+        ["parser", "admission", "delivery"],
+        "One shared authenticated assignment"
+    ]);
+    rejects(positional, "hard_work must be a JSON object")
+}
+
+#[test]
 fn issue_1423_only_evidenced_hard_work_selects_sol() -> TestResult {
     for facts in hard_work_cases()? {
         let mut hard = request("general", SOL);

@@ -1,5 +1,5 @@
 use anyhow::{Result, bail};
-use serde::Deserialize;
+use serde::{Deserialize, de::Error as _};
 use serde_json::Value;
 
 use super::{Predicates, routing_json};
@@ -30,8 +30,23 @@ pub(super) struct Request {
     #[serde(default)]
     pub(super) recipient_assignment: Option<RecipientAssignment>,
     // A general label does not establish difficulty; escalation needs concrete task facts.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_hard_work")]
     pub(super) hard_work: Option<HardWork>,
+}
+
+fn deserialize_hard_work<'de, D>(deserializer: D) -> Result<Option<HardWork>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    // Tagged enums also accept positional sequences; only named JSON facts may certify escalation.
+    Option::<Value>::deserialize(deserializer)?
+        .map(|value| {
+            if !value.is_object() {
+                return Err(D::Error::custom("hard_work must be a JSON object"));
+            }
+            serde_json::from_value(value).map_err(D::Error::custom)
+        })
+        .transpose()
 }
 
 #[derive(Deserialize)]
