@@ -38,6 +38,38 @@ rights. MUST use
 [child routing](child-routing-policy.md#orchestration-request-dispatch) for
 reuse, capacity, unavailable surfaces, and blocked children.
 
+## Issue-owned implementation decisions
+
+For a child-owned issue, the assigned outcome, scope and exclusions, acceptance
+criteria, and applicable user, repository, and host constraints define the
+Worker's boundaries. The assignment MUST state the outcome and limits without
+prescribing a patch recipe.
+
+Within those boundaries, the owning Worker MUST investigate and diagnose the
+current state, design and choose the concrete solution and files, implement it,
+run required checks, and choose repairs for actionable review findings. The
+Worker MUST NOT need a parent-selected file or edit list, or new approval for
+ordinary in-scope choices. The Orchestrator MAY impose path or resource limits
+only to honor a user, repository, or host constraint or reserve another owner's
+work; the assignment MUST state the reason and MUST NOT imply target files or
+edits beyond that constraint.
+
+The Orchestrator MUST keep one issue owner, coordinate dependencies and
+shared-path ownership, compare returned evidence with acceptance criteria, and
+retain merge and publication authority. Parent feedback MUST identify an unmet
+criterion or verified ownership, safety, or dependency constraint, plus the
+evidence gap. The Orchestrator MUST route actionable review findings to the
+owning Worker, who MUST choose the repair. A parent diagnosis without supporting
+evidence MUST be presented as a hypothesis for the Worker to assess, not an edit
+directive.
+
+On a shared-path conflict, cross-lane finding, or discovery outside the issue,
+the Worker MUST pause only the affected change and report its path/finding,
+evidence, and decision needed. The Orchestrator MUST resolve ownership or
+scope/acceptance; the Worker MUST retain its lane and resume after
+clarification. A discovery MUST NOT expand the Worker's issue or transfer its
+implementation to the parent.
+
 ### Coordination and execution examples
 
 These are document scenarios, not evidence that a host executed the routes.
