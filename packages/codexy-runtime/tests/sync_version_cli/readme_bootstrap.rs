@@ -61,6 +61,9 @@ fn bootstrap_readme_preparation_updates_pins_and_preserves_prose() -> Result<(),
             stale = stale.replace(&format!("{command}{selected}"), &format!("{command}0.0.0"));
         }
         stale.push_str("\nHistorical getcodexy==0.0.0 example.\n");
+        for command in COMMANDS {
+            stale.push_str(&format!("Historical `{command}0.0.0` example.\n"));
+        }
         fs::write(&path, stale)?;
     }
     require_success(&super::run_sync(&root, &["--version", &selected])?);
@@ -88,6 +91,9 @@ fn assert_pins(root: &Path, expected: &str) -> Result<(), Box<dyn std::error::Er
             assert_eq!(text.matches(&format!("{command}{expected}")).count(), 1);
         }
         assert!(text.contains("Historical getcodexy==0.0.0 example."));
+        for command in COMMANDS {
+            assert!(text.contains(&format!("Historical `{command}0.0.0` example.")));
+        }
     }
     Ok(())
 }

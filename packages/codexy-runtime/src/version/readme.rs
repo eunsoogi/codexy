@@ -113,7 +113,14 @@ fn bootstrap_ranges(text: &str, path: &Path) -> Result<Vec<Range<usize>>> {
     BOOTSTRAP_PREFIXES
         .into_iter()
         .map(|prefix| {
-            let matches = text.match_indices(prefix).collect::<Vec<_>>();
+            // Inline migration examples are historical prose, not executable command lines.
+            let matches = text
+                .match_indices(prefix)
+                .filter(|(start, _)| {
+                    let line_start = text[..*start].rfind('\n').map_or(0, |offset| offset + 1);
+                    text[line_start..*start].trim().is_empty()
+                })
+                .collect::<Vec<_>>();
             if matches.len() != 1 {
                 bail!(
                     "{} must contain exactly one {prefix} pin",
