@@ -74,9 +74,10 @@ incompatibility; it MUST NOT omit a field or rely on defaults. The installed
 concern and launcher retain their `child_thread_creation` identifiers for
 compatibility. Native specialists remain a separate catalogued route with their
 assigned settings; a caller-written role or prompt MUST NOT authorize a Worker
-override. Requested fields and source-level hook admission do not prove
-effective host state; missing observations MUST be recorded as unavailable/not
-observed, not claimed as observed.
+override. Requested settings and source-level admission do not prove effective
+host state; unexposed settings MUST remain unavailable. A policy or installed
+update MUST NOT imply that a running task changed or prove comparative
+performance.
 
 For ordinary observation of assigned Codex Workers, the Orchestrator MUST use
 the native event-driven `wait_threads` route with each task's latest cursor. It
@@ -105,10 +106,7 @@ Worker-to-Orchestrator delivery using `gpt-6.1-sol` at `low` (Sol / Light), the
 requested main Orchestrator pair. Stale parent Luna/Max and Luna/Medium pairs
 MUST be rejected on this authenticated direction. Authenticated direction and
 recipient identity MUST remain enforced; recognizing a model pair alone MUST NOT
-authorize delivery. Requested settings MUST remain separate from effective host
-readback; unavailable effective values MUST stay unavailable. A policy or
-installed update MUST NOT imply a running task changed or prove comparative
-performance. The runtime request's serialized `parent_to_generic` and
+authorize delivery. The runtime request's serialized `parent_to_generic` and
 `child_to_root` directions remain unchanged for these delivery routes. These
 serialized identifiers do not authorize parameters that the actual tool contract
 forbids. Unsupported or mismatched recipient settings MUST leave the lane
@@ -130,52 +128,9 @@ The selected pair MUST pass through follow-up routing unchanged.
 
 ### Bounded evidence summaries
 
-An ordinary Worker MAY use `classification="bounded_evidence"` for a read-only
-summary of explicitly supplied documents when no named specialist role matches.
-The assignment MUST name 1–3 documents totalling at most 12,000 Unicode
-characters and require 1–20 concise output items (at most 40 words each). It
-MUST prohibit writes, command execution, external research, implementation,
-recommendations, and decisions. Input scope and access authority MUST already be
-established. Unknown authority or missing inputs MUST remain fail-closed. The
-caller MUST count the complete supplied inputs, not selected excerpts from
-larger material that the Worker would need to explore. Work exceeding these
-bounds MUST use the general classification or an applicable named specialist.
-General work still defaults to Luna/Max unless a hard-work criterion is
-evidenced.
-
-For example, summarizing two supplied release notes into ten factual bullets, or
-restating three supplied product descriptions in a comparison table, qualifies.
-Wording is human-judged, so `deterministic_oracle` may be false. Investigating
-source dependencies, reviewing correctness, resolving conflicting requirements,
-or implementing a multi-boundary change does not qualify.
-
-The resolver retains the compatibility name `simple_predicates` for this class.
-`fixed_scope`, `low_risk_reversible`, and `no_unresolved_decision` MUST all be
-true; they certify the scope, safety, and settled decisions above.
-`deterministic_oracle` MUST still be supplied but may be false. The optional
-`bounded_evidence` object MUST contain exactly these required facts:
-
-```json
-{
-  "read_only": true,
-  "supplied_inputs_only": true,
-  "input_count": 2,
-  "input_char_count": 8000,
-  "output_item_limit": 10
-}
-```
-
-Both booleans MUST be true. Counts MUST be integers in the limits above. Absent
-bounds or out-of-range values MUST select the safe fallback; malformed or
-unknown fields MUST be rejected. The old `simple` class still requires all four
-original predicates. A general request MUST be evaluated by its own safety and
-hard-work facts; bounded facts MUST NOT override an evidenced hard-work
-selection. A capability mismatch MUST NOT substitute Sol/Medium, a default
-model, or a specialist whose role does not match. Creation MUST send the
-selected Luna/Max pair explicitly; recipient-bound follow-ups MUST preserve the
-assigned pair through the existing v2 route. Requested settings and authentic
-task-creation readback MUST remain distinct from effective host settings, which
-MUST be reported unavailable when unexposed.
+When assigning bounded evidence work, MUST read the
+[bounded evidence summaries](child-routing-policy/bounded-evidence-summaries.md)
+for its exact limits, examples, and fallback behavior.
 
 ### Evidenced hard work
 

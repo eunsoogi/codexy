@@ -152,14 +152,17 @@ diagnostic for known ownership and setup state.
    At capacity, MUST retain excess work in the parent backlog without a child
    thread or active child goal. Resource exhaustion, unresolved ownership,
    dirty/locked checkout collisions, or actual shared-resource conflicts MUST
-   defer a lane. If setup returns a `clientThreadId` or `pendingWorktreeId`,
-   MUST retain it as a pending setup identity, not as a `threadId`. MUST wait
-   for an authoritative ready or failed setup result; an observation timeout or
-   an omitted list result is not by itself failure. While pending, MUST search
-   by the pending identity, branch, issue/PR, SHA, and available review-thread
-   id. Only a surfaced thread with an active owner, an actionable setup failure,
-   or a bounded `not-surfaced-after-bounded-wait` state may end a setup search;
-   any retry or reassignment MUST name that state. Ending the search MUST NOT by
+   defer a lane. The per-call `wait_threads` limit of eight targets is separate
+   from the supervised app-child ceiling; splitting calls MUST NOT bypass its
+   slot count. Native `spawn_agent` concurrency follows its own host/tool limit.
+   If setup returns a `clientThreadId` or `pendingWorktreeId`, MUST retain it as
+   a pending setup identity, not as a `threadId`. MUST wait for an authoritative
+   ready or failed setup result; an observation timeout or an omitted list
+   result is not by itself failure. While pending, MUST search by the pending
+   identity, branch, issue/PR, SHA, and available review-thread id. Only a
+   surfaced thread with an active owner, an actionable setup failure, or a
+   bounded `not-surfaced-after-bounded-wait` state may end a setup search; any
+   retry or reassignment MUST name that state. Ending the search MUST NOT by
    itself release the reserved capacity.
 4. When setup is ready, MUST verify the returned task identity, CWD, HEAD, clean
    state, and owner before implementation starts. If the result conflicts with
