@@ -16,11 +16,9 @@ const VALID_SUBJECT: &str = "fix(sample): sample change (#123)";
 fn assert_hook_input(event: &str, kind: &str, tool: &str, input: Value, denied: bool) -> TestResult {
     assert_title(event, kind, json!({"hook_event_name": event, "tool_name": tool, "tool_input": input}), denied)
 }
-
 fn assert_shell_case(event: &str, command: &str, denied: bool) -> TestResult {
     assert_hook_input(event, "shell", "Bash", json!({"command": command}), denied)
 }
-
 fn assert_nested_case(event: &str, code: &str, denied: bool) -> TestResult {
     assert_hook_input(event, "nested", "functions.exec", json!({"code": code}), denied)
 }
@@ -53,7 +51,7 @@ fn supported_merge_routes_control_the_squash_subject() -> TestResult {
             assert_hook_input(event, "merge", tool, input, true)?;
         }
 
-        // Literal CLI routes mirror the connector boundary; --auto is not safely inspectable.
+        // CLI rows cover option values, auto-merge cancellation, and uninspectable auto-merge.
         for (command, denied) in [
             ("gh pr merge 123 --squash --subject 'fix(sample): sample change (#123)'", false),
             ("gh pr merge 123 --subject 'fix(sample): sample change (#123)'", false),
@@ -65,6 +63,14 @@ fn supported_merge_routes_control_the_squash_subject() -> TestResult {
             ("gh pr merge 123 -t 'fix(sample): sample change (#123)'", false),
             ("gh pr merge 123 -m -t 'plain title'", false),
             ("gh pr merge 123 -r -t 'plain title'", false),
+            ("gh pr merge 123 --merge=false", true),
+            ("gh pr merge 123 --merge=false --subject 'fix(sample): sample change (#123)'", false),
+            ("gh pr merge 123 --merge $FLAGS", true),
+            ("gh pr merge 123 --auto=false --squash --subject 'fix(sample): sample change (#123)'", false),
+            ("gh pr merge 123 --disable-auto", false),
+            ("gh pr merge 123 --body '--subject=fix(sample): sample change (#123)'", true),
+            ("gh pr merge 123 -F --merge", true),
+            ("gh pr merge 123 -- --subject='fix(sample): sample change (#123)'", true),
             ("gh pr merge 123 --squash --subject \"$SUBJECT\"", true),
         ] {
             assert_shell_case(event, command, denied)?;
