@@ -23,6 +23,8 @@ mod mutation_preflight;
 mod mcp_config;
 #[path = "sync_version_cli/readme.rs"]
 mod readme;
+#[path = "sync_version_cli/readme_bootstrap.rs"]
+mod readme_bootstrap;
 #[path = "sync_version_cli/restoration.rs"]
 mod restoration;
 #[path = "sync_version_cli/selected_release.rs"]
