@@ -76,12 +76,18 @@ def _call_forbidden(tokens: list[Token], tool: str, open_index: int) -> bool:
             return False
         predicate = issue_title if operation == "update_issue" else pr_title
         return not isinstance(value, str) or not predicate(value)
+    if operation == "enable_auto_merge":
+        # The nested connector call has no final-title field to validate.
+        return True
     if operation == "merge_pull_request":
-        method = fields.get("merge_method")
-        if method == "squash":
-            number, subject = fields.get("pr_number"), fields.get("commit_title")
-            return not squash_subject(subject, number)
-        return method is _DYNAMIC
+        method = fields.get("merge_method", _MISSING)
+        if method in ("merge", "rebase"):
+            return False
+        if method not in ("squash", None, _MISSING):
+            return True
+        # A default method may select squash; accept it only with a valid literal subject.
+        number, subject = fields.get("pr_number"), fields.get("commit_title")
+        return not squash_subject(subject, number)
     return False
 
 
@@ -200,5 +206,6 @@ _SUPPORTED = frozenset(
         "github_create_pull_request",
         "github_update_pull_request",
         "github_merge_pull_request",
+        "github_enable_auto_merge",
     }
 )
