@@ -1,6 +1,6 @@
 [package]
 name = "codexy-runtime"
-version = "2.0.0"
+version = "2.0.1"
 edition = "2024"
 autotests = false
 rust-version = "1.89"

@@ -1,6 +1,6 @@
 {
   "name": "codexy-devtools",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Optional Codegraph impact, check-recommendation, and LSP integrations for Codexy.",
   "author": {
     "name": "Eunsoo Lee",
