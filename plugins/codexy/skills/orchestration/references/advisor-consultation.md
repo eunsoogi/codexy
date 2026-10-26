@@ -62,12 +62,15 @@ After advice arrives, the Orchestrator MUST compare it with current evidence,
 including any new user direction, and the actual authority. It MUST record the
 chosen action and reason under the advice-evaluation rules below. When progress
 is authorized and possible, it MUST send the existing child one grouped
-instruction naming the specific smallest repair or diagnostic action, required
-verification, next allowed phase, and stop condition. A generic "continue"
-message MUST NOT substitute for that instruction. Native blocked-goal recovery
-MUST use its lifecycle route before implementation; other cases MUST retain the
-same child owner. The Orchestrator MUST reconcile capacity before any resume
-under
+instruction identifying either the unmet issue criterion or a verified
+ownership, safety, or dependency constraint, plus the evidence gap and required
+evidence, next permitted phase, and stop condition. The Worker MUST choose any
+in-scope diagnostic or repair action under
+[issue-owned implementation decisions](task-classification.md#issue-owned-implementation-decisions).
+A generic "continue" message MUST NOT substitute for that instruction. Native
+blocked-goal recovery MUST use its lifecycle route before implementation; other
+cases MUST retain the same child owner. The Orchestrator MUST reconcile capacity
+before any resume under
 [supervised app-child capacity](parent-supervision.md#supervised-app-child-capacity).
 
 The Orchestrator MUST confirm the child's actual next relevant call, diff, or

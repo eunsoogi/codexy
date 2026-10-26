@@ -190,11 +190,16 @@ reconciling setup and duplicate-owner evidence.
 - Implementation Workers MUST NOT use Orchestrator-owned Watcher session/token.
   One bounded readback after an actionable report is judgement-only.
 - When an actionable signal arrives, the Orchestrator MUST send one grouped,
-  actionable correction to the existing worker: observed deviation, smallest
-  repair, required evidence, and next permitted step. An acknowledgement is not
-  proof. The Orchestrator MUST read back the next relevant actual tool call,
-  diff, or result. A cooperative freeze-and-report instruction does not cancel
-  an in-flight tool unless the host proves a hard stop.
+  actionable correction to the existing Worker naming the observed deviation and
+  either the unmet issue criterion or a verified ownership, safety, or
+  dependency constraint, plus the evidence gap. It MUST state required evidence
+  and the next permitted step. The Worker MUST choose and implement any in-scope
+  repair under
+  [issue-owned implementation decisions](task-classification.md#issue-owned-implementation-decisions).
+  An acknowledgement is not proof. The Orchestrator MUST read back the next
+  relevant actual tool call, diff, or result. A cooperative freeze-and-report
+  instruction does not cancel an in-flight tool unless the host proves a hard
+  stop.
 - On an explicit Watcher route, fallback inspection MUST require a concrete
   signal or checkpoint. It MUST NOT become continuous transcript polling or
   direct polling of assigned targets; while they remain nonterminal, the

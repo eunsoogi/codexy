@@ -94,8 +94,9 @@
      lane.
    - MUST give each child an exact objective, scope, input evidence,
      deliverable, success criteria, verification, and stop/report conditions.
-     Issue lanes MUST also carry issue, branch/worktree, allowed paths, and
-     read-first files. A status-only child MUST NOT mask substantive parent
+     Issue lanes MUST also carry issue, branch/worktree, justified path
+     constraints, and read-first context; those lists define boundaries/context,
+     not requested edits. A status-only child MUST NOT mask substantive parent
      execution.
    - The initial assignment MUST carry the issue outcome, executable phase
      objective and completion criteria from
@@ -135,13 +136,16 @@
      execution MUST go to the owner or a bounded investigation child.
    - MUST preserve user changes and unrelated work.
    - MUST treat Worker callbacks and Watcher observations as signals, not
-     acceptance. For a Watcher drift signal, the observed artifact, diff, or
-     actual tool call MUST be compared with current scope, ownership, and user
-     constraints. Only the Orchestrator may judge and instruct; the Worker
-     repairs, and the Orchestrator verifies the next relevant call, diff, or
-     result. Preserve the creating surface and native review history.
-   - MUST resolve cross-lane conflicts in the orchestrator thread.
-   - MUST route child-owned review feedback back to the owning child thread.
+     acceptance. For drift, the Orchestrator MUST compare the observed evidence
+     with current scope, ownership, and user constraints. It MUST give
+     criteria-based direction; the Worker MUST choose and implement repairs. The
+     Orchestrator MUST verify the next relevant call, diff, or result and
+     preserve the creating surface and native review history.
+   - MUST resolve cross-lane conflicts in the orchestrator thread and route
+     child-owned issue findings to the owning Worker under
+     [issue-owned implementation decisions](task-classification.md#issue-owned-implementation-decisions).
+     Feedback MUST identify an unmet criterion or verified constraint and its
+     evidence gap; the Worker chooses the repair.
    - If the child owner stops responding, MUST stop and report the PR head,
      owner, last contact, and required evidence. MUST NOT recover by patching
      the branch unless a maintainer explicitly reassigns implementation
@@ -211,14 +215,14 @@ Atomic lane:
 Issue:
 Branch:
 Worktree path:
-Allowed paths:
-Read first:
+Path constraints/reservations and reason (Worker selects files):
+Read-first context (Worker chooses implementation files):
 Deliverable:
 Verification:
 Required evidence:
 Classification evidence:
 Review feedback route:
-Parent verification:
+Parent acceptance: criteria/evidence; Worker chooses repairs
 Initial phase contract: issue outcome; Assignment objective; phase criteria
 Capacity: reserved slot; shared-file/resource reservations; parent gates
 Setup phase: only if required; check, evidence, release condition
