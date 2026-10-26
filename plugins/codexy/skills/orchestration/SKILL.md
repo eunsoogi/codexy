@@ -71,9 +71,14 @@ only coordination, minimum state/evidence readbacks, acceptance judgment, next
 directions, and reporting under
 [task classification](references/task-classification.md#orchestration-request-ownership).
 Ordinary single-task requests and assigned implementation Workers MUST retain
-their existing roles. Delegation MUST preserve actual host/user authority,
-existing owners, setup, goal, review, and capacity rules; missing child
-authority or tools MUST NOT authorize parent execution.
+their existing roles. An explicit scoped orchestration assignment authorizes
+required bounded child tasks and necessary task messages under the
+[authority contract](references/child-routing-policy.md). Codex MUST NOT ask for
+approval again per child or message. Delegation MUST preserve host/user
+permissions, prerequisites, owners, setup, goals, review, and capacity; missing
+authority or tools MUST NOT authorize parent execution. For scoped assignments,
+this authority supersedes the task-creation exclusions in
+`classification-and-control.md`.
 
 ### Delegated supervision route
 
@@ -126,10 +131,13 @@ parent-owned release condition. Otherwise, a ready independent lane MUST proceed
 through implementation, verification, selected review, and handoff within its
 initial authority, without routine read-only, plan-review, or code-only approval
 prompts. The setup release MUST carry the already-defined execution scope;
-follow-up goal startup MUST use actual lifecycle readback. Shared-file or
-resource conflicts (including shared migrations or Simulator reservations),
-missing authority, and material safety decisions MUST remain parent gates;
-independent authorized work MUST continue. Required review and slot capacity
+follow-up goal startup MUST use actual lifecycle readback. Dependency-ready
+same-wave work MUST start concurrently within capacity, even when owned paths
+overlap. Codex MUST NOT scan or compare paths as a dispatch gate. Actual
+integration conflicts MUST be resolved in the owning child branch before merge
+while preserving both changes. Shared-resource conflicts (including migration
+execution or Simulator reservations), prerequisites, missing authority, and
+material safety decisions MUST remain gates. Required review and slot capacity
 MUST remain binding. Model and effort MUST be selected automatically from
 recipient role without asking the user to choose or reconfirm, subject to the
 actual tool contract.

@@ -2,23 +2,23 @@
 
 ## Scope
 
-This is the receipt contract for blocked-goal recovery and terminal child
-handoffs. Native goal startup is governed by `goal-lifecycle`: the owner uses
-the native `get_goal`/`create_goal`/active-readback sequence without parent
-registration receipts. Issue #1036 defines report routing for an explicitly
-assigned Watcher; ordinary Orchestrator observation uses the direct native route
-from #1342. Issue #367 owns runtime task delivery and transition receipt
-mechanics; Issue #373 owns runtime deduplication, restart recovery, worktree
-preservation, and replacement.
+This contract governs blocked-goal recovery and terminal child handoffs. Native
+goal startup follows `goal-lifecycle` without parent registration receipts.
+Issue #1036 owns explicit Watcher report routing; #1342 owns ordinary direct
+Orchestrator observation. Issue #367 owns runtime task delivery and transition
+receipts; #373 owns deduplication, restart recovery, worktree preservation, and
+replacement.
 
 ## Source Parent Binding
 
 A delegated child with `source_thread_id` MUST record that exact value as the
-source parent Codex task id in lane control state. When message permission is
-present, it MUST use the actual Codex task/thread messaging surface to contact
-that id. Without that permission, normal phase submission MUST use the host
-terminal result route below. Local multi-agent messaging, including
-`agents.send_message('/root')`, MUST NOT be presented as a substitute.
+source parent Codex task id in lane control state. The
+[scoped authority](child-routing-policy.md) covers necessary bounded reports and
+recovery messages without another approval; actual host permissions and
+recipient limits still apply. With permission, it MUST use the Codex task/thread
+messaging surface; otherwise normal submission MUST use the host terminal result
+below. Local multi-agent messaging, including `agents.send_message('/root')`,
+MUST NOT be presented as a substitute.
 
 The authenticated child-to-parent call MUST follow the current message-tool
 contract:

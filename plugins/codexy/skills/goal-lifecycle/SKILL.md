@@ -32,9 +32,12 @@ The child MUST use that exact phase objective for its finite goal. Assignment
 authority MUST NOT override the host's goal-creation rules. When the host
 requires an explicit user or system goal request, the task MUST NOT infer that
 authority from delegation alone or require a forbidden `create_goal` call. It
-MUST preserve the readback and report missing authority before task work. When
-goal creation is authorized, it MUST NOT require another opt-in for that same
-phase. Ordinary questions and unassigned suggestions MUST NOT create a goal.
+MUST preserve the readback and report missing authority before task work. Scoped
+orchestration authority covers necessary child tasks and bounded task messages
+under [child routing](../orchestration/references/child-routing-policy.md); it
+MUST NOT be mistaken for host goal-tool permission. When creation is authorized,
+Codex MUST NOT require another opt-in for the same phase. Ordinary questions and
+unassigned suggestions MUST NOT create a goal.
 
 For an Orchestrator/Worker arrangement, the Orchestrator MUST establish or
 continue its exact overall goal before its task work and before Worker dispatch.

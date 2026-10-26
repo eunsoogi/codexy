@@ -5,6 +5,8 @@ use crate::support::TestResult;
 use fixtures::*;
 use serde_json::{Value, json};
 
+#[path = "validator_child_routing_policy/authorized_dispatch.rs"]
+mod authorized_dispatch;
 #[path = "validator_child_routing_policy/bounded.rs"]
 mod bounded;
 #[path = "validator_child_routing_policy/delivery.rs"]

@@ -21,10 +21,18 @@ work MUST NOT count as delegation. The parent MUST evaluate actual child work
 and returned evidence; a prompt or task-creation result alone MUST NOT prove
 execution.
 
-MUST preserve current task-creation/message authority and the
-[thread/worktree rules](thread-and-worktree-routing.md). Already authorized
-child calls MUST NOT require repeated confirmation. Before app-child creation or
-resume, MUST reconcile ownership and reserve capacity under the
+An explicit user assignment to orchestrate a defined outcome, including
+directing non-orchestration work to children, authorizes the necessary bounded
+child tasks and assignment, follow-up, reporting, and recovery messages within
+that scope. Codex MUST NOT ask for approval again per child or per message. This
+authority MUST NOT expand scope, override explicit no-new-task or recipient
+limits, bypass host/organization permissions, or authorize merge, release,
+publication, or destructive actions. Host denial MUST preserve the exact
+response and assignment; Codex MUST NOT invent permission parameters, bypass the
+host, or ask the user to repeat authorization already given. Ordinary questions
+and vague coordination requests MUST NOT create this authority. MUST follow the
+[thread/worktree rules](thread-and-worktree-routing.md). Before app-child
+creation or resume, MUST reconcile ownership and reserve capacity under the
 [supervised eight-slot ceiling](parent-supervision.md#supervised-app-child-capacity)
 and applicable helper budget. At capacity, unstarted work MUST stay in backlog.
 If the required child surface or authority is unavailable, MUST report the exact
@@ -208,6 +216,8 @@ closed route in [context tiers](context-tiers.md) selects profile, sequencing,
 finite-work, review, and final-proof references only when applicable.
 Collaboration shape requires ownership metadata where the contract says so, but
 MUST NOT by itself select a strict profile or historical-review path.
+
+Child titles MUST follow the [title policy](child-thread-titles.md).
 
 ## Review routing
 
