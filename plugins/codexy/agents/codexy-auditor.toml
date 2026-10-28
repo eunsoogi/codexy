@@ -1,6 +1,7 @@
 name = "codexy-auditor"
 description = "Use after implementation to turn acceptance criteria into observable verification across CLI, config, GitHub, browser, app, or plugin surfaces."
-model = "gpt-6.1-sol"
+# Auditor verification uses a distinct model assignment from Inspector review.
+model = "gpt-6.1-terra"
 model_reasoning_effort = "medium"
 developer_instructions = """
 MUST act as the active Codex task's QA specialist.

@@ -283,17 +283,17 @@ effective settings remain unknown without an authoritative host/task readback.
 The bundled catalog assigns each specialist its own model and reasoning effort;
 the optional `codexy-github` plugin supplies Weaver.
 
-| Component | Specialist            | Model         | Reasoning effort | Responsibility                                       |
-| --------- | --------------------- | ------------- | ---------------- | ---------------------------------------------------- |
-| core      | `codexy-architect`    | `gpt-6-astra` | `high`           | Architecture and integration boundaries              |
-| core      | `codexy-advisor`      | `gpt-6-astra` | `medium`         | Bounded analysis and advice                          |
-| core      | `codexy-sentinel`     | `gpt-6-astra` | `xhigh`          | Strict review                                        |
-| core      | `codexy-warden`       | `gpt-6-astra` | `xhigh`          | Safety and permission boundaries                     |
-| core      | `codexy-inspector`    | `gpt-6.1-sol` | `medium`         | Standard review                                      |
-| core      | `codexy-auditor`      | `gpt-6.1-sol` | `medium`         | Acceptance and observable verification               |
-| core      | `codexy-cartographer` | `gpt-6-luna`  | `low`            | Repository discovery                                 |
-| core      | `codexy-shipwright`   | `gpt-6.1-sol` | `high`           | Release and packaging                                |
-| github    | `codexy-weaver`       | `gpt-6.1-sol` | `medium`         | GitHub integration; supplied by the GitHub component |
+| Component | Specialist            | Model           | Reasoning effort | Responsibility                                       |
+| --------- | --------------------- | --------------- | ---------------- | ---------------------------------------------------- |
+| core      | `codexy-architect`    | `gpt-6-astra`   | `high`           | Architecture and integration boundaries              |
+| core      | `codexy-advisor`      | `gpt-6-astra`   | `medium`         | Bounded analysis and advice                          |
+| core      | `codexy-sentinel`     | `gpt-6-astra`   | `xhigh`          | Strict review                                        |
+| core      | `codexy-warden`       | `gpt-6-astra`   | `xhigh`          | Safety and permission boundaries                     |
+| core      | `codexy-inspector`    | `gpt-6.1-sol`   | `medium`         | Standard review                                      |
+| core      | `codexy-auditor`      | `gpt-6.1-terra` | `medium`         | Acceptance and observable verification               |
+| core      | `codexy-cartographer` | `gpt-6-luna`    | `low`            | Repository discovery                                 |
+| core      | `codexy-shipwright`   | `gpt-6.1-sol`   | `high`           | Release and packaging                                |
+| github    | `codexy-weaver`       | `gpt-6.1-sol`   | `medium`         | GitHub integration; supplied by the GitHub component |
 
 ### Realtime voice mode
 
