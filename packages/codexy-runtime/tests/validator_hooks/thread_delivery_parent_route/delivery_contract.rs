@@ -32,7 +32,7 @@ fn run_delivery(
 }
 
 #[test]
-fn both_worker_pairs_and_parent_route_preserve_authenticated_settings() -> TestResult {
+fn all_worker_delivery_pairs_and_parent_route_preserve_authenticated_settings() -> TestResult {
     let temp = tempfile::tempdir()?;
     let transcript = temp.path().join("ignored.jsonl");
     std::fs::write(&transcript, b"not-json\n")?;
@@ -44,6 +44,13 @@ fn both_worker_pairs_and_parent_route_preserve_authenticated_settings() -> TestR
             WORKER_ID,
             "gpt-6-luna",
             "max",
+        ),
+        (
+            "root_to_child",
+            ORCHESTRATOR_ID,
+            WORKER_ID,
+            "gpt-6.1-terra",
+            "medium",
         ),
         (
             "root_to_child",
@@ -86,6 +93,13 @@ fn both_worker_pairs_and_parent_route_preserve_authenticated_settings() -> TestR
                     WORKER_ID,
                     "gpt-6-luna",
                     "medium",
+                ),
+                (
+                    "root_to_child",
+                    ORCHESTRATOR_ID,
+                    WORKER_ID,
+                    "gpt-6.1-terra",
+                    "max",
                 ),
                 (
                     "root_to_child",

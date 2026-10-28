@@ -1,11 +1,11 @@
-//! Keeps app-managed project worktree requirements intact for both Worker
+//! Keeps app-managed project worktree requirements intact for both new Worker
 //! pairs; local and incomplete targets cannot be retrofitted later.
 
 use super::*;
 
 // Keep expected routes explicit so subprocess cases catch creation/delivery drift.
 pub(super) const SUPPORTED_WORKER_PAIRS: &[(&str, &str)] =
-    &[("gpt-6-luna", "max"), ("gpt-6.1-sol", "medium")];
+    &[("gpt-6-luna", "max"), ("gpt-6.1-terra", "medium")];
 
 #[test]
 fn app_project_worktree_is_admitted_for_both_supported_worker_pairs() -> TestResult {
@@ -31,7 +31,7 @@ fn crossed_worker_model_and_thinking_pairs_are_rejected() -> TestResult {
     let cwd = primary_checkout();
     let cases = [
         ("Luna with medium", "gpt-6-luna", "medium"),
-        ("Sol with max", "gpt-6.1-sol", "max"),
+        ("Terra with max", "gpt-6.1-terra", "max"),
     ];
 
     for (label, model, thinking) in cases {
@@ -50,6 +50,25 @@ fn crossed_worker_model_and_thinking_pairs_are_rejected() -> TestResult {
                 .ok_or("crossed Worker pair denial reason")?;
                 assert!(reason.contains("UNSUPPORTED_THINKING"), "{label}: {reason}");
             }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn legacy_sol_pair_is_not_admitted_for_new_worker_creation() -> TestResult {
+    let cwd = primary_checkout();
+    let tool_input = with_project_worktree(
+        json!({"model":"gpt-6.1-sol","thinking":"medium"}),
+    );
+    for tool in TOOLS {
+        for event in ["PreToolUse", "PermissionRequest"] {
+            let mut input = pre_tool_input_at(tool, tool_input.clone(), &cwd);
+            input["hook_event_name"] = json!(event);
+            assert!(
+                hook_denied_for(&input, event)?,
+                "legacy Sol/Medium was admitted for {event}: {input}"
+            );
         }
     }
     Ok(())

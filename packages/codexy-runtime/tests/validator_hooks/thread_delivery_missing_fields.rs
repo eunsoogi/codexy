@@ -58,6 +58,9 @@ fn orchestrator_missing_fields_use_worker_remedy() -> TestResult {
                 );
                 assert!(reason.contains("gpt-6-luna"), "{event} {label}: {reason}");
                 assert!(reason.contains("max"), "{event} {label}: {reason}");
+                assert!(reason.contains("gpt-6.1-terra"), "{event} {label}: {reason}");
+                assert!(reason.contains("gpt-6.1-sol"), "{event} {label}: {reason}");
+                assert!(reason.contains("medium"), "{event} {label}: {reason}");
                 assert!(reason.contains("MUST"), "{event} {label}: {reason}");
                 assert!(
                     !reason.contains("Worker-to-Orchestrator"),

@@ -50,10 +50,12 @@ for authenticated Worker-to-Orchestrator delivery. The Advisor uses
 `gpt-6-astra` / `medium` for bounded, instruction-based read-only advice; this
 boundary does not enforce host permissions. A Worker owns one issue lane, its
 branch/worktree, and its finite goal. Ordinary, simple, bounded, and general
-implementation work defaults to `gpt-6-luna` / `max`. Selecting `gpt-6.1-sol` /
-`medium` requires explicit facts for coupled contract changes, algorithm design,
-or cross-boundary diagnosis. Ambiguous authority, inputs, and ownership remain
-fail-closed under the
+implementation work defaults to `gpt-6-luna` / `max`. A new general Worker with
+valid facts for coupled contract changes, algorithm design, or cross-boundary
+diagnosis receives `gpt-6.1-terra` / `medium` directly. Existing Sol/Medium
+Workers retain authenticated follow-up delivery; new Worker creation does not
+allow Sol/Medium. Ambiguous authority, inputs, and ownership remain fail-closed
+under the
 [Worker routing policy](../plugins/codexy/skills/orchestration/references/child-routing-policy.md).
 Role ownership is defined in the
 [supervision reference](../plugins/codexy/skills/orchestration/references/parent-supervision.md).

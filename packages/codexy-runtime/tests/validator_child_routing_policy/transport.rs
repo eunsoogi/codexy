@@ -1,4 +1,4 @@
-//! Drives resolved Worker pairs through the real creation/delivery hook launchers.
+//! Drives resolved Worker pairs through source and installed-copy hook launchers.
 //! These subprocesses prove local admission, not an app task or effective host settings.
 
 use super::*;
@@ -6,67 +6,82 @@ use crate::support::FixtureCommand as Command;
 use std::{io::Write as _, path::Path, process::Stdio};
 
 #[test]
-fn issue_1423_resolved_pairs_survive_creation_and_authenticated_delivery() -> TestResult {
+fn issue_1442_resolved_pairs_survive_creation_and_authenticated_delivery() -> TestResult {
     let primary = primary_checkout()?;
+    let temp = tempfile::tempdir()?;
+    let source = root();
+    let installed = temp.path().join("installed");
+    crate::support::copy_dir(source.clone(), &installed)?;
+    let plugin_roots = [source, installed];
     let mut assignments = vec![
         request("general", LUNA),
         request("simple", LUNA),
         bounded_request(),
     ];
     for facts in hard_work_cases()? {
-        let mut hard = request("general", SOL);
+        let mut hard = request("general", TERRA);
         hard["hard_work"] = facts;
         assignments.push(hard);
     }
     for assignment in assignments {
         let chosen = resolve(&assignment)?;
         let expected = if assignment.get("hard_work").is_some() {
-            SOL
+            TERRA
         } else {
             LUNA
         };
         assert_eq!(chosen, selected("generic", "create_thread", expected));
-        for event in ["PreToolUse", "PermissionRequest"] {
-            let creation = json!({
-                "hook_event_name":event, "tool_name":"mcp__codex_app__create_thread", "cwd":primary,
-                "tool_input":{
-                    "model":chosen["model"], "thinking":chosen["thinking"],
-                    "target":{"type":"project", "projectId":"routing-proof",
-                        "environment":{"type":"worktree"}}
-                }
-            });
-            assert!(!denied(
-                "codexy-child-thread-creation.sh",
-                event,
-                &creation
-            )?);
-            let mut crossed = creation.clone();
-            crossed["tool_input"]["thinking"] = json!("high");
-            assert!(denied("codexy-child-thread-creation.sh", event, &crossed)?);
+        for plugin_root in &plugin_roots {
+            for event in ["PreToolUse", "PermissionRequest"] {
+                let creation = json!({
+                    "hook_event_name":event, "tool_name":"mcp__codex_app__create_thread", "cwd":primary,
+                    "tool_input":{
+                        "model":chosen["model"], "thinking":chosen["thinking"],
+                        "target":{"type":"project", "projectId":"routing-proof",
+                            "environment":{"type":"worktree"}}
+                    }
+                });
+                assert!(!denied(
+                    plugin_root,
+                    "codexy-child-thread-creation.sh",
+                    event,
+                    &creation
+                )?);
+                let mut crossed = creation.clone();
+                crossed["tool_input"]["thinking"] = json!("high");
+                assert!(denied(
+                    plugin_root,
+                    "codexy-child-thread-creation.sh",
+                    event,
+                    &crossed
+                )?);
 
-            let mut followup = request("general", expected);
-            followup["schema"] = json!("codexy.child-routing-request.v2");
-            followup["codex_thread_operation"] = json!("send_message_to_thread");
-            followup["codex_thread_direction"] = json!("parent_to_generic");
-            followup["recipient_assignment"] =
-                json!({"model":chosen["model"],"thinking":chosen["thinking"]});
-            let delivered = resolve(&followup)?;
-            assert_eq!(
-                delivered,
-                selected("parent_to_generic", "send_message_to_thread", expected)
-            );
-            let envelope = delivery_envelope(event, &delivered, &primary);
-            assert!(!denied("codexy-thread-delivery.sh", event, &envelope)?);
-            let mut crossed = envelope.clone();
-            crossed["tool_input"]["model"] = json!(if expected == LUNA { SOL.0 } else { LUNA.0 });
-            assert!(denied("codexy-thread-delivery.sh", event, &crossed)?);
-            let mut wrong_recipient = envelope;
-            wrong_recipient["tool_input"]["threadId"] = json!("another-worker");
-            assert!(denied(
-                "codexy-thread-delivery.sh",
-                event,
-                &wrong_recipient
-            )?);
+                let mut followup = request("general", expected);
+                followup["schema"] = json!("codexy.child-routing-request.v2");
+                followup["codex_thread_operation"] = json!("send_message_to_thread");
+                followup["codex_thread_direction"] = json!("parent_to_generic");
+                followup["recipient_assignment"] =
+                    json!({"model":chosen["model"],"thinking":chosen["thinking"]});
+                let delivered = resolve(&followup)?;
+                assert_eq!(
+                    delivered,
+                    selected("parent_to_generic", "send_message_to_thread", expected)
+                );
+                let envelope = delivery_envelope(event, &delivered, &primary);
+                assert!(!denied(plugin_root, "codexy-thread-delivery.sh", event, &envelope)?);
+                let mut crossed = envelope.clone();
+                crossed["tool_input"]["model"] =
+                    json!(if expected == LUNA { TERRA.0 } else { LUNA.0 });
+                assert!(denied(plugin_root, "codexy-thread-delivery.sh", event, &crossed)?);
+                let mut wrong_recipient = envelope;
+                wrong_recipient["tool_input"]["threadId"] = json!("another-worker");
+                assert!(denied(
+                    plugin_root,
+                    "codexy-thread-delivery.sh",
+                    event,
+                    &wrong_recipient
+                )?);
+            }
         }
     }
     Ok(())
@@ -88,11 +103,10 @@ fn delivery_envelope(event: &str, chosen: &Value, cwd: &Path) -> Value {
     })
 }
 
-fn denied(launcher: &str, event: &str, input: &Value) -> TestResult<bool> {
-    let plugin = root();
-    let mut child = Command::new(plugin.join("hooks").join(launcher))
+fn denied(plugin_root: &Path, launcher: &str, event: &str, input: &Value) -> TestResult<bool> {
+    let mut child = Command::new(plugin_root.join("hooks").join(launcher))
         .arg(event)
-        .env("PLUGIN_ROOT", &plugin)
+        .env("PLUGIN_ROOT", plugin_root)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
