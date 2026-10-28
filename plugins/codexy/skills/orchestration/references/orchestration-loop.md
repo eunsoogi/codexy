@@ -7,10 +7,10 @@
      validation, PR handling, review-response routing, or merge coordination.
    - MUST read the latest request, active project instructions, active issue,
      and relevant local skills.
-   - When the issue includes delegated app-thread supervision, MUST read
-     [parent supervision](parent-supervision.md) and distinguish the
-     Orchestrator, Worker, Watcher, and native-reviewer surfaces before routing
-     work.
+   - For app-thread work, MUST read [supervision](parent-supervision.md);
+     eligible hard-work elevation MUST follow
+     [reconciliation](worker-elevation/reconciliation.md) before transfer. Role
+     boundaries MUST stay distinct.
    - For orchestration requests, MUST apply the
      [orchestration-request ownership boundary](task-classification.md#orchestration-request-ownership):
      parent coordination and acceptance; child investigation, design, execution,
