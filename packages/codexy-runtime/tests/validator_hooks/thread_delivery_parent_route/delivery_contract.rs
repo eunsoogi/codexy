@@ -5,8 +5,8 @@ use std::path::Path;
 use serde_json::json;
 
 use super::super::thread_delivery_support::{
-    CHILD as WORKER_ID, PARENT as ORCHESTRATOR_ID, assert_admitted, assert_denied, input,
-    plugin_roots, route, run,
+    CHILD as WORKER_ID, PARENT as ORCHESTRATOR_ID, assert_admitted,
+    assert_deprecated_context, assert_denied, input, plugin_roots, route, run,
 };
 use crate::support::TestResult;
 
@@ -32,7 +32,7 @@ fn run_delivery(
 }
 
 #[test]
-fn both_worker_pairs_and_parent_route_preserve_authenticated_settings() -> TestResult {
+fn all_worker_delivery_pairs_and_parent_route_preserve_authenticated_settings() -> TestResult {
     let temp = tempfile::tempdir()?;
     let transcript = temp.path().join("ignored.jsonl");
     std::fs::write(&transcript, b"not-json\n")?;
@@ -44,6 +44,13 @@ fn both_worker_pairs_and_parent_route_preserve_authenticated_settings() -> TestR
             WORKER_ID,
             "gpt-6-luna",
             "max",
+        ),
+        (
+            "root_to_child",
+            ORCHESTRATOR_ID,
+            WORKER_ID,
+            "gpt-6.1-terra",
+            "medium",
         ),
         (
             "root_to_child",
@@ -64,19 +71,23 @@ fn both_worker_pairs_and_parent_route_preserve_authenticated_settings() -> TestR
     for event in ["PermissionRequest", "PreToolUse"] {
         for root in &roots {
             for (direction, sender, target, model, thinking) in admitted {
-                assert_admitted(
-                    run_delivery(
-                        root,
-                        event,
-                        &transcript,
-                        (direction, sender, target, model, thinking),
-                        target,
-                        (model, thinking),
-                        "Post-result receipt wording is ordinary message content.",
-                    )?,
+                let output = run_delivery(
+                    root,
                     event,
-                    direction,
+                    &transcript,
+                    (direction, sender, target, model, thinking),
+                    target,
+                    (model, thinking),
+                    "Post-result receipt wording is ordinary message content.",
                 )?;
+                if event == "PreToolUse"
+                    && direction == "root_to_child"
+                    && (model, thinking) == ("gpt-6.1-sol", "medium")
+                {
+                    assert_deprecated_context(output, event, "existing Sol recipient")?;
+                } else {
+                    assert_admitted(output, event, direction)?;
+                }
             }
 
             for (direction, sender, target, model, thinking) in [
@@ -86,6 +97,13 @@ fn both_worker_pairs_and_parent_route_preserve_authenticated_settings() -> TestR
                     WORKER_ID,
                     "gpt-6-luna",
                     "medium",
+                ),
+                (
+                    "root_to_child",
+                    ORCHESTRATOR_ID,
+                    WORKER_ID,
+                    "gpt-6.1-terra",
+                    "max",
                 ),
                 (
                     "root_to_child",

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import cast
 
 from .envelope import Diagnostic, Request
-from .thread_delivery import FIELDS, WORKER_ROUTES
+from .thread_delivery import FIELDS, WORKER_CREATION_ROUTES
 
 
 def forbidden(request: Request) -> bool | Diagnostic:
@@ -27,9 +27,9 @@ def forbidden(request: Request) -> bool | Diagnostic:
     model = cast(str, data["model"])
     thinking = cast(str, data["thinking"])
     # Match the shared allowlist as pairs, so a model cannot borrow another pair's setting.
-    if not any(model == route_model for route_model, _ in WORKER_ROUTES):
+    if not any(model == route_model for route_model, _ in WORKER_CREATION_ROUTES):
         return Diagnostic("UNSUPPORTED_MODEL", _UNSUPPORTED_MODEL)
-    if (model, thinking) not in WORKER_ROUTES:
+    if (model, thinking) not in WORKER_CREATION_ROUTES:
         return Diagnostic("UNSUPPORTED_THINKING", _UNSUPPORTED_THINKING)
     return False
 
@@ -128,10 +128,10 @@ def _missing_field_diagnostic(fields: list[str]) -> Diagnostic:
     )
 
 
-# Build denials from the delivery allowlist so their accepted pairs cannot drift.
+# Build denials from the creation allowlist so existing-recipient routes cannot leak into admission.
 _REQUIRED_ROUTE = "Worker creation requires either " + " or ".join(
     f"model='{model}' and thinking='{thinking}'"
-    for model, thinking in sorted(WORKER_ROUTES)
+    for model, thinking in sorted(WORKER_CREATION_ROUTES)
 )
 _APP_WORKTREE_REQUIRED = (
     "Worker creation requires the Codex app-managed project worktree in the original "

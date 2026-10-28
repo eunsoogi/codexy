@@ -16,7 +16,8 @@ pub(super) struct SpecialistModelContract {
 pub(super) const SPECIALIST_MODEL_CONTRACTS: &[SpecialistModelContract] = &[
     contract("codexy-architect", "gpt-6-astra", "high"),
     contract("codexy-advisor", "gpt-6-astra", "medium"),
-    contract("codexy-auditor", "gpt-6.1-sol", "medium"),
+    // Keep acceptance verification distinct from the Inspector's standard Sol/medium review.
+    contract("codexy-auditor", "gpt-6.1-terra", "medium"),
     contract("codexy-cartographer", "gpt-6-luna", "low"),
     contract("codexy-inspector", "gpt-6.1-sol", "medium"),
     contract("codexy-sentinel", "gpt-6-astra", "xhigh"),

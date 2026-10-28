@@ -240,12 +240,12 @@ Codexy separates task ownership from bundled specialist roles. These are the
 project's role settings; installation does not change a host's default model or
 opt a user into another repository's GitHub policy.
 
-| Role                       | Model                     | Reasoning effort     | Responsibility                                                                                                                                                                                                                                                               |
-| -------------------------- | ------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Orchestrator / parent      | `gpt-6.1-sol`             | `low`                | Assigns and follows Worker work, owns the overall task goal, corrects deviations, verifies reports, and accepts results.                                                                                                                                                     |
-| Advisor / `codexy-advisor` | `gpt-6-astra`             | `medium`             | Instruction-bounded analysis and advice; does not edit, delegate, change ownership, or grant final approval.                                                                                                                                                                 |
-| Worker / ordinary child    | `gpt-6-luna` (default)    | `max` (default)      | Separate app task that owns its implementation branch/worktree. The Orchestrator observes ordinary events directly. Luna/Max is the default for ordinary, simple, bounded, and general implementation work. Ambiguous scope, authority, or required inputs stay fail-closed. |
-|                            | `gpt-6.1-sol` (hard work) | `medium` (hard work) | Sol/Medium requires an explicit hard-work criterion.                                                                                                                                                                                                                         |
+| Role                       | Model                       | Reasoning effort     | Responsibility                                                                                                                                                                                                                                                               |
+| -------------------------- | --------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Orchestrator / parent      | `gpt-6.1-sol`               | `low`                | Assigns and follows Worker work, owns the overall task goal, corrects deviations, verifies reports, and accepts results.                                                                                                                                                     |
+| Advisor / `codexy-advisor` | `gpt-6-astra`               | `medium`             | Instruction-bounded analysis and advice; does not edit, delegate, change ownership, or grant final approval.                                                                                                                                                                 |
+| Worker / ordinary child    | `gpt-6-luna` (default)      | `max` (default)      | Separate app task that owns its implementation branch/worktree. The Orchestrator observes ordinary events directly. Luna/Max is the default for ordinary, simple, bounded, and general implementation work. Ambiguous scope, authority, or required inputs stay fail-closed. |
+|                            | `gpt-6.1-terra` (hard work) | `medium` (hard work) | A new Worker with valid hard-work facts receives Terra/Medium directly. Existing Sol/Medium Workers retain authenticated follow-up delivery; Sol/Medium is not allowed for new Worker creation.                                                                              |
 
 Role pairs are requested settings. Effective host settings remain unavailable
 when unexposed; policy updates do not change an already-running session or
@@ -283,17 +283,17 @@ effective settings remain unknown without an authoritative host/task readback.
 The bundled catalog assigns each specialist its own model and reasoning effort;
 the optional `codexy-github` plugin supplies Weaver.
 
-| Component | Specialist            | Model         | Reasoning effort | Responsibility                                       |
-| --------- | --------------------- | ------------- | ---------------- | ---------------------------------------------------- |
-| core      | `codexy-architect`    | `gpt-6-astra` | `high`           | Architecture and integration boundaries              |
-| core      | `codexy-advisor`      | `gpt-6-astra` | `medium`         | Bounded analysis and advice                          |
-| core      | `codexy-sentinel`     | `gpt-6-astra` | `xhigh`          | Strict review                                        |
-| core      | `codexy-warden`       | `gpt-6-astra` | `xhigh`          | Safety and permission boundaries                     |
-| core      | `codexy-inspector`    | `gpt-6.1-sol` | `medium`         | Standard review                                      |
-| core      | `codexy-auditor`      | `gpt-6.1-sol` | `medium`         | Acceptance and observable verification               |
-| core      | `codexy-cartographer` | `gpt-6-luna`  | `low`            | Repository discovery                                 |
-| core      | `codexy-shipwright`   | `gpt-6.1-sol` | `high`           | Release and packaging                                |
-| github    | `codexy-weaver`       | `gpt-6.1-sol` | `medium`         | GitHub integration; supplied by the GitHub component |
+| Component | Specialist            | Model           | Reasoning effort | Responsibility                                       |
+| --------- | --------------------- | --------------- | ---------------- | ---------------------------------------------------- |
+| core      | `codexy-architect`    | `gpt-6-astra`   | `high`           | Architecture and integration boundaries              |
+| core      | `codexy-advisor`      | `gpt-6-astra`   | `medium`         | Bounded analysis and advice                          |
+| core      | `codexy-sentinel`     | `gpt-6-astra`   | `xhigh`          | Strict review                                        |
+| core      | `codexy-warden`       | `gpt-6-astra`   | `xhigh`          | Safety and permission boundaries                     |
+| core      | `codexy-inspector`    | `gpt-6.1-sol`   | `medium`         | Standard review                                      |
+| core      | `codexy-auditor`      | `gpt-6.1-terra` | `medium`         | Acceptance and observable verification               |
+| core      | `codexy-cartographer` | `gpt-6-luna`    | `low`            | Repository discovery                                 |
+| core      | `codexy-shipwright`   | `gpt-6.1-sol`   | `high`           | Release and packaging                                |
+| github    | `codexy-weaver`       | `gpt-6.1-sol`   | `medium`         | GitHub integration; supplied by the GitHub component |
 
 ### Realtime voice mode
 

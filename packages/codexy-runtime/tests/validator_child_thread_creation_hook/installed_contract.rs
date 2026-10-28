@@ -54,8 +54,13 @@ fn worker_creation_diagnostics_describe_both_supported_pairs() -> TestResult {
         ),
         (
             "crossed pair",
-            json!({"model":"gpt-6.1-sol","thinking":"max"}),
+            json!({"model":"gpt-6.1-terra","thinking":"max"}),
             "UNSUPPORTED_THINKING",
+        ),
+        (
+            "legacy Sol delivery pair",
+            json!({"model":"gpt-6.1-sol","thinking":"medium"}),
+            "UNSUPPORTED_MODEL",
         ),
     ];
 
@@ -70,7 +75,7 @@ fn worker_creation_diagnostics_describe_both_supported_pairs() -> TestResult {
             assert!(reason.contains(diagnostic), "{label}: {reason}");
             for pair in [
                 "model='gpt-6-luna' and thinking='max'",
-                "model='gpt-6.1-sol' and thinking='medium'",
+                "model='gpt-6.1-terra' and thinking='medium'",
             ] {
                 assert!(reason.contains(pair), "{label} omitted {pair}: {reason}");
             }

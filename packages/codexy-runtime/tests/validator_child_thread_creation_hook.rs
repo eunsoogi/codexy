@@ -44,7 +44,7 @@ fn exact_wave_zero_omitted_field_call_is_rejected_before_mutation() -> TestResul
 }
 
 #[test]
-fn worker_pair_is_admitted_and_arbitrary_pairs_are_rejected() -> TestResult {
+fn default_worker_pair_is_admitted_and_arbitrary_pairs_are_rejected() -> TestResult {
     let cases = [
         (
             "Worker default",

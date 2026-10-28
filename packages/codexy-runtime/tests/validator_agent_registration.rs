@@ -80,6 +80,12 @@ fn register_codexy_agents_writes_stable_discovery_files() -> Result<(), Box<dyn 
         assert!(installed.starts_with("# CODEXY MANAGED AGENT\n"));
         assert!(installed.contains(&format!("name = \"{name}\"")));
     }
+    // The copied registration file must preserve the Auditor's explicit source assignment.
+    let auditor_path = agents_root.join("codexy-auditor.toml");
+    let auditor: toml::Value = toml::from_str(&std::fs::read_to_string(auditor_path)?)?;
+    assert_eq!(auditor["model"].as_str(), Some("gpt-6.1-terra"));
+    assert_eq!(auditor["model_reasoning_effort"].as_str(), Some("medium"));
+
     let advisor_path = agents_root.join("codexy-advisor.toml");
     let advisor: toml::Value = toml::from_str(&std::fs::read_to_string(advisor_path)?)?;
     assert_eq!(advisor["model"].as_str(), Some("gpt-6-astra"));

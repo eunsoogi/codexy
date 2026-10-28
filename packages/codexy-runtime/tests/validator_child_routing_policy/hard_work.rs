@@ -15,19 +15,23 @@ fn issue_1423_rejects_positional_hard_work_evidence() -> TestResult {
 }
 
 #[test]
-fn issue_1423_only_evidenced_hard_work_selects_sol() -> TestResult {
+fn issue_1442_only_evidenced_hard_work_selects_terra() -> TestResult {
     for facts in hard_work_cases()? {
-        let mut hard = request("general", SOL);
+        let mut hard = request("general", TERRA);
         hard["hard_work"] = facts;
         hard["simple_predicates"]["deterministic_oracle"] = json!(false);
-        check(hard.clone(), selected("generic", "create_thread", SOL))?;
+        check(hard.clone(), selected("generic", "create_thread", TERRA))?;
         hard["codex_thread_capabilities"]["models"]
             .as_array_mut()
             .ok_or("models")?
             .push(json!({"model":LUNA.0,"thinking":[LUNA.1]}));
-        check(hard.clone(), selected("generic", "create_thread", SOL))?;
+        check(hard.clone(), selected("generic", "create_thread", TERRA))?;
         hard["codex_thread_capabilities"] =
             request("general", LUNA)["codex_thread_capabilities"].clone();
+        check(hard.clone(), fallback())?;
+        // Existing Sol recipients remain deliverable, but Sol is never a new hard assignment.
+        hard["codex_thread_capabilities"] =
+            request("general", SOL)["codex_thread_capabilities"].clone();
         check(hard.clone(), fallback())?;
         for classification in [
             "simple",
@@ -56,7 +60,7 @@ fn issue_1423_only_evidenced_hard_work_selects_sol() -> TestResult {
             "low_risk_reversible",
             "no_unresolved_decision",
         ] {
-            let mut unsettled = request("general", SOL);
+            let mut unsettled = request("general", TERRA);
             unsettled["hard_work"] = hard["hard_work"].clone();
             unsettled["simple_predicates"][predicate] = json!(false);
             check(unsettled, fallback())?;
@@ -65,6 +69,17 @@ fn issue_1423_only_evidenced_hard_work_selects_sol() -> TestResult {
     let mut ordinary = request("general", LUNA);
     ordinary["simple_predicates"]["deterministic_oracle"] = json!(false);
     check(ordinary, selected("generic", "create_thread", LUNA))?;
+    let mut available_terra_is_not_hard_work = request("general", LUNA);
+    available_terra_is_not_hard_work["codex_thread_capabilities"]["models"]
+        .as_array_mut()
+        .ok_or("models")?
+        .push(json!({"model":TERRA.0,"thinking":[TERRA.1]}));
+    check(
+        available_terra_is_not_hard_work,
+        selected("generic", "create_thread", LUNA),
+    )?;
+    let ordinary_without_luna = request("general", TERRA);
+    check(ordinary_without_luna, fallback())?;
     for predicate in [
         "fixed_scope",
         "low_risk_reversible",
@@ -88,7 +103,7 @@ fn issue_1423_only_evidenced_hard_work_selects_sol() -> TestResult {
 #[test]
 fn issue_1423_hard_work_rejects_unsubstantiated_and_malformed_claims() -> TestResult {
     for facts in hard_work_cases()? {
-        let mut hard = request("general", SOL);
+        let mut hard = request("general", TERRA);
         hard["hard_work"] = facts.clone();
         for field in facts.as_object().ok_or("facts")?.keys() {
             let mut missing = hard.clone();
@@ -128,7 +143,7 @@ fn issue_1423_hard_work_rejects_unsubstantiated_and_malformed_claims() -> TestRe
         json!(true),
         json!([]),
     ] {
-        let mut hard = request("general", SOL);
+        let mut hard = request("general", TERRA);
         hard["hard_work"] = facts;
         rejects(hard, "")?;
     }

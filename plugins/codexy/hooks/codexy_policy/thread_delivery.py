@@ -4,14 +4,28 @@ from __future__ import annotations
 
 from typing import cast
 
-from .envelope import Diagnostic, Request
+from .envelope import Advisory, Diagnostic, Request
 
 FIELDS = ("model", "thinking")
 WORKER_ROUTE = ("gpt-6-luna", "max")
+HARD_WORKER_ROUTE = ("gpt-6.1-terra", "medium")
+LEGACY_WORKER_ROUTE = ("gpt-6.1-sol", "medium")
 # Worker selection stays independent from the parent request; authenticated
 # direction and target identity remain mandatory even when a pair is recognized.
-WORKER_ROUTES = frozenset({WORKER_ROUTE, ("gpt-6.1-sol", "medium")})
+WORKER_CREATION_ROUTES = frozenset({WORKER_ROUTE, HARD_WORKER_ROUTE})
+# Delivery accepts current assignments plus existing Sol recipients during migration.
+WORKER_DELIVERY_ROUTES = WORKER_CREATION_ROUTES | {LEGACY_WORKER_ROUTE}
 ORCHESTRATOR_ROUTE = ("gpt-6.1-sol", "low")
+MESSAGE_TOOLS = frozenset(
+    {"codex_app__send_message_to_thread", "mcp__codex_app__send_message_to_thread"}
+)
+LEGACY_WORKER_WARNING = (
+    "CODEXY_THREAD_DELIVERY_DEPRECATED_WORKER_ROUTE: The gpt-6.1-sol/medium Worker "
+    "route is deprecated in codexy. Create new hard Workers with gpt-6.1-terra/medium "
+    "and default Workers with gpt-6-luna/max. This delivery preserves the existing "
+    "recipient assignment. Do not change its model or retry this delivery solely "
+    "because of this warning."
+)
 ROUTING_SCHEMA = "codexy.thread-delivery.v2"
 ROUTING_FIELDS = frozenset(
     {
@@ -29,7 +43,7 @@ ROUTING_FIELDS = frozenset(
 DIRECTIONS = frozenset({"root_to_child", "child_to_parent"})
 
 
-def forbidden(request: Request) -> bool | str | Diagnostic:
+def forbidden(request: Request) -> bool | str | Diagnostic | Advisory:
     # Hosts that do not yet emit the v2 envelope keep the legacy no-op
     # admission path. Once the field is present, every v2 check below remains
     # fail-closed; absence never promotes transcript or message content to
@@ -79,12 +93,22 @@ def forbidden(request: Request) -> bool | str | Diagnostic:
             return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
     else:
         expected = target_route
-        if expected not in WORKER_ROUTES:
+        if expected not in WORKER_DELIVERY_ROUTES:
             return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
     if data["model"] != expected[0]:
         return Diagnostic("UNSUPPORTED_MODEL", _unsupported_model(direction))
     if data["thinking"] != expected[1]:
         return Diagnostic("UNSUPPORTED_THINKING", _unsupported_thinking(direction))
+    # Add context only after the authenticated assignment and requested pair agree;
+    # this advisory never changes the recipient or the admission result.
+    if (
+        request.event == "PreToolUse"
+        and request.tool in MESSAGE_TOOLS
+        and direction == "root_to_child"
+        and target_route == LEGACY_WORKER_ROUTE
+        and (data["model"], data["thinking"]) == LEGACY_WORKER_ROUTE
+    ):
+        return Advisory("PreToolUse", LEGACY_WORKER_WARNING)
     return False
 
 
@@ -146,8 +170,10 @@ _ORCHESTRATOR_ROUTE = (
     f"and thinking='{ORCHESTRATOR_ROUTE[1]}'"
 )
 _WORKER_ROUTE = (
-    "threadId=<authenticated Worker> with either model='gpt-6-luna' and thinking='max' "
-    "or model='gpt-6.1-sol' and thinking='medium'"
+    "threadId=<authenticated Worker> with its assigned pair: "
+    "model='gpt-6-luna' and thinking='max', "
+    "model='gpt-6.1-terra' and thinking='medium', "
+    "or existing model='gpt-6.1-sol' and thinking='medium'"
 )
 _MISSING_IDENTITY = (
     "Missing authenticated session_id; MUST NOT retry blindly. "

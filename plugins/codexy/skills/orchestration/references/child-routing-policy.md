@@ -55,9 +55,11 @@ the parent MUST retain the owner and direct recovery rather than do its work.
 Named packaged specialists MUST be selected when their role matches the task;
 their catalogued model and effort apply automatically, and callers MUST NOT
 override them. Ordinary, bounded, and simple Worker assignments MUST default to
-`gpt-6-luna` / `max`. The `general` classification alone MUST NOT select
-`gpt-6.1-sol` / `medium`; that pair requires the explicit hard-work facts below.
-For general work, `fixed_scope`, `low_risk_reversible`, and
+`gpt-6-luna` / `max`. A new general Worker with valid hard-work facts MUST be
+assigned `gpt-6.1-terra` / `medium` directly; the `general` classification alone
+MUST NOT select that pair. Existing Sol/Medium recipients remain eligible for
+authenticated follow-up delivery but MUST NOT be selected for new Worker
+creation. For general work, `fixed_scope`, `low_risk_reversible`, and
 `no_unresolved_decision` MUST be true; `deterministic_oracle` MUST be supplied
 but MAY be false. Missing safety facts, ambiguous scope or authority, missing
 inputs, and unresolved ownership MUST stay fail-closed. Difficulty evidence MUST
@@ -107,19 +109,27 @@ MUST preserve the lane as pending and report the exact incompatibility. The
 existing host-envelope directions `root_to_child` and `child_to_parent` are
 serialized compatibility identifiers. `root_to_child` represents
 Orchestrator-to-Worker delivery using the authenticated recipient's assigned
-Worker pair (`gpt-6-luna` at `max` or `gpt-6.1-sol` at `medium`); ordinary
-Worker creation defaults to Luna/Max, including general implementation;
-Sol/Medium requires validated hard-work facts. `child_to_parent` represents
-Worker-to-Orchestrator delivery using `gpt-6.1-sol` at `low` (Sol / Light), the
-requested main Orchestrator pair. Stale parent Luna/Max and Luna/Medium pairs
-MUST be rejected on this authenticated direction. Authenticated direction and
-recipient identity MUST remain enforced; recognizing a model pair alone MUST NOT
-authorize delivery. The runtime request's serialized `parent_to_generic` and
-`child_to_root` directions remain unchanged for these delivery routes. These
-serialized identifiers do not authorize parameters that the actual tool contract
-forbids. Unsupported or mismatched recipient settings MUST leave the lane
-pending with the exact limitation. Missing observations MUST be reported as
-unavailable/not observed. Codex MUST NOT fall back to the sender route.
+Worker pair (`gpt-6-luna` at `max`, `gpt-6.1-terra` at `medium`, or an existing
+`gpt-6.1-sol` at `medium`); ordinary Worker creation defaults to Luna/Max,
+including general implementation, and valid hard-work facts select Terra/Medium
+for a new Worker. Sol/Medium is delivery compatibility for existing recipients
+only. For a valid `root_to_child` `PreToolUse` delivery to an existing
+Sol/Medium recipient, the thread-delivery hook may add a deprecation notice to
+the sending Orchestrator's `additionalContext`. The Orchestrator MUST preserve
+the recipient, model, thinking, and prompt and MUST NOT switch, fork, or resend
+solely because of that advisory. The warning MUST NOT approve a denial from
+another hook, and `PermissionRequest` remains quiet. `child_to_parent`
+represents Worker-to-Orchestrator delivery using `gpt-6.1-sol` at `low` (Sol /
+Light), the requested main Orchestrator pair. Stale parent Luna/Max and
+Luna/Medium pairs MUST be rejected on this authenticated direction.
+Authenticated direction and recipient identity MUST remain enforced; recognizing
+a model pair alone MUST NOT authorize delivery. The runtime request's serialized
+`parent_to_generic` and `child_to_root` directions remain unchanged for these
+delivery routes. These serialized identifiers do not authorize parameters that
+the actual tool contract forbids. Unsupported or mismatched recipient settings
+MUST leave the lane pending with the exact limitation. Missing observations MUST
+be reported as unavailable/not observed. Codex MUST NOT fall back to the sender
+route.
 
 The runtime keeps `codexy.child-routing-request.v1` for thread creation,
 Worker-to-Orchestrator delivery, and other existing routing requests. A v1
@@ -142,8 +152,8 @@ for its exact limits, examples, and fallback behavior.
 
 ### Evidenced hard work
 
-Only a general Worker MAY escalate to Sol/Medium by supplying `hard_work` with
-one closed `criterion` and its complete facts:
+Only a general Worker MAY receive a direct Terra/Medium assignment by supplying
+`hard_work` with one closed `criterion` and its complete facts:
 
 | Criterion                  | Required evidence                                                                                                                                                                                                    |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
