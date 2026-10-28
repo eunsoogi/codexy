@@ -24,10 +24,11 @@ def tokenize(command: str, has_substitutions: bool = False) -> list[str] | None:
     """Keep parent substitution context after opaque syntax becomes a placeholder."""
     command = without_python_script_heredoc_bodies(command)
     try:
+        # Preserve brace expansions as words; reserved-word braces still mark groups.
         lexer = shlex.shlex(
             protect_reflog(separate_lines(command)),
             posix=True,
-            punctuation_chars=";&|(){}<>",
+            punctuation_chars=";&|()<>",
         )
         lexer.whitespace_split, lexer.commenters = True, ""
         return strip_redirections(

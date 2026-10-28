@@ -156,6 +156,37 @@ class ShellExecutableIdentityTests(unittest.TestCase):
                 self.assertIn('"permissionDecision":"deny"', output, command)
                 self.assertIn(expected_code, output, command)
 
+    def test_brace_expansion_in_a_read_only_git_chain_is_not_a_shell_group(
+        self,
+    ) -> None:
+        reported_command = (
+            "tail -20 /tmp/codexy-1439-green.log && rustc --version && cargo --version "
+            "&& git diff --stat && git diff -- packages/codexy-runtime/src/version/readme.rs "
+            "&& rg -n '^name:|pull_request|cargo test|sync-plugin' "
+            ".github/workflows/{rust,plugin-config-validation,language-lint}.yml"
+        )
+        for command in (
+            "git diff --stat && printf x {one,two}",
+            reported_command,
+        ):
+            with self.subTest(command=command):
+                self.assertEqual(self._classify(command), "", command)
+
+    def test_brace_expansion_keeps_destructive_and_opaque_commands_denied(self) -> None:
+        denied = (
+            "rm -rf .pytest_cache{,.old}",
+            "git diff --stat && { git reset --hard HEAD; }",
+            'git diff --stat && { eval "$PAYLOAD"; }',
+        )
+        for command in denied:
+            with self.subTest(command=command):
+                output = self._classify(command)
+                self.assertIn('"permissionDecision":"deny"', output, command)
+
+    def test_read_only_brace_groups_remain_supported(self) -> None:
+        command = "git diff --stat && { printf x one; }"
+        self.assertEqual(self._classify(command), "", command)
+
     def test_hook_resolves_a_known_path_prefix_for_a_validator(self) -> None:
         command = (
             'PATH="$HOME/.cargo/bin:plugins/codexy-github/hooks:$PATH" '
