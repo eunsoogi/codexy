@@ -72,6 +72,26 @@ enforcement or successful recovery. An absent attachment in an otherwise
 executable fresh worktree MUST NOT be treated as proof that its directory is
 missing or that every worktree is broken.
 
+## Supplementary same-task evidence
+
+On 2026-10-28, the authenticated #1440 task history
+`01a18168-e622-79d2-a0f8-2b9a01455303`, turn
+`01a18179-4b70-7f81-b32b-75fa0831c022`, records the parent's direct-human
+confirmation that the original goal was restarted. The child reports native
+`active` for its unchanged setup objective. Its subsequent explicit-CWD process
+`exec-fe1475a5-0b43-426a-aad1-d4e2d05f49ca` completed with exit 0, unchanged
+checkout path and HEAD `81f4cc2bbe5c9efee342dbf523c04091caf0ef56`. The source
+task identity and checkout were retained; no fork or source archival was used.
+The activation readback is an authenticated child report, not an independently
+queried cross-task goal result. This supports the same-task continuation branch
+when the owner confirms exact native active state; it MUST NOT satisfy the fresh
+fork/archive scenario or claim an archive-lifetime repair. The attempted
+`/goal resume` text was not that successful route: the parent reports it was
+interpreted as a replacement objective and canceled. MUST NOT recommend
+replaying it as a resume command.
+
+## Remaining native acceptance
+
 Issue completion still requires an explicitly authorized native scenario with
 supported preservation, source archival, exactly one continuation owner,
 preserved checkout identity and a successful explicit-CWD process after fresh

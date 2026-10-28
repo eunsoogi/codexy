@@ -48,6 +48,20 @@ owns that boundary; Codexy owns this instruction and its evidence requirements.
 MUST stop unsupported host repairs without patching the signed app or using an
 undocumented app-server transport.
 
+## Supported same-task continuation
+
+If a supported native goal-management surface has already resumed the original
+objective in the same task, the owner MUST first use native `get_goal` and apply
+the exact-active continuation rule in [goal-lifecycle](../SKILL.md). MUST verify
+the same task, owner and checkout with a successful exact-CWD preflight before
+issue work. A matching active readback permits continuation without a fork or
+source archival; it does not prove fork/archive recovery. MUST NOT infer
+activation from a button click, a parent's report, or a typed command. If the
+state is still blocked or differs, MUST preserve it and stop; MUST NOT replace
+the objective with a command string or clear the goal. This path requires actual
+supported host goal management and existing resume authority; it MUST NOT create
+an invented resume API or another approval phrase.
+
 ## Ordered blocked-goal procedure
 
 For an authorized resume, the owner MUST preserve the exact blocked-goal
