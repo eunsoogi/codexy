@@ -10,6 +10,7 @@ from .shell_redirections import (
     BRACE_QUOTED,
     BRACE_UNSUPPORTED,
     BRACE_WORD,
+    decode_quote_provenance,
 )
 
 MAX_PRODUCTS = 128
@@ -113,8 +114,7 @@ def is_product(token: str) -> bool:
 def restore(token: str) -> str:
     """Remove private parser markers only after operators and prefixes are handled."""
     return (
-        token.removeprefix(BRACE_WORD)
-        .replace(BRACE_QUOTED, "")
+        decode_quote_provenance(token.removeprefix(BRACE_WORD))
         .replace(BRACE_UNSUPPORTED, "")
         .replace(BRACE_OPEN, "{")
         .replace(BRACE_CLOSE, "}")

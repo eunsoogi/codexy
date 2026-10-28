@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from uuid import uuid4
 
 from github_native_hook_support import GithubNativeHookSupport, ROOT
 
@@ -36,6 +37,8 @@ class InstalledCommandGroupTests(GithubNativeHookSupport, unittest.TestCase):
                 # Every changed parser file must come from this isolated candidate install.
                 self.assertEqual(packaged.read_bytes(), source.read_bytes(), name)
             hook = installed / "hooks/codexy-destructive-command.sh"
+            # A fresh target prevents an old filesystem entry from changing this classification.
+            safe_target = Path("/private/tmp") / f"codexy-installed-{uuid4().hex}.log"
             commands = (
                 (
                     "tail -20 /tmp/codexy-1439-green.log && rustc --version && cargo --version "
@@ -45,9 +48,25 @@ class InstalledCommandGroupTests(GithubNativeHookSupport, unittest.TestCase):
                     False,
                 ),
                 ("git diff --stat && printf x {one,two}", False),
+                ('git diff --stat > "/dev/null"', False),
+                ("git diff --stat > '/dev/null'", False),
+                (
+                    f"gh run watch 37218256143 --repo eunsoogi/codexy > '{safe_target}'",
+                    False,
+                ),
+                (
+                    f'gh run watch 37218256143 --repo eunsoogi/codexy > "{safe_target}"',
+                    False,
+                ),
+                (
+                    'git diff --stat && git status --short > "/dev/null"',
+                    False,
+                ),
+                ('git diff --stat > "README.md"', True),
                 ("printf x {,} sentinel", False),
                 ('printf x ""{,} sentinel', False),
                 ('printf x {,"",word}', False),
+                ("printf \ue010", True),
                 ("rm -rf .pytest_cache{,.old}", True),
                 ("git status --short && { git reset --hard HEAD; }", True),
                 ('git diff --stat && { eval "$PAYLOAD"; }', True),

@@ -84,3 +84,7 @@ class ShellBraceExpansionNullWordTests(unittest.TestCase):
 
         # Nonempty quotes inside active brace choices remain outside this bounded grammar.
         self.assertIsNone(tokenize('printf x {"quoted,arm",word}'))
+
+    def test_user_supplied_quote_marker_cannot_impersonate_provenance(self) -> None:
+        # Only the tokenizer may create the private marker used for quote provenance.
+        self.assertIsNone(tokenize(f"printf {chr(0xE010)}"))
