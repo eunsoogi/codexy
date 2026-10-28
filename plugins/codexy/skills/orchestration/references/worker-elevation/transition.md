@@ -165,18 +165,25 @@ acceptance is not parent approval or proof of a callback. Once the authenticated
 handoff is accepted, an unobserved callback MUST remain a separate unknown and
 MUST NOT add a parent-reply or callback-observation gate to source retirement.
 
-After that accepted handoff, the Orchestrator MAY issue the exposed archive
-request `mcp__codex_app__set_thread_archived({threadId: "<exact source task ID>",
-archived: true})`. The request addresses the source task; whether it archives
-descendants is unobserved. The Orchestrator MUST verify that the target and
-original checkout remain available. No standalone stop or release call is
-established by this contract. Archival does not prove that the active source
-goal terminated, that no execution remains, or that automatic continuation is
-disabled. If source-only archival or checkout preservation is uncertain, the
-Orchestrator MUST NOT transfer ownership; it MUST keep the source owner and
-leave the transition pending. It MUST NOT change the source goal to `complete`
-or `blocked` to retire it. After transfer, any resumed source turn MUST remain
-read-only and MUST NOT reclaim ownership.
+Before issuing the archive request, the Orchestrator MUST establish that it is
+source-only and will preserve the target and original checkout, including the
+effects on any descendants. If source-only behavior, descendant effects, or
+checkout preservation cannot be established, the Orchestrator MUST NOT archive,
+transfer ownership, or authorize implementation; it MUST retain both tasks,
+reservations, and the checkout for parent disposition.
+
+After that accepted handoff and precondition, the Orchestrator MAY issue the
+exposed request
+`mcp__codex_app__set_thread_archived({threadId: "<exact source task ID>", archived: true})`.
+Whether it archives descendants remains unobserved. The Orchestrator MUST read
+back the source archive result and verify that the target and original checkout
+remain available. No standalone stop or release call is established by this
+contract. Archival does not prove that the active source goal terminated, that
+no execution remains, or that automatic continuation is disabled. If the
+readback is ambiguous, the Orchestrator MUST NOT transfer ownership; it MUST
+keep the source owner and leave the transition pending. It MUST NOT change the
+source goal to `complete` or `blocked` to retire it. After transfer, any resumed
+source turn MUST remain read-only and MUST NOT reclaim ownership.
 
 The Orchestrator MUST retain both reservations until it has confirmed a
 supported explicit termination or release and the absence of remaining
@@ -210,7 +217,8 @@ actual next tool call, diff, or result.
 | Target goal is blocked, different, malformed, or unknown | MUST stop before further setup or implementation. MUST NOT fabricate or replace a goal. |
 | Parent route or parent active-goal evidence is missing | MUST NOT retire the source or implement. Preserve the target and checkout; route the exact gap to the parent. |
 | Source handoff is not accepted or authenticated | MUST NOT retire the source or transfer ownership. If accepted, an unknown callback remains separate and MUST NOT require a parent reply or another callback observation. |
-| Source retirement fails, descendant effects are unobserved, or its preservation effect is ambiguous | Neither task may implement. MUST keep identities, checkout, and reservations for parent disposition. |
+| Source-only archival, descendant effects, or checkout preservation cannot be established before the request | MUST NOT archive, transfer ownership, or authorize implementation. Keep both tasks, reservations, and checkout for parent disposition. |
+| Source retirement fails or its preservation effect is ambiguous after the request | Neither task may implement or transfer ownership. MUST keep identities, checkout, and reservations for parent disposition. |
 | Reservation release is requested | MUST retain the reservation until supported explicit termination or release and absence of remaining execution, including relevant descendants, are confirmed. Archival or a missing list entry alone is insufficient. |
 | Target assignment, environment, or goal fails after retirement | MUST keep the target and unfinished-issue reservation. MUST NOT revive the source or create another fork. |
 | First continuation acceptance is ambiguous | MUST inspect events on the known target. MUST NOT resend or fork again before reconciliation. |
