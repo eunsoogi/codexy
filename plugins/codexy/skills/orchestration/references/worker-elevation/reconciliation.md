@@ -193,7 +193,7 @@ archival, or configuration alone.
 
 Source checks establish only the instruction and packaged-source behavior they
 actually cover. The callable limits and prior observations are recorded in the
-[Worker elevation host contract](../../../../../../docs/worker-elevation-host-contract.md).
+[repository's Worker elevation host contract](https://github.com/eunsoogi/codexy/blob/main/docs/worker-elevation-host-contract.md).
 They do not establish a live target's effective pair, authenticated parent
 binding, source-writer termination, source-only retirement, post-retirement
 checkout survival, or successful first implementation step. Those claims require
