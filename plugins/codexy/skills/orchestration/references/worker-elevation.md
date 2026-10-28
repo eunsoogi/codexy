@@ -10,6 +10,10 @@ the source Worker, change its goal, expand scope, or approve completion or
 review. The complete downstream transition procedures MUST be ready before
 actual elevation is executed.
 
+When preparing a later transition, the Orchestrator MUST follow the
+[Worker checkpoint procedure](worker-elevation/checkpoint.md). A cooperative
+freeze or incomplete checkpoint MUST NOT authorize a fork.
+
 Work identified as hard before assignment MUST continue to use the direct
 Terra/Medium route in
 [Worker routing](child-routing-policy.md#evidenced-hard-work). This reference
