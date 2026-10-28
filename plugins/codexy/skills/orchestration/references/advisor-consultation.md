@@ -17,6 +17,10 @@ ownership, the Worker MUST give the evidence and decision to the Orchestrator;
 the Worker MUST NOT make the cross-lane decision or use the Advisor to bypass
 that route.
 
+The [Worker elevation decision](worker-elevation.md) is a separate evidence
+assessment. An elevation decision MUST NOT be treated as executing a fork or
+replacing the consultation triggers or blocked-goal recovery defined here.
+
 ## A new child blocked report
 
 When a child reports a new blocker, the Orchestrator MUST inspect the actual

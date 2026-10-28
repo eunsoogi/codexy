@@ -173,6 +173,12 @@ simple, bounded, ambiguous, incomplete, or high-risk request into a general
 assignment. Capability checks MUST apply to the selected exact pair without
 substitution.
 
+This is the direct assignment path for work already evidenced as hard. When a
+general Luna/Max Worker discovers qualifying evidence after work begins, the
+Orchestrator MUST use the [Worker elevation decision](worker-elevation.md);
+the Orchestrator MUST NOT treat that assessment as executing a fork or changing
+the existing Worker's model or ownership.
+
 ### Blocked-goal fork recovery
 
 An authorized same-directory fork continues the source task lane and role; it is
