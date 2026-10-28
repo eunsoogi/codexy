@@ -249,17 +249,17 @@ Watcher를 사용하려면 host가 호환 구현과 transport를 제공해야 �
 패키지 catalog는 각 전문 에이전트에 고유한 모델과 추론 수준을 지정하며, 선택형
 `codexy-github` 플러그인이 Weaver를 제공합니다.
 
-| 컴포넌트 | 전문 에이전트         | 모델          | 추론 수준 | 담당 범위                         |
-| -------- | --------------------- | ------------- | --------- | --------------------------------- |
-| core     | `codexy-architect`    | `gpt-6-astra` | `high`    | 아키텍처와 통합 경계              |
-| core     | `codexy-advisor`      | `gpt-6-astra` | `medium`  | 지정된 질문의 제한된 분석과 조언  |
-| core     | `codexy-sentinel`     | `gpt-6-astra` | `xhigh`   | 엄격한 리뷰                       |
-| core     | `codexy-warden`       | `gpt-6-astra` | `xhigh`   | 안전·권한 경계                    |
-| core     | `codexy-inspector`    | `gpt-6.1-sol` | `medium`  | 표준 리뷰                         |
-| core     | `codexy-auditor`      | `gpt-6.1-sol` | `medium`  | 인수 기준과 실제 동작 검증        |
-| core     | `codexy-cartographer` | `gpt-6-luna`  | `low`     | 저장소 탐색                       |
-| core     | `codexy-shipwright`   | `gpt-6.1-sol` | `high`    | 릴리스와 패키징                   |
-| github   | `codexy-weaver`       | `gpt-6.1-sol` | `medium`  | GitHub 통합; GitHub 컴포넌트 제공 |
+| 컴포넌트 | 전문 에이전트         | 모델            | 추론 수준 | 담당 범위                         |
+| -------- | --------------------- | --------------- | --------- | --------------------------------- |
+| core     | `codexy-architect`    | `gpt-6-astra`   | `high`    | 아키텍처와 통합 경계              |
+| core     | `codexy-advisor`      | `gpt-6-astra`   | `medium`  | 지정된 질문의 제한된 분석과 조언  |
+| core     | `codexy-sentinel`     | `gpt-6-astra`   | `xhigh`   | 엄격한 리뷰                       |
+| core     | `codexy-warden`       | `gpt-6-astra`   | `xhigh`   | 안전·권한 경계                    |
+| core     | `codexy-inspector`    | `gpt-6.1-sol`   | `medium`  | 표준 리뷰                         |
+| core     | `codexy-auditor`      | `gpt-6.1-terra` | `medium`  | 인수 기준과 실제 동작 검증        |
+| core     | `codexy-cartographer` | `gpt-6-luna`    | `low`     | 저장소 탐색                       |
+| core     | `codexy-shipwright`   | `gpt-6.1-sol`   | `high`    | 릴리스와 패키징                   |
+| github   | `codexy-weaver`       | `gpt-6.1-sol`   | `medium`  | GitHub 통합; GitHub 컴포넌트 제공 |
 
 ### 실시간 음성 모드
 

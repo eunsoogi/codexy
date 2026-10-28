@@ -19,7 +19,7 @@ struct ExpectedAgent {
     effort: &'static str,
 }
 
-// Keep expected names independent from packaged declarations while deriving filenames consistently.
+// Keep expected assignments independent from packaged declarations; derive only filenames.
 macro_rules! expected_agent {
     ($name:literal, $model:literal, $effort:literal) => {
         ExpectedAgent {
@@ -34,7 +34,7 @@ macro_rules! expected_agent {
 const EXPECTED_AGENTS: &[ExpectedAgent] = &[
     expected_agent!("codexy-architect", "gpt-6-astra", "high"),
     expected_agent!("codexy-advisor", "gpt-6-astra", "medium"),
-    expected_agent!("codexy-auditor", "gpt-6.1-sol", "medium"),
+    expected_agent!("codexy-auditor", "gpt-6.1-terra", "medium"),
     expected_agent!("codexy-cartographer", "gpt-6-luna", "low"),
     expected_agent!("codexy-inspector", "gpt-6.1-sol", "medium"),
     expected_agent!("codexy-sentinel", "gpt-6-astra", "xhigh"),
@@ -106,6 +106,22 @@ fn validator_rejects_previous_sol_for_upgraded_roles() -> TestResult {
                 &format!("{} model must be {}", expected.name, expected.model),
         );
     }
+    Ok(())
+}
+
+#[test]
+fn validator_rejects_the_previous_auditor_model() -> TestResult {
+    let fixture = agent_fixture(["codexy-auditor.toml"])?;
+    assert_rejected(
+        validate_agent_replacement(
+            &fixture,
+            "codexy-auditor.toml",
+            "model",
+            "gpt-6.1-terra",
+            "gpt-6.1-sol",
+        )?,
+        "codexy-auditor model must be gpt-6.1-terra",
+    );
     Ok(())
 }
 
