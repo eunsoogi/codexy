@@ -102,65 +102,14 @@ verification, edit the repository, change the branch or worktree, or mutate
 GitHub. It MAY perform only the read-only preflight and recovery operations
 listed below.
 
-For an authorized resume, the owner MUST preserve the exact blocked-goal
-readback, source task id and parent, objective, current directory, branch,
-worktree, HEAD, dirty/index state, and source model and reasoning effort. The
-owner MUST record requested settings from the source task assignment or creation
-record separately from any effective settings the host exposes. For each
-setting, the owner MUST use the effective source value when observable and
-otherwise its exact requested value. If either continuation value is unavailable
-from both sources, the task MUST stop before forking and report the limitation;
-it MUST NOT use sender or role defaults.
-
-1. The task MUST call `fork_thread` for the blocked task in the same directory.
-   It MUST NOT create a competing branch, worktree, or task. If the call fails
-   or does not return exactly one new task owner, it MUST preserve the exact
-   result and stop without retrying.
-2. When an authenticated source parent and terminal handoff receipt are bound to
-   this task, the task MUST send exactly one receipt before source archival. The
-   receipt MUST identify the fork, preserved lane state, and requested and
-   effective model/effort evidence. If no source parent or receipt route is
-   bound, the task MUST NOT invent a recipient, notification, or approval gate.
-   If a required receipt cannot be delivered, the task MUST preserve the failure
-   evidence, keep the blocked source as owner, and MUST NOT archive or continue
-   the fork.
-3. The task MUST archive the original blocked task with
-   `set_thread_archived(archived=true)`. If this fails, it MUST NOT send a
-   continuation to the fork or allow either task to work; it MUST preserve the
-   original owner reservation and exact error, then stop for parent disposition.
-4. The task MUST read back that the original is archived and the fork is the
-   sole active owner in the same directory before continuing. If this cannot be
-   confirmed, it MUST preserve the exact readback and stop without authorizing
-   task work.
-5. Only after that readback, the continuation owner MUST send the fork a
-   `send_message_to_thread` prompt with the source `model` and `thinking` values
-   selected above. The continuation owner is the authenticated source parent
-   when one exists, otherwise the current authorized task owner. The prompt MUST
-   carry the same objective and require native `get_goal` before task work. If
-   the tool cannot accept both values, it MUST stop without omitting either or
-   relying on defaults. If delivery fails or is ambiguous, the owner MUST
-   preserve the exact result, keep the fork reserved without task work, and stop
-   without retrying or forking again.
-
-In the fork, the first task action MUST be `get_goal`. An exact `null`, a
-response envelope whose top-level `goal` is exactly `null`, or exact
-`status=complete` permits creation of a fresh finite goal for the same
-authorized objective; the fork MUST create it and read back `active`. An
-`active` result permits continuation only when its objective exactly matches;
-the fork MUST NOT replace it. If goal creation or its active readback fails or
-differs, the fork MUST preserve the exact result and stop without task work.
-Plan handling remains governed by `$orchestration` and `$planning`; this
-recovery MUST NOT introduce a plan-file requirement by itself. A `blocked`
-result, different active objective, error, `unknown`, `missing`, malformed
-result, or other unexpected state MUST be preserved exactly and MUST stop. The
-task MUST NOT fork again or retry the recovery sequence.
-
-Requested model/effort fields prove only what the continuation requested. If the
-host does not expose effective settings, the task MUST record them as
-unavailable and MUST NOT claim effective model preservation was observed.
-Fork/archive and goal readbacks are control-plane evidence; none proves issue,
-PR, implementation, verification, review, CI, merge, release, publication, or
-external-gate completion.
+Before any fork or source archival, the owner MUST read and apply
+[executable-checkout recovery](references/executable-checkout-recovery.md). That
+reference owns the ordered recovery procedure, checkout lifetime checks, model
+preservation, and failure containment. A task ID or matching CWD MUST NOT
+substitute for a usable checkout. If the supported host cannot preserve the
+continuation checkout through source archival, the owner MUST stop before
+archiving, preserve the blocked source and reservation, and report the missing
+host capability. It MUST NOT use archival as a preservation experiment.
 
 ## Deciding Whether Work Is Blocked
 
