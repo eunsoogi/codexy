@@ -61,11 +61,18 @@ writing to their returned handles with `write_stdin`; it MUST retain the actual
 terminal exit result. A write request without an exit result is not termination
 proof. This does not establish control over detached or unknown processes, and
 the exposed schema does not establish that one task can control another task's
-session. Each task MUST use `list_agents` and `interrupt_agent` only for exact
-IDs in its own native agent tree, then read that tree back to verify no writer
-remains active and any in-flight tool call has ended. The Orchestrator MUST
-obtain this source-side readback; its own agent tools cannot inspect or stop the
-source task's agents. These controls do not stop the source task itself.
+session. The source MAY use `list_agents` and `interrupt_agent` only for exact
+IDs in its own native agent tree. An interrupt returns the agent's prior status,
+and a later tree readback establishes agent-level status only; neither proves
+that a child command, tool session, or detached process has ended. The source
+MUST retain an actual terminal result for each identified child writer and each
+file-writing tool call, command, or session it started. A terminal agent status
+or prior-status response does not replace the result for that writer or any
+command or session it launched. If a writer or its file-writing operation has no
+actual termination or completion result, its state remains unknown and the
+Orchestrator MUST NOT advance the checkpoint. The Orchestrator MUST obtain this
+source-side readback; its own agent tools cannot inspect or stop the source
+task's agents. These controls do not stop the source task itself.
 
 If the source's cooperative no-write instruction is absent or no longer
 applicable, or any identified file-writing producer remains active, the source
@@ -131,8 +138,9 @@ continuation may occur under the active goal and is not itself a failed stop.
    The Orchestrator MUST put this information in the existing task handoff
    record. It MUST NOT create a snapshot store, journal, or new serialization
    format. It MUST NOT copy ignored file contents or secrets into public
-   records. The existing record MUST contain only artifact paths, status,
-   fingerprints, and relevant file-type information, not file contents.
+   records. The handoff record MUST preserve the checkpoint metadata above. For
+   each artifact, it MUST store the path, status, fingerprint, and relevant
+   file-type information; it MUST NOT copy artifact contents or secrets.
 5. From the source's same checkout, the Orchestrator MUST read back `pwd`,
    `git rev-parse --show-toplevel`, `git rev-parse HEAD`,
    `git branch --show-current`,
