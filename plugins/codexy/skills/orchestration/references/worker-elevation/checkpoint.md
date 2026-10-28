@@ -119,7 +119,9 @@ continuation may occur under the active goal and is not itself a failed stop.
      and unmet acceptance criteria;
    - project, actual CWD/worktree, branch, and HEAD;
    - staged and unstaged paths, required untracked paths, required ignored
-     artifacts, and index-lock state;
+     artifacts, content fingerprints for each staged and unstaged diff, and
+     fingerprints for every required untracked or ignored artifact;
+   - index-lock state;
    - the revision associated with each verification result, selected reviewer,
      and any unresolved review findings;
    - the open failure episode and remaining repair budget; and
@@ -129,31 +131,47 @@ continuation may occur under the active goal and is not itself a failed stop.
    The Orchestrator MUST put this information in the existing task handoff
    record. It MUST NOT create a snapshot store, journal, or new serialization
    format. It MUST NOT copy ignored file contents or secrets into public
-   records.
+   records. The existing record MUST contain only artifact paths, status,
+   fingerprints, and relevant file-type information, not file contents.
 5. From the source's same checkout, the Orchestrator MUST read back `pwd`,
    `git rev-parse --show-toplevel`, `git rev-parse HEAD`,
    `git branch --show-current`,
    `git status --porcelain=v2 --branch --ignored=matching`,
    `git diff --cached --name-status`, `git diff --name-status`, and
-   `git ls-files --others --exclude-standard`. It MUST also check whether the
-   path from `git rev-parse --git-path index.lock` exists and record paths and
-   status without copying sensitive contents.
+   `git ls-files --others --exclude-standard`, plus the required ignored paths
+   from `git ls-files --others --ignored --exclude-standard`. It MUST hash the
+   staged and unstaged patch contents with
+   `git diff --cached --binary | git hash-object --stdin` and
+   `git diff --binary | git hash-object --stdin`. For each required untracked or
+   ignored file, it MUST record a content fingerprint from
+   `git hash-object --no-filters -- <path>` without using `-w`; this reads the
+   bytes but does not write a Git object. Directory artifacts MUST be
+   fingerprinted as their required file paths and contents. If a required
+   artifact cannot be safely enumerated or fingerprinted, its state is unknown
+   and the Orchestrator MUST NOT hand off the checkpoint. For symlinks or other
+   non-regular files, fingerprint their link target or relevant metadata with a
+   read-only method; if that cannot be established, the state is unknown and
+   handoff MUST stop. It MUST also check whether the path from
+   `git rev-parse --git-path index.lock` exists. Record the paths, statuses, and
+   fingerprints in the existing task handoff record without copying sensitive
+   contents.
 6. Immediately before handoff, the Orchestrator MUST reread the source goal and
    its status, source task ID and host, issue owner and reservation, project,
    actual CWD/worktree, branch, HEAD, staged/unstaged/untracked/required-ignored
-   state, index-lock state, verification revisions, reviewer and unresolved
-   findings, failure episode and remaining repair budget, current producer
-   roster and writer results, the continuing no-write instruction, and parent
-   instructions and compare them with the existing record. If a recorded value
-   changed, a new writer appeared, or an implementation write occurred, the
-   Orchestrator MUST invalidate the record and prepare it again. Automatic
-   reasoning or a read-only turn alone does not invalidate the record. Only
-   after the record matches, the Orchestrator MUST provide it to the already
-   authorized #1447 owner through the existing information handoff route. This
-   is not an ownership transfer: the source keeps the issue and reservation
-   until an explicitly supported transfer. This preparation MUST NOT create,
-   fork, or start a target task. The checkpoint is not a terminal stop or lock;
-   #1447 MUST perform its own immediate readback before proceeding. It MUST NOT
+   state, diff and artifact fingerprints, index-lock state, verification
+   revisions, reviewer and unresolved findings, failure episode and remaining
+   repair budget, current producer roster and writer results, the continuing
+   no-write instruction, and parent instructions and compare them with the
+   existing record. If a recorded value or fingerprint changed, a new writer
+   appeared, or an implementation write occurred, the Orchestrator MUST
+   invalidate the record and prepare it again. Automatic reasoning or a
+   read-only turn alone does not invalidate the record. Only after the record
+   matches, the Orchestrator MUST provide it to the already authorized #1447
+   owner through the existing information handoff route. This is not an
+   ownership transfer: the source keeps the issue and reservation until an
+   explicitly supported transfer. This preparation MUST NOT create, fork, or
+   start a target task. The checkpoint is not a terminal stop or lock; #1447
+   MUST perform its own immediate readback before proceeding. It MUST NOT
    commit, stash, reset, clean, or move the worktree to make the record match.
 
 The checkpoint records a later transition's required source and checkout state
