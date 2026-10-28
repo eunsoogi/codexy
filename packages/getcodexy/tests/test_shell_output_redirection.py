@@ -56,10 +56,12 @@ class ShellOutputRedirectionTests(unittest.TestCase):
         self.assertIn("deny", output, command)
         self.assertIn("CODEXY_DESTRUCTIVE_COMMAND_", output, command)
 
-    def test_direct_private_temp_logs_are_allowed_for_both_events(self) -> None:
+    def test_private_temp_logs_are_allowed_for_both_events(self) -> None:
         log = f"/private/tmp/codexy-issue-1248-{uuid4().hex}.log"
         commands = (
             f"gh run watch 37218256143 --repo eunsoogi/codexy > {log}",
+            f"gh run watch 37218256143 --repo eunsoogi/codexy > '{log}'",
+            f'gh run watch 37218256143 --repo eunsoogi/codexy > "{log}"',
             " ".join(
                 (
                     "gh run view 111538535524 --repo eunsoogi/codexy --log >",
@@ -150,11 +152,21 @@ class ShellOutputRedirectionTests(unittest.TestCase):
                 target.unlink(missing_ok=True)
 
     def test_dev_null_stays_safe_after_a_prior_shell_segment(self) -> None:
+        commands = (
+            "true && gh repo view > /dev/null",
+            'git diff --stat > "/dev/null"',
+            "git diff --stat > '/dev/null'",
+            'git diff --stat && git status --short > "/dev/null"',
+        )
+        for event in ("PermissionRequest", "PreToolUse"):
+            for command in commands:
+                with self.subTest(event=event, command=command):
+                    self.assertEqual(self._classify(command, event), "")
+
+    def test_quoted_tracked_file_redirection_stays_denied(self) -> None:
         for event in ("PermissionRequest", "PreToolUse"):
             with self.subTest(event=event):
-                self.assertEqual(
-                    self._classify("true && gh repo view > /dev/null", event), ""
-                )
+                self._assert_denied('git diff --stat > "README.md"', event)
 
     def test_existing_dollar_named_symlink_is_denied_for_both_events(self) -> None:
         directory = Path("/private") / "tmp"

@@ -9,14 +9,30 @@ from .execution_context import SINGLE_QUOTED_DOLLAR, safe_output_redirection
 
 QUOTED_REDIRECTIONS = {"<": "\ue001", ">": "\ue002"}
 REDIRECTION_FD, UNSAFE_REDIRECTION = "\ue003", "\ue004"
+# Brace markers preserve expansion and explicit-quote provenance until policy parsing.
+BRACE_OPEN, BRACE_CLOSE = "\ue00c", "\ue00d"
+BRACE_UNSUPPORTED, BRACE_WORD = "\ue00e", "\ue00f"
+BRACE_QUOTED = "\ue010"
 PARSER_MARKERS = frozenset(
     {
         SINGLE_QUOTED_DOLLAR,
         *QUOTED_REDIRECTIONS.values(),
         REDIRECTION_FD,
         UNSAFE_REDIRECTION,
+        BRACE_OPEN,
+        BRACE_CLOSE,
+        BRACE_UNSUPPORTED,
+        BRACE_WORD,
+        BRACE_QUOTED,
     }
 )
+
+
+def decode_quote_provenance(value: str) -> str:
+    """Remove only the quote metadata after the tokenizer has established word boundaries."""
+    return value.replace(BRACE_QUOTED, "")
+
+
 OPERATORS = frozenset({";", "&&", "||", "|", "&", "(", ")", "{", "}"})
 _CONTROL_WORDS = frozenset("if then elif else fi for while until do done".split())
 _QUOTED_OPERATOR_MARKERS = {
@@ -168,26 +184,33 @@ def strip_redirections(
                 return None
         if _is_redirection(token):
             target = next(iterator, None)
-            if target is None or target in OPERATORS:
+            if target is None or _operator_token(target):
                 return None
+            # mark() rejects raw markers first; consume quote metadata at this path-policy boundary.
+            target_value = decode_quote_provenance(target)
             if not (
                 token.startswith("<")
                 and ">" not in token
                 or token in {">", ">>", ">|", "&>", "&>>"}
                 # Reject escaped parser markers before they can name a different filesystem path.
-                and not any(marker in target for marker in PARSER_MARKERS)
-                and safe_output_redirection(token, target)
+                and not any(marker in target_value for marker in PARSER_MARKERS)
+                and safe_output_redirection(token, target_value)
                 # Only private-temp exceptions depend on link-setup ordering; /dev/null stays safe.
                 and (
-                    target == "/dev/null"
+                    target_value == "/dev/null"
                     or not preceding_segment
                     and not has_substitutions
                 )
                 or token in {">&", ">&-"}
-                and (target.isdigit() or target in {"-", "/dev/null"})
+                and (target_value.isdigit() or target_value in {"-", "/dev/null"})
             ):
                 result.append(UNSAFE_REDIRECTION)
         else:
             result.append(token.replace("\ue001", "<").replace("\ue002", ">"))
-            preceding_segment = preceding_segment or token in OPERATORS
+            preceding_segment = preceding_segment or _operator_token(token)
     return result
+
+
+def _operator_token(token: str) -> bool:
+    """Keep marked brace groups visible to redirection-order checks."""
+    return token in OPERATORS or token in {BRACE_OPEN, BRACE_CLOSE}
