@@ -9,9 +9,10 @@ from .execution_context import SINGLE_QUOTED_DOLLAR, safe_output_redirection
 
 QUOTED_REDIRECTIONS = {"<": "\ue001", ">": "\ue002"}
 REDIRECTION_FD, UNSAFE_REDIRECTION = "\ue003", "\ue004"
-# Brace markers preserve expansion provenance until shell syntax has been parsed.
+# Brace markers preserve expansion and explicit-quote provenance until policy parsing.
 BRACE_OPEN, BRACE_CLOSE = "\ue00c", "\ue00d"
 BRACE_UNSUPPORTED, BRACE_WORD = "\ue00e", "\ue00f"
+BRACE_QUOTED = "\ue010"
 PARSER_MARKERS = frozenset(
     {
         SINGLE_QUOTED_DOLLAR,
@@ -22,6 +23,7 @@ PARSER_MARKERS = frozenset(
         BRACE_CLOSE,
         BRACE_UNSUPPORTED,
         BRACE_WORD,
+        BRACE_QUOTED,
     }
 )
 OPERATORS = frozenset({";", "&&", "||", "|", "&", "(", ")", "{", "}"})

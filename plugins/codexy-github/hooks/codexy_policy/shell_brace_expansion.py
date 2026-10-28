@@ -7,6 +7,7 @@ import re
 from .shell_redirections import (
     BRACE_CLOSE,
     BRACE_OPEN,
+    BRACE_QUOTED,
     BRACE_UNSUPPORTED,
     BRACE_WORD,
 )
@@ -20,28 +21,43 @@ _RANGE = re.compile(r"^(?P<start>-?[0-9]+|[A-Za-z])\.\.(?P<end>-?[0-9]+|[A-Za-z]
 
 def mark(command: str) -> str | None:
     """Mark only active braces before shlex removes quote and escape context."""
-    markers = {BRACE_OPEN, BRACE_CLOSE, BRACE_UNSUPPORTED, BRACE_WORD}
+    markers = {BRACE_OPEN, BRACE_CLOSE, BRACE_QUOTED, BRACE_UNSUPPORTED, BRACE_WORD}
     if any(marker in command for marker in markers):
         return None
     result: list[str] = []
     quote: str | None = None
+    quote_brace_depth = 0
+    quote_has_content = False
     escaped = False
     depth = 0
     for char in command:
+        # Ignore the closing quote so an explicitly quoted null stays distinguishable.
+        if quote_brace_depth and quote is not None and (escaped or char != quote):
+            quote_has_content = True
         if escaped:
             result.append(char)
             escaped = False
         elif char == "\\" and quote != "'":
-            # Quotes or escapes inside a brace word need semantics this bounded parser does not model.
+            # Escapes inside brace words remain outside this bounded grammar.
             if depth:
                 result.append(BRACE_UNSUPPORTED)
             result.append(char)
             escaped = True
         elif char in {"'", '"'}:
-            if depth:
-                result.append(BRACE_UNSUPPORTED)
-            quote = None if quote == char else char if quote is None else quote
-            result.append(char)
+            if quote is None:
+                # A visible marker survives shlex's removal of empty quotes and is copied to each brace product.
+                result.append(BRACE_QUOTED)
+                quote = char
+                quote_brace_depth = depth
+                quote_has_content = False
+                result.append(char)
+            elif quote == char:
+                if quote_brace_depth and quote_has_content:
+                    result.append(BRACE_UNSUPPORTED)
+                result.append(char)
+                quote, quote_brace_depth, quote_has_content = None, 0, False
+            else:
+                result.append(char)
         elif quote is None and char == "{":
             result.append(BRACE_OPEN)
             depth += 1
@@ -70,14 +86,22 @@ def expand(tokens: list[str]) -> list[str] | None:
         words, did_expand = expanded
         if did_expand:
             # Bash applies these expansions after braces; policy parsing must not miss their new words.
-            if any(_has_unmodeled_followup_expansion(word) for word in words):
+            if any(_has_unmodeled_followup_expansion(restore(word)) for word in words):
                 return None
             total_products += len(words)
             if total_products > MAX_PRODUCTS:
                 return None
-            result.extend(BRACE_WORD + word for word in words)
+            for word in words:
+                value = restore(word)
+                if not value:
+                    if BRACE_UNSUPPORTED in word:
+                        return None
+                    if BRACE_QUOTED not in word:
+                        # Bash drops unquoted null products; retaining them can hide the next command.
+                        continue
+                result.append(BRACE_WORD + value)
         else:
-            result.extend(words)
+            result.extend(restore(word) for word in words)
     return result
 
 
@@ -90,6 +114,7 @@ def restore(token: str) -> str:
     """Remove private parser markers only after operators and prefixes are handled."""
     return (
         token.removeprefix(BRACE_WORD)
+        .replace(BRACE_QUOTED, "")
         .replace(BRACE_UNSUPPORTED, "")
         .replace(BRACE_OPEN, "{")
         .replace(BRACE_CLOSE, "}")
@@ -103,7 +128,7 @@ def _expand_word(token: str, steps: int) -> tuple[list[str], bool] | None:
     if pair is None:
         if BRACE_OPEN in token or BRACE_CLOSE in token:
             return None
-        return [restore(token)], False
+        return [token], False
     start, end, nesting = pair
     if nesting > MAX_NESTING:
         return None
