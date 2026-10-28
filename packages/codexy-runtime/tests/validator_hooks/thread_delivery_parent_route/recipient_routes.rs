@@ -3,8 +3,8 @@
 use serde_json::json;
 
 use super::super::thread_delivery_support::{
-    CHILD as WORKER_ID, OTHER, PARENT as ORCHESTRATOR_ID, assert_admitted, assert_denied, input,
-    plugin_roots, route, run,
+    CHILD as WORKER_ID, OTHER, PARENT as ORCHESTRATOR_ID, assert_admitted,
+    assert_deprecated_context, assert_denied, input, plugin_roots, route, run,
 };
 use crate::support::TestResult;
 
@@ -25,24 +25,25 @@ fn assigned_and_legacy_worker_pairs_admit_on_both_hooks() -> TestResult {
     for event in EVENTS {
         for root in &roots {
             for (model, thinking) in pairs {
-                assert_admitted(
-                    run(
-                        root,
-                        event,
-                        &transcript,
-                        Some(ORCHESTRATOR_ID),
-                        input(WORKER_ID, model, thinking, "Continue the assigned lane."),
-                        Some(route(
-                            "root_to_child",
-                            ORCHESTRATOR_ID,
-                            WORKER_ID,
-                            model,
-                            thinking,
-                        )),
-                    )?,
+                let output = run(
+                    root,
                     event,
-                    "Orchestrator-to-Worker",
+                    &transcript,
+                    Some(ORCHESTRATOR_ID),
+                    input(WORKER_ID, model, thinking, "Continue the assigned lane."),
+                    Some(route(
+                        "root_to_child",
+                        ORCHESTRATOR_ID,
+                        WORKER_ID,
+                        model,
+                        thinking,
+                    )),
                 )?;
+                if *event == "PreToolUse" && (model, thinking) == ("gpt-6.1-sol", "medium") {
+                    assert_deprecated_context(output, event, "legacy Worker route")?;
+                } else {
+                    assert_admitted(output, event, "Orchestrator-to-Worker")?;
+                }
             }
         }
     }
