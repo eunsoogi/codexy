@@ -24,12 +24,17 @@ class InstalledCommandGroupTests(GithubNativeHookSupport, unittest.TestCase):
             if not isinstance(installed_path, str):
                 raise AssertionError("Codex did not return an installed plugin path")
             installed = Path(installed_path)
-            source = (
-                ROOT / "plugins/codexy-github/hooks/codexy_policy/shell_segments.py"
+            policy_sources = (
+                "shell_brace_expansion.py",
+                "shell_evaluator.py",
+                "shell_redirections.py",
+                "shell_segments.py",
             )
-            packaged = installed / "hooks/codexy_policy/shell_segments.py"
-            # Confirm the isolated host copied this branch's parser, not another cached version.
-            self.assertEqual(packaged.read_bytes(), source.read_bytes())
+            for name in policy_sources:
+                source = ROOT / "plugins/codexy-github/hooks/codexy_policy" / name
+                packaged = installed / "hooks/codexy_policy" / name
+                # Every changed parser file must come from this isolated candidate install.
+                self.assertEqual(packaged.read_bytes(), source.read_bytes(), name)
             hook = installed / "hooks/codexy-destructive-command.sh"
             commands = (
                 (
@@ -43,6 +48,35 @@ class InstalledCommandGroupTests(GithubNativeHookSupport, unittest.TestCase):
                 ("rm -rf .pytest_cache{,.old}", True),
                 ("git status --short && { git reset --hard HEAD; }", True),
                 ('git diff --stat && { eval "$PAYLOAD"; }', True),
+                ("git diff -- stat {one,two}", False),
+                ("git diff -- file{one,two}", False),
+                ("git diff -- '{one,two}'", False),
+                (r"git diff -- file\{one,two\}", False),
+                ("git diff -- file{{one,two},{three,four}}", False),
+                ("find . -type d -name __pycache__ -prune -exec rm -rf {} +", False),
+                ("git diff --stat && r{m..m} -rf /tmp/codexy-review-unused", True),
+                ("git diff --stat && git r{e..e}set --hard HEAD", True),
+                ("git diff --stat && gh auth to{k..k}en", True),
+                ('git diff --stat && e{v..v}al "$PAYLOAD"', True),
+                ("git diff --stat && rm -{r,f} /tmp/codexy-review-unused", True),
+                ("git diff --stat && git reset --{hard,soft} HEAD", True),
+                ("git diff --stat && gh auth status --show-{token,help}", True),
+                (
+                    "git diff --stat && rm --recursiv{e..e} --forc{e..e} /tmp/codexy-review-unused",
+                    True,
+                ),
+                ("git diff --stat && gh auth status --show-toke{n..n}", True),
+                (
+                    "git diff --stat && find /tmp/codexy-review-unused -delet{e..e}",
+                    True,
+                ),
+                (
+                    "git diff --stat && bash {-c,'rm -rf /tmp/codexy-review-unused'}",
+                    True,
+                ),
+                ("A=m; r{$A,x} /tmp/codexy-review-unused", True),
+                ("git diff -- file{*,one}", True),
+                ("git diff -- {~,one}", True),
             )
             for event in ("PermissionRequest", "PreToolUse"):
                 for command, denied in commands:

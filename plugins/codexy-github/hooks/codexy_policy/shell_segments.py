@@ -6,6 +6,10 @@ import shlex
 from dataclasses import dataclass
 
 from .execution_context import assignment
+from .shell_brace_expansion import expand as expand_brace_words
+from .shell_brace_expansion import is_product as is_brace_product
+from .shell_brace_expansion import mark as mark_braces
+from .shell_brace_expansion import restore as restore_brace_word
 from .shell_redirections import (
     OPERATORS,
     separate_lines,
@@ -17,24 +21,28 @@ from .shell_heredoc import without_python_script_heredoc_bodies
 CONTROL_WORDS = frozenset(
     "if then elif else fi for in while until do done case esac".split()
 )
-# Private markers keep quoted redirection and reflog data distinct from active shell operators.
+# Private markers preserve quoted data, reflog selectors, and expansion provenance.
 
 
 def tokenize(command: str, has_substitutions: bool = False) -> list[str] | None:
     """Keep parent substitution context after opaque syntax becomes a placeholder."""
     command = without_python_script_heredoc_bodies(command)
     try:
-        # Preserve brace expansions as words; reserved-word braces still mark groups.
+        # Preserve expansion provenance so quote-aware words can expand before policy parsing.
+        marked = mark_braces(protect_reflog(separate_lines(command)))
+        if marked is None:
+            return None
         lexer = shlex.shlex(
-            protect_reflog(separate_lines(command)),
+            marked,
             posix=True,
             punctuation_chars=";&|()<>",
         )
         lexer.whitespace_split, lexer.commenters = True, ""
-        return strip_redirections(
+        tokens = strip_redirections(
             restore_reflog(list(lexer)),
             has_substitutions or bool(opaque_syntax(command).substitutions),
         )
+        return None if tokens is None else expand_brace_words(tokens)
     except ValueError:
         return None
 
@@ -64,8 +72,12 @@ def segments(command: str) -> tuple[tuple[str, ...], ...] | None:
         elif command_start and token.casefold() in CONTROL_WORDS:
             continue
         else:
-            current.append(token)
-            if command_start and token != "!" and not assignment(token):
+            current.append(restore_brace_word(token))
+            if (
+                command_start
+                and token != "!"
+                and (is_brace_product(token) or not assignment(token))
+            ):
                 command_start = False
     return tuple(result)
 

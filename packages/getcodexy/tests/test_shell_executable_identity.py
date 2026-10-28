@@ -168,6 +168,11 @@ class ShellExecutableIdentityTests(unittest.TestCase):
         for command in (
             "git diff --stat && printf x {one,two}",
             reported_command,
+            "git diff -- file{one,two}",
+            "git diff -- '{one,two}'",
+            r"git diff -- file\{one,two\}",
+            "git diff -- file{{one,two},{three,four}}",
+            "find . -type d -name __pycache__ -prune -exec rm -rf {} +",
         ):
             with self.subTest(command=command):
                 self.assertEqual(self._classify(command), "", command)
@@ -178,6 +183,49 @@ class ShellExecutableIdentityTests(unittest.TestCase):
             "git diff --stat && { git reset --hard HEAD; }",
             'git diff --stat && { eval "$PAYLOAD"; }',
         )
+        for command in denied:
+            with self.subTest(command=command):
+                output = self._classify(command)
+                self.assertIn('"permissionDecision":"deny"', output, command)
+
+    def test_brace_expansion_cannot_hide_protected_command_names(self) -> None:
+        denied = (
+            "git diff --stat && r{m..m} -rf /tmp/codexy-review-unused",
+            "git diff --stat && git r{e..e}set --hard HEAD",
+            "git diff --stat && gh auth to{k..k}en",
+            'git diff --stat && e{v..v}al "$PAYLOAD"',
+            "git diff --stat && rm -{r,f} /tmp/codexy-review-unused",
+            "git diff --stat && git reset --{hard,soft} HEAD",
+            "git diff --stat && gh auth status --show-{token,help}",
+            "git diff --stat && rm --recursiv{e..e} --forc{e..e} /tmp/codexy-review-unused",
+            "git diff --stat && gh auth status --show-toke{n..n}",
+            "git diff --stat && find /tmp/codexy-review-unused -delet{e..e}",
+            "git diff --stat && bash {-c,'rm -rf /tmp/codexy-review-unused'}",
+        )
+        # The hook receives inert command text; this suite never runs its expansions.
+        for command in denied:
+            with self.subTest(command=command):
+                output = self._classify(command)
+                self.assertIn('"permissionDecision":"deny"', output, command)
+
+    def test_unsupported_brace_expansion_bounds_fail_closed(self) -> None:
+        deep = "{" * 9 + "one,two" + "}" * 9
+        denied = (
+            f"git diff -- file{deep}",
+            "git diff -- file{1..129}",
+        )
+        for command in denied:
+            with self.subTest(command=command):
+                output = self._classify(command)
+                self.assertIn('"permissionDecision":"deny"', output, command)
+
+    def test_brace_products_with_follow_up_expansions_fail_closed(self) -> None:
+        denied = (
+            "A=m; r{$A,x} /tmp/codexy-review-unused",
+            "git diff -- file{*,one}",
+            "git diff -- {~,one}",
+        )
+        # These strings are classified only; the possible shell expansions never run.
         for command in denied:
             with self.subTest(command=command):
                 output = self._classify(command)

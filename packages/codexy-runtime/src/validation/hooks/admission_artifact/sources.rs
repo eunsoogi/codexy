@@ -71,6 +71,7 @@ pub(super) const POLICY_SOURCES: &[Source] = &[
     source!("codexy_policy/shell_redirections.py"),
     source!("codexy_policy/shell_segments.py"),
     source!("codexy_policy/shell_builtins.py"),
+    source!("codexy_policy/shell_brace_expansion.py"),
     source!("codexy_policy/policy_diagnostics.py"),
     source!("codexy_policy/shell_context.py"),
     source!("codexy_policy/shell_groups.py"),

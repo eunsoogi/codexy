@@ -6,11 +6,13 @@ from dataclasses import replace
 from itertools import count
 from typing import Protocol
 
-from .execution_context import at as context_at
+from .execution_context import assignment, at as context_at
 from .execution_context_types import CommandEffect, ExecutionContext
 from .execution_filesystem import after_external_command
 from .invocation import Invocation, resolve
 from .shell_builtins import test_effect
+from .shell_brace_expansion import is_product as is_brace_product
+from .shell_brace_expansion import restore as restore_brace_word
 from .shell_context import changed_directory
 from .shell_credentials import CredentialPolicy, credential_assignment
 from .shell_groups import GroupSyntaxError, parse
@@ -99,6 +101,9 @@ def _segment(
     restrict_private_temp_output: bool,
 ) -> tuple[bool, CommandEffect]:
     # Each segment returns explicit success/failure contexts so later shell operators see prior effects.
+    if _expanded_prefix_changes_shell_grammar(tokens):
+        return True, CommandEffect(None)
+    tokens = [restore_brace_word(token) for token in tokens]
     if getattr(policy, "detect_leading_credentials", False):
         command_start = command_tokens(tuple(tokens))
         if credential_assignment(tokens[: len(tokens) - len(command_start)]):
@@ -164,6 +169,20 @@ def _segment(
         context,
     )
     return (True, CommandEffect(None)) if effect is None else (False, effect)
+
+
+def _expanded_prefix_changes_shell_grammar(tokens: list[str]) -> bool:
+    """Do not reinterpret expansion products as assignment or negation prefixes."""
+    for token in tokens:
+        if token == "!":
+            continue
+        if is_brace_product(token):
+            value = restore_brace_word(token)
+            return value == "!" or assignment(value)
+        if assignment(token):
+            continue
+        return False
+    return False
 
 
 def _control_segments(
