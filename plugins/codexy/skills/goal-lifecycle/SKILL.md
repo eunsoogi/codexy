@@ -92,6 +92,18 @@ pre-delivery or post-result parent reports for those calls. Existing
 blocked-goal recovery and terminal-handoff reporting rules continue to apply to
 their respective transitions.
 
+On a fresh start where `get_goal` returns `null`, a top-level `goal=null`, or
+`status=complete`, this registration sequence MUST be uninterrupted: when
+authorized, the owning task MUST call `create_goal` next, then read back the
+exact new objective as active before any other task work. It MUST NOT inspect or
+report CWD, project, permissions, worktree, checkout, HEAD, index, source, or
+issue state, or run a setup or verification command after the initial readback
+and before goal creation, or after creation and before the matching active
+readback. These read-only setup checks are task work and MUST wait until
+active-goal readback. When goal creation is not authorized or fails, the task
+MUST stop before those checks. The distinct blocked-goal recovery procedure
+below remains unchanged.
+
 ## Authorized blocked-goal recovery
 
 The task MUST NOT call `update_goal` to mark an unfinished blocked objective
