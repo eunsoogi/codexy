@@ -18,10 +18,11 @@ class InstalledCommandGroupTests(GithubNativeHookSupport, unittest.TestCase):
             home = Path(directory) / "fresh Codex home"
             home.mkdir()
             environment = {**os.environ, "CODEX_HOME": str(home)}
-            self._host(environment, "plugin", "marketplace", "add", str(ROOT))
+            _ = self._host(environment, "plugin", "marketplace", "add", str(ROOT))
             plugin = self._host(environment, "plugin", "add", "codexy-github@codexy")
             installed_path = plugin.get("installedPath")
-            self.assertIsInstance(installed_path, str)
+            if not isinstance(installed_path, str):
+                raise AssertionError("Codex did not return an installed plugin path")
             installed = Path(installed_path)
             source = (
                 ROOT / "plugins/codexy-github/hooks/codexy_policy/shell_segments.py"
