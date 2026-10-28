@@ -59,8 +59,7 @@ override them. Ordinary, bounded, and simple Worker assignments MUST default to
 assigned `gpt-6.1-terra` / `medium` directly; the `general` classification alone
 MUST NOT select that pair. Existing Sol/Medium recipients remain eligible for
 authenticated follow-up delivery but MUST NOT be selected for new Worker
-creation.
-For general work, `fixed_scope`, `low_risk_reversible`, and
+creation. For general work, `fixed_scope`, `low_risk_reversible`, and
 `no_unresolved_decision` MUST be true; `deterministic_oracle` MUST be supplied
 but MAY be false. Missing safety facts, ambiguous scope or authority, missing
 inputs, and unresolved ownership MUST stay fail-closed. Difficulty evidence MUST
@@ -114,17 +113,17 @@ Worker pair (`gpt-6-luna` at `max`, `gpt-6.1-terra` at `medium`, or an existing
 `gpt-6.1-sol` at `medium`); ordinary Worker creation defaults to Luna/Max,
 including general implementation, and valid hard-work facts select Terra/Medium
 for a new Worker. Sol/Medium is delivery compatibility for existing recipients
-only. `child_to_parent` represents
-Worker-to-Orchestrator delivery using `gpt-6.1-sol` at `low` (Sol / Light), the
-requested main Orchestrator pair. Stale parent Luna/Max and Luna/Medium pairs
-MUST be rejected on this authenticated direction. Authenticated direction and
-recipient identity MUST remain enforced; recognizing a model pair alone MUST NOT
-authorize delivery. The runtime request's serialized `parent_to_generic` and
-`child_to_root` directions remain unchanged for these delivery routes. These
-serialized identifiers do not authorize parameters that the actual tool contract
-forbids. Unsupported or mismatched recipient settings MUST leave the lane
-pending with the exact limitation. Missing observations MUST be reported as
-unavailable/not observed. Codex MUST NOT fall back to the sender route.
+only. `child_to_parent` represents Worker-to-Orchestrator delivery using
+`gpt-6.1-sol` at `low` (Sol / Light), the requested main Orchestrator pair.
+Stale parent Luna/Max and Luna/Medium pairs MUST be rejected on this
+authenticated direction. Authenticated direction and recipient identity MUST
+remain enforced; recognizing a model pair alone MUST NOT authorize delivery. The
+runtime request's serialized `parent_to_generic` and `child_to_root` directions
+remain unchanged for these delivery routes. These serialized identifiers do not
+authorize parameters that the actual tool contract forbids. Unsupported or
+mismatched recipient settings MUST leave the lane pending with the exact
+limitation. Missing observations MUST be reported as unavailable/not observed.
+Codex MUST NOT fall back to the sender route.
 
 The runtime keeps `codexy.child-routing-request.v1` for thread creation,
 Worker-to-Orchestrator delivery, and other existing routing requests. A v1

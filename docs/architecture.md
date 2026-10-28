@@ -54,8 +54,8 @@ implementation work defaults to `gpt-6-luna` / `max`. A new general Worker with
 valid facts for coupled contract changes, algorithm design, or cross-boundary
 diagnosis receives `gpt-6.1-terra` / `medium` directly. Existing Sol/Medium
 Workers retain authenticated follow-up delivery; new Worker creation does not
-allow Sol/Medium. Ambiguous authority, inputs, and ownership remain
-fail-closed under the
+allow Sol/Medium. Ambiguous authority, inputs, and ownership remain fail-closed
+under the
 [Worker routing policy](../plugins/codexy/skills/orchestration/references/child-routing-policy.md).
 Role ownership is defined in the
 [supervision reference](../plugins/codexy/skills/orchestration/references/parent-supervision.md).
