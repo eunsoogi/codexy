@@ -6,9 +6,10 @@ use super::*;
 const PARENT: (&str, &str) = ("gpt-6.1-sol", "low");
 
 #[test]
-fn resolver_keeps_recipient_settings_for_both_worker_pairs() -> TestResult {
+fn resolver_keeps_recipient_settings_for_all_worker_delivery_pairs() -> TestResult {
     for pair in [
         LUNA,
+        TERRA,
         SOL,
         PARENT,
         ("gpt-6.1-sol", "max"),
@@ -22,7 +23,7 @@ fn resolver_keeps_recipient_settings_for_both_worker_pairs() -> TestResult {
         followup["recipient_assignment"] = json!({"model":pair.0,"thinking":pair.1});
         followup["codex_thread_capabilities"] =
             request("general", pair)["codex_thread_capabilities"].clone();
-        let expected = if [LUNA, SOL].contains(&pair) {
+        let expected = if [LUNA, TERRA, SOL].contains(&pair) {
             selected("parent_to_generic", "send_message_to_thread", pair)
         } else {
             json!({"route":"root_or_named_specialist","reason":"Assigned recipient model and thinking do not form a supported Worker pair."})
@@ -81,20 +82,20 @@ fn resolver_keeps_recipient_settings_for_both_worker_pairs() -> TestResult {
 }
 
 #[test]
-fn issue_1423_creation_selection_is_preserved_in_recipient_followup() -> TestResult {
+fn issue_1442_creation_selection_is_preserved_in_recipient_followup() -> TestResult {
     let mut assignments = vec![
         request("general", LUNA),
         request("simple", LUNA),
         bounded_request(),
     ];
     for facts in hard_work_cases()? {
-        let mut hard = request("general", SOL);
+        let mut hard = request("general", TERRA);
         hard["hard_work"] = facts;
         assignments.push(hard);
     }
     for creation in assignments {
         let pair = if creation.get("hard_work").is_some() {
-            SOL
+            TERRA
         } else {
             LUNA
         };

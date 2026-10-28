@@ -2,9 +2,22 @@ use serde::{Deserialize, de::Error as _};
 use serde_json::{Value, json};
 
 use super::{
-    Policy,
+    HARD_WORKER_MODEL, HARD_WORKER_THINKING, Policy, SIMPLE_WORKER_MODEL, SIMPLE_WORKER_THINKING,
     thread_capabilities::{self, RecipientAssignment, ThreadCapabilities},
 };
+
+// New creation excludes the legacy Sol pair, while delivery must preserve existing recipients.
+const LEGACY_WORKER_MODEL: &str = "gpt-6.1-sol";
+const LEGACY_WORKER_THINKING: &str = "medium";
+pub(super) const WORKER_CREATION_ROUTES: [(&str, &str); 2] = [
+    (SIMPLE_WORKER_MODEL, SIMPLE_WORKER_THINKING),
+    (HARD_WORKER_MODEL, HARD_WORKER_THINKING),
+];
+pub(super) const WORKER_DELIVERY_ROUTES: [(&str, &str); 3] = [
+    (SIMPLE_WORKER_MODEL, SIMPLE_WORKER_THINKING),
+    (HARD_WORKER_MODEL, HARD_WORKER_THINKING),
+    (LEGACY_WORKER_MODEL, LEGACY_WORKER_THINKING),
+];
 
 pub(super) fn deserialize_bounds<'de, D>(
     deserializer: D,
@@ -138,7 +151,11 @@ fn selected_route(
     model: &str,
     thinking: &str,
 ) -> Value {
-    if thread_capabilities::supports(capabilities, model, thinking) {
+    let is_new_worker_route = policy
+        .worker_creation_routes
+        .iter()
+        .any(|route| route.model == model && route.thinking == thinking);
+    if is_new_worker_route && thread_capabilities::supports(capabilities, model, thinking) {
         route("generic", operation, model, thinking)
     } else {
         json!({"route":policy.fallback})

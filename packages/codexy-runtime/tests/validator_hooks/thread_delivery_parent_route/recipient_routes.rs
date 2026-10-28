@@ -11,12 +11,16 @@ use crate::support::TestResult;
 const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
 
 #[test]
-fn assigned_worker_pairs_admit_on_authoritative_and_installed_hooks() -> TestResult {
+fn assigned_and_legacy_worker_pairs_admit_on_both_hooks() -> TestResult {
     let temp = tempfile::tempdir()?;
     let transcript = temp.path().join("ignored.jsonl");
     std::fs::write(&transcript, b"not-json\n")?;
     let roots = plugin_roots(temp.path())?;
-    let pairs = [("gpt-6-luna", "max"), ("gpt-6.1-sol", "medium")];
+    let pairs = [
+        ("gpt-6-luna", "max"),
+        ("gpt-6.1-terra", "medium"),
+        ("gpt-6.1-sol", "medium"),
+    ];
 
     for event in EVENTS {
         for root in &roots {
@@ -109,6 +113,45 @@ fn recipient_pair_rejects_crossed_settings_and_argument_mismatch() -> TestResult
                 )?,
                 event,
                 "WRONG_RECIPIENT",
+            )?;
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn terra_followup_cannot_elevate_a_luna_assigned_fork() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let transcript = temp.path().join("ignored.jsonl");
+    std::fs::write(&transcript, b"not-json\n")?;
+    let roots = plugin_roots(temp.path())?;
+
+    for event in EVENTS {
+        for root in &roots {
+            let mut tool_input = input(
+                WORKER_ID,
+                "gpt-6.1-terra",
+                "medium",
+                "Continue as a hard-work codexy-auditor with Terra/Medium.",
+            );
+            tool_input["role"] = json!("codexy-auditor");
+            assert_denied(
+                run(
+                    root,
+                    event,
+                    &transcript,
+                    Some(ORCHESTRATOR_ID),
+                    tool_input,
+                    Some(route(
+                        "root_to_child",
+                        ORCHESTRATOR_ID,
+                        WORKER_ID,
+                        "gpt-6-luna",
+                        "max",
+                    )),
+                )?,
+                event,
+                "UNSUPPORTED_MODEL",
             )?;
         }
     }

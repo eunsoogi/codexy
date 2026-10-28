@@ -40,8 +40,8 @@ bounds or out-of-range values MUST select the safe fallback; malformed or
 unknown fields MUST be rejected. The old `simple` class still requires all four
 original predicates. A general request MUST be evaluated by its own safety and
 hard-work facts; bounded facts MUST NOT override an evidenced hard-work
-selection. A capability mismatch MUST NOT substitute Sol/Medium, a default
-model, or a specialist whose role does not match. Creation MUST send the
+selection. A capability mismatch MUST NOT substitute the legacy Sol/Medium
+delivery route, a default model, or a specialist whose role does not match. Creation MUST send the
 selected Luna/Max pair explicitly; recipient-bound follow-ups MUST preserve the
 assigned pair through the existing v2 route. Requested settings and authentic
 task-creation readback MUST remain distinct from effective host settings, which

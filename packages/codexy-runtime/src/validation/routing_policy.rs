@@ -8,8 +8,8 @@ use super::routing_json;
 mod routes;
 mod thread_capabilities;
 use routes::{
-    bounded_evidence_is_complete, child_to_root_route, parent_to_generic_route,
-    selected_general_route, simple_route,
+    WORKER_CREATION_ROUTES, WORKER_DELIVERY_ROUTES, bounded_evidence_is_complete,
+    child_to_root_route, parent_to_generic_route, selected_general_route, simple_route,
 };
 use thread_capabilities::{ThreadDirection, simple_is_complete, worker_scope_is_complete};
 
@@ -18,12 +18,8 @@ use thread_capabilities::{ThreadDirection, simple_is_complete, worker_scope_is_c
 // diagnostics and model constants below.
 const SIMPLE_WORKER_MODEL: &str = "gpt-6-luna";
 const SIMPLE_WORKER_THINKING: &str = "max";
-const HARD_WORKER_MODEL: &str = "gpt-6.1-sol";
+const HARD_WORKER_MODEL: &str = "gpt-6.1-terra";
 const HARD_WORKER_THINKING: &str = "medium";
-const ASSIGNED_WORKER_ROUTES: [(&str, &str); 2] = [
-    (SIMPLE_WORKER_MODEL, SIMPLE_WORKER_THINKING),
-    (HARD_WORKER_MODEL, HARD_WORKER_THINKING),
-];
 // Parent requests use Sol/Light; Worker selection and authenticated directions stay distinct.
 const ORCHESTRATOR_MODEL: &str = "gpt-6.1-sol";
 const ORCHESTRATOR_THINKING: &str = "low";
@@ -33,6 +29,7 @@ pub(super) struct Policy {
     pub(super) hard_work: Route,
     pub(super) named_specialist: Specialist,
     pub(super) simple: Simple,
+    pub(super) worker_creation_routes: Vec<Route>,
     pub(super) fallback: String,
     pub(super) delivery: Delivery,
 }
@@ -181,10 +178,17 @@ fn contract() -> Policy {
             .map(str::to_owned)
             .collect(),
         },
+        worker_creation_routes: WORKER_CREATION_ROUTES
+            .iter()
+            .map(|(model, thinking)| Route {
+                model: (*model).to_owned(),
+                thinking: (*thinking).to_owned(),
+            })
+            .collect(),
         fallback: "root_or_named_specialist".to_owned(),
         delivery: Delivery {
-            // Keep this allowlist aligned with the authenticated thread-delivery hook.
-            parent_to_generic: ASSIGNED_WORKER_ROUTES
+            // Keep existing-recipient delivery independent from new creation admission.
+            parent_to_generic: WORKER_DELIVERY_ROUTES
                 .iter()
                 .map(|(model, thinking)| Route {
                     model: (*model).to_owned(),
@@ -221,11 +225,16 @@ fn validate(policy: &Policy) -> Result<()> {
             .eq(required)
         || policy.fallback != "root_or_named_specialist"
         || !policy
+            .worker_creation_routes
+            .iter()
+            .map(|route| (route.model.as_str(), route.thinking.as_str()))
+            .eq(WORKER_CREATION_ROUTES)
+        || !policy
             .delivery
             .parent_to_generic
             .iter()
             .map(|route| (route.model.as_str(), route.thinking.as_str()))
-            .eq(ASSIGNED_WORKER_ROUTES)
+            .eq(WORKER_DELIVERY_ROUTES)
         || policy.delivery.child_to_root.model != ORCHESTRATOR_MODEL
         || policy.delivery.child_to_root.thinking != ORCHESTRATOR_THINKING
     {

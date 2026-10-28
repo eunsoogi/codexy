@@ -1,5 +1,5 @@
 //! Requirement-linked Worker routing checks, including #1412 bounded evidence,
-//! #1423 default and hard-work selection, and authenticated recipient preservation.
+//! #1423 hard-work facts, and #1442 Terra selection with legacy recipient preservation.
 
 use crate::support::TestResult;
 use fixtures::*;

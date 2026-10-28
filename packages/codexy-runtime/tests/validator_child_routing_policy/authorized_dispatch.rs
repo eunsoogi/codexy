@@ -1,7 +1,7 @@
 //! #1424 source-contract regressions. These checks do not prove app permission,
 //! task creation, concurrent execution, or integration conflict resolution.
 
-use super::{LUNA, SOL, check, fallback, hard_work_cases, request, selected};
+use super::{LUNA, TERRA, check, fallback, hard_work_cases, request, selected};
 use crate::support::TestResult;
 use serde_json::json;
 
@@ -9,12 +9,12 @@ use serde_json::json;
 fn routing_needs_no_extra_approval_or_path_allocation_fields() -> TestResult {
     // The resolver chooses recipients; actual authority, capacity and worktrees
     // belong to the host/supervisor, so no duplicate approval oracle is added.
-    for pair in [LUNA, SOL] {
+    for pair in [LUNA, TERRA] {
         let classification = if pair == LUNA { "simple" } else { "general" };
         let mut creation = request(classification, pair);
-        // Sol requires the same explicit hard-work evidence after main integration;
+        // Terra requires the same explicit hard-work evidence after main integration;
         // dispatch authority must not weaken the recipient selection contract.
-        if pair == SOL {
+        if pair == TERRA {
             creation["hard_work"] = hard_work_cases()?.remove(0);
         }
         check(creation.clone(), selected("generic", "create_thread", pair))?;

@@ -8,9 +8,13 @@ from .envelope import Diagnostic, Request
 
 FIELDS = ("model", "thinking")
 WORKER_ROUTE = ("gpt-6-luna", "max")
+HARD_WORKER_ROUTE = ("gpt-6.1-terra", "medium")
+LEGACY_WORKER_ROUTE = ("gpt-6.1-sol", "medium")
 # Worker selection stays independent from the parent request; authenticated
 # direction and target identity remain mandatory even when a pair is recognized.
-WORKER_ROUTES = frozenset({WORKER_ROUTE, ("gpt-6.1-sol", "medium")})
+WORKER_CREATION_ROUTES = frozenset({WORKER_ROUTE, HARD_WORKER_ROUTE})
+# Delivery accepts current assignments plus existing Sol recipients during migration.
+WORKER_DELIVERY_ROUTES = WORKER_CREATION_ROUTES | {LEGACY_WORKER_ROUTE}
 ORCHESTRATOR_ROUTE = ("gpt-6.1-sol", "low")
 ROUTING_SCHEMA = "codexy.thread-delivery.v2"
 ROUTING_FIELDS = frozenset(
@@ -79,7 +83,7 @@ def forbidden(request: Request) -> bool | str | Diagnostic:
             return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
     else:
         expected = target_route
-        if expected not in WORKER_ROUTES:
+        if expected not in WORKER_DELIVERY_ROUTES:
             return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
     if data["model"] != expected[0]:
         return Diagnostic("UNSUPPORTED_MODEL", _unsupported_model(direction))
@@ -146,8 +150,10 @@ _ORCHESTRATOR_ROUTE = (
     f"and thinking='{ORCHESTRATOR_ROUTE[1]}'"
 )
 _WORKER_ROUTE = (
-    "threadId=<authenticated Worker> with either model='gpt-6-luna' and thinking='max' "
-    "or model='gpt-6.1-sol' and thinking='medium'"
+    "threadId=<authenticated Worker> with its assigned pair: "
+    "model='gpt-6-luna' and thinking='max', "
+    "model='gpt-6.1-terra' and thinking='medium', "
+    "or existing model='gpt-6.1-sol' and thinking='medium'"
 )
 _MISSING_IDENTITY = (
     "Missing authenticated session_id; MUST NOT retry blindly. "
