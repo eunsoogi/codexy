@@ -26,6 +26,8 @@ mod thread_delivery_parent_route;
 mod thread_delivery_support;
 #[path = "validator_hooks/thread_delivery_diagnostics.rs"]
 mod thread_delivery_diagnostics;
+#[path = "validator_hooks/thread_delivery_deprecation.rs"]
+mod thread_delivery_deprecation;
 #[path = "validator_hooks/thread_delivery_missing_fields.rs"]
 mod thread_delivery_missing_fields;
 #[path = "structured_contract_artifacts.rs"]

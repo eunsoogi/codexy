@@ -22,7 +22,7 @@ TIMING_FILE_ENV = "CODEXY_CORE_HOOK_TIMING_FILE"
 
 
 def main() -> int:
-    from codexy_policy.envelope import evaluate
+    from codexy_policy.envelope import evaluate_result
     from codexy_policy.thread_delivery import forbidden
 
     parser = argparse.ArgumentParser(allow_abbrev=False)
@@ -43,16 +43,22 @@ def main() -> int:
             started_ns = timing.start()
         except Exception:
             timing = None
-    output = evaluate(event, payload, TOOLS, "CODEXY_THREAD_DELIVERY_", forbidden)
+    result = evaluate_result(
+        event,
+        payload,
+        TOOLS,
+        "CODEXY_THREAD_DELIVERY_",
+        forbidden,
+    )
     if timing is not None and started_ns is not None:
         timing.record(
             event,
             "thread-delivery",
             started_ns,
-            "deny" if output else "allow",
+            result.decision,
         )
-    if output:
-        sys.stdout.buffer.write(output)
+    if result.output:
+        sys.stdout.buffer.write(result.output)
     return 0
 
 

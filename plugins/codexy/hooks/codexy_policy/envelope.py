@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 MAX_INPUT = 1024 * 1024
 EVENTS = {"PermissionRequest", "PreToolUse"}
@@ -26,6 +26,20 @@ class Request:
 class Diagnostic:
     code: str
     message: str
+
+
+@dataclass(frozen=True)
+class Advisory:
+    event: str
+    additional_context: str
+
+
+@dataclass(frozen=True)
+class PolicyResult:
+    # Keep policy admission separate from output bytes so advisory context is not
+    # misclassified as a denial by timing or other observers.
+    output: bytes
+    decision: Literal["allow", "deny"]
 
 
 def _pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -63,21 +77,32 @@ def evaluate(
     payload: bytes,
     tools: frozenset[str],
     diagnostic: str,
-    forbidden: Callable[[Request], bool | str | Diagnostic],
+    forbidden: Callable[[Request], bool | str | Diagnostic | Advisory],
 ) -> bytes:
+    # Preserve the bytes-only API used by the other core hooks.
+    return evaluate_result(event, payload, tools, diagnostic, forbidden).output
+
+
+def evaluate_result(
+    event: str,
+    payload: bytes,
+    tools: frozenset[str],
+    diagnostic: str,
+    forbidden: Callable[[Request], bool | str | Diagnostic | Advisory],
+) -> PolicyResult:
     # Bound the request before decoding; hook input is host-provided and must fail closed when oversized.
     if event not in EVENTS or len(payload) > MAX_INPUT:
-        return deny(event, diagnostic, "ENVELOPE")
+        return PolicyResult(deny(event, diagnostic, "ENVELOPE"), "deny")
     try:
         data = json.loads(payload.decode("utf-8", "strict"), object_pairs_hook=_pairs)
     except (UnicodeError, ValueError, json.JSONDecodeError):
-        return deny(event, diagnostic, "ENVELOPE")
+        return PolicyResult(deny(event, diagnostic, "ENVELOPE"), "deny")
     if (
         not isinstance(data, dict)
         or data.get("hook_event_name") != event
         or data.get("tool_name") not in tools
     ):
-        return deny(event, diagnostic, "ENVELOPE")
+        return PolicyResult(deny(event, diagnostic, "ENVELOPE"), "deny")
     request = Request(
         event,
         data["tool_name"],
@@ -91,9 +116,25 @@ def evaluate(
     try:
         blocked = forbidden(request)
     except (OSError, TypeError, ValueError):
-        return deny(event, diagnostic, "RUNTIME")
+        return PolicyResult(deny(event, diagnostic, "RUNTIME"), "deny")
+    if isinstance(blocked, Advisory):
+        if event != "PreToolUse" or blocked.event != event:
+            return PolicyResult(deny(event, diagnostic, "INVALID_ADVISORY_EVENT"), "deny")
+        output = {
+            "hookEventName": event,
+            "additionalContext": blocked.additional_context,
+        }
+        return PolicyResult(
+            (
+                json.dumps({"hookSpecificOutput": output}, separators=(",", ":"))
+                + "\n"
+            ).encode(),
+            "allow",
+        )
     if isinstance(blocked, Diagnostic):
-        return deny(event, diagnostic, blocked.code, blocked.message)
+        return PolicyResult(deny(event, diagnostic, blocked.code, blocked.message), "deny")
     if isinstance(blocked, str):
-        return deny(event, diagnostic, blocked)
-    return deny(event, diagnostic, "DENIED") if blocked else b""
+        return PolicyResult(deny(event, diagnostic, blocked), "deny")
+    if blocked:
+        return PolicyResult(deny(event, diagnostic, "DENIED"), "deny")
+    return PolicyResult(b"", "allow")
