@@ -82,13 +82,13 @@ this authority supersedes the task-creation exclusions in
 
 ### Delegated supervision route
 
-When a task uses app-thread Workers, a separately assigned external Watcher,
-Worker callbacks, drift correction, or delegated Worker goal ownership, MUST
-read [parent supervision](references/parent-supervision.md) before dispatch,
-observation, reporting, interruption, correction, or handoff. That reference is
-the canonical source for role ownership, assigned model policy, Worker report
-routing, Watcher observation and waits, deduplication, host limits, interruption
-and cancellation, drift correction, and supervision evaluation.
+When a task uses app-thread Workers, an external Watcher, callbacks, delegated
+Worker goals, drift correction, or Worker elevation, MUST read
+[parent supervision](references/parent-supervision.md) before dispatch,
+observation, reporting, correction, or handoff. Eligible elevation MUST also
+read [reconciliation](references/worker-elevation/reconciliation.md). These
+references define role, model, report and wait routing, plus deduplication,
+capacity, interruption, cancellation, drift, and evaluation.
 
 The route has these mandatory boundaries: the Orchestrator owns the overall
 goal, judgement, correction, and acceptance; the Worker owns its implementation

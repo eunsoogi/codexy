@@ -226,6 +226,17 @@ GitHub 정책에 동의한 것으로 해석되지 않습니다.
 Advisor의 읽기 전용 경계는 에이전트 지침에 따른 행동 규칙이며, 호스트 권한이
 차단된다는 보장은 아닙니다.
 
+작업 중인 일반 Luna/Max Worker가 고난도 근거를 발견하면 Orchestrator는 그 판단과
+#1447 전환 절차를 기존 담당자·예약·이벤트·cursor 기록에 연결합니다. 같은
+디렉터리의 target은 읽기 전용 준비를 마치고, Orchestrator가 목표·인증된
+배정·원래 부모와의 경로·checkout을 확인할 때까지 source가 유일한 구현
+담당자입니다. 담당자를 넘길 때 target의 담당자·수신자·목표·예약·관찰 대상을 함께
+갱신하고 source와 target의 cursor는 따로 유지합니다. 필수 호스트 readback을 할
+수 없거나 지원되지 않으면 전환은 대기 상태로 남습니다. 이 source 절차만으로 실제
+native 동작이 증명되지는 않습니다.
+[조정 절차](plugins/codexy/skills/orchestration/references/worker-elevation/reconciliation.md)와
+[호스트 계약](docs/worker-elevation-host-contract.md)을 참고하세요.
+
 일반 Worker 관찰은 Orchestrator가 각 작업의 최신 cursor를 포함해 native
 `wait_threads`를 호출하고 완료, 도움이 필요한 상태, 이후 새 turn을 직접
 확인합니다. 한 Worker의 이벤트가 다른 작업의 관찰이나 issue 완료를 끝내지는

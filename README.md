@@ -259,6 +259,19 @@ output quality.
 The Advisor's read-only boundary is part of its instructions; it does not imply
 host-level permission enforcement.
 
+For an in-flight general Luna/Max Worker with qualifying hard-work evidence, the
+Orchestrator connects the decision and #1447 transition to its existing owner,
+reservation, event, and cursor records. The source remains the sole
+implementation owner while a same-directory target completes read-only setup and
+the parent confirms its goal, authenticated assignment, parent route, and
+checkout. At transfer, the parent updates the target owner, recipient, goal,
+reservation, and observation target together while keeping source and target
+cursors separate. Missing or unsupported required host readbacks keep the
+transition pending; this source procedure does not prove native execution. See
+the
+[reconciliation procedure](plugins/codexy/skills/orchestration/references/worker-elevation/reconciliation.md)
+and [host contract](docs/worker-elevation-host-contract.md).
+
 Ordinary observation flow: the Orchestrator uses native `wait_threads` with each
 Worker's latest cursor to observe completion, attention, and later turns. One
 Worker event does not end observation of remaining tasks or complete the issue.

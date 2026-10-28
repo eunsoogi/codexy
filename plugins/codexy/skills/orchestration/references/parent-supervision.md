@@ -10,6 +10,12 @@ Codexy packages no Watcher specialist, MCP, or runtime. Watcher flows require an
 externally supplied, explicitly assigned compatible transport and entrypoint;
 ordinary Worker observation remains direct.
 
+For a general Worker whose hard-work evidence permits elevation, the parent MUST
+use the [Worker elevation reconciliation](worker-elevation/reconciliation.md)
+before transferring ownership. It connects the decision and #1447 transition to
+these existing owner, reservation, event, and per-task cursor records; this
+reference remains authoritative for shared capacity and ordinary observation.
+
 ## Canonical role mapping
 
 When this arrangement is authorized, Codex MUST keep these roles distinct:

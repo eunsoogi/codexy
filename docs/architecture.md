@@ -73,6 +73,18 @@ implementation and transport. These model pairs are configured or requested role
 settings; effective settings for a running task remain unknown without an
 authoritative host/task readback.
 
+For a general Luna/Max Worker that discovers qualifying hard-work evidence, the
+parent-loop elevation procedure connects the decision and #1447 transition to
+existing supervision records. The source remains the implementation owner while
+the target completes read-only setup and the parent confirms its goal, assigned
+pair, original-parent route, and checkout. Ownership, recipient, goal
+association, reservation, and observation target move together only after the
+supported source handoff and retirement; per-task cursors stay separate. Missing
+or unsupported required host readbacks keep the transition pending. The source
+contract does not establish native execution; see the
+[reconciliation procedure](../plugins/codexy/skills/orchestration/references/worker-elevation/reconciliation.md)
+and [host observations](worker-elevation-host-contract.md).
+
 ## Detailed boundaries
 
 - [Skill boundaries and consumers](architecture/skill-boundaries.md)

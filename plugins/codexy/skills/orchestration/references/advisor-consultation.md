@@ -19,7 +19,10 @@ that route.
 
 The [Worker elevation decision](worker-elevation.md) is a separate evidence
 assessment. An elevation decision MUST NOT be treated as executing a fork or
-replacing the consultation triggers or blocked-goal recovery defined here.
+replacing the consultation triggers or blocked-goal recovery defined here. When
+it permits a transition, the parent MUST follow the
+[elevation reconciliation](worker-elevation/reconciliation.md); a clear
+reconciliation MUST NOT add an Advisor approval step.
 
 ## A new child blocked report
 
