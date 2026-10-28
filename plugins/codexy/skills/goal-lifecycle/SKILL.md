@@ -116,9 +116,10 @@ listed below.
 
 Active-goal Worker elevation is a separate same-issue route. It preserves the
 matching active source goal under a cooperative no-write instruction and follows
-the [Worker elevation transition](../orchestration/references/worker-elevation/transition.md)
-only when separately authorized. It MUST NOT set the source goal to `blocked`
-or `complete` to obtain a fork or avoid automatic continuation. Blocked recovery
+the
+[Worker elevation transition](../orchestration/references/worker-elevation/transition.md)
+only when separately authorized. It MUST NOT set the source goal to `blocked` or
+`complete` to obtain a fork or avoid automatic continuation. Blocked recovery
 MUST preserve its source-pair rules and MUST NOT be repurposed for model
 elevation.
 

@@ -12,8 +12,8 @@ actual elevation is executed.
 
 When preparing a later transition, the Orchestrator MUST follow the
 [Worker checkpoint procedure](worker-elevation/checkpoint.md). A cooperative
-freeze or incomplete checkpoint MUST NOT authorize a fork.
-After a separately authorized #1447 checkpoint, the Orchestrator MUST use the
+freeze or incomplete checkpoint MUST NOT authorize a fork. After a separately
+authorized #1447 checkpoint, the Orchestrator MUST use the
 [complete Worker elevation transition](worker-elevation/transition.md) and its
 failure handling before changing ownership.
 

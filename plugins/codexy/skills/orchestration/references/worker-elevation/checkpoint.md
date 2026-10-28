@@ -10,8 +10,8 @@ enable a live elevation entrypoint.
 
 Checkpoint preparation does not execute elevation. After separate #1447
 authorization, the Orchestrator MUST continue through the
-[transition procedure](transition.md) and recheck this checkpoint before
-target activation.
+[transition procedure](transition.md) and recheck this checkpoint before target
+activation.
 
 Here, quiescence means observed absence of implementation writes and live
 file-writing producers under a cooperative no-write instruction that persists
