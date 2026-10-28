@@ -43,7 +43,10 @@ source reservation. Count both actual occupants against
 `min(8, any explicitly lower host or resource limit)`. An absent or ambiguous
 thread-list entry, timeout, or pending setup MUST NOT release a reservation. If
 capacity is not confirmed, the parent MUST keep the source as owner and leave
-elevation pending.
+elevation pending. The parent MUST retain each reservation until a supported
+explicit termination or release is confirmed and the absence of remaining
+execution is confirmed. Archival or a missing thread-list entry alone is
+insufficient; keep the reservation while either fact is unknown.
 
 ## Ordered transition
 
@@ -90,7 +93,7 @@ that prohibits implementation and checkout writes. MUST NOT send Terra/Medium to
 a target that remains authenticated as Luna, override the live source, rely on
 the sender's pair or a host default, or substitute raw App Server or CLI task
 creation. Tool acceptance establishes transport only; record requested,
-accepted, authenticated, and effective settings separately.
+accepted, authenticated, effective settings, and actual execution separately.
 
 ### 3. Complete target read-only setup and parent-route checks
 
@@ -105,9 +108,14 @@ assume that a fork copies the source goal or permissions.
 The target MAY inspect only its native task identity, project, CWD, checkout,
 branch, HEAD, index, and required files. It MUST confirm these match the source
 checkpoint and MUST NOT edit, stage, commit, create a branch, run implementation
-checks, or start another writer. Its effective model pair MUST be recorded only
-from an authenticated host readback; if unavailable or mismatched, it MUST stop
-before retirement and implementation.
+checks, or start another writer. Its host-authenticated model assignment MUST
+match the requested Terra/Medium pair before retirement and implementation.
+Missing, unauthenticated, or mismatched assignment MUST stop the transition.
+Record observed effective settings separately when the host exposes them; if
+unavailable, record them as unavailable and do not infer their value. An
+explicitly observed wrong effective pair MUST stop before retirement and
+implementation, but unavailable effective telemetry alone MUST NOT invalidate
+an otherwise confirmed authenticated assignment.
 
 The target MUST inspect its own `list_artifacts({})` result to confirm the
 inherited managed-checkout attachment. If the exact existing workspace from the
@@ -153,17 +161,29 @@ issue/PR, source and target IDs, objective, branch/worktree/HEAD and dirty-index
 state, source writer results, target goal/environment/model/parent readbacks,
 review and failure history, remaining checks, and requested ownership transfer.
 The source MUST NOT reuse the event identity for a second transition. Transport
-acceptance is not parent approval or proof of a callback.
+acceptance is not parent approval or proof of a callback. Once the authenticated
+handoff is accepted, an unobserved callback MUST remain a separate unknown and
+MUST NOT add a parent-reply or callback-observation gate to source retirement.
 
-After that handoff, the Orchestrator MAY issue the exposed source-only archive
-request and MUST verify that the target and original checkout remain available.
-No standalone stop or release call is established by this contract. If the host
-cannot establish source-only archival and checkout preservation, the
-Orchestrator MUST NOT archive or transfer ownership. It MUST keep the source
-owner and leave the transition pending. It MUST NOT change the source goal to
-`complete` or `blocked` to retire it. Archival does not prove that automatic
-continuation is disabled. After transfer, any resumed source turn MUST remain
+After that accepted handoff, the Orchestrator MAY issue the exposed archive
+request `mcp__codex_app__set_thread_archived({threadId: "<exact source task ID>",
+archived: true})`. The request addresses the source task; whether it archives
+descendants is unobserved. The Orchestrator MUST verify that the target and
+original checkout remain available. No standalone stop or release call is
+established by this contract. Archival does not prove that the active source
+goal terminated, that no execution remains, or that automatic continuation is
+disabled. If source-only archival or checkout preservation is uncertain, the
+Orchestrator MUST NOT transfer ownership; it MUST keep the source owner and
+leave the transition pending. It MUST NOT change the source goal to `complete`
+or `blocked` to retire it. After transfer, any resumed source turn MUST remain
 read-only and MUST NOT reclaim ownership.
+
+The Orchestrator MUST retain both reservations until it has confirmed a
+supported explicit termination or release and the absence of remaining
+execution, including relevant descendants. Archival success or a missing
+thread-list entry alone MUST NOT release capacity. Because no standalone stop or
+release operation is established here, keep each reservation and route its
+disposition to the parent while either condition remains unverified.
 
 ### 6. Replace the owner and authorize target implementation
 
@@ -184,14 +204,16 @@ actual next tool call, diff, or result.
 | --- | --- |
 | Source state, permissions, checkpoint, parent instructions, or capacity changed | MUST NOT fork. Keep the source owner and reconcile with the Orchestrator. |
 | Fork errors, times out, or returns an ambiguous identity | MUST inspect actual source and target records. MUST NOT fork again based on an absent list entry. MUST retain all reservations. |
-| Target model selection is unavailable, rejected, mismatched, or unauthenticated | MUST NOT retire the source or implement. Preserve both IDs and reservations; report requested, accepted, authenticated, and effective evidence separately. |
+| Target model request is unavailable or rejected, or its authenticated assignment is missing, unauthenticated, or mismatched | MUST NOT retire the source or implement. Preserve both IDs and reservations; report requested, accepted, authenticated, effective, and actual-execution evidence separately. |
+| Effective settings are not exposed | Record them as unavailable and do not infer their value. Continue only when the authenticated target assignment is confirmed as Terra/Medium. |
+| An explicitly observed effective pair is wrong | MUST NOT retire the source or implement. Preserve both IDs and reservations and report the observed mismatch. |
 | Target goal is blocked, different, malformed, or unknown | MUST stop before further setup or implementation. MUST NOT fabricate or replace a goal. |
 | Parent route or parent active-goal evidence is missing | MUST NOT retire the source or implement. Preserve the target and checkout; route the exact gap to the parent. |
-| Source handoff is not accepted or its callback is unknown | MUST NOT retire the source or transfer ownership. Acceptance is transport evidence only. |
-| Source retirement fails or its preservation effect is ambiguous | Neither task may implement. MUST keep identities, checkout, and reservations for parent disposition. |
+| Source handoff is not accepted or authenticated | MUST NOT retire the source or transfer ownership. If accepted, an unknown callback remains separate and MUST NOT require a parent reply or another callback observation. |
+| Source retirement fails, descendant effects are unobserved, or its preservation effect is ambiguous | Neither task may implement. MUST keep identities, checkout, and reservations for parent disposition. |
+| Reservation release is requested | MUST retain the reservation until supported explicit termination or release and absence of remaining execution, including relevant descendants, are confirmed. Archival or a missing list entry alone is insufficient. |
 | Target assignment, environment, or goal fails after retirement | MUST keep the target and unfinished-issue reservation. MUST NOT revive the source or create another fork. |
 | First continuation acceptance is ambiguous | MUST inspect events on the known target. MUST NOT resend or fork again before reconciliation. |
-| Effective settings are not exposed or the pair is wrong | Record settings as unavailable or mismatched and stop implementation. |
 
 Retry requires a separate parent instruction after reconciliation and a
 supported recovery route. MUST NOT build an automatic retry ladder or run an
