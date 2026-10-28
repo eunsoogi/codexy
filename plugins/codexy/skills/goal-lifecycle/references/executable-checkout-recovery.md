@@ -62,6 +62,45 @@ the objective with a command string or clear the goal. This path requires actual
 supported host goal management and existing resume authority; it MUST NOT create
 an invented resume API or another approval phrase.
 
+## Demonstrated completed-source preservation path
+
+The
+[bounded native result](recovery-checkout-diagnosis.md#bounded-native-preservation-result)
+proved the following path for a clean, explicitly self-attached managed
+checkout. This is a completed-source diagnostic, not permission to run a blocked
+continuation before source archival. The blocked-goal ordering below remains
+unchanged. An inherited path string alone MUST NOT select this path.
+
+1. Under an explicitly authorized disposable scenario, the source MUST capture
+   its exact checkout baseline, use supported `attach_worktree` on that same
+   checkout, and confirm successful registration and a native worktree artifact.
+   Its finite preparation objective MUST be genuinely satisfied and completed;
+   MUST NOT clear an unfinished goal or manufacture a blocked state.
+2. The parent MUST create only one same-directory fork and retain source and
+   target reservations. With the completed source idle and no writers, the
+   target MUST establish its authorized diagnostic goal and read it active
+   before observations. MUST confirm an inherited, distinct target worktree
+   artifact with the same native checkout identity; supported target
+   self-attachment MUST succeed within the host's actual ownership constraints.
+   MUST compare the successful exact-CWD process and file/index baseline.
+3. Only after that evidence, completed diagnostics, the required terminal
+   receipt and explicit parent authorization, the parent MAY archive the source
+   chat once. MUST NOT archive the worktree, delete files or clean either
+   checkout. Missing association, rejection or ambiguous identity MUST stop
+   before archival without another fork, workaround or substitute checkout.
+4. The target MUST establish and read back its exact authorized post-archive
+   verification goal before artifact/process reads. Its first explicit-CWD
+   process MUST succeed with unchanged native association, Git directories,
+   HEAD, branch/detached state, index and tracked/untracked state. MUST confirm
+   the source is archived and the target is the only active owner. MUST NOT
+   reattach or restore after archival to turn a failed preservation into a pass.
+
+This observed path is evidence of supported containment with those
+prerequisites, not an atomic transfer API or a generic host repair. MUST keep
+the fail-closed path when these prerequisites cannot be established, including
+an unfinished blocked source that cannot satisfy its existing recovery ordering
+safely.
+
 ## Ordered blocked-goal procedure
 
 For an authorized resume, the owner MUST preserve the exact blocked-goal

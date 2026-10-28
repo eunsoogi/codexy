@@ -48,7 +48,7 @@ atomic managed-checkout lifetime transfer. Attachment is constrained by native
 ownership; restoring an archived checkout is separate from preserving this exact
 checkout and is not automatic authority to resume a blocked goal.
 
-This locates the unsupported preservation guarantee at the native
+This locates the preservation responsibility at the native
 fork/association/archive-to-execution boundary. It does not prove archival
 caused the historical deletion: missing fork association, host cleanup, and an
 execution environment failure cannot be distinguished from the available
@@ -90,12 +90,53 @@ fork/archive scenario or claim an archive-lifetime repair. The attempted
 interpreted as a replacement objective and canceled. MUST NOT recommend
 replaying it as a resume command.
 
-## Remaining native acceptance
+## Bounded native preservation result
 
-Issue completion still requires an explicitly authorized native scenario with
-supported preservation, source archival, exactly one continuation owner,
-preserved checkout identity and a successful explicit-CWD process after fresh
-active-goal readback. Until those results exist, that criterion MUST remain
-unverified and the pull request MUST remain draft. A completed disposable source
-can exercise checkout lifetime only; blocked-goal handling and unexposed
-effective model settings remain separate unverified claims.
+A fresh parent-prepared source consumed candidate instructions at
+`eb90f766f83badd18f63f3fdb90fa80f5ff3e258`. Its clean disposable checkout
+remained detached at `81f4cc2bbe5c9efee342dbf523c04091caf0ef56`; this was
+instruction verification, not execution of a newly installed host repair.
+
+- Source `01a1818a-bd77-7de2-97bf-fd7e145cb7f6` self-attached using the
+  supported native tool and genuinely completed its preparation objective.
+  Source artifact: `01a1818f-0a1c-7312-8d8d-bf1f79356d89`.
+- One same-directory fork, target `01a18191-f2c2-7250-b83d-0837df008321`,
+  inherited distinct artifact `01a18191-f35f-71b0-96c3-c70643dfe745` with the
+  same native checkout identity. Target self-attachment succeeded with
+  `registrationError=null`; pre-archive process/identity/file-state checks
+  passed.
+- After separate authorization and the source terminal receipt, the parent
+  archived only the source chat once. The target's actual archived/active
+  inventories confirmed the source archived and exactly one active target owner.
+  No worktree archival, deletion or cleanup was performed.
+- Target turn `01a1819b-1c75-7673-89e0-a4724c1e34f8` records fresh native null →
+  exact verification objective → active before artifact/process reads. First
+  process `exec-45a988e3-b889-4cb6-b7d5-e2fd1ff2f39c`, explicitly at the
+  intended CWD, completed with exit 0. CWD/top-level, absolute Git directory,
+  common directory, detached HEAD, clean index and tracked/untracked state
+  matched the pre-archive baseline. The same target artifact remained present;
+  no post-archive reattachment or restoration occurred.
+- Original requested source settings Luna/max were preserved in target delivery;
+  effective settings remained unexposed. Parent received event
+  `post-archive-target-1434-01a18191-f2c2-7250-b83d-0837df008321-81f4cc2-v1`.
+
+The
+[demonstrated path](executable-checkout-recovery.md#demonstrated-completed-source-preservation-path)
+is supported for these observed prerequisites. There is no longer evidence for a
+blanket claim that native checkout preservation is unavailable. It remains
+incorrect to infer the same guarantee for an unattached source or every fork.
+
+## Original issue criteria
+
+| Criterion                                                                                 | Authoritative evidence and disposition                                                                                                                                                                                                                                                                                                          |
+| ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Identify the metadata/execution boundary                                                  | Historical source/fork records separate native task CWD from managed association and actual process creation. The responsible host boundary is fork/worktree association and archive lifetime; the repository defect was unconditional archival without preservation/process acceptance. The precise historical internal cause remains unknown. |
+| Correct the repository contract or name upstream ownership and containment                | The linked recovery reference, entry prompt and completion rules now gate unsafe archival and require process/identity acceptance. The explicit self-attachment/inherited-target path above supplies a supported bounded route. Native implementation remains owned by Codex desktop.                                                           |
+| Authorized native source archival, one continuation, same checkout and successful process | The fresh completed-source scenario above supplies actual task, attachment, inventory and first post-archive process evidence. This meets the named checkout/source-archive/one-continuation/process criterion without a synthetic blocked goal.                                                                                                |
+| Preserve failures and distinguish containment from host repair                            | Historical source/fork goals and failure history were retained; this implementation did not clear or revive them. The new result records a supported attachment/lifetime path, not a signed-host change or an explanation of historical deletion.                                                                                               |
+
+Generic blocked-goal recovery, arbitrary dirty/ignored work preservation, every
+attachment topology and effective model preservation remain untested. They MUST
+NOT be advertised as proved or added as unspecified completion requirements for
+this bounded issue. Current-head repository checks, independent review and CI
+remain separate PR readiness requirements.
