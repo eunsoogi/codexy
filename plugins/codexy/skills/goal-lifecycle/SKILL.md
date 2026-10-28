@@ -114,6 +114,15 @@ verification, edit the repository, change the branch or worktree, or mutate
 GitHub. It MAY perform only the read-only preflight and recovery operations
 listed below.
 
+Active-goal Worker elevation is a separate same-issue route. It preserves the
+matching active source goal under a cooperative no-write instruction and follows
+the
+[Worker elevation transition](../orchestration/references/worker-elevation/transition.md)
+only when separately authorized. It MUST NOT set the source goal to `blocked` or
+`complete` to obtain a fork or avoid automatic continuation. Blocked recovery
+MUST preserve its source-pair rules and MUST NOT be repurposed for model
+elevation.
+
 Before any fork or source archival, the owner MUST read and apply
 [executable-checkout recovery](references/executable-checkout-recovery.md). That
 reference owns the ordered recovery procedure, checkout lifetime checks, model
@@ -173,7 +182,8 @@ MUST NOT imply issue closure, PR merge, release, or parent acceptance. Follow-up
 fixes MUST use the same owner and actual lifecycle readback: continue a matching
 active objective, or create an authorized fresh phase on null/complete and read
 back active before work. A different unfinished objective MUST stop; blocked
-recovery MUST follow the existing fork/archive rules, never false completion.
+recovery MUST follow the existing fork/archive rules and MUST NOT be reported as
+complete when the objective remains unfinished.
 
 Between observing `blocked` and confirming the fork's goal is `active`, only the
 fork/archive, required parent handoff, and native goal readback steps above are

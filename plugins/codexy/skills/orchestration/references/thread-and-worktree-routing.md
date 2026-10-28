@@ -229,10 +229,11 @@ Child titles MUST follow the [title policy](child-thread-titles.md).
   supersession evidence.
 - Worktree-based implementation lanes MUST require lane ownership before edits:
   parent coordination first, child implementation second.
-- Same-task elevation MAY retain its verified dirty checkout and preserve its
-  branch, HEAD, index, and required artifacts. This exception MUST NOT permit
-  reuse, unlocking, reset, or cleanup of another lane's dirty or locked
-  checkout.
+- #1447 elevation MAY fork into the same directory, preserving branch, checkout,
+  HEAD, index, and required artifacts. The source MUST remain owner through
+  target read-only setup; only the parent MAY transfer ownership after supported
+  retirement. MUST NOT create a worktree, copy a diff, recreate a branch, permit
+  concurrent writers, or reuse/clean another lane's dirty or locked checkout.
 - Real integration conflicts MUST be resolved before merge through the owning
   task's branch, preserving both changes and rerunning affected verification.
 - MUST NOT merge child work locally as a substitute for the repository PR flow.

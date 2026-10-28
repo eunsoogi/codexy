@@ -8,6 +8,11 @@ its active goal and reservation. This procedure MUST NOT fork or create a task,
 archive or replace the source, change its model or goal, move its worktree, or
 enable a live elevation entrypoint.
 
+Checkpoint preparation does not execute elevation. After separate #1447
+authorization, the Orchestrator MUST continue through the
+[transition procedure](transition.md) and recheck this checkpoint before target
+activation.
+
 Here, quiescence means observed absence of implementation writes and live
 file-writing producers under a cooperative no-write instruction that persists
 across continuation turns. Automatic reasoning and read-only turns may still
