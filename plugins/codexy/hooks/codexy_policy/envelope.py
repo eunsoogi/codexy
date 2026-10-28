@@ -119,20 +119,23 @@ def evaluate_result(
         return PolicyResult(deny(event, diagnostic, "RUNTIME"), "deny")
     if isinstance(blocked, Advisory):
         if event != "PreToolUse" or blocked.event != event:
-            return PolicyResult(deny(event, diagnostic, "INVALID_ADVISORY_EVENT"), "deny")
+            return PolicyResult(
+                deny(event, diagnostic, "INVALID_ADVISORY_EVENT"), "deny"
+            )
         output = {
             "hookEventName": event,
             "additionalContext": blocked.additional_context,
         }
         return PolicyResult(
             (
-                json.dumps({"hookSpecificOutput": output}, separators=(",", ":"))
-                + "\n"
+                json.dumps({"hookSpecificOutput": output}, separators=(",", ":")) + "\n"
             ).encode(),
             "allow",
         )
     if isinstance(blocked, Diagnostic):
-        return PolicyResult(deny(event, diagnostic, blocked.code, blocked.message), "deny")
+        return PolicyResult(
+            deny(event, diagnostic, blocked.code, blocked.message), "deny"
+        )
     if isinstance(blocked, str):
         return PolicyResult(deny(event, diagnostic, blocked), "deny")
     if blocked:
