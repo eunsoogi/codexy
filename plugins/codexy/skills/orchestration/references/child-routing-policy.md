@@ -175,9 +175,9 @@ substitution.
 
 This is the direct assignment path for work already evidenced as hard. When a
 general Luna/Max Worker discovers qualifying evidence after work begins, the
-Orchestrator MUST use the [Worker elevation decision](worker-elevation.md);
-the Orchestrator MUST NOT treat that assessment as executing a fork or changing
-the existing Worker's model or ownership.
+Orchestrator MUST use the [Worker elevation decision](worker-elevation.md); the
+Orchestrator MUST NOT treat that assessment as executing a fork or changing the
+existing Worker's model or ownership.
 
 ### Blocked-goal fork recovery
 

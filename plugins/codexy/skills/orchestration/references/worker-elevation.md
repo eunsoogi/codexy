@@ -11,10 +11,11 @@ review. The complete downstream transition procedures MUST be ready before
 actual elevation is executed.
 
 Work identified as hard before assignment MUST continue to use the direct
-Terra/Medium route in [Worker routing](child-routing-policy.md#evidenced-hard-work).
-This reference MUST be used only when a general Luna/Max Worker discovers
-qualifying evidence after work has begun. Specialists and Workers already
-assigned to the hard lane MUST NOT use this path.
+Terra/Medium route in
+[Worker routing](child-routing-policy.md#evidenced-hard-work). This reference
+MUST be used only when a general Luna/Max Worker discovers qualifying evidence
+after work has begun. Specialists and Workers already assigned to the hard lane
+MUST NOT use this path.
 
 ## Eligibility conditions
 
@@ -23,8 +24,8 @@ elevation:
 
 - The source MUST be the authenticated current owner of the issue, and its
   assignment record MUST identify it as a `gpt-6-luna` / `max` Worker. The
-  Orchestrator MUST keep any host-effective model observation separate; if it
-  is not exposed, it remains unknown.
+  Orchestrator MUST keep any host-effective model observation separate; if it is
+  not exposed, it remains unknown.
 - The source's actual native goal MUST be active and its objective MUST exactly
   match the current `Assignment objective:`. The Orchestrator MUST inspect the
   source goal readback; its own goal or the Worker's status text is not a
@@ -35,19 +36,18 @@ elevation:
 - Current evidence MUST establish one complete `hard_work` category from the
   existing set:
 
-  | Criterion | Required evidence |
-  | --- | --- |
-  | `coupled_contracts` | At least three distinct executable contracts MUST change together, with an explanation of why changing one independently would violate their shared invariant. |
-  | `algorithm_design` | A new algorithm MUST be derived, with at least two distinct technical constraints and a correctness obligation beyond applying an existing pattern. |
-  | `cross_boundary_diagnosis` | There MUST be at least two affected boundaries, two distinct competing hypotheses, and two concrete observations that discriminate between those hypotheses. |
+  | Criterion                  | Required evidence                                                                                                                                              |
+  | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `coupled_contracts`        | At least three distinct executable contracts MUST change together, with an explanation of why changing one independently would violate their shared invariant. |
+  | `algorithm_design`         | A new algorithm MUST be derived, with at least two distinct technical constraints and a correctness obligation beyond applying an existing pattern.            |
+  | `cross_boundary_diagnosis` | There MUST be at least two affected boundaries, two distinct competing hypotheses, and two concrete observations that discriminate between those hypotheses.   |
 
-The Orchestrator MUST verify these facts against the supplied task evidence.
-It MUST NOT treat labels, difficulty keywords, or a structurally complete
-report as proof that the facts are true. This policy MUST NOT add a parser for
-difficulty wording or create new hard-work criteria. If a request requires
-automatic elevation outside these criteria, the Orchestrator MUST report that
-it needs a separate maintainer policy decision and MUST NOT apply it through
-this path.
+The Orchestrator MUST verify these facts against the supplied task evidence. It
+MUST NOT treat labels, difficulty keywords, or a structurally complete report as
+proof that the facts are true. This policy MUST NOT add a parser for difficulty
+wording or create new hard-work criteria. If a request requires automatic
+elevation outside these criteria, the Orchestrator MUST report that it needs a
+separate maintainer policy decision and MUST NOT apply it through this path.
 
 An actual native blocked goal MUST remain blocked until the explicitly
 authorized, source-pair-preserving recovery in
@@ -67,13 +67,22 @@ result in the existing task record with its reason and next action:
 - **Elevation may proceed** when every eligibility condition is proved. This
   records permission to consider the later transition procedure; it MUST NOT be
   treated as executing that procedure.
-- **The existing Worker continues** when the evidence does not justify
-  elevation and the Worker can continue safely within its existing scope and
-  permissions.
+- **The existing Worker continues** when the evidence does not justify elevation
+  and the Worker can continue safely within its existing scope and permissions.
 - **Waiting because conditions are not met** when required state or evidence is
   missing, a prerequisite is unresolved, or the next safe action belongs to the
   Orchestrator. The Orchestrator MUST own that next action and preserve the
   existing owner and conditions.
+
+Transition readiness is not an eligibility condition. The Orchestrator MUST
+assess the source state and hard-work evidence above independently of whether a
+downstream fork or model-transition procedure is ready. When every eligibility
+condition is proved, the result MUST be **Elevation may proceed**, even while
+that transition remains unavailable. The Orchestrator MUST record the transition
+limitation in the reason and next action, preserve the existing source owner and
+conditions, and MUST NOT execute the transition until its separate procedure is
+ready. Missing transition support MUST NOT change a proved eligibility result to
+**The existing Worker continues** or **Waiting because conditions are not met**.
 
 The Orchestrator MUST reassess if the source state or parent instructions
 change. It MUST NOT reuse an earlier decision for changed state or instructions.
