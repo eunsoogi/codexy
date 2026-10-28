@@ -80,13 +80,14 @@ claim when proof is absent, stale, too weak, or contradictory.
   process contracts.
 - Blocked-goal recovery: `$goal-lifecycle` MUST NOT mark an unfinished blocked
   objective complete to recover execution. On an explicitly authorized resume,
-  `$goal-lifecycle` MUST use a same-directory fork, archive the source before
-  continuation, pass the source model and reasoning effort explicitly, and
-  confirm an active goal in the fork before work. Requested model/effort fields
-  and host-exposed effective readbacks MUST remain distinct; unavailable
-  effective settings are not proof of their value. Fork, archive, and goal
-  readbacks are control-plane evidence only and MUST NOT waive or replace
-  ordinary issue, PR, implementation, proof, review, CI, merge, release,
+  `$goal-lifecycle` MUST prove supported checkout preservation before source
+  archival, use one same-directory fork, archive the source before continuation,
+  pass the source model and reasoning effort explicitly, and confirm an active
+  goal plus successful exact-CWD checkout preflight before issue work. Requested
+  model/effort fields and host-exposed effective readbacks MUST remain distinct;
+  unavailable effective settings are not proof of their value. Fork, archive,
+  and goal readbacks are control-plane evidence only and MUST NOT waive or
+  replace ordinary issue, PR, implementation, proof, review, CI, merge, release,
   publication, external-gate, ownership, or handoff requirements.
 - GitHub, owner, reviewer, CI, release, and external-state producers own their
   state machines. Consume their current evidence without restating or replacing
