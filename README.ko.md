@@ -27,7 +27,7 @@ Codexy는 Codex 에이전트의 작업을 계획하고 나누어 맡기며, 구�
 `getcodexy`는 컴포넌트 의존성을 계산하고 설치 목록과 수명주기를 관리합니다.
 
 ```sh
-uv tool install getcodexy==2.0.1
+uv tool install getcodexy==2.1.0
 uv tool update-shell
 getcodexy install
 ```
@@ -59,7 +59,7 @@ tool bin 디렉터리를 `PATH`에 넣고 셸을 다시 연 뒤 사용하세요.
 ```sh
 getcodexy status                       # 설치 목록 확인
 getcodexy doctor                       # host 준비 상태와 컴포넌트 상태 확인
-uv tool upgrade getcodexy==2.0.1       # CLI 자체 업데이트
+uv tool upgrade getcodexy==2.1.0       # CLI 자체 업데이트
 getcodexy update                       # 설치된 모든 컴포넌트 업데이트
 getcodexy update github                # GitHub 의존 범위 업데이트
 getcodexy install github               # GitHub 추가
@@ -92,7 +92,7 @@ durable recovery journal을 보존합니다.
 개발 또는 통제된 복구에서만 사용하고 `core`부터 설치하세요.
 
 ```sh
-codex plugin marketplace add eunsoogi/codexy --ref v2.0.1
+codex plugin marketplace add eunsoogi/codexy --ref v2.1.0
 codex plugin add codexy@codexy
 codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
