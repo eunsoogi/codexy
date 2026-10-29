@@ -1,8 +1,10 @@
 // Public examples remain repository test data. The harness checks structure,
 // while focused assertions preserve each corpus's contract semantics.
-#[path = "skill_public_corpora_checks.rs"]
+// Keep helper modules below this directory: the shard inventory treats each
+// top-level test source file as a separately routed crate root.
+#[path = "skill_public_corpora/checks.rs"]
 mod checks;
-#[path = "skill_public_corpora_prune_checks.rs"]
+#[path = "skill_public_corpora/prune_checks.rs"]
 mod prune_checks;
 
 use std::{collections::HashMap, fs, path::Path};
