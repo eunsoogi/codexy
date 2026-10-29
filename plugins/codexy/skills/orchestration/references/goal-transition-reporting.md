@@ -187,9 +187,9 @@ Runtime delivery mechanics remain owned by #367.
 
 ## Blocked Goal User-Decision Gate
 
-`update_goal(blocked)` is reserved for an unanswered material user decision or
-missing user information. Before its pre-delivery receipt, the child MUST record
-one typed `Blocked goal user-decision gate:` with a gate id;
+Codex MUST reserve `update_goal(blocked)` for missing user input or unanswered
+material decisions. Same-objective recovery MUST NOT need new user approval.
+Pre-delivery MUST include one typed `Blocked goal user-decision gate:` with ID;
 `blocker class=user-decision` or `missing-user-information`;
 `decision owner=user`; the exact `user question`; `user response=unanswered`; at
 least two distinct `decision branches`; their `material impact`;

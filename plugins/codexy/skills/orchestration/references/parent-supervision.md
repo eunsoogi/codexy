@@ -39,9 +39,12 @@ Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
 - Inspector: `gpt-6.1-sol` / `medium`.
 
 New-role thread creation and delivery MUST use the explicit model/effort pair
-from the [child-routing policy](child-routing-policy.md). Authorized
-blocked-goal fork continuation MUST preserve the source settings under that
-policy; role defaults and sender settings MUST NOT override them.
+from the [child-routing policy](child-routing-policy.md). Recovery of the same
+objective MUST use its source values under that policy, with requested values
+kept separate from host-exposed effective settings. The ordered fork, checkout
+association, topology-specific preservation, archive, and acceptance sequence is
+owned by [goal-lifecycle](../../goal-lifecycle/SKILL.md); role defaults and
+sender settings MUST NOT override the source pair.
 
 ## Message visibility and style
 
