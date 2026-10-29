@@ -18,7 +18,7 @@ fn packaged_specialist_catalogs_remain_admitted() -> TestResult {
                 .ok_or("specialist filename")?;
             assert_admitted(
                 agent_type,
-                "Inspect or implement the specialist-owned bounded task.",
+                "Inspect or review the specialist-owned bounded task.",
             )?;
             admitted.push(agent_type.to_owned());
         }

@@ -26,7 +26,7 @@ TIMING_FILE_ENV = "CODEXY_CORE_HOOK_TIMING_FILE"
 
 def main() -> int:
     from codexy_policy.envelope import evaluate
-    from codexy_policy.subagent_ownership import forbidden
+    from codexy_policy.subagent_ownership import forbidden_with_guidance
 
     parser = argparse.ArgumentParser(allow_abbrev=False)
     _ = parser.add_argument(
@@ -45,7 +45,13 @@ def main() -> int:
             started_ns = timing.start()
         except Exception:
             timing = None
-    output = evaluate(event, payload, TOOLS, "CODEXY_SUBAGENT_OWNERSHIP_", forbidden)
+    output = evaluate(
+        event,
+        payload,
+        TOOLS,
+        "CODEXY_SUBAGENT_OWNERSHIP_",
+        forbidden_with_guidance,
+    )
     if timing is not None and started_ns is not None:
         timing.record(
             event,

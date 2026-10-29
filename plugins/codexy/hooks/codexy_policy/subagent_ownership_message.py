@@ -187,7 +187,7 @@ def _active_relays(message: str, spans: list[tuple[int, int]]) -> list[bool]:
                 char.isspace() or char in ":,"
                 for char in message[previous.end() : opening]
             )
-            and not _is_negated(message, previous)
+            and not is_negated(message, previous)
         )
         after = (
             relay_index < len(relays)
@@ -195,13 +195,14 @@ def _active_relays(message: str, spans: list[tuple[int, int]]) -> list[bool]:
                 char.isspace() or char in ":,"
                 for char in message[end : relays[relay_index].start()]
             )
-            and not _is_negated(message, relays[relay_index])
+            and not is_negated(message, relays[relay_index])
         )
         active.append(before or after)
     return active
 
 
-def _mask_quoted_data(message: str) -> tuple[str, bool]:
+def mask_quoted_data(message: str) -> tuple[str, bool]:
+    """Mask inert quotes and report an unterminated quote for peer classifiers."""
     # Quoted examples are inert unless an active relay phrase explicitly asks the worker to follow them.
     spans, unmatched = _quote_spans(message)
     active = _active_relays(message, spans)
@@ -212,13 +213,15 @@ def _mask_quoted_data(message: str) -> tuple[str, bool]:
     return mask_non_delegating_data("".join(masked)), unmatched
 
 
-def _clause_prefix(message: str, position: int, limit: int = 80) -> str:
+def clause_prefix(message: str, position: int, limit: int = 80) -> str:
+    """Return the bounded text in the clause immediately before a candidate match."""
     prefix = message[max(0, position - limit) : position]
     return prefix[max((prefix.rfind(d) for d in _CLAUSE), default=-1) + 1 :]
 
 
-def _is_negated(message: str, match: re.Match[str]) -> bool:
-    prefix = _clause_prefix(message, match.start())
+def is_negated(message: str, match: re.Match[str]) -> bool:
+    """Apply shared negation rules to an action candidate."""
+    prefix = clause_prefix(message, match.start())
     context = prefix + match.group(0)
     near, any_word, ownership, suffix = _NEGATION_RULES
     return bool(
@@ -234,13 +237,13 @@ def durable_owner_requested(message: str) -> bool:
     folded = message.casefold()
     if not any(keyword in folded for keyword in _HINTS):
         return False
-    masked, unmatched_quote = _mask_quoted_data(message)
+    masked, unmatched_quote = mask_quoted_data(message)
     if unmatched_quote:
         # An unterminated quote makes the instruction boundary ambiguous, so deny the assignment.
         return True
     if not any(keyword in masked.casefold() for keyword in _HINTS):
         return False
     return any(
-        any(not _is_negated(masked, match) for match in matcher.finditer(masked))
+        any(not is_negated(masked, match) for match in matcher.finditer(masked))
         for matcher in _DURABLE_RULES
     )

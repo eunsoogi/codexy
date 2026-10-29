@@ -10,7 +10,7 @@ COMMAND_HOOKS = (
         "codexy-subagent-ownership",
     ),
 )
-# Keep preventive launchers and the cleanup lifecycle adapter in the installed set.
+# Keep the preventive ownership launchers and cleanup lifecycle adapter in the installed set.
 LAUNCHERS = tuple(
     f"hooks/{stem}.{extension}"
     for _, stem in COMMAND_HOOKS
@@ -26,6 +26,8 @@ DEPENDENCIES = (
     "hooks/codexy_policy/child_thread_creation.py",
     "hooks/codexy-subagent-ownership.py",
     "hooks/codexy_policy/subagent_ownership.py",
+    # Spawn admission delegates action intent to this separately packaged helper.
+    "hooks/codexy_policy/subagent_ownership_action.py",
     "hooks/codexy_policy/subagent_ownership_message.py",
     "hooks/codexy_policy/subagent_ownership_classifier_mask.py",
     "hooks/codexy_policy/envelope.py",
