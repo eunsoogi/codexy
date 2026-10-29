@@ -10,15 +10,16 @@ the source Worker, change its goal, expand scope, or approve completion or
 review. The complete downstream transition procedures MUST be ready before
 actual elevation is executed.
 
-After recording **Elevation may proceed**, the Orchestrator MUST use the
-[parent-loop reconciliation](worker-elevation/reconciliation.md) in its defined
-order. It MUST complete and recheck the
-[Worker checkpoint procedure](worker-elevation/checkpoint.md) before preparing a
-target; read-only target setup and parent binding MUST precede source retirement
-under #1447. A cooperative freeze or incomplete checkpoint MUST NOT authorize a
-fork. After a separately authorized #1447 checkpoint, the Orchestrator MUST use
-the [complete Worker elevation transition](worker-elevation/transition.md) and
-its failure handling before changing ownership.
+After recording **Elevation may proceed**, the Orchestrator MUST follow the
+[parent-loop reconciliation](worker-elevation/reconciliation.md). It MUST
+complete and recheck the [source checkpoint](worker-elevation/checkpoint.md)
+before preparing a target. The target's read-only setup, identity, authenticated
+assignment, parent route, and same-checkout state MUST be confirmed before the
+source is retired. A cooperative freeze, eligibility decision, or checkpoint
+alone MUST NOT authorize a fork or transfer. The parent MUST separately
+authorize the same-issue transition and use the
+[transition procedure](worker-elevation/transition.md), including its failure
+handling, before changing the existing owner record.
 
 Work identified as hard before assignment MUST continue to use the direct
 Terra/Medium route in

@@ -5,9 +5,9 @@
 This reference connects the in-flight hard-work decision to the existing
 Orchestrator supervision loop. It composes the eligibility assessment in
 [`worker-elevation.md`](../worker-elevation.md) with the source checkpoint and
-transition procedures from #1446 and #1447. It MUST preserve the role, recovery,
-capacity, observation, receipt, and review contracts those references already
-own.
+transition procedures in this reference bundle. It MUST preserve the role,
+recovery, capacity, observation, receipt, and review contracts those references
+already own.
 
 This is an instruction path, not a new executor, serialized state machine,
 journal, event store, receipt format, or host capability. Codex MUST update the
@@ -18,14 +18,16 @@ readback, the transition MUST remain pending with the source as owner.
 
 ## Entry and record ownership
 
-The Orchestrator MAY select this route only after the current general Luna/Max
-Worker satisfies the evidence in the elevation decision and the complete
-#1446/#1447 procedures are available. The entrypoint MUST remain unavailable if
-eligibility, the source checkpoint, the target's read-only startup,
-authenticated assignment or parent binding, source-only retirement, or the
-ownership transfer cannot be performed and reconciled through supported routes.
-A missing capability MUST NOT be inferred from a prompt or replaced by a new
-API.
+The Orchestrator MAY use this procedure only after the current general Luna/Max
+Worker satisfies the elevation decision and the parent separately authorizes the
+same-issue transition. Before advancing, it MUST verify that each required
+operation and readback is exposed in the current task. This manual procedure
+does not imply an automatic entrypoint. If eligibility, the source checkpoint,
+target read-only setup, authenticated assignment or parent binding, source-only
+retirement, or ownership transfer cannot be established through supported
+routes, the parent MUST keep the current owner and report the exact unsupported
+step. A missing capability MUST NOT be inferred from a prompt or replaced by a
+new API.
 
 The Orchestrator MUST keep one existing issue-owner record authoritative through
 the transition. It MUST preserve the issue and PR, original objective, source
@@ -37,10 +39,10 @@ reference MUST NOT make a new field set or receipt schema mandatory.
 
 The source remains the sole implementation owner until the target completes
 read-only setup, the parent confirms the required bindings, and the source is
-safely retired under #1447. A prepared target is inert and MUST NOT write the
-checkout or receive implementation work before that point. The parent owns
-judgment and acceptance throughout; neither a source report nor a target
-acknowledgement transfers ownership.
+safely retired under the transition procedure. The parent MUST keep a prepared
+target read-only and MUST NOT assign it implementation work before that point.
+The parent owns judgment and acceptance throughout; neither a source report nor
+a target acknowledgement transfers ownership.
 
 ## Parent-loop sequence
 
@@ -54,21 +56,22 @@ acknowledgement transfers ownership.
    [advisor-consultation](../advisor-consultation.md); this clear policy path
    MUST NOT add an Advisor approval step.
 
-   Before preparing a target, the parent MUST confirm that #1442 recipient
-   compatibility and the #1446 checkpoint plus #1447 transition apply to the
-   same issue, objective, source, and checkout. If a prerequisite or native
-   capability is missing, unsupported, or ambiguous, the parent MUST keep the
-   current owner and report the exact gap. It MUST NOT dispatch a fork while the
-   source remains blocked or changing, or required bindings are unavailable.
+   Before preparing a target, the parent MUST confirm that current routing
+   compatibility, the source checkpoint, and the separately authorized
+   transition apply to the same issue, objective, source, and checkout. If a
+   prerequisite or native capability is missing, unsupported, or ambiguous, the
+   parent MUST keep the current owner and report the exact gap. It MUST NOT
+   dispatch a fork while the source remains blocked or changing, or required
+   bindings are unavailable.
 
 2. **Quiesce and checkpoint the source.** Under the continuing cooperative
    no-write instruction, the parent MUST confirm actual completion or
    termination of every identified writer, unchanged source goal and ownership,
-   and the checkpoint required by [#1446](checkpoint.md). A quiet task,
-   acknowledgement, timeout, archive request, or unchanged Git status alone MUST
-   NOT stand in for a writer result. The parent MUST recheck the checkpoint
-   immediately before the fork. Any new writer or changed source state MUST
-   invalidate it.
+   and the checkpoint required by [the source procedure](checkpoint.md). A quiet
+   task, acknowledgement, timeout, archive request, or unchanged Git status
+   alone MUST NOT stand in for a writer result. The parent MUST recheck the
+   checkpoint immediately before the fork. Any new writer or changed source
+   state MUST invalidate it.
 
 3. **Reserve actual capacity, then prepare one inert target.** Before forking,
    the parent MUST count the source and target separately whenever both occupy
@@ -88,8 +91,8 @@ acknowledgement transfers ownership.
    create a worktree, copy a diff, recreate a branch, or let the target become a
    second writer.
 
-4. **Start the target with a read-only turn.** The parent MUST use the supported
-   #1447 route to request Terra/Medium before the target's first inference. A
+4. **Start the target with a read-only turn.** The parent MUST use a currently
+   exposed route to request Terra/Medium before the target's first inference. A
    composer selection or accepted message proves a request or transport only.
    The parent MUST keep requested, accepted, authenticated, effective, and
    actual-execution evidence separate. Codex MUST NOT send a model override to a
@@ -127,11 +130,11 @@ acknowledgement transfers ownership.
 
 6. **Use the existing handoff and source-only retirement.** The source MUST use
    the existing [terminal parent handoff](../goal-transition-reporting.md) and
-   #1447 retirement procedure. It MUST preserve its common fields and event
-   identity and add only the transition evidence that procedure already calls
-   for. An ambiguous send, callback, or archive result MUST be reconciled
-   against the known identities before another send or retirement. The source
-   MUST NOT create a second terminal event to repair an unknown callback.
+   transition procedure. It MUST preserve its common fields and event identity
+   and add only the transition evidence that procedure already calls for. An
+   ambiguous send, callback, or archive result MUST be reconciled against the
+   known identities before another send or retirement. The source MUST NOT
+   create a second terminal event to repair an unknown callback.
 
    The parent MUST establish supported source-only retirement and checkout
    preservation before requesting it. Archival alone does not prove that future
@@ -201,5 +204,7 @@ their own authorized native readbacks; this implementation MUST NOT run a live
 fork/archive experiment or upgrade a personal plugin to manufacture them.
 
 Codex MUST keep unsupported native boundaries capability-gated and report them
-to the parent. Integrated installed 2.1.0 proof remains with #1449. It MUST NOT
-call source fixtures, documentation, or CI native transition success.
+to the parent. This procedure does not imply an installed or automatic
+parent-loop entrypoint; any such claim requires a current authenticated host
+readback. It MUST NOT call source fixtures, documentation, or CI native
+transition success.

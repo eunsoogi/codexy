@@ -10,26 +10,27 @@ implementation owner until the target's read-only setup, identity, goal, model
 assignment, parent route, and same-checkout state are confirmed and the source
 is safely retired.
 
-This installed procedure states supported request routes and their evidence
-limits, distinguishing them from authenticated assignment and observed effective
-settings. A supported request MUST NOT be reported as a successful native
-transition. The parent-loop entrypoint remains out of scope until #1448 is
-complete.
-
-The current maintainer direction permits a read-only target startup before
-source retirement. This does not permit concurrent implementation, an
-automatic-start fork, source retirement before authentication, or a fabricated
-model or parent binding. Automatic-continuation suppression remains excluded.
+This procedure describes request routes and their evidence limits. A request
+MUST NOT be reported as a successful native transition. It does not imply a
+packaged parent-loop entrypoint: before each step, the Orchestrator MUST check
+that the required operation and readback are exposed in the current task. If a
+required operation or result is unavailable, the current owner MUST remain in
+place and the parent MUST report the exact unsupported step. The target's first
+turn MUST be explicitly limited to read-only setup, and the no-write instruction
+MUST remain in force until ownership transfers. This is cooperative control, not
+proof that future continuation is disabled. If a target write occurs or the
+parent cannot confirm that setup stayed read-only, the source MUST remain owner.
 
 ## Preconditions
 
 Before forking, the Orchestrator MUST re-read the issue and parent instructions,
 its own exact active overall goal, the source's exact active goal, the current
-#1445 elevation decision, and the #1446 checkpoint. The source MUST remain the
-authenticated issue owner under a cooperative no-write instruction that stays in
-force across continuation turns. Every identified file-writing producer or tool
-call MUST have an actual completion or termination result. A quiet status, ACK,
-or unchanged Git state alone does not prove quiescence.
+eligibility decision, separate transition authorization, and source checkpoint.
+The source MUST remain the authenticated issue owner under a cooperative
+no-write instruction that stays in force across continuation turns. Every
+identified file-writing producer or tool call MUST have an actual completion or
+termination result. A quiet status, ACK, or unchanged Git state alone does not
+prove quiescence.
 
 The parent MUST verify and record the source's project, CWD, branch, HEAD,
 staged and unstaged changes, required untracked and ignored files, lock
@@ -87,13 +88,13 @@ visible selection is only a request, not proof of authenticated assignment. If
 Terra/Medium is unavailable, stop with the source still owning the issue.
 
 The callable `send_message_to_thread` also accepts `model` and `thinking`, but
-it starts a turn. Under the current maintainer direction, that first turn MAY be
-used only for the read-only setup below, with the explicit pair and a prompt
-that prohibits implementation and checkout writes. MUST NOT send Terra/Medium to
-a target that remains authenticated as Luna, override the live source, rely on
-the sender's pair or a host default, or substitute raw App Server or CLI task
-creation. Tool acceptance establishes transport only; record requested,
-accepted, authenticated, effective settings, and actual execution separately.
+it starts a turn. The first target turn MAY be used only for the read-only setup
+below, with the explicit pair and a prompt that prohibits implementation and
+checkout writes. MUST NOT send Terra/Medium to a target that remains
+authenticated as Luna, override the live source, rely on the sender's pair or a
+host default, or substitute raw App Server or CLI task creation. Tool acceptance
+establishes transport only; record requested, accepted, authenticated, effective
+settings, and actual execution separately.
 
 ### 3. Complete target read-only setup and parent-route checks
 
@@ -199,8 +200,8 @@ Only after source retirement and the target's identity and authenticated pair
 are confirmed may the Orchestrator update its existing owner record to the
 target. The Orchestrator MUST preserve the issue/PR, objective, branch,
 checkout, staged and unstaged work, required artifacts, reviewer, unresolved
-findings, failure history, and reservations. The parent loop integration remains
-with #1448.
+findings, failure history, and reservations. The target MUST NOT implement until
+the parent has made the single-owner transfer after all required readbacks.
 
 The target MAY implement only after a final readback confirms its exact active
 goal, assignment, permissions, pair, same checkout, and ownership. The source
