@@ -78,21 +78,13 @@ claim when proof is absent, stale, too weak, or contradictory.
 - Missing goal, plan, tool, or multi-agent receipts alone MUST NOT invalidate
   otherwise current and complete outcome evidence. Those producers own their own
   process contracts.
-- Blocked-goal recovery: `$goal-lifecycle` MUST NOT mark an unfinished blocked
-  objective complete to recover execution. Recovery of an unchanged objective
-  and scope carries the original assignment authority; blocked status alone MUST
-  NOT require renewed user confirmation. Codex MUST follow the ordered
-  preparation, same-directory fork, supported checkout association and
-  topology-specific lifetime-preservation, source-archive, and post-archive
-  acceptance sequence in
-  [executable-checkout recovery](../goal-lifecycle/references/executable-checkout-recovery.md).
-  It MUST keep issue work stopped until the exact objective, sole owner, and
-  successful exact-CWD process are confirmed after archival. Requested
-  model/effort fields and host-exposed effective readbacks MUST remain distinct;
-  unavailable effective settings are not proof of their value. Fork, archive,
-  and goal readbacks are control-plane evidence only and MUST NOT waive or
-  replace ordinary issue, PR, implementation, proof, review, CI, merge, release,
-  publication, external-gate, ownership, or handoff requirements.
+- Native goal transitions and blocked-goal recovery are owned by
+  [goal-lifecycle](../goal-lifecycle/SKILL.md); delivery order and receipts are
+  owned by
+  [goal-transition-reporting](../orchestration/references/goal-transition-reporting.md).
+  Control-plane readbacks, recovery preparation, and accepted delivery MUST NOT
+  substitute for the evidence required to judge an issue, implementation,
+  verification, review, CI, publication, or external-state outcome.
 - GitHub, owner, reviewer, CI, release, and external-state producers own their
   state machines. Consume their current evidence without restating or replacing
   their authority here.
