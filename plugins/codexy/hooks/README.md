@@ -30,7 +30,10 @@ omitted, and unknown roles fail closed instead of becoming implementation
 owners; durable work MUST use a Codex child thread, and unavailable thread
 tooling MUST be reported as a blocker. Allowlisted specialists and `explorer`
 remain bounded helpers or reviewers; branch, worktree, pull-request, and
-review-response ownership is denied at admission. Structured control-plane
+review-response ownership is denied at admission. Both `send_message` and
+`followup_task` apply the same message classifier to every nonempty target. The
+follow-up envelope does not authenticate target existence or role, so the hook
+never relies on a role claimed in the message; malformed targets fail closed. Structured control-plane
 handoffs require their explicit marker and stable key in the orchestration
 validators; ordinary wording never becomes route authority. The upstream
 orchestration resolver selects generic, explicit, fallback, and named-role
