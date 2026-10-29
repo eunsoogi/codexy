@@ -14,6 +14,7 @@ CORE_HOOK_DEPENDENCIES = (
     "hooks/codexy-subagent-ownership.cmd",
     "hooks/codexy-subagent-ownership.py",
     "hooks/codexy_policy/subagent_ownership.py",
+    "hooks/codexy_policy/subagent_ownership_action.py",
     "hooks/codexy_policy/subagent_ownership_message.py",
     "hooks/codexy_policy/subagent_ownership_classifier_mask.py",
     "hooks/codexy_policy/envelope.py",

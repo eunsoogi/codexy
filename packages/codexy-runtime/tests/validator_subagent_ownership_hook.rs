@@ -1,5 +1,5 @@
-// Pin matcher and launcher behavior: known specialists remain bounded helpers,
-// while generic roles and durable ownership requests fail closed.
+// Pin matcher and launcher behavior: bounded helpers may review, but may not
+// receive implementation, execution-verification, or durable ownership work.
 use std::{io::Write as _, process::Stdio};
 
 use crate::support::FixtureCommand as Command;
@@ -11,6 +11,8 @@ mod retired_watcher;
 mod catalog_admission;
 #[path = "validator_subagent_ownership_hook/followup.rs"]
 mod followup;
+#[path = "validator_subagent_ownership_hook/action_admission.rs"]
+mod action_admission;
 
 pub(crate) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -106,7 +108,6 @@ fn bounded_specialists_remain_helpers_and_reviewers() -> TestResult {
         ("codexy-auditor", "Verify PR #879 and report current evidence."),
         ("codexy-sentinel", "Review the frozen diff and report blockers."),
         ("explorer", "Create a read-only test plan for PR #145."),
-        ("codexy-architect", "Implement branch coverage tests and report the result."),
     ] {
         assert_admitted(agent_type, message)?;
     }
