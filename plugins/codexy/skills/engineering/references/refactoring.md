@@ -16,13 +16,8 @@ MUST improve structure while preserving behavior and public contracts.
 5. Re-run proof after each meaningful move and describe the structural boundary
    or duplication removed.
 
-MUST NOT weaken, delete, skip, or rewrite tests just to pass a refactor.
-
-An independently justified duplicate-test removal or merge is allowed only when
-its preserved oracle is explicit. Classify the behavior boundary first and
-retain the security, error, platform, and state-transition invariants that the
-change still needs to protect. Mutation or fault injection is targeted to
-uncertain important coverage; it is not a default obligation for every edit.
+When a refactor changes checks or test targets, MUST follow the canonical
+[test-oracle preservation rule](quality-assurance.md#test-oracle-preservation).
 
 ## Governed LOC contract
 
@@ -41,16 +36,10 @@ uncertain important coverage; it is not a default obligation for every edit.
 ## Performance and test-preservation review
 
 MUST continue to preserve behavior and public contracts when a refactor changes
-test targets, fixtures, or measured execution paths. MUST use
-[Performance review](performance-review.md) only when the request explicitly
-asks for cost or test efficiency. Before deleting or merging a test, MUST
-preserve this evidence chain:
-
-`requirement protected → replacement oracle → unique regression case retained`
-
-MUST NOT treat a green suite after deleting a test as proof beyond the deleted
-check no longer running. MUST keep the actual regression and security checks,
-and MUST record missing measurements as `not measured`.
+test targets, fixtures, or measured execution paths. Test-oracle preservation is
+owned by [quality assurance](quality-assurance.md#test-oracle-preservation). Use
+[performance review](performance-review.md) only when the request explicitly
+asks for cost or test efficiency.
 
 MUST leave the 250-line limit and readable structural-remediation rules above
 unchanged. MUST end the result with the problem, evidence, smallest improvement,

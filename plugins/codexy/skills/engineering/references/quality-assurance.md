@@ -2,6 +2,9 @@
 
 ## Method
 
+This reference owns check selection, proof channel, and verification depth for
+each claim.
+
 MUST turn each completion claim into observable evidence.
 
 1. List the happy path, riskiest edge, regression path, and named external
@@ -36,6 +39,30 @@ MUST turn each completion claim into observable evidence.
    evaluation remains a separate owned surface.
 7. Bind PASS to the exact file state or head and account for temporary files,
    ports, sessions, screenshots, traces, and worktrees.
+
+## Test-oracle preservation
+
+For every new, changed, or replacement check, MUST name the requirement or
+distinct regression it protects, the faulty behavior that should fail, and the
+source of its expected result. Expected results MUST come from the agreed
+contract or an independent observation, never only from the current
+implementation. A check that only repeats implementation form or copies current
+output without exposing a contract violation is not an independent oracle. MUST
+NOT weaken or skip a check just to make changed work pass.
+
+When removing or merging checks, MUST preserve this evidence chain:
+
+`requirement protected → replacement oracle → unique regression case retained`
+
+MUST identify the protected behavior, compatibility, or security invariant; the
+independent observation that detects a violation; and the unique regression case
+that still fails when the requirement regresses. MUST explain why equivalent
+coverage does not already retain that case and preserve applicable error,
+platform, security, and state-transition invariants. A green suite after
+removing a check proves only that the removed check no longer ran. If the
+replacement cannot preserve the required meaning, MUST keep the check and report
+the smallest follow-up. Mutation or fault injection MUST target an uncertain
+important coverage gap; it is not a default obligation.
 
 ## Constraints
 

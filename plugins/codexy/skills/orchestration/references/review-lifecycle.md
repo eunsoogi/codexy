@@ -1,9 +1,10 @@
 # Review lifecycle
 
-A reviewer MUST use the current diff and exact current head. `PASS`, `BLOCK`,
-and `UNOBSERVABLE` are terminal results. `PENDING` and `RUNNING` are
-non-terminal observations of the same active reviewer and MUST remain pending
-until its actual result arrives.
+This reference owns reviewer-state validity and current-head binding. A reviewer
+MUST use the current diff and exact current head. `PASS`, `BLOCK`, and
+`UNOBSERVABLE` are terminal results. `PENDING` and `RUNNING` are non-terminal
+observations of the same active reviewer and MUST remain pending until its
+actual result arrives.
 
 ## Current-head path
 
@@ -13,52 +14,43 @@ binds the selected profile, the policy reviewer when applicable,
 `unresolved_findings`. It MUST match the authenticated current PR head and the
 selected reviewer policy. It MUST NOT require a genesis record, prior snapshot,
 transcript import, quota counter, invocation telemetry, or disposition ledger.
+The compact producer does not require `issue_number` or a prior control state;
+when supplied, `previous_control_state` MUST be rejected. Absence of a prior
+control remains valid.
 
 The normal sequence is:
 
-1. capture the current PR state and exact head;
-2. run the one proportionate reviewer selected by the profile when a reviewer is
-   required;
-3. keep the same reviewer and current-head binding while it is pending;
-4. treat `PASS` with no unresolved findings as review evidence, while `BLOCK`,
-   `UNOBSERVABLE`, a stale head, failed relevant check, or an actual unresolved
-   finding remains blocking; and
-5. fix an actual finding in the owning lane, rerun the relevant verification,
-   and validate the new current head.
+1. Capture the current PR state and exact head.
+2. Run the one reviewer selected by [review profiles](review-profiles.md) when
+   the profile requires it.
+3. Keep that reviewer and its current-head binding while it is pending.
+4. Treat `PASS` with no unresolved findings as review evidence. `BLOCK`,
+   `UNOBSERVABLE`, a stale head, or an actual unresolved finding is not a
+   current-head pass.
+5. Fix an actual finding in the owning lane, run affected checks selected under
+   [quality assurance](../../engineering/references/quality-assurance.md), and
+   have the selected reviewer assess the new current head. A repaired head gets
+   a new assessment; a terminal result for the old head remains historical.
 
-Verification consumption follows a separate per-check decision. For each result
-that may be reused, preserve the original invocation revision, environment,
-exact command, result, and execution state, then read back the current diff and
-the relevant implementation, dependency/lock/configuration, fixtures, generated
-inputs, and environment. A current applicability assessment MAY preserve a valid
-passed result for an unchanged boundary or unrelated prose-only or other
-metadata-only change; it MUST NOT rewrite the execution record or call it a
-rerun. A relevant source, dependency, lock/configuration, shared fixture,
-generated-input, or environment change, previous failure, unresolved risk, or
-uncertain impact requires the affected checks again. Known integration changes
-invalidate only affected evidence; uncertain integration impact warrants broader
-checks.
+## Verification and outcome boundaries
 
-The owning child MAY provide this preserved evidence for the parent to consume.
-The parent MUST NOT duplicate the full suite by default solely to repeat
-unchanged checks. This reuse is not whole-change readiness: current
-requirements, affected checks, required CI, and the selected reviewer when
-applicable still apply, and a reviewer `PASS` from an older head is not
-inherited.
+Check selection, proof depth, and test-oracle preservation belong to
+[quality assurance](../../engineering/references/quality-assurance.md). The
+validity or reuse of execution evidence and overall outcome judgment belong to
+[proof-driven completion](../../proof-driven-completion/SKILL.md). A reviewer
+result is one input to that outcome; it MUST NOT stand in for the full
+requirement and evidence assessment. Additional checks or reviews follow the
+[execution budget](execution-budget.md) and require an unmet criterion or
+concrete unresolved risk.
 
-Missing historical evidence is an unknown limitation, not a synthetic result or
-a new approval request. It MUST NOT block unrelated authorized preparation. A
-current-head reviewer result does not imply that a connector review, semantic
-evaluator, repeated broad check, or evidence artifact is needed. Those additions
-require an explicit user or repository requirement or a concrete unresolved
-risk. Additional testing or review MUST also identify the unmet criterion or
-concrete unresolved risk it addresses; a desire for unspecified extra confidence
-is not a stopping-condition exception.
+Missing historical transcript, import, invocation, or quota data MUST NOT be
+converted into a synthetic reviewer result or a new approval request. The
+compact current-head path does not require those records. A missing history
+record does not make an otherwise valid current-head result stale.
 
 The current PR snapshot is authoritative for repository, PR, base, and head
-identity. A completion or readiness check MUST consume the current snapshot and
-relevant checks; it MUST NOT reconstruct old review history merely because an
-older record is absent. The owning child keeps implementation and
+identity. This lifecycle MUST NOT reconstruct old review history merely because
+an older record is absent. The owning child keeps implementation and
 review-response ownership, and the parent keeps merge and publication authority.
 The selected reviewer MUST NOT be interrupted, replaced, duplicated, or turned
 into a second review because a wait is inconvenient.
