@@ -71,7 +71,13 @@ fn packaged_hooks_bind_each_concern_and_event_once() -> TestResult {
     let hooks: Value = serde_json::from_str(&std::fs::read_to_string(root.join("hooks.json"))?)?;
     let events = hooks["hooks"].as_object().ok_or("hooks object")?;
 
-    assert_eq!(events.len(), EVENTS.len(), "only retained core events remain");
+    assert_eq!(events.len(), EVENTS.len() + 3, "declared core events remain");
+    for event in ["PostToolUse", "Stop", "Interrupt"] {
+        let groups = events[event].as_array().ok_or("cleanup event groups")?;
+        assert_eq!(groups.len(), 1, "{event} cleanup coverage");
+        assert_eq!(groups[0]["hooks"][0]["command"],
+            format!("\"${{PLUGIN_ROOT}}/hooks/codexy-cleanup-progress.sh\" {event}"));
+    }
     for event in EVENTS {
         let groups = events[*event]
             .as_array()

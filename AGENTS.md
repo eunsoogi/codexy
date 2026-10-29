@@ -114,6 +114,13 @@ codexy/
   `kebab-case` and a `.sh` extension.
 - MUST NOT add extensionless compatibility wrappers when a maintained executable
   is renamed; every tracked caller MUST use the canonical filename.
+- MUST name files, directories, code identifiers, tests, fixtures, and
+  task-local helper artifacts to describe their actual purpose or
+  responsibility. Names MUST NOT contain issue or pull request numbers; an
+  opaque tracking token MUST NOT substitute for purpose. Issue/PR citations and
+  explicitly requested thread metadata MUST be kept as traceability rather than
+  artifact names, and meaningful domain numbers and externally required public
+  identifiers MUST be preserved.
 - When writing or changing code, MUST add or update explanatory comments that
   clarify its purpose, important logic, and non-obvious decisions or
   constraints. MUST keep comments accurate as the implementation changes.

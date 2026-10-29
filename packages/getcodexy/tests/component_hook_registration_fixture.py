@@ -16,6 +16,7 @@ def hook_rows(plugin: Path) -> list[dict[str, object]]:
         "PermissionRequest": "permissionRequest",
         "UserPromptSubmit": "userPromptSubmit",
         "Interrupt": "interrupt",
+        "Stop": "stop",
     }
     event_keys = {
         "PostToolUse": "post_tool_use",
@@ -23,6 +24,7 @@ def hook_rows(plugin: Path) -> list[dict[str, object]]:
         "PermissionRequest": "permission_request",
         "UserPromptSubmit": "user_prompt_submit",
         "Interrupt": "interrupt",
+        "Stop": "stop",
     }
     value = json.loads((plugin / "hooks/hooks.json").read_text(encoding="utf-8"))
     path = plugin / "hooks/hooks.json"

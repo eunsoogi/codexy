@@ -141,8 +141,8 @@ fn lifecycle_quiet_fixture(
     for event in QUIET_EVENTS {
         events.remove(*event);
     }
-    // PostToolUse now has an owned concern; Stop remains outside this manifest's contract.
-    events.insert("Stop".to_string(), unaccounted_event_hook("Stop"));
+    // A lifecycle event outside the declared concern set must still be rejected.
+    events.insert("SubagentStart".to_string(), unaccounted_event_hook("SubagentStart"));
     std::fs::write(hooks_path, serde_json::to_string_pretty(&hooks)?)?;
     Ok(plugin_root)
 }

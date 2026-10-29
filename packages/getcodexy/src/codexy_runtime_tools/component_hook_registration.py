@@ -69,10 +69,26 @@ def _core_hooks() -> dict[str, object]:
     command = lambda event: [
         _command_hook(matcher, stem, event) for matcher, stem in _CORE_COMMAND_HOOKS
     ]
+    cleanup = '"${PLUGIN_ROOT}/hooks/codexy-cleanup-progress'
+
+    def lifecycle(event: str, timeout: int = 5) -> dict[str, object]:
+        return {
+            "hooks": [
+                _hook(f'{cleanup}.sh" {event}', f'{cleanup}.cmd" {event}', timeout)
+            ]
+        }
+
+    post = lifecycle("PostToolUse")
+    post["matcher"] = (
+        "^(?:codex_app__|mcp__codex_app__)(?:set_thread_archived|list_archived_threads)$"
+    )
     return {
         "hooks": {
             "PermissionRequest": command("PermissionRequest"),
             "PreToolUse": command("PreToolUse"),
+            "PostToolUse": [post],
+            "Stop": [lifecycle("Stop")],
+            "Interrupt": [lifecycle("Interrupt", 1)],
         }
     }
 
