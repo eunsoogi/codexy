@@ -45,13 +45,11 @@
      Light and standard work MUST NOT require a visible goal/plan receipt from
      this loop alone.
    - For delegated outcomes, MUST record one Worker owner, the saved project
-     identity, the Watcher identity when authorized, the callback channels, and
-     one current next action. MUST NOT require a fixed checkpoint count or
+     identity, the callback channels, and one current next action. MUST NOT
+     require a fixed checkpoint count or
      unchanged-progress receipt.
    - In [the canonical role mapping](parent-supervision.md), MUST read back the
-     Orchestrator's exact active overall goal. A Watcher subagent receives only
-     a bounded observation assignment and MUST NOT own or recreate that overall
-     goal.
+     Orchestrator's exact active overall goal.
    - MUST split independent outcomes into separate issues and lanes unless a
      maintainer explicitly scopes them as one atomic lane.
    - MUST mark ownership before substantive work. Under an orchestration
@@ -80,14 +78,12 @@
      unavailable child surface MUST leave that work pending; MUST NOT relabel it
      for parent execution or use unsupported CLI/app-server substitutes.
    - Ordinary Worker observation belongs to the Orchestrator, which MUST use
-     native cursor-based `wait_threads` for its assigned targets. Routine
-     observation MUST NOT require a Watcher relay. A separately assigned Watcher
-     remains read-only and waits only on its exact targets; the Orchestrator
-     awaits `watcher_wait` without double-waiting. The Worker MUST use only
-     already-authorized task-message routes. A native reviewer's own terminal
-     delivery is separate and MUST NOT authorize Worker observation. All wait
-     ownership, deduplication, host limits, interruption, and fallback MUST
-     follow [parent-supervision.md](parent-supervision.md).
+     native cursor-based `wait_threads` for its assigned targets and retain each
+     target's latest cursor. The Worker MUST use only already-authorized
+     task-message routes. A native reviewer's own terminal delivery is separate
+     and MUST NOT authorize Worker observation. All wait ownership,
+     deduplication, host limits, interruption, and fallback MUST follow
+     [parent-supervision.md](parent-supervision.md).
    - MUST complete lane assignment before implementation edits begin. An
      Orchestrator may prepare issue text, branch name, worktree path, and
      handoff text, but MUST NOT patch implementation files for the child-owned
@@ -135,8 +131,8 @@
      artifact/diff/evidence readbacks. New investigation, reproduction, or test
      execution MUST go to the owner or a bounded investigation child.
    - MUST preserve user changes and unrelated work.
-   - MUST treat Worker callbacks and Watcher observations as signals, not
-     acceptance. For drift, the Orchestrator MUST compare the observed evidence
+   - MUST treat Worker callbacks as signals, not acceptance. For drift, the
+     Orchestrator MUST compare the observed evidence
      with current scope, ownership, and user constraints. It MUST give
      criteria-based direction; the Worker MUST choose and implement repairs. The
      Orchestrator MUST verify the next relevant call, diff, or result and
@@ -171,11 +167,7 @@
      unavailable, MUST report the exact limitation and required action without
      claiming execution progress or completion from text alone.
    - Direct observation claims MUST use the actual `wait_threads` surface with
-     assigned targets and current cursors. When a separate Watcher assignment is
-     in scope, exercise its real subagent creation, Worker message route,
-     `watcher_report`/`watcher_wait`, and Worker readback. Keep the Orchestrator
-     goal separate from any bounded Watcher assignment; no event proves issue
-     completion.
+     assigned targets and current cursors; no event proves issue completion.
 6. Finish:
    - MUST confirm no running sessions, open child lanes, untracked required
      files, or unverified claims remain.
@@ -186,7 +178,7 @@
      risk.
    - MUST report the current request, callable task contract, selected route,
      actual owner, and execution result separately.
-   - MUST report measured and unmeasured Worker/Watcher usage separately, retain
+   - MUST report measured and unmeasured role-specific usage separately, retain
      actual review history, and state unsupported wake, transfer, or recovery
      behavior instead of inventing it.
 

@@ -24,18 +24,10 @@ no-change parent-turn savings remain unmeasured.
   assignment, active goal owner, and next action. Same-turn waiting applies only
   while the host keeps its supported route; it does not imply runtime suspension
   of a parent turn.
-- Same-goal re-entry MUST resume the Worker owner, active goal, per-target
-  `wait_threads` cursors, and next action. Advance only on actual results;
-  preserve Watcher state and cancellation only for an explicit assignment.
-  Handle input at re-entry; MUST NOT infer wait cancel/resume or repeat work.
-- For an explicitly assigned Watcher route, the Orchestrator MUST nest
-  `watcher_wait(timeoutMs=295000)` in one `functions.exec` with first-line
-  `// @exec: {"yield_time_ms":300000}` on the verified host. Two parent calls
-  reached timeout with no cell yield or visible model, tool, or commentary item;
-  hidden inference and other hosts remain unverified. An early yield is not
-  proof. The owner MUST preserve the cell, session, cursor, and cancellation;
-  MUST NOT use `functions.wait` as proof, reissue, advance the cursor, or emit
-  unchanged status or reasoning.
+- Same-goal re-entry MUST resume the Worker owner, active goal, latest
+  per-target `wait_threads` cursors, and next action. Advance only on actual
+  results. Handle input at re-entry; MUST NOT infer wait cancel/resume or repeat
+  work.
 - Outside a route-required quiet wait, MUST provide concise progress commentary
   at meaningful checkpoints during active work; commentary does not end the turn
   or prove completion. MUST reserve final handoff for the complete assigned
@@ -45,8 +37,8 @@ no-change parent-turn savings remain unmeasured.
   advance. Existing nonterminal-wait and idle-lifecycle rules remain
   authoritative.
 - This default MUST NOT create busy polling, endless loops, repeat unchanged
-  work, artificial token use, exceed host limits, violate Watcher ownership, or
-  extend work beyond authorized scope.
+  work, artificial token use, exceed host limits, or extend work beyond
+  authorized scope.
 
 Task-to-task prompts, progress and callback messages, handoffs, and tool prompt
 fields MUST be treated as user-visible and MUST follow the shared
@@ -55,14 +47,13 @@ structured fields to remove repetition while keeping surrounding prose and
 protected technical text intact.
 
 Live Sentinel observation MUST be read-only and event-driven. Generic task and
-ledger polling remains permitted only for the owner's own non-Watcher target.
-Native-reviewer terminal delivery remains event-driven and MUST NOT be polled;
-it is not a polling exception. The Orchestrator MUST NOT use generic polling for
-Worker host observation or targets assigned to an external Watcher. See
-[parent supervision](parent-supervision.md) for its wait route. A Watcher MUST
-NOT observe or poll a native Sentinel and MUST stay within its assigned Worker
-evidence. Both the Worker owner and the root Orchestrator MUST NOT message,
-interrupt, replace, duplicate, follow up with, or poll a live Sentinel. When
+ledger polling MUST NOT replace cursor-based `wait_threads` observation of
+Worker targets. Native-reviewer terminal delivery remains event-driven and MUST
+NOT be polled; it is not a polling exception. The Orchestrator MUST NOT use
+generic polling for Worker host observation. See
+[parent supervision](parent-supervision.md) for its wait route. Both the Worker
+owner and the root Orchestrator MUST NOT message, interrupt, replace, duplicate,
+follow up with, or poll a live Sentinel. When
 only a native-reviewer event remains pending, the Worker MUST NOT start
 unchanged model-continuation turns or poll the reviewer. Once the current finite
 execution phase is satisfied, the Worker MUST use the existing finite idle-wait
@@ -77,8 +68,8 @@ reviewer is `RUNNING`; neither observation is a reviewer verdict or
 fallback-eligible. The owning lane MUST retain the same reviewer and wait for
 its natural terminal result. A live Sentinel MUST report its own terminal
 `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally. A native reviewer's
-terminal delivery is its own non-Watcher surface and MUST NOT be treated as
-Worker host observation.
+terminal delivery is its own surface and MUST NOT be treated as Worker host
+observation.
 
 ## Proof State To Retain
 
@@ -100,20 +91,13 @@ MUST use this flow after compaction and before handoff:
 
 1. **Inventory once**: MUST keep one compact ledger line per active lane with
    `issue`, `PR`, `branch`, `head`, `owner`, and `state`.
-2. **Accept qualifying events only**: for ordinary non-Watcher waits, the owner
-   MUST use event-driven `wait_threads` with each target's latest cursor. This
-   route covers a task's own non-Watcher target, including a native reviewer's
-   terminal delivery, and MUST NOT authorize the Orchestrator to observe Worker
-   targets assigned to a separately supplied Watcher. Result sufficiency,
-   bounded evidence reads, report routing, host limits, quiet waits,
-   cancellation, and fallback MUST follow
-   [parent-supervision.md](parent-supervision.md); only the assigned Watcher MAY
-   wait on its Worker/task targets, and the Orchestrator MUST await
-   `watcher_wait` without direct polling or unbounded `read_thread`. Workers
-   MUST NOT open, wait on, report to, cancel, or reuse an Orchestrator-owned
-   Watcher session or token. The Watcher MUST NOT create or own the Orchestrator
-   goal. A Watcher callback is material only when its event identity is new and
-   Orchestrator action is required. Unchanged active-goal reads, routine
+2. **Accept qualifying events only**: the Orchestrator MUST use event-driven
+   `wait_threads` for assigned Worker targets and preserve each target's latest
+   cursor. Result sufficiency, bounded evidence reads, report routing, host
+   limits, quiet waits, cancellation, and fallback MUST follow
+   [parent-supervision.md](parent-supervision.md). Native-reviewer terminal
+   delivery is a separate route and MUST NOT be confused with Worker
+   observation. Unchanged active-goal reads, routine
    pre/post/continuation receipts, liveness-only goal-status messages, normal
    progress, intermediate successful tests, resolved command mistakes, commits,
    and queued CI MUST remain internal; they MUST NOT wake the Orchestrator. For
@@ -121,14 +105,7 @@ MUST use this flow after compaction and before handoff:
    [observation-evidence.md](observation-evidence.md). Workers MUST send compact
    deltas for terminal Worker state, their fatal/gate/final callbacks, PR
    creation, a required external check-state change, actionable review feedback,
-   or review-thread resolution. Watchers MUST send their own compact deltas for
-   observation-channel failure or actionable drift, and selected reviewers MUST
-   send their verdicts. A Watcher drift event is qualifying only when its report
-   is grounded in a changed artifact, diff, or relevant actual tool call,
-   identifies the conflicting current scope, ownership, or user constraint
-   without a repair directive, and requires an Orchestrator decision; relayed
-   Worker or Orchestrator findings MUST remain distinct from Watcher-first
-   detection.
+   or review-thread resolution. Selected reviewers MUST send their verdicts.
 3. **Validate stable event identity**: every event MUST use a deterministic
    `<kind>|<lane>|<subject>` identity. The ledger MUST reject a repeated
    identity before it changes counters or next actions.
@@ -205,8 +182,8 @@ shared message rule.
 
 MUST use [runtime-heartbeats.md](runtime-heartbeats.md) for registration,
 schedules, fingerprints, cleanup, and Worker idle handoffs. A heartbeat MUST NOT
-replace an assigned Watcher or live Sentinel's no-poll route. MUST record the
-Orchestrator's active overall goal separately from any Watcher assignment.
+replace a live Sentinel's no-poll route. The owner MUST record the Orchestrator's
+active overall goal separately from the heartbeat registration.
 
 For repeat handoffs, copy [the delta-poll template](../templates/delta-poll.md)
 and fill only the current slots. MUST keep the template output in the thread or

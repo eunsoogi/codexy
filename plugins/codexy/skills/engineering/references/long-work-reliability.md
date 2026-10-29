@@ -91,5 +91,4 @@ Return the eight dimensions, denominators, relevant cohorts, unresolved
 evidence, and the next permitted observation if one is needed. If no actual
 measurement or state is observable, MUST report unknown and its reason. Further
 observations stay within existing authority and budget; this guide does not
-authorize a background monitor, Watcher changes, or additional recovery
-attempts.
+authorize a background monitor or additional recovery attempts.

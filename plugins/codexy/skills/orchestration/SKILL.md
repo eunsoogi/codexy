@@ -11,9 +11,8 @@ current task's host-scoped get_goal, and complete its Required first transition
 before task-specific work. The goal check MUST precede issue/PR reads, task
 diagnosis, repository/GitHub reads, branch or worktree setup, planning,
 delegation, edits, and verification. It applies to Orchestrators and
-implementation Workers in their own current tasks. A native read-only Watcher
-MUST follow the goal lifecycle's Watcher exception and MUST NOT create a
-separate goal. The task MUST apply the goal lifecycle's result rules: create
+implementation Workers in their own current tasks. The task MUST apply the goal
+lifecycle's result rules: create
 only for an authorized assignment on exact null, top-level goal=null, or
 status=complete. Continue only for an exact active objective; use the documented
 sequence for blocked; stop on error, malformed or unexpected state, or a
@@ -25,7 +24,7 @@ After the goal gate, read issue/PR material and classify task/surface/risk. Read
 the [context retention contract](references/context-tiers.md) for the existing
 runtime handoff/route contract, then load the references selected by that route;
 these are the canonical handoff references. When a separate condition requires
-additional guidance (for example, app-thread workers, a watcher, or delegated
+additional guidance (for example, app-thread workers or delegated
 goal ownership), the agent MUST load that reference when the condition applies
 and MUST NOT add it to unrelated routes. Progressive disclosure does not require
 loading every reference. A GitHub surface alone does not select review-specific
@@ -82,8 +81,8 @@ this authority supersedes the task-creation exclusions in
 
 ### Delegated supervision route
 
-When a task uses app-thread Workers, an external Watcher, callbacks, delegated
-Worker goals, drift correction, or Worker elevation, MUST read
+When a task uses app-thread Workers, callbacks, delegated Worker goals, drift
+correction, or Worker elevation, MUST read
 [parent supervision](references/parent-supervision.md) before dispatch,
 observation, reporting, correction, or handoff. Eligible elevation MUST also
 read [reconciliation](references/worker-elevation/reconciliation.md). These
@@ -93,17 +92,12 @@ capacity, interruption, cancellation, drift, and evaluation.
 The route has these mandatory boundaries: the Orchestrator owns the overall
 goal, judgement, correction, and acceptance; the Worker owns its implementation
 and finite goal; ordinary Worker observation is owned directly by the
-Orchestrator. Routine observation MUST NOT require a Watcher or a
-Worker-to-Watcher relay. A separately assigned Watcher is read-only and observes
-only its exact bounded targets; only that Watcher MAY call `wait_threads` for
-those targets, and the Orchestrator MUST await `watcher_wait` without also
-waiting directly on them. Workers MUST NOT use an Orchestrator-owned Watcher
-session or token. A Watcher report or finite goal MUST NOT transfer ownership or
-prove issue completion. A native reviewer's own terminal delivery follows its
-review route and MUST NOT be confused with Worker observation. MUST read
-`parent-supervision.md` for target/cursor handling, host limits, quiet waits,
-interruption, cancellation, message authority, and the explicit Watcher route
-before execution.
+Orchestrator. Direct observation MUST use event-driven `wait_threads` with each
+target's latest cursor and preserve per-target cursors across results. A native
+reviewer's own terminal delivery follows its review route and MUST NOT be
+confused with Worker observation. MUST read `parent-supervision.md` for
+target/cursor handling, host limits, quiet waits, interruption, cancellation,
+and message authority before execution.
 
 Before dispatching a Worker, the Orchestrator MUST have an active `get_goal`
 readback for its exact overall assignment. Each Worker prompt MUST contain one
@@ -211,7 +205,7 @@ re-enter planning when it is already selected and in progress.
   [classification and control](references/classification-and-control.md) when
   assigning ownership, coordinating a child, or applying stop gates.
 - MUST read [parent supervision](references/parent-supervision.md) when an issue
-  uses app-thread workers, a watcher, worker callbacks, drift correction, or
+  uses app-thread workers, worker callbacks, drift correction, or
   delegated goal ownership.
 - MUST read [agent registration](references/agent-registration.md) when
   discovering or invoking packaged specialist agents.

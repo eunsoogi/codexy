@@ -105,8 +105,8 @@ is only a pending setup identity and MUST NOT be passed to tools that require
 `threadId`.
 
 Both routes MUST preserve the native goal and ordinary direct `wait_threads`
-observation. A separately assigned Watcher remains scoped to its exact targets.
-Neither route may replace these host surfaces with text, an app-server/CLI path,
+observation with each target's latest cursor. Neither route may replace these
+host surfaces with text, an app-server/CLI path,
 a fake task, or a silent fallback. Source tests, configuration, and app-server
 transcripts MUST NOT substitute for actual host task creation and ownership
 readback. If a required host route is unsupported, the agent MUST report the
