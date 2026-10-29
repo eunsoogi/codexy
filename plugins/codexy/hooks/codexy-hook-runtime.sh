@@ -1,13 +1,14 @@
 #!/bin/sh
 entrypoint=${1-}
 event=${2-}
-# Admit only packaged core hook adapters on their preventive event surface.
+# Bind each adapter to its own event surface.
 case "$entrypoint" in
-codexy-child-thread-creation.py | codexy-subagent-ownership.py | codexy-thread-delivery.py) ;;
-*) exit 1 ;;
-esac
-case "$event" in
-PreToolUse | PermissionRequest) ;;
+codexy-child-thread-creation.py | codexy-subagent-ownership.py | codexy-thread-delivery.py)
+	case "$event" in PreToolUse | PermissionRequest) ;; *) exit 1 ;; esac
+	;;
+codexy_cleanup_progress.py)
+	case "$event" in PostToolUse | Stop | Interrupt) ;; *) exit 1 ;; esac
+	;;
 *) exit 1 ;;
 esac
 
@@ -37,6 +38,7 @@ set -- \
 	"HOME=$runtime_home" \
 	"USER=$runtime_user" \
 	"PLUGIN_ROOT=$plugin_root"
+[ -n "${PLUGIN_DATA-}" ] && set -- "$@" "PLUGIN_DATA=$PLUGIN_DATA"
 [ -n "$timing_file" ] && set -- "$@" "CODEXY_CORE_HOOK_TIMING_FILE=$timing_file"
 [ -n "$xdg_state_home" ] && set -- "$@" "XDG_STATE_HOME=$xdg_state_home"
 [ -n "$xdg_cache_home" ] && set -- "$@" "XDG_CACHE_HOME=$xdg_cache_home"

@@ -1,6 +1,6 @@
 {
   "schema": "codexy.hooks.capability-contract.v3",
-  "contentDigest": "d6a7255e0755fc1d",
+  "contentDigest": "ddf71829f9a3f8e9",
   "concerns": [
     {
       "concernId": "thread-delivery",
@@ -39,6 +39,16 @@
       ],
       "diagnosticFamily": "CODEXY_SUBAGENT_OWNERSHIP_",
       "contentDigest": "2ddc595b35333079"
+    },
+    {
+      "concernId": "cleanup-progress",
+      "trigger": "^(?:codex_app__|mcp__codex_app__)(?:set_thread_archived|list_archived_threads)$",
+      "events": ["PostToolUse", "Stop", "Interrupt"],
+      "inputContract": "codexy.hooks.cleanup-progress.v1",
+      "preventive": false,
+      "entrypoints": ["codexy-cleanup-progress.sh", "codexy-cleanup-progress.cmd", "codexy_cleanup_progress.py"],
+      "diagnosticFamily": "CODEXY_CLEANUP_PROGRESS_",
+      "contentDigest": "2225f270833f3672"
     }
   ]
 }

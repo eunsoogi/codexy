@@ -4,11 +4,23 @@ Codex loads this directory as a plugin hook source and substitutes `PLUGIN_ROOT`
 before invoking each configured concern launcher. Admission hooks are stateless:
 a permitted operation writes zero bytes; a denied operation emits only the
 official event-native denial schema with its concern's diagnostic family. The
-core manifest registers only the thread-delivery, child-thread-creation, and
-subagent-ownership concerns. Watcher waits and session cancellation remain in
-the MCP runtime and host transport; the core package does not add
-`watcher_wait`, sender `PostToolUse`, `Interrupt`, or `UserPromptSubmit`
-cancellation hooks.
+core manifest registers the thread-delivery, child-thread-creation,
+subagent-ownership, and cleanup-progress concerns. Watcher waits and session
+cancellation remain in the MCP runtime and host transport; the core package does
+not add `watcher_wait`, sender `PostToolUse`, or `UserPromptSubmit` cancellation
+hooks. The cleanup concern's `Interrupt` handler only suppresses its own
+continuation.
+
+Cleanup progress observes an exact thread archive request returning a non-error
+MCP envelope. This does not establish archival, identity, acceptance, or
+eligibility. On the same turn, Stop can request one `list_archived_threads`
+readback; an observed list attempt or interruption suppresses that request. It
+never performs cleanup or infers success from an undocumented result body.
+Unknown input or unavailable private state remains non-blocking. Turn markers
+are stored in the host-provided plugin data directory and expire after one day.
+POSIX uses ownership and mode checks; Windows uses the host-provided data root.
+The parent remains responsible for interpreting readbacks and performing
+cleanup.
 
 When the native host supplies a bounded, host-authenticated
 `codexy_thread_delivery` v2 envelope, the installed Codexy plugin validates it

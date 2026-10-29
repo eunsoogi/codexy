@@ -31,9 +31,11 @@ stage only resolved paths and rerun affected verification.
 
 ## Accepted Child Cleanup
 
-The parent MUST coordinate this sequence only for accepted completed work. This
-flow preserves the #289 open-PR guard and #330 dirty-worktree protection; it
-MUST NOT replace native goal lifecycle or terminal-handoff requirements.
+The parent Orchestrator MUST perform this sequence only for accepted completed
+work, including when reminded by the user. Forwarding a request alone does not
+establish progress. This flow preserves the #289 open-PR guard and #330
+dirty-worktree protection; it MUST NOT replace native goal lifecycle or
+terminal-handoff requirements.
 
 1. MUST bind the task/host, issue, linked PRs, owned local branch (or none),
    exact branch head, and managed worktree identity from `list_artifacts` (or no

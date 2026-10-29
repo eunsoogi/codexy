@@ -241,10 +241,8 @@ Child titles MUST follow the [title policy](child-thread-titles.md).
 
 ## Completed Child Cleanup
 
-MUST follow
+The parent Orchestrator MUST perform, including after a user reminder, the
 [accepted-child cleanup](../../../../codexy-github/skills/git-workflow/references/local-git-and-branches.md#accepted-child-cleanup):
-verify completion/acceptance and no outstanding work; preserve ignored data and
-confirm `archive_worktree`'s recoverable snapshot before `set_thread_archived`;
-read back both before safe local issue-branch removal. MUST preserve uncertain
-resources and report the exact gap. Default/shared/remote branches stay out of
-scope.
+verify completion, acceptance and outstanding work; preserve required data;
+archive the worktree and child; then remove eligible local branches. MUST follow
+the linked readback and preservation rules and report uncertainty.

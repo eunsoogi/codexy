@@ -2,7 +2,13 @@
 
 const PREVENTIVE_EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
 
-pub(super) const EVENT_ORDER: &[&str] = &["PermissionRequest", "PreToolUse"];
+pub(super) const EVENT_ORDER: &[&str] = &[
+    "PermissionRequest",
+    "PreToolUse",
+    "PostToolUse",
+    "Stop",
+    "Interrupt",
+];
 
 pub(super) struct Expected {
     pub(super) id: &'static str,
@@ -42,5 +48,14 @@ pub(super) const CONCERNS: &[Expected] = &[
         diagnostic: "CODEXY_SUBAGENT_OWNERSHIP_",
         events: PREVENTIVE_EVENTS,
         preventive: true,
+    },
+    Expected {
+        id: "cleanup-progress",
+        trigger: "^(?:codex_app__|mcp__codex_app__)(?:set_thread_archived|list_archived_threads)$",
+        input: "codexy.hooks.cleanup-progress.v1",
+        launcher: "codexy-cleanup-progress",
+        diagnostic: "CODEXY_CLEANUP_PROGRESS_",
+        events: &["PostToolUse", "Stop", "Interrupt"],
+        preventive: false,
     },
 ];

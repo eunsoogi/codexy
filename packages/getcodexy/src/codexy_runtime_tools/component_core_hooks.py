@@ -12,7 +12,7 @@ LAUNCHERS = tuple(
     f"hooks/{stem}.{extension}"
     for _, stem in COMMAND_HOOKS
     for extension in ("sh", "cmd")
-)
+) + ("hooks/codexy-cleanup-progress.sh", "hooks/codexy-cleanup-progress.cmd")
 # Windows invokes the event script with `py.exe -3 -I -B`, bypassing the POSIX
 # resolver; keep the entrypoint and sibling event helper in this required set.
 DEPENDENCIES = (
@@ -28,4 +28,6 @@ DEPENDENCIES = (
     "hooks/codexy_policy/envelope.py",
     "hooks/codexy_policy/timing.py",
     "hooks/codexy_policy/windows_timing.py",
+    "hooks/codexy_cleanup_progress.py",
+    "hooks/codexy_policy/cleanup_progress.py",
 )

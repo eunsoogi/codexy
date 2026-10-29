@@ -35,6 +35,33 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "matcher": "^(?:codex_app__|mcp__codex_app__)(?:set_thread_archived|list_archived_threads)$",
+        "hooks": [{
+          "type": "command",
+          "command": "\"${PLUGIN_ROOT}/hooks/codexy-cleanup-progress.sh\" PostToolUse",
+          "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-cleanup-progress.cmd\" PostToolUse",
+          "timeout": 5
+        }]
+      }
+    ],
+    "Stop": [{
+      "hooks": [{
+        "type": "command",
+        "command": "\"${PLUGIN_ROOT}/hooks/codexy-cleanup-progress.sh\" Stop",
+        "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-cleanup-progress.cmd\" Stop",
+        "timeout": 5
+      }]
+    }],
+    "Interrupt": [{
+      "hooks": [{
+        "type": "command",
+        "command": "\"${PLUGIN_ROOT}/hooks/codexy-cleanup-progress.sh\" Interrupt",
+        "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-cleanup-progress.cmd\" Interrupt",
+        "timeout": 1
+      }]
+    }],
     "PreToolUse": [
       {
         "matcher": "^(?:codex_app__|mcp__codex_app__)send_message_to_thread$",
