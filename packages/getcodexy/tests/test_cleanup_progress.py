@@ -1,6 +1,7 @@
 """Documented cleanup inputs never establish archival or eligibility."""
 
 import sys
+import importlib.util
 import json
 import os
 import subprocess
@@ -12,9 +13,13 @@ HOOKS = Path(__file__).resolve().parents[3] / "plugins" / "codexy" / "hooks"
 # The product-boundary inventory includes every hook file, including bytecode.
 previous_bytecode_setting = sys.dont_write_bytecode
 sys.dont_write_bytecode = True
-sys.path.insert(0, str(HOOKS))
-
-from codexy_policy.cleanup_progress import continuation, observation  # noqa: E402
+spec = importlib.util.spec_from_file_location(
+    "cleanup_progress_under_test", HOOKS / "codexy_policy" / "cleanup_progress.py"
+)
+assert spec is not None and spec.loader is not None
+cleanup = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(cleanup)
+continuation, observation = cleanup.continuation, cleanup.observation
 
 sys.dont_write_bytecode = previous_bytecode_setting
 

@@ -244,5 +244,5 @@ Child titles MUST follow the [title policy](child-thread-titles.md).
 The parent Orchestrator MUST perform, including after a user reminder, the
 [accepted-child cleanup](../../../../codexy-github/skills/git-workflow/references/local-git-and-branches.md#accepted-child-cleanup):
 verify completion, acceptance and outstanding work; preserve required data;
-archive the worktree and child; then remove eligible local branches. MUST follow
-the linked readback and preservation rules and report uncertainty.
+archive and confirm the child thread; then remove eligible local branches. MUST
+follow the linked readback and preservation rules and report uncertainty.
