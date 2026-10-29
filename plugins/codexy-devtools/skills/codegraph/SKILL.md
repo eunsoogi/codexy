@@ -15,10 +15,10 @@ structure and edges, `codegraph_search` for bounded search,
 For a change-scoped question, call `codegraph_change_impact` with `root` and
 either both `base` and `head` revisions or neither (working-tree mode). The
 optional `includeUntracked`, `maxFiles`, and `maxPaths` inputs are accepted.
-Respect the returned `impact.limits`; do not assume omitted defaults. Impact
-analysis follows Python and Rust dependency paths; unsupported languages,
-unresolved imports, parse failures, and limit truncation remain explicit in
-`impact.limits.unknown` and `partial`.
+Agents MUST respect the returned `impact.limits` and MUST NOT assume defaults
+for omitted limits. Impact analysis follows Python and Rust dependency paths;
+unsupported languages, unresolved imports, parse failures, and limit truncation
+remain explicit in `impact.limits.unknown` and `partial`.
 
 For advisory verification planning, call `codegraph_check_selection` with the
 same change-scoping inputs and required `mappings`. Its `checks` entries have
