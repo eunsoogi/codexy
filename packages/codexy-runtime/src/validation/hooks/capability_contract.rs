@@ -110,7 +110,7 @@ pub(super) fn check_topology(path: &Path, events: &Map<String, Value>) -> Result
                 .context("concern group must be an object")?;
             let handlers = object.get("hooks").and_then(Value::as_array);
             // Interrupt and prompt-submit hooks are global; tool events bind by matcher.
-            let matcher = if matches!(*event, "Interrupt" | "UserPromptSubmit") {
+            let matcher = if matches!(*event, "Interrupt" | "UserPromptSubmit" | "Stop") {
                 None
             } else {
                 Some(concern.trigger)
@@ -147,11 +147,15 @@ pub(super) fn check_topology(path: &Path, events: &Map<String, Value>) -> Result
 }
 
 fn entrypoints(launcher: &str) -> Vec<String> {
-    // Retained concerns use their launcher stem for each runtime entrypoint.
+    // The cleanup Python entrypoint follows the maintained snake_case convention.
     vec![
         format!("{launcher}.sh"),
         format!("{launcher}.cmd"),
-        format!("{launcher}.py"),
+        if launcher == "codexy-cleanup-progress" {
+            "codexy_cleanup_progress.py".to_string()
+        } else {
+            format!("{launcher}.py")
+        },
     ]
 }
 

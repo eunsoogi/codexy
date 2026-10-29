@@ -219,3 +219,10 @@ Read the
 [recovery, evaluation, and handoff
 reference](parent-supervision/recovery-evaluation-and-handoff.md) for cleanup,
 evaluation, and terminal-report requirements.
+
+The parent Orchestrator MUST perform accepted-child eligibility checks,
+preservation, archival, safe local branch deletion, and outcome readback under
+the
+[cleanup policy](../../../../codexy-github/skills/git-workflow/references/local-git-and-branches.md#accepted-child-cleanup).
+A user reminder MUST resume that flow; forwarding it does not establish
+progress.
