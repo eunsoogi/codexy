@@ -50,6 +50,7 @@ events = {
     "PermissionRequest": "permissionRequest",
     "UserPromptSubmit": "userPromptSubmit",
     "Interrupt": "interrupt",
+    "Stop": "stop",
 }
 event_keys = {
     "PostToolUse": "post_tool_use",
@@ -57,6 +58,7 @@ event_keys = {
     "PermissionRequest": "permission_request",
     "UserPromptSubmit": "user_prompt_submit",
     "Interrupt": "interrupt",
+    "Stop": "stop",
 }
 
 def hook_rows():

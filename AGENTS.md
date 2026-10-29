@@ -123,9 +123,16 @@ codexy/
 - Prefer repository-specific guidance over generic agent advice.
 - MUST keep instructions actionable by reserving `MUST` and `MUST NOT` for hard
   requirements.
-- Codexy-maintained agent-facing instruction artifacts, and agent-facing
-  instruction artifacts Codexy creates or updates in other projects, MUST use
-  `MUST` for mandatory agent instructions and `MUST NOT` for prohibitions.
+- Codexy-maintained skill instructions MUST provide reusable guidance for each
+  skill's stated purpose. MUST preserve applicable input/output contracts,
+  current support conditions, necessary general examples, and safety
+  constraints; MUST distinguish reusable guidance from task-specific execution
+  IDs/results and historical issue status. MUST NOT include task-specific
+  execution histories, progress reports, transient issue gates, or one-off
+  exceptions. Codexy-maintained agent-facing instruction artifacts, and
+  agent-facing instruction artifacts Codexy creates or updates in other
+  projects, MUST use `MUST` for mandatory instructions and `MUST NOT` for
+  prohibitions.
 
 ## Dogfooding Guardrails
 

@@ -42,18 +42,21 @@ omitted, and unknown roles fail closed instead of becoming implementation
 owners; durable work MUST use a Codex child thread, and unavailable thread
 tooling MUST be reported as a blocker. Allowlisted specialists and `explorer`
 remain bounded helpers or reviewers; branch, worktree, pull-request, and
-review-response ownership is denied at admission. Structured control-plane
-handoffs require their explicit marker and stable key in the orchestration
-validators; ordinary wording never becomes route authority. The upstream
-orchestration resolver selects generic, explicit, fallback, and named-role
-pairs. The installed Codexy GitHub plugin adds workflow context and scoped local
-destructive shell/Git safety through its own `${PLUGIN_ROOT}` hook manifest.
-GitHub mutations use the normal host, connector, and GitHub authorization; the
-plugin does not require a repository admission file or an exclusive write route.
-Repository owners may define their own local hooks independently. `PreToolUse`
-and `PermissionRequest` bind the same concern owners; matching handlers are
-independent and any denial is conservative. Malformed governed input fails
-visibly rather than guessing.
+review-response ownership is denied at admission. Both `send_message` and
+`followup_task` apply the same message classifier to every nonempty target. The
+follow-up envelope does not authenticate target existence or role, so the hook
+never relies on a role claimed in the message; malformed targets fail closed.
+Structured control-plane handoffs require their explicit marker and stable key
+in the orchestration validators; ordinary wording never becomes route authority.
+The upstream orchestration resolver selects generic, explicit, fallback, and
+named-role pairs. The installed Codexy GitHub plugin adds workflow context and
+scoped local destructive shell/Git safety through its own `${PLUGIN_ROOT}` hook
+manifest. GitHub mutations use the normal host, connector, and GitHub
+authorization; the plugin does not require a repository admission file or an
+exclusive write route. Repository owners may define their own local hooks
+independently. `PreToolUse` and `PermissionRequest` bind the same concern
+owners; matching handlers are independent and any denial is conservative.
+Malformed governed input fails visibly rather than guessing.
 
 The retained admission launchers run Python isolated from user configuration and
 never install, cache, update, or mutate user state. A trusted operator may set

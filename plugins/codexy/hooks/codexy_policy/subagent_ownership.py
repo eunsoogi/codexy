@@ -52,6 +52,13 @@ def forbidden(request: Request) -> bool | str:
     message = _message_from_input(tool_input)
     if message is None:
         return "ENVELOPE"
+    # Follow-up targets have no authenticated role metadata in the hook envelope.
+    # Apply the same message policy to every target rather than trusting a role claim.
+    if request.tool.rsplit("__", 1)[-1] in {"send_message", "followup_task"}:
+        target = tool_input.get("target")
+        if not isinstance(target, str) or not target.strip():
+            return "ENVELOPE"
+        return "DURABLE_OWNER" if durable_owner_requested(message) else False
     agent_type = tool_input.get("agent_type")
     if not _is_bounded_role(agent_type):
         return _role_denial(agent_type)

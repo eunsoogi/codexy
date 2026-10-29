@@ -9,9 +9,14 @@ import unittest
 from pathlib import Path
 
 HOOKS = Path(__file__).resolve().parents[3] / "plugins" / "codexy" / "hooks"
+# The product-boundary inventory includes every hook file, including bytecode.
+previous_bytecode_setting = sys.dont_write_bytecode
+sys.dont_write_bytecode = True
 sys.path.insert(0, str(HOOKS))
 
 from codexy_policy.cleanup_progress import continuation, observation  # noqa: E402
+
+sys.dont_write_bytecode = previous_bytecode_setting
 
 
 class CleanupObservationTests(unittest.TestCase):
@@ -53,6 +58,7 @@ class CleanupObservationTests(unittest.TestCase):
                     [
                         sys.executable,
                         "-I",
+                        "-B",
                         str(HOOKS / "codexy_cleanup_progress.py"),
                         "--event",
                         event,
@@ -102,6 +108,7 @@ class CleanupObservationTests(unittest.TestCase):
                     [
                         sys.executable,
                         "-I",
+                        "-B",
                         str(HOOKS / "codexy_cleanup_progress.py"),
                         "--event",
                         event,
@@ -139,6 +146,7 @@ class CleanupObservationTests(unittest.TestCase):
                     [
                         sys.executable,
                         "-I",
+                        "-B",
                         str(HOOKS / "codexy_cleanup_progress.py"),
                         "--event",
                         event,
@@ -211,6 +219,7 @@ class CleanupObservationTests(unittest.TestCase):
                 [
                     sys.executable,
                     "-I",
+                    "-B",
                     str(HOOKS / "codexy_cleanup_progress.py"),
                     "--event",
                     "PostToolUse",

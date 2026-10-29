@@ -24,7 +24,7 @@
         ]
       },
       {
-        "matcher": "^(?:(?:agents|multi_agent_v1)__)?spawn_agent$",
+        "matcher": "^(?:(?:agents|multi_agent_v1)__)?(?:spawn_agent|send_message|followup_task)$",
         "hooks": [
           {
             "type": "command",
@@ -86,7 +86,7 @@
         ]
       },
       {
-        "matcher": "^(?:(?:agents|multi_agent_v1)__)?spawn_agent$",
+        "matcher": "^(?:(?:agents|multi_agent_v1)__)?(?:spawn_agent|send_message|followup_task)$",
         "hooks": [
           {
             "type": "command",

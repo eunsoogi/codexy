@@ -5,9 +5,12 @@ _TOOL_PREFIX = "^(?:codex_app__|mcp__codex_app__)"
 COMMAND_HOOKS = (
     (_TOOL_PREFIX + "send_message_to_thread$", "codexy-thread-delivery"),
     (_TOOL_PREFIX + "create_thread$", "codexy-child-thread-creation"),
-    (r"^(?:(?:agents|multi_agent_v1)__)?spawn_agent$", "codexy-subagent-ownership"),
+    (
+        r"^(?:(?:agents|multi_agent_v1)__)?(?:spawn_agent|send_message|followup_task)$",
+        "codexy-subagent-ownership",
+    ),
 )
-# The installed core package carries only its retained routing and ownership launchers.
+# Keep preventive launchers and the cleanup lifecycle adapter in the installed set.
 LAUNCHERS = tuple(
     f"hooks/{stem}.{extension}"
     for _, stem in COMMAND_HOOKS

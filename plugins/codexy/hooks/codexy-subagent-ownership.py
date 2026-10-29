@@ -16,7 +16,11 @@ if sys.version_info < (3, 10):
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
-TOOLS = frozenset({"spawn_agent", "agents__spawn_agent", "multi_agent_v1__spawn_agent"})
+TOOLS = frozenset(
+    f"{prefix}{tool}"
+    for prefix in ("", "agents__", "multi_agent_v1__")
+    for tool in ("spawn_agent", "send_message", "followup_task")
+)
 TIMING_FILE_ENV = "CODEXY_CORE_HOOK_TIMING_FILE"
 
 
