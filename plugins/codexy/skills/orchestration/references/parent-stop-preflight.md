@@ -3,7 +3,8 @@
 MUST run this checkpoint before any implementation edit when a lane may need a
 branch, worktree, PR, durable child context, or review-response ownership:
 
-1. MUST apply [task classification](task-classification.md#orchestration-request-ownership)
+1. MUST apply
+   [task classification](task-classification.md#orchestration-request-ownership)
    for task kind, scoped authority, lane owner, and the distinction between
    dependencies, resource reservations, and integration conflicts. MUST record
    the atomic lane and selected owner before choosing a route. This checkpoint
