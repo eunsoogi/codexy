@@ -20,26 +20,15 @@
   publish only the allowed hash/status/failure-dimension/cost summary. The
   ordinary supervision loop MUST NOT require a private campaign, answer table,
   fixed case matrix, or unmeasured savings claim.
-- When evaluation is in scope, the evaluator MUST use actual Orchestrator,
-  Worker, and Watcher calls with the configured model/effort where those roles
-  matter and MUST report unavailable telemetry as unmeasured. The evaluator MUST
-  choose cases and comparisons proportionate to the changed boundary rather than
+- When evaluation is in scope, the evaluator MUST use actual Orchestrator and
+  Worker calls with the configured model/effort where those roles matter and
+  MUST report unavailable telemetry as unmeasured. The evaluator MUST choose
+  cases and comparisons proportionate to the changed boundary rather than
   copying a hidden answer. Observed cumulative usage totals MUST NOT be
   presented as priced, cached, or proven savings without the corresponding
   measurement.
-- The bounded real-drift/correction evaluation MUST distinguish Watcher-first
-  artifact or tool-call detection from a Worker or Orchestrator finding merely
-  relayed through the Watcher. Where a real current fault is available, it MUST
-  label the actor-separated sequence as Watcher detection/report, Orchestrator
-  judgement/instruction, Worker repair, and Orchestrator verification, and
-  require the actual report and next relevant readback; it MUST NOT manufacture
-  a production fault when none exists. Legitimate in-scope progress and no-drift
-  checkpoints MUST control false alarms. The evaluator MUST report detection and
-  correction latency, extra reads, and role-separated usage when available;
-  missing telemetry remains unmeasured, and no savings or coverage claim may be
-  forced.
 - Codex MUST finish with current branch, PR state, exact head/base, changed
   files, actual app observations, evaluation limitations, measured versus
   unmeasured usage, retained review history, unresolved findings, and one
-  Orchestrator-owned next action. A passing test, callback, Watcher result, open
-  PR, or merged change is not a substitute for the other required evidence.
+  Orchestrator-owned next action. A passing test, callback, open PR, or merged
+  change is not a substitute for the other required evidence.

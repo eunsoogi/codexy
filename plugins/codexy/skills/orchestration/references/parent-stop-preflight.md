@@ -52,30 +52,22 @@ branch, worktree, PR, durable child context, or review-response ownership:
    tooling is unavailable. MUST continue discovery before reporting a blocker.
 9. For delegated supervision, MUST read back the saved project identity and
    actual Worker creating tool, exact Worker task/host identities, and callable
-   native `wait_threads` surface before edits. Read back a Watcher identity only
-   when one is separately assigned. MUST read
+   native `wait_threads` surface before edits. MUST read
    [parent-supervision.md](parent-supervision.md), the canonical source for
-   role/model assignments, report routing, waits, limits, interruption, and
-   fallback. Any Watcher MUST remain observation-only and MUST NOT become
-   another implementation owner.
+   role/model assignments, report routing, waits, limits, interruption,
+   cancellation, and fallback.
 10. The Orchestrator's exact overall goal MUST remain active; the Worker owns
     implementation and its finite goal. The Orchestrator MUST use direct
-    cursor-based observation for ordinary Worker targets. A separately assigned
-    Watcher MAY receive only a bounded observation assignment. Keep these
-    surfaces separate and use
+    cursor-based observation for ordinary Worker targets. Keep these surfaces
+    separate and use
     [goal-transition-reporting.md](goal-transition-reporting.md) for
     blocked-goal recovery and terminal transition receipts.
 11. For ordinary Worker observation, the Orchestrator MUST use native
-    `wait_threads` with each target's latest cursor. Only an explicitly assigned
-    Watcher MAY call `wait_threads` for its targets; the Orchestrator awaits
-    `watcher_wait` without waiting directly on them. A native reviewer's
+    `wait_threads` with each target's latest cursor. A native reviewer's
     terminal delivery is separate and MUST NOT authorize Worker observation.
     MUST read [parent-supervision.md](parent-supervision.md) for host limits,
     quiet waits, interruption, cancellation, and fallback details.
 12. Before implementation starts, the Orchestrator MUST give the Worker its
     exact task identity and existing authorized task-message route for required
-    callbacks. Routine events are observed directly; no Watcher relay is
-    required. If a Watcher is separately assigned, the Worker receives only its
-    exact task-message route and MUST NOT receive a Watcher session token or
-    call Watcher MCP transport tools. A direct event does not expand message
-    authority.
+    callbacks. Routine Worker events are observed through direct cursor-based
+    waits. A direct event does not expand message authority.

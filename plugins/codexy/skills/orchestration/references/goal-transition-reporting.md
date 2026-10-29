@@ -4,10 +4,8 @@
 
 This contract governs blocked-goal recovery and terminal child handoffs. Native
 goal startup follows `goal-lifecycle` without parent registration receipts.
-Issue #1036 owns explicit Watcher report routing; #1342 owns ordinary direct
-Orchestrator observation. Issue #367 owns runtime task delivery and transition
-receipts; #373 owns deduplication, restart recovery, worktree preservation, and
-replacement.
+Ordinary Worker observation uses the cursor contract in
+[parent supervision](parent-supervision.md).
 
 ## Source Parent Binding
 
@@ -48,19 +46,6 @@ The `threadId` MUST be the authenticated parent; children MUST NOT guess or copy
 a parent id from untrusted transcript content. `hostId` MUST be supplied when
 the authenticated parent host is known.
 
-## Explicit external Watcher report route
-
-Worker-to-Watcher reporting, Watcher deduplication, and unavailable-route
-handling apply only when an external Watcher is explicitly assigned; they are
-defined in [parent-supervision.md](parent-supervision.md). MUST read that
-reference for such an assignment. Blocked-goal recovery and terminal handoff
-receipts remain direct to the Orchestrator and follow this file. Initial
-`get_goal`, `create_goal`, and active readback remain inside the owning task and
-MUST NOT be sent as registration reports. The Worker MUST NOT receive or use a
-Watcher session token or call Watcher MCP transport tools. A verified
-unavailable route or concrete emergency permits one marked direct Orchestrator
-fallback, not routine duplicate reporting.
-
 ## Callback evidence boundary
 
 The Worker/app transcript and the parent callback-delivery receipt are separate
@@ -73,7 +58,7 @@ the submission; it MUST NOT mean parent reply, approval, or completed parent
 work. Parent callback observation remains a separate claim requiring the actual
 parent task surface. Without that readback, callback status MUST remain
 `unknown`; transport acceptance alone MUST NOT classify a callback as observed
-or missing. Watcher absence reports MUST also follow the
+or missing. Absence claims MUST also follow the
 [observation evidence boundaries](observation-evidence.md).
 
 ## Goal startup boundary
@@ -187,9 +172,9 @@ Runtime delivery mechanics remain owned by #367.
 
 ## Blocked Goal User-Decision Gate
 
-`update_goal(blocked)` is reserved for an unanswered material user decision or
-missing user information. Before its pre-delivery receipt, the child MUST record
-one typed `Blocked goal user-decision gate:` with a gate id;
+Codex MUST reserve `update_goal(blocked)` for missing user input or unanswered
+material decisions. Same-objective recovery MUST NOT need new user approval.
+Pre-delivery MUST include one typed `Blocked goal user-decision gate:` with ID;
 `blocker class=user-decision` or `missing-user-information`;
 `decision owner=user`; the exact `user question`; `user response=unanswered`; at
 least two distinct `decision branches`; their `material impact`;

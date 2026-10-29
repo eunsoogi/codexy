@@ -1,6 +1,6 @@
 ---
 name: goal-lifecycle
-description: Use before any explicitly authorized Orchestrator or implementation Worker task, including read-only diagnosis, when using goal tools or resuming a task controlled by a goal, or for same-directory fork recovery of a blocked task. The external read-only Watcher exception remains separate. MUST NOT infer execution or goal authority from ordinary questions, ambiguous discussion, or unassigned suggestions.
+description: Use before any explicitly authorized Orchestrator or implementation Worker task, including read-only diagnosis, when using goal tools or resuming a task controlled by a goal, or for same-directory fork recovery of a blocked task. MUST NOT infer execution or goal authority from ordinary questions, ambiguous discussion, or unassigned suggestions.
 ---
 
 # Goal Lifecycle
@@ -10,13 +10,12 @@ description: Use before any explicitly authorized Orchestrator or implementation
 Codex MUST use this skill before explicitly assigned Orchestrator or
 implementation Worker task work, including read-only diagnosis, and for every
 goal-tool operation or resume of a task controlled by a goal. Codex MUST load it
-before task-specific work, not only after choosing a goal-tool operation. The
-external read-only Watcher exception below remains separate and MUST NOT create
-a separate goal. Codex MUST treat the host goal tools as authoritative. The
-lifecycle governs fresh goal startup, active continuation, and authorized
-recovery from blocked goals. It MUST NOT change host goal state, issue
-ownership, branch, or worktree to simulate completion. Recovery changes only the
-active task thread through a same-directory fork and archive.
+before task-specific work, not only after choosing a goal-tool operation. Codex
+MUST treat the host goal tools as authoritative. The lifecycle governs fresh
+goal startup, active continuation, and authorized recovery from blocked goals.
+It MUST NOT change host goal state, issue ownership, branch, or worktree to
+simulate completion. Recovery changes only the active task thread through a
+same-directory fork and archive.
 
 ## Delegated assignment authorization
 
@@ -53,16 +52,6 @@ be narrowed, replaced, or marked complete to adopt a phase; the child MUST
 preserve it and report the mismatch for explicit supported lifecycle
 disposition.
 
-### External Watcher exception
-
-Codexy does not package a native Watcher specialist. A separately assigned
-Watcher is observation-only and MUST NOT own, create, transfer, complete, or
-block the Orchestrator's overall goal. Ordinary Worker observation stays with
-the Orchestrator; implementation Workers MUST continue to follow the delegated
-assignment rules above. Routing, waits, callbacks, cancellation, and fallback
-for an external Watcher MUST follow
-[parent supervision](../orchestration/references/parent-supervision.md).
-
 ## Required first transition
 
 Before any edit, command, verification, GitHub mutation, delegation, or other
@@ -76,11 +65,14 @@ task work, the task MUST call `get_goal` and MUST use its current result:
    requested work. The task MUST continue only when it is the exact active
    objective. Otherwise the task MUST stop and MUST obtain an explicit lifecycle
    disposition; the task MUST NOT overwrite the active goal.
-3. If the result is `blocked`, the task MUST NOT work under that goal. The
-   blocked state alone does not authorize a resume. After explicit authorization
-   to continue the same objective, the task MUST preserve the lane owner,
-   branch, worktree, and task context while performing only the recovery
-   transition below.
+3. If the result is `blocked`, the task MUST NOT perform issue implementation or
+   ordinary issue verification under that goal. The original assignment
+   continues to authorize recovery of the same objective and scope; blocked
+   status alone MUST NOT require new user confirmation. A user stop, revoked or
+   missing assignment, changed scope, or actual host permission denial MUST stop
+   recovery. Otherwise, the task MAY perform only the bounded recovery
+   preparation and native operations in the linked procedure, preserving the
+   existing owner, branch, worktree, and task context.
 4. For an error, `unknown`, `missing`, malformed result, or any other unexpected
    state, the task MUST preserve the exact readback and MUST stop before task
    work.
@@ -107,12 +99,15 @@ below remains unchanged.
 ## Authorized blocked-goal recovery
 
 The task MUST NOT call `update_goal` to mark an unfinished blocked objective
-complete or otherwise clear it for recovery. The task MUST NOT resume from a
-blocked state without explicit authorization for the same objective. Until the
-fork's goal is active, the task MUST NOT perform issue implementation or
-verification, edit the repository, change the branch or worktree, or mutate
-GitHub. It MAY perform only the read-only preflight and recovery operations
-listed below.
+complete or otherwise clear it for recovery. The original assignment authorizes
+recovery only while the same objective and scope remain in force; blocked status
+alone MUST NOT trigger a new approval request. A user stop, revoked or missing
+assignment, scope change, or actual host permission denial MUST stop the
+sequence. Before post-archive acceptance, the task MUST NOT perform issue
+implementation or ordinary issue verification. It MAY perform only the bounded
+read-only preflight, necessary preservation of owned work, and other recovery
+operations specified in
+[executable-checkout recovery](references/executable-checkout-recovery.md).
 
 Active-goal Worker elevation is a separate same-issue route. It preserves the
 matching active source goal under a cooperative no-write instruction and follows
@@ -123,14 +118,19 @@ only when separately authorized. It MUST NOT set the source goal to `blocked` or
 MUST preserve its source-pair rules and MUST NOT be repurposed for model
 elevation.
 
-Before any fork or source archival, the owner MUST read and apply
-[executable-checkout recovery](references/executable-checkout-recovery.md). That
-reference owns the ordered recovery procedure, checkout lifetime checks, model
-preservation, and failure containment. A task ID or matching CWD MUST NOT
-substitute for a usable checkout. If the supported host cannot preserve the
-continuation checkout through source archival, the owner MUST stop before
-archiving, preserve the blocked source and reservation, and report the missing
-host capability. It MUST NOT use archival as a preservation experiment.
+Before any fork or source archival, the owner MUST follow the linked procedure.
+It owns the fork-goal readback, supported checkout association,
+topology-specific lifetime-preservation route, pre-archive checks, source
+archival, post-archive acceptance, and failure containment. A task ID, matching
+CWD, attachment record, or saved snapshot MUST NOT substitute for a successful
+process at the intended checkout after archival. The absence of a direct
+goal-resume operation alone MUST NOT be treated as proof that the fork route is
+unavailable. If the exact topology's lifetime-preservation route or another
+required pre-archive check cannot be established, the owner MUST stop before
+archival and report the exact unsupported transition and responsible host
+boundary. If post-archive acceptance fails, the owner MUST keep issue work
+stopped and report the exact host operation and observed owner state. A result
+for one attachment topology MUST NOT be generalized to all checkouts.
 
 ## Deciding Whether Work Is Blocked
 
@@ -182,15 +182,18 @@ MUST NOT imply issue closure, PR merge, release, or parent acceptance. Follow-up
 fixes MUST use the same owner and actual lifecycle readback: continue a matching
 active objective, or create an authorized fresh phase on null/complete and read
 back active before work. A different unfinished objective MUST stop; blocked
-recovery MUST follow the existing fork/archive rules and MUST NOT be reported as
-complete when the objective remains unfinished.
+recovery MUST follow the ordered same-scope procedure and MUST NOT be reported
+as complete when the objective remains unfinished.
 
-Between observing `blocked` and confirming the fork's goal is `active`, only the
-fork/archive, required parent handoff, and native goal readback steps above are
-allowed. The task MUST use the existing `$orchestration` receipt contracts.
-Initial `get_goal`, `create_goal`, and active readback stay in the owning fork
-without separate registration reports. This instruction-only behavior MUST NOT
-add a parser, validator, hook, workflow, schema, runtime service, or
+Before post-archive acceptance, the task MAY perform only the recovery
+preparation and native operations in the linked procedure, including necessary
+change preservation and checkout-association checks. The fork's first `get_goal`
+and any permitted fresh-goal creation stay inside that continuation and MUST NOT
+generate registration reports. The task MUST use the existing `$orchestration`
+receipt contracts. Issue work MUST resume only after source archival, one
+continuation owner, the exact authorized active objective, and a successful
+process at the preserved checkout are confirmed. This instruction-only behavior
+MUST NOT add a parser, validator, hook, workflow, schema, runtime service, or
 compatibility wrapper.
 
 ## Verification
@@ -207,11 +210,15 @@ recovery is available, the task MUST verify:
   results creating a fresh active goal;
 - An exact active objective continuing without replacement, and a different
   active objective stopping for lifecycle disposition;
-- One same-directory fork for an authorized blocked resume, source archival
-  before continuation, exactly one active owner, explicit source model/effort in
-  the continuation request, and a fresh active goal before work. Effective
-  model/effort MUST be reported separately and as unavailable when the host does
-  not expose them;
+- Existing assignment authority for the same objective and scope, while honoring
+  user stops, revoked authority, scope changes, host denials, and unresolved
+  material user-input gates that remain in force until their specific answers;
+- Necessary owned-work preservation, one same-directory fork, the actual fork
+  goal-state branch, supported checkout association and lifetime-preservation
+  route for the exact topology, pre-archive checks, source archival, and
+  post-archive owner, active-objective, and process acceptance before issue
+  work. Requested model/effort and host-exposed effective settings MUST remain
+  separate, with unexposed values reported as unavailable;
 - Fork, archive, owner-readback, continuation, and fresh-goal creation failures
   preserving the exact result and stopping task work without another fork.
 
