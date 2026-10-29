@@ -5,21 +5,21 @@ the product role described by the ordinary route is Worker.
 
 ## Orchestration-request dispatch
 
-For an orchestration request, MUST apply the
-[ownership boundary](task-classification.md#orchestration-request-ownership)
-before dispatch, including independent read-only work. MUST reuse an existing
-suitable child owner. Otherwise, MUST select an authorized current host route: a
-matching bounded specialist helper for research/review without its own branch or
-PR, or the app-managed task/worktree route for an issue implementation owner. A
-helper MUST NOT replace, duplicate, or patch an implementation owner. Ordinary
-single-task requests MUST NOT acquire mandatory delegation from this policy.
+For task kind, scoped authority, implementation owner, and the distinction
+between dependencies, resource reservations, and integration conflicts, MUST
+follow
+[task classification](task-classification.md#orchestration-request-ownership).
+That decision MUST precede dispatch; this reference MUST NOT create a competing
+decision. When classification selects a child-owned route, MUST use a matching
+bounded specialist helper only for read-only research/review, or an app-managed
+task/worktree for a child-owned issue implementation. A helper MUST NOT replace,
+duplicate, or patch an implementation owner.
 
 Each assignment MUST name the exact objective, scope, input evidence,
 deliverable and success criteria, verification, and stop/report conditions.
 Creating a child only to report status while the parent does the substantive
-work MUST NOT count as delegation. The parent MUST evaluate actual child work
-and returned evidence; a prompt or task-creation result alone MUST NOT prove
-execution.
+work MUST NOT count as delegation. A prompt or task-creation result alone MUST
+NOT prove execution.
 
 Every app-managed child assignment governed by a native goal MUST explicitly
 direct the child to read the
@@ -29,26 +29,14 @@ transition. The assignment MUST make clear that `get_goal` precedes issue or
 repository reads, commands, verification, delegation, and edits; later goal
 activation MUST NOT satisfy the required ordering.
 
-An explicit user assignment to orchestrate a defined outcome, including
-directing non-orchestration work to children, authorizes the necessary bounded
-child tasks and assignment, follow-up, reporting, and recovery messages within
-that scope. Codex MUST NOT ask for approval again per child or per message. This
-authority MUST NOT expand scope, override explicit no-new-task or recipient
-limits, bypass host/organization permissions, or authorize merge, release,
-publication, or destructive actions. Host denial MUST preserve the exact
-response and assignment; Codex MUST NOT invent permission parameters, bypass the
-host, or ask the user to repeat authorization already given. Ordinary questions
-and vague coordination requests MUST NOT create this authority. MUST follow the
-[thread/worktree rules](thread-and-worktree-routing.md). Before app-child
-creation or resume, MUST reconcile ownership and reserve capacity under the
-[supervised eight-slot ceiling](parent-supervision.md#supervised-app-child-capacity)
+After classification selects an owner and route, MUST follow the
+[thread/worktree rules](thread-and-worktree-routing.md). Before child creation
+or resumption, MUST reconcile capacity under the
+[supervised-child ceiling](parent-supervision.md#supervised-app-child-capacity)
 and applicable helper budget. At capacity, unstarted work MUST stay in backlog.
-If the required child surface or authority is unavailable, MUST report the exact
-limitation and required owner decision and keep the work pending; parent
-execution, an unsupported CLI/app-server route, or another owner MUST NOT be a
-fallback. A blocked child MUST follow the
+A blocked child MUST follow the
 [Advisor-assisted supervision route](parent-supervision.md#waiting-and-direct-correction);
-the parent MUST retain the owner and direct recovery rather than do its work.
+recovery MUST stay with its assigned owner.
 
 ## Recipient routing
 

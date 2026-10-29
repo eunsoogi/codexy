@@ -40,17 +40,16 @@ child-owned implementation lane through another surface.
 
 ## App Task Creation Route
 
-`create_thread` creates a separate app task. An explicit scoped orchestration
-assignment authorizes the required bounded child tasks and necessary messages
-under the [authority contract](child-routing-policy.md), without per-call
-approval. A branch/worktree need, task complexity, or vague coordination request
-alone MUST NOT authorize creation. Actual callable host limits still apply.
+`create_thread` creates a separate app task. MUST use
+[task classification](task-classification.md#orchestration-request-ownership) as
+the source for whether a separate task is authorized and which owner applies.
+This section governs the invocation and setup readbacks after that decision.
 
 Before calling `create_thread`, the Orchestrator MUST read back separately:
 
 - the actual callable tool and its invocation contract;
-- the explicit task request or scoped orchestration authority; and
-- the current task and existing active owner for the same issue or lane.
+- the task-classification result and its authority/owner decision; and
+- the current task and active-owner readback required by that decision.
 
 The Orchestrator MUST verify its actual task CWD before child creation. If the
 CWD is in a linked Git worktree or cannot be verified inside the saved project's
@@ -61,7 +60,7 @@ controlling task MUST verify the destination CWD and primary checkout from
 current task readback before the Orchestrator resumes child creation. An
 unverified destination MUST keep the lane pending.
 
-For a selected child-owned lane, the Orchestrator MUST select the assigned
+For an authorized child-owned lane, the Orchestrator MUST select the assigned
 recipient model and effort automatically and MUST NOT ask the user to choose or
 reconfirm them. Every Worker `create_thread` call MUST include the assigned
 `model` and `thinking` pair and request `target.type="project"` with a non-empty
@@ -77,26 +76,9 @@ duplicate Worker. A separate Orchestrator task is distinct from Worker-only
 admission and MUST use its own assigned pair when explicitly requested. Model
 routing does not grant authority to create a separate task.
 
-When no separate task was requested and the current task is already explicitly
-assigned as the implementation owner for that lane, the current-task route MUST
-continue under its native goal without calling `create_thread`. A direct
-standalone implementation request remains a valid assignment. For a request to
-orchestrate independent issues, the parent/coordinator role, active overall
-goal, or presence of the current task MUST NOT substitute for a lane-specific
-implementation assignment. This route MUST NOT resolve unclear topology or
-silently replace a selected child-owned lane. If topology is unresolved, or no
-active child already owns a selected child-owned lane and explicit task-creation
-authority is unavailable or ambiguous, implementation MUST remain pending while
-the parent reports the exact owner decision or authority needed. When an active
-child already owns the lane, the parent MUST send correction instructions
-through the supported task route without requiring authority to create another
-task, and MUST NOT implement in the parent or create a duplicate owner. A GitHub
-assignee, issue, branch, PR, or delegated prompt MUST NOT substitute for an
-active-owner readback.
-
-When separate task creation is authorized and no existing owner conflict
-remains, the Orchestrator MUST use the actual `create_thread` tool and read back
-the returned task identity, owner, project, actual CWD, starting HEAD, app
+When task classification and the required owner/tool readbacks authorize a new
+app task, the Orchestrator MUST use the actual `create_thread` tool and read
+back the returned task identity, owner, project, actual CWD, starting HEAD, app
 worktree environment, exposed permissions and model settings, and native goal
 before execution. The requested target, checkout path, or attached artifact
 alone does not prove the task environment. The call is non-blocking: a ready
@@ -104,13 +86,13 @@ alone does not prove the task environment. The call is non-blocking: a ready
 is only a pending setup identity and MUST NOT be passed to tools that require
 `threadId`.
 
-Both routes MUST preserve the native goal and ordinary direct `wait_threads`
-observation with each target's latest cursor. Neither route may replace these
-host surfaces with text, an app-server/CLI path, a fake task, or a silent
-fallback. Source tests, configuration, and app-server transcripts MUST NOT
-substitute for actual host task creation and ownership readback. If a required
-host route is unsupported, the agent MUST report the exact limitation and
-required action and distinguish preparation from execution.
+Each selected owner route MUST preserve the native goal and ordinary direct
+`wait_threads` observation with each target's latest cursor. Neither route may
+replace these host surfaces with text, an app-server/CLI path, a fake task, or a
+silent fallback. Source tests, configuration, and app-server transcripts MUST
+NOT substitute for actual host task creation and ownership readback. If a
+required host route is unsupported, the agent MUST report the exact limitation
+and required action and distinguish preparation from execution.
 
 ## Codex App Worktree Creation Preflight
 
@@ -145,18 +127,19 @@ diagnostic for known ownership and setup state.
    the path internally, MUST invoke the supported worktree tool after this
    project preflight; local checks MUST NOT be described as host-level atomicity
    proof.
-3. MUST keep exactly one active owner for each issue-sized lane. Before creating
-   or resuming a child, MUST reconcile reserved, setting-up, and active slots
-   against the
+3. After
+   [task classification](task-classification.md#orchestration-request-ownership)
+   selects the owner and route, MUST reconcile reserved, setting-up, and active
+   slots against the
    [supervised-child ceiling](parent-supervision.md#supervised-app-child-capacity).
    At capacity, MUST retain excess work in the parent backlog without a child
-   thread or active child goal. Resource exhaustion, unresolved ownership,
-   dirty/locked checkout collisions, or actual shared-resource conflicts MUST
-   defer a lane. The per-call `wait_threads` limit of eight targets is separate
-   from the supervised app-child ceiling; splitting calls MUST NOT bypass its
-   slot count. Native `spawn_agent` concurrency follows its own host/tool limit.
-   If setup returns a `clientThreadId` or `pendingWorktreeId`, MUST retain it as
-   a pending setup identity, not as a `threadId`. MUST wait for an authoritative
+   thread or active child goal. Resource exhaustion, dirty/locked checkout
+   collisions, or concrete shared-resource contention MUST defer affected work.
+   The per-call `wait_threads` limit of eight targets is separate from the
+   supervised app-child ceiling; splitting calls MUST NOT bypass its slot count.
+   Native `spawn_agent` concurrency follows its own host/tool limit. If setup
+   returns a `clientThreadId` or `pendingWorktreeId`, MUST retain it as a
+   pending setup identity, not as a `threadId`. MUST wait for an authoritative
    ready or failed setup result; an observation timeout or an omitted list
    result is not by itself failure. While pending, MUST search by the pending
    identity, branch, issue/PR, SHA, and available review-thread id. Only a
@@ -173,18 +156,10 @@ diagnostic for known ownership and setup state.
    permission-setting API, bypass approval, or declare creation failed because a
    task is temporarily absent from a list view.
 
-- The parent MUST dispatch dependency-ready same-wave work concurrently within
-  the combined reserved/setup/active ceiling, even when owned paths overlap.
-  MUST NOT scan or compare paths as a dispatch gate. MUST preserve reservations
-  across turns; splitting `wait_threads` batches MUST NOT bypass capacity.
-- If an existing usable thread already owns the same issue or PR, MUST reuse
-  that owner thread or MUST continue that owner thread instead of creating a
-  replacement. Replacement child threads MUST require inspected existing-owner
-  evidence plus proof that the old owner is stopped, unusable, or explicitly
-  superseded.
 - Packaged specialist subagents are helper or reviewer roles and MUST NOT be
   treated as issue-sized implementation owners; their use does not change the
-  exactly-one-owner rule for each issue-sized lane.
+  task owner selected by
+  [task classification](task-classification.md#orchestration-request-ownership).
 - MUST preflight branch names with local Git:
 
 ```sh
@@ -217,18 +192,11 @@ Child titles MUST follow the [title policy](child-thread-titles.md).
 
 ## Worktree Rules
 
-- One issue-sized outcome per branch.
-- One branch per pull request.
-- One independent requested outcome per child lane unless a maintainer
-  explicitly scoped multiple outcomes as one atomic lane before implementation.
-- Orchestrators MUST preserve one owner and isolated app-managed worktree per
-  issue. Path overlap MUST NOT serialize ready lanes; actual dependencies,
-  capacity, permissions, and shared-resource reservations remain binding.
-- Existing issue or PR owner threads MUST be reused when present and usable;
-  replacement owner threads MUST require old-owner stop, unusable, or
-  supersession evidence.
-- Worktree-based implementation lanes MUST require lane ownership before edits:
-  parent coordination first, child implementation second.
+MUST apply
+[task classification](task-classification.md#orchestration-request-ownership)
+before these worktree procedures. Keep one issue-sized outcome per branch and
+one branch per pull request.
+
 - Worker elevation MUST use [source checkpoint](worker-elevation/checkpoint.md),
   [parent-loop reconciliation](worker-elevation/reconciliation.md), and
   [transition procedure](worker-elevation/transition.md). The source MUST remain
@@ -236,7 +204,7 @@ Child titles MUST follow the [title policy](child-thread-titles.md).
   retirement; ownership MUST transfer only then, with the same checkout
   preserved. MUST NOT create a worktree, copy a diff, recreate a branch, permit
   concurrent writers, or reuse/clean another lane's dirty or locked checkout.
-- Real integration conflicts MUST be resolved before merge through the owning
+- Actual integration conflicts MUST be resolved before merge through the owning
   task's branch, preserving both changes and rerunning affected verification.
 - MUST NOT merge child work locally as a substitute for the repository PR flow.
 - After merge, synchronize the main worktree before starting dependent work.
