@@ -82,9 +82,10 @@ MUST stop and escalate when required evidence is absent, review feedback is unre
 Compact terminal handoff: when the strict reviewer reaches a terminal result,
 MUST report the selected profile, policy reviewer, exact current head, one
 `PASS`, `BLOCK`, or `UNOBSERVABLE` result, and unresolved finding dispositions.
-The compact control MUST use the fields defined by
-[review profiles](../skills/orchestration/references/review-profiles.md) and
-follow the [review lifecycle](../skills/orchestration/references/review-lifecycle.md).
+The compact control MUST use the fields defined by the
+[review lifecycle](../skills/orchestration/references/review-lifecycle.md).
+Reviewer selection MUST follow
+[review profiles](../skills/orchestration/references/review-profiles.md).
 Historical review records or quota fields MUST NOT be added to that output.
 
 """
