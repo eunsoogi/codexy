@@ -7,9 +7,11 @@ description: MUST use before claiming work is done, handing off, opening or merg
 
 ## Purpose
 
-Completion is a current-state claim. MUST map every requirement to evidence that
-proves it on the authoritative surface, and MUST stop the completion/readiness
-claim when proof is absent, stale, too weak, or contradictory.
+This skill owns execution-evidence validity, per-check reuse, and outcome
+judgment. Completion is a current-state claim. MUST map every requirement to
+evidence that proves it on the authoritative surface, and MUST stop the
+completion/readiness claim when proof is absent, stale, too weak, or
+contradictory.
 
 ## Audit
 
@@ -54,20 +56,14 @@ claim when proof is absent, stale, too weak, or contradictory.
   states and MUST NOT substitute for one another.
 - Evidence from an older head MUST NOT prove the current head. An unresolved
   external gate keeps the corresponding requirement incomplete.
-- Evidence reuse is per individual check, not whole-change readiness. A valid
-  passed check MAY be reused after current applicability assessment for an
-  unchanged boundary or unrelated prose-only or other metadata-only change. A
-  relevant source, dependency, lock/configuration, shared fixture,
-  generated-input, or environment change, a previous failure, unresolved risk,
-  or uncertain impact requires the affected checks again. Integration changes
-  invalidate only affected evidence when their impact is known; uncertain impact
-  warrants broader checks.
+- [Quality assurance](../engineering/references/quality-assurance.md) owns check
+  selection, verification depth, and test-oracle preservation. The
+  [review lifecycle](../orchestration/references/review-lifecycle.md) owns
+  reviewer-state validity and current-head binding.
 - The owning child MAY supply preserved execution evidence for the parent to
-  consume; that does not require a duplicate default full-suite run. The final
-  integrated state still needs current requirements, affected checks, required
-  CI, and any selected review when applicable. A reviewer `PASS` from an older
-  head is never automatically inherited, and a current-head reviewer does not
-  make an old execution result a new run.
+  consume after the applicability assessment below; this does not require a
+  duplicate default full-suite run. The integrated result still requires current
+  requirements, affected checks, required CI, and any selected review.
 - Additional tests, reviews, or broad checks MUST name an unmet requirement or
   concrete unresolved risk. Budget exhaustion MUST retain the actual missing,
   unobservable, or failed state and MUST NOT authorize `PASS`, conceal a
@@ -88,6 +84,36 @@ claim when proof is absent, stale, too weak, or contradictory.
 - GitHub, owner, reviewer, CI, release, and external-state producers own their
   state machines. Consume their current evidence without restating or replacing
   their authority here.
+
+## Execution evidence and reuse
+
+For every execution result used as proof, MUST preserve its original invocation
+revision, environment, exact command, input, expected and observed result,
+cleanup, and execution state or head. Historical execution evidence MUST remain
+separate from a current applicability assessment; the assessment MUST NOT
+rewrite the original provenance, revision, result, or claim that the check ran
+again.
+
+Before reusing a result, MUST read back the current diff and relevant
+implementation, dependency and lock/configuration state, shared fixtures,
+generated inputs, and environment. Each relevant boundary MUST be classified as
+`unchanged`, `changed`, or `uncertain` for that individual check. A valid passed
+result MAY be reused only for an unchanged boundary or an unrelated prose-only
+or other metadata-only change when the relevant boundary and environment remain
+unchanged. A relevant source, dependency, lock/configuration, fixture,
+generated-input, or environment change, a previous failure, unresolved risk, or
+uncertain impact MUST invalidate affected evidence and require those checks
+again. Known integration changes invalidate only affected checks; uncertain
+integration impact warrants broader verification.
+
+Reuse applies per check and MUST NOT be presented as whole-change readiness. A
+child MAY provide preserved evidence for the parent to consume. The integrated
+result still requires current requirements, affected checks, required CI, and
+any selected review. Reviewer state and current-head binding MUST follow the
+[review lifecycle](../orchestration/references/review-lifecycle.md). This policy
+MUST NOT create a separate evidence service, hash ledger, universal receipt
+schema, new review quota, or extra default reviewer. MUST NOT hide missing,
+unobservable, or failed results.
 
 ## Authority Boundaries
 

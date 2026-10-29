@@ -11,18 +11,18 @@ or turn an incomplete outcome into success; native goal transitions retain their
 existing authority.
 
 Each non-trivial change MUST keep a finite requirement list, affected-check
-list, and termination condition. Once the requirements, relevant checks, and
-selected review when applicable are satisfied with no unresolved in-scope
-defect, the work MUST finish. Additional tests, broad rechecks, or reviewers
-require a named unmet criterion or concrete unresolved risk; an unspecified
-desire for more confidence does not extend the work.
+list, and termination condition.
+[Quality assurance](../../engineering/references/quality-assurance.md) owns
+check selection and depth;
+[proof-driven completion](../../proof-driven-completion/SKILL.md) owns evidence
+validity, reuse, and outcome judgment. Once requirements, applicable checks, and
+the selected review are satisfied with no unresolved in-scope defect, the work
+MUST finish. Additional verification requires a named unmet criterion or
+concrete unresolved risk.
 
-Evidence reuse is per check. A child MAY hand off preserved execution evidence
-after a current applicability assessment, and the parent MAY consume it without
-a duplicate default full-suite run. Relevant changes invalidate affected checks;
-unknown impact, missing evidence, unobservable results, failures, and actual
-findings remain unresolved states rather than reasons to silently pass or hide
-the gap.
+Per-check evidence validity and reuse MUST follow
+[proof-driven completion](../../proof-driven-completion/SKILL.md); this budget
+does not change those evidence requirements.
 
 - Non-Sentinel fanout MUST be no more than three concurrent helpers.
 - Supervised app children MUST share one ceiling of
@@ -35,10 +35,9 @@ the gap.
   goal. Multiple eight-target waits MUST NOT expand capacity. Pending setup,
   timeout, or attention MUST NOT release a slot; confirmed release and retained
   per-target cursors MUST follow that same supervision contract across turns.
-- The normal current-head path uses one selected proportionate reviewer when the
-  chosen profile requires one. `PASS`, `BLOCK`, and `UNOBSERVABLE` are actual
-  results; `PENDING` and `RUNNING` remain observations of that same reviewer.
-  This path has no fixed review-count, history, or disposition quota.
+- Reviewer selection follows [review profiles](review-profiles.md), and reviewer
+  state follows the [review lifecycle](review-lifecycle.md). This budget adds no
+  review-history or disposition quota.
 - Additional reviewers, broad rechecks, or semantic evaluators MUST be tied to
   an explicit requirement or a concrete unresolved risk; they MUST NOT be an
   automatic stack.

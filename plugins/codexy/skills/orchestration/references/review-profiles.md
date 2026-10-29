@@ -15,45 +15,15 @@ review is parent-owned only when the user, repository, or a concrete risk
 explicitly requires it. These ownership rules MUST NOT create a second default
 review or change the selected profile.
 
-The normal reviewer state is current-head evidence. It contains the control
-schema, selected profile, policy reviewer when applicable, `reviewed_head`, one
-actual `terminal_result` or non-terminal `status`, and `unresolved_findings`. A
-reviewer MUST bind the exact current head. `PASS`, `BLOCK`, and `UNOBSERVABLE`
-are terminal results; `PENDING` and `RUNNING` are observations of the same
-active reviewer and MUST remain pending until its actual result arrives.
-
-Current-head readiness requires the relevant checks for the changed surface, an
-actual reviewer `PASS` when a reviewer is selected, and no unresolved actionable
-findings. A `BLOCK`, `UNOBSERVABLE`, stale head, failed relevant check, or
-actual unresolved finding remains blocking. Fixing a finding may be verified on
-the current head without restarting a review count or inventing a new evidence
-ledger.
-
-Execution evidence is consumed one check at a time. Before reuse, the current
-diff and relevant implementation, dependency/lock/configuration, fixtures,
-generated inputs, and environment MUST be read back. The original invocation
-revision, environment, exact command, result, and execution state MUST remain
-unchanged; a current applicability assessment explains reuse without becoming a
-new run. An unrelated prose-only or other metadata-only change MAY preserve a
-valid passed check. Relevant source, dependency, lock/configuration, shared
-fixture, generated-input, or environment changes, previous failure, unresolved
-risk, or uncertain impact invalidate affected evidence and require those checks
-again. Known integration changes invalidate only affected checks; uncertain
-integration impact warrants broader verification.
-
-The owning child MAY supply valid preserved evidence for the parent to consume.
-The parent MUST NOT run a duplicate full suite by default solely to repeat
-unchanged evidence, and individual reuse MUST NOT be treated as whole-change
-readiness. Current requirements, affected checks, required CI, and the selected
-review when applicable still bind the integrated result.
+Reviewer-state validity, exact-head binding, and current-head result
+interpretation belong to the [review lifecycle](review-lifecycle.md). Overall
+evidence validity and outcome judgment belong to
+[proof-driven completion](../../proof-driven-completion/SKILL.md); check
+selection and verification depth belong to
+[quality assurance](../../engineering/references/quality-assurance.md).
 
 One selected reviewer is not an automatic stack. A second reviewer, repeated
 broad check, semantic evaluator, connector review, or evidence artifact MUST be
 requested only by the user, repository policy, or a concrete unresolved risk.
-
-Missing historical transcripts, genesis/import records, invocation telemetry,
-and quota bookkeeping MUST NOT block the compact current-head path. They remain
-unknown evidence and MUST NOT be converted into a synthetic result or a new
-approval request.
 
 The executable profile contract remains in the packaged runtime validator.

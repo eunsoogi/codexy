@@ -32,16 +32,14 @@ issue.
 For a small change, these five points may be a few lines. A separate PRD or test
 plan MUST NOT be created unless the scope needs one.
 
-## Requirement-led test choices
+## Test requirements
 
-For every new or replaced test, name the requirement or distinct regression it
-protects, the faulty behavior that would fail it, and the source of its expected
-result. Expected results MUST come from the agreed contract or an independent
-observation, never only from the current implementation output. A test that only
-repeats an implementation detail or copies the current output without exposing a
-contract violation is not a distinct oracle. Keep this behavioral-test decision
-separate from test-first order and verification depth; their boundary-specific
-rules live in [test-driven development](test-driven-development.md) and
+The agreed contract MUST define the observable behavior before a test is
+selected. Test-oracle integrity and the evidence required when checks change
+belong to [quality assurance](quality-assurance.md#test-oracle-preservation).
+Keep behavioral-test need separate from test-first order and verification depth;
+their boundary-specific rules live in
+[test-driven development](test-driven-development.md) and
 [quality assurance](quality-assurance.md).
 
 ## Constraints

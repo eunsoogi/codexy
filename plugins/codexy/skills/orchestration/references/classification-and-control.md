@@ -173,26 +173,14 @@ unassigned or out-of-scope edits.
 - If a required execution tool is unavailable, MUST report the exact limitation
   and required action. MUST NOT use a different tool or prose substitute to
   claim the same contract, and MUST NOT silently skip the discipline.
-- Before handoff, PR readiness, completion, or parent acceptance, the child MUST
-  follow the proportionate current-head contract in `review-profiles.md`:
-  `light` has no LLM reviewer, `standard` uses
-  `plugins/codexy/agents/codexy-inspector.toml` when an independent reviewer is
-  required, and `strict` uses `plugins/codexy/agents/codexy-sentinel.toml`. The
-  reviewer reads the current diff, exact head, lane scope, and relevant
-  verification; missing historical or optional evidence is not a default gate.
-- A selected reviewer MUST return `PASS`, `BLOCK`, or `UNOBSERVABLE` when it
-  reaches a terminal result. A bounded wait with no result is `PENDING`, and an
-  independently observed live reviewer is `RUNNING`; neither is a verdict. The
-  owning lane MUST retain the same reviewer while it is pending and MUST NOT
-  interrupt, replace, duplicate, or turn it into an automatic review stack.
-- The compact current-head control state MUST bind the selected profile,
-  reviewer when applicable, exact `reviewed_head`, actual result or status, and
-  unresolved findings. It MUST NOT require review-count fields, ordered history,
-  transcript reconstruction, quota bookkeeping, or a disposition ledger. A
-  `PASS` with no findings supports the review gate; a stale head, failed
-  relevant check, `BLOCK`, `UNOBSERVABLE`, or actual finding remains blocking.
-- A second reviewer, broad recheck, semantic evaluator, connector review, or
-  evidence artifact MUST be tied to an explicit requirement or concrete risk.
+- Before handoff, PR readiness, completion, or parent acceptance, MUST follow
+  the selected [review profile](review-profiles.md) and
+  [review lifecycle](review-lifecycle.md). Check selection, verification depth,
+  and test-oracle preservation MUST follow
+  [quality assurance](../../engineering/references/quality-assurance.md).
+  Execution-evidence validity, reuse, and outcome judgment MUST follow
+  [proof-driven completion](../../proof-driven-completion/SKILL.md). These
+  consumers MUST NOT redefine the canonical owners' policies.
 
 ## Completion-Handoff Validation
 
@@ -212,28 +200,10 @@ silence, clean gates, and a ready PR are non-authoritative signals.
 
 ## Direct Review-State Handoff
 
-The selected profile and reviewer remain the authority for review state. The
-compact current-head control MUST carry the existing
-`codexy.review-control-state.v1` schema, selected `profile`, the policy
-`reviewer` when applicable, exact `reviewed_head`, one actual `terminal_result`
-or non-terminal `status`, and `unresolved_findings`. A selected reviewer MUST
-match the current PR head and profile policy. `PASS` with no unresolved
-actionable findings is the only positive review result; `BLOCK`, `UNOBSERVABLE`,
-`PENDING`, `RUNNING`, stale heads, failed relevant checks, and actual findings
-MUST not be presented as readiness.
-
-The compact path does not require `issue_number`, review counts, ordered
-history, a prior control state, transcript import, invocation telemetry, or a
-disposition object. The authenticated current PR snapshot remains authoritative
-for repository, PR, base, and head identity. `previous_control_state` MUST
-remain rejected when supplied to the producer; absence of a previous snapshot is
-valid for the compact path.
-
-A child-owned lane MUST send implementation or review-response fixes to its
-owning child. The parent consumes the current result and retains merge or
-publication authority. A pending reviewer stays with the same reviewer until the
-real result arrives; it MUST NOT be interrupted, replaced, duplicated, or
-converted into a new approval request.
-
-Light retains its no-reviewer route. Headings, prose, and optional receipts MUST
-NOT override direct current-head facts.
+Direct review-state handoffs MUST use the existing runtime-validated
+`codexy.review-control-state.v1` contract and follow
+[review profiles](review-profiles.md) and
+[review lifecycle](review-lifecycle.md). Outcome claims MUST also follow
+[proof-driven completion](../../proof-driven-completion/SKILL.md). The compact
+consumer instructions MUST NOT redefine schema fields, reviewer status meanings,
+or current-head binding.

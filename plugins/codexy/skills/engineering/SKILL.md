@@ -95,61 +95,33 @@ produces a validated result, use the installed
    and instruction-only work MUST use proportional readback and MUST NOT
    manufacture RED. Mixed requests follow their boundary obligations.
 4. MUST make the smallest spec-backed change and preserve public contracts.
-5. MUST select the cheapest faithful checks from the changed executable
-   boundaries, affected requirements, integration risk, explicit user/repository
-   checks, and current evidence. MUST keep required repository CI and run each
-   named authentic surface needed for the claimed outcome; broader checks are
-   justified when the affected boundary or integration risk reaches them. MUST
-   NOT automatically repeat unit, integration, or end-to-end proof when it
-   observes the same failure; retain separate levels only for distinct failure
-   modes.
-6. Before reusing any execution evidence, MUST read back the current diff and
-   the relevant implementation, dependency/lock/configuration, fixtures,
-   generated inputs, and environment. Each item MUST be classified as unchanged,
-   changed, or uncertain for the check being considered.
-7. MUST preserve each execution record's original revision, environment, exact
-   command, result, and execution state. A later applicability assessment MAY
-   explain why that result still covers an unchanged boundary, but MUST NOT
-   rewrite its provenance, revision, or claim that the check ran again.
-8. A valid passed check MAY be reused for that individual check after the
-   applicability assessment when the boundary and environment remain unchanged,
-   including an unrelated prose-only or other metadata-only change. A relevant
-   implementation, dependency, lock/configuration, shared fixture,
-   generated-input, or environment change, a previous failure, an unresolved
-   risk, or uncertain impact MUST invalidate the affected evidence and require
-   the affected checks again. Integration changes invalidate only affected
-   evidence when their impact is known; uncertain integration impact warrants
-   broader checks.
-9. Within already authorized work, MUST run disposable checks, repair failures
+5. MUST use [quality assurance](references/quality-assurance.md) to select
+   checks and verification depth, including its test-oracle contract. MUST use
+   [proof-driven completion](../proof-driven-completion/SKILL.md) to assess
+   execution-evidence validity and reuse and to judge whether requirements are
+   proved. MUST use the
+   [review lifecycle](../orchestration/references/review-lifecycle.md) for
+   reviewer-state rules. Apply each authority per changed boundary.
+6. Within already authorized work, MUST run disposable checks, repair failures
    caused by the change in the assigned scope, and rerun affected checks without
    repeated permission. MUST inspect ambiguous fixture or production effects;
    host denials and authorization for external or destructive operations remain
    authoritative.
-10. MUST clean temporary artifacts and map each changed file to the issue.
-11. MUST stop when the requirement list, affected checks, and selected review
-    when applicable are satisfied with no unresolved in-scope defect. Further
-    checks or reviewers require a named unmet criterion or concrete unresolved
-    risk. Use the shared
-    [execution budget](../orchestration/references/execution-budget.md) and
-    [proof-driven completion](../proof-driven-completion/SKILL.md) rules by
-    reference; do not add a local quota, evidence ledger, grader, or permission
-    gate.
+7. MUST clean temporary artifacts and map each changed file to the issue.
+8. MUST stop when the requirement list, affected checks, and selected review
+   when applicable are satisfied with no unresolved in-scope defect. Further
+   work MUST follow the shared
+   [execution budget](../orchestration/references/execution-budget.md). MUST NOT
+   add a local quota, evidence ledger, grader, or permission gate.
 
-## Shared evidence and handoff
+## Evidence and handoff
 
-Evidence MUST bind input, expected/actual, original invocation revision,
-environment, exact command, result, cleanup, and state or head. When reuse is
-proposed, existing handoff fields and prose MUST also explain the current
-applicability assessment. Narrow checks prove only their boundary; external
-claims need authentic proof. Reusing one check MUST NOT be presented as
-whole-change readiness. A child MAY supply valid execution evidence for the
-parent to consume after the same applicability assessment; the parent MUST NOT
-run a duplicate full suite by default solely to repeat unchanged evidence. The
-integrated final state still requires current requirements, affected checks, and
-required CI. This policy MUST NOT create an evidence service, hash ledger,
-universal receipt schema, new review quota, or extra default reviewer. MUST NOT
-hide missing, unobservable, or failed results or accept formatting-only LOC
-reduction. MUST stop on scope, authority, behavior, or proof conflict.
+Quality assurance owns check selection, verification depth, and test-oracle
+preservation. Proof-driven completion owns execution-evidence validity, reuse,
+and outcome judgment. Review lifecycle owns reviewer-state rules. These
+authorities keep individual check results distinct from whole-change readiness.
 
-Handoff MUST name methods, outcome, files, contracts, proof, external results,
-cleanup, skips, risks, and next action.
+Terminal handoff MUST follow
+[goal-transition reporting](../orchestration/references/goal-transition-reporting.md);
+the completion report MUST follow
+[proof-driven completion](../proof-driven-completion/SKILL.md).
