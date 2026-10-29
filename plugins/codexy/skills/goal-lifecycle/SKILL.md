@@ -1,6 +1,6 @@
 ---
 name: goal-lifecycle
-description: Use before any explicitly authorized Orchestrator or implementation Worker task, including read-only diagnosis, when using goal tools or resuming a task controlled by a goal, or for same-directory fork recovery of a blocked task. The external read-only Watcher exception remains separate. MUST NOT infer execution or goal authority from ordinary questions, ambiguous discussion, or unassigned suggestions.
+description: Use before any explicitly authorized Orchestrator or implementation Worker task, including read-only diagnosis, when using goal tools or resuming a task controlled by a goal, or for same-directory fork recovery of a blocked task. MUST NOT infer execution or goal authority from ordinary questions, ambiguous discussion, or unassigned suggestions.
 ---
 
 # Goal Lifecycle
@@ -10,13 +10,12 @@ description: Use before any explicitly authorized Orchestrator or implementation
 Codex MUST use this skill before explicitly assigned Orchestrator or
 implementation Worker task work, including read-only diagnosis, and for every
 goal-tool operation or resume of a task controlled by a goal. Codex MUST load it
-before task-specific work, not only after choosing a goal-tool operation. The
-external read-only Watcher exception below remains separate and MUST NOT create
-a separate goal. Codex MUST treat the host goal tools as authoritative. The
-lifecycle governs fresh goal startup, active continuation, and authorized
-recovery from blocked goals. It MUST NOT change host goal state, issue
-ownership, branch, or worktree to simulate completion. Recovery changes only the
-active task thread through a same-directory fork and archive.
+before task-specific work, not only after choosing a goal-tool operation. Codex
+MUST treat the host goal tools as authoritative. The lifecycle governs fresh
+goal startup, active continuation, and authorized recovery from blocked goals.
+It MUST NOT change host goal state, issue ownership, branch, or worktree to
+simulate completion. Recovery changes only the active task thread through a
+same-directory fork and archive.
 
 ## Delegated assignment authorization
 
@@ -52,16 +51,6 @@ override native lifecycle state. An existing broader active objective MUST NOT
 be narrowed, replaced, or marked complete to adopt a phase; the child MUST
 preserve it and report the mismatch for explicit supported lifecycle
 disposition.
-
-### External Watcher exception
-
-Codexy does not package a native Watcher specialist. A separately assigned
-Watcher is observation-only and MUST NOT own, create, transfer, complete, or
-block the Orchestrator's overall goal. Ordinary Worker observation stays with
-the Orchestrator; implementation Workers MUST continue to follow the delegated
-assignment rules above. Routing, waits, callbacks, cancellation, and fallback
-for an external Watcher MUST follow
-[parent supervision](../orchestration/references/parent-supervision.md).
 
 ## Required first transition
 

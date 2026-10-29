@@ -90,15 +90,14 @@ update MUST NOT imply that a running task changed or prove comparative
 performance.
 
 For ordinary observation of assigned Codex Workers, the Orchestrator MUST use
-the native event-driven `wait_threads` route with each task's latest cursor. It
-MUST NOT summon a Watcher solely to relay routine Worker events. A separately
-assigned bounded observation MAY use a Watcher supplied outside Codexy's
-packaged specialist catalog. Only that Watcher may observe its exact assigned
-targets, and the Orchestrator MUST await `watcher_wait` without also waiting
-directly on them. The core plugin no longer registers Watcher MCP or ships the
-retired launcher and dedicated bootstrap. A host using an external compatibility
-transport must supply a compatible entrypoint; the packaged catalog does not
-include a native Watcher specialist or model pair.
+the native event-driven `wait_threads` route with each task's latest cursor.
+Every returned target MUST retain its returned cursor for the next wait, while
+omitted targets MUST keep their prior cursor. The Orchestrator MUST deduplicate
+each event by stable identity before changing lane state. Empty, partial, or
+truncated observations MUST remain unknown and MUST NOT establish that an event
+or callback is absent. A native reviewer's terminal delivery follows its review
+route and MUST NOT be confused with Worker observation. See
+[observation evidence](observation-evidence.md) for absence claims.
 
 When creating a Worker, Codex MUST bind the selected model and effort to the
 authenticated recipient. For existing tasks, Codex MUST send to the

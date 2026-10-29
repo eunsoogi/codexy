@@ -1,11 +1,9 @@
 # Runtime Heartbeats
 
 For ordinary Worker completion or attention waits, the Orchestrator MUST use
-event-driven `wait_threads` with each target's latest cursor. Routine
-observation MUST NOT require a Watcher relay. Reserve heartbeat scheduling for
-genuinely scheduled monitoring or when `wait_threads` is unavailable. A Watcher
-is a separate, explicitly bounded native subagent, not an app task, heartbeat,
-or automatic scheduler.
+event-driven `wait_threads` with each target's latest cursor. Reserve heartbeat
+scheduling for genuinely scheduled monitoring or when `wait_threads` is
+unavailable.
 
 ## Same-Turn Wait Handling
 
@@ -14,34 +12,17 @@ or automatic scheduler.
   active goal owner, and next uncompleted action. A same-turn wait applies only
   while the host keeps the existing supported route available; this instruction
   MUST NOT imply runtime-owned parent suspension.
-- An empty, unchanged, or timed-out `wait_threads` or `watcher_wait` result, or
-  a tool output yield, MUST NOT by itself complete the assignment, trigger an
-  unchanged status or reasoning turn, or narrow the objective. When the
-  observation obligation remains, continue only through its selected supported
-  route using the latest returned cursor and actual host limits. MUST NOT
-  replace cursor waits with repeated polling. If an outer `functions.exec` cell
-  is pending, resume it rather than issue another wait. A target assigned to a
-  Watcher remains on that explicit route.
-- For an explicitly assigned Watcher, the current host exposes `watcher_wait`
-  inside `functions.exec`, with no standalone top-level action. Its verified
-  295,000 ms route sets the first-line `yield_time_ms=300000` pragma; two parent
-  production waits returned timeout in one call each. The results and limits are
-  recorded in
-  [host wait-path coverage](../../../../../docs/watcher-test-coverage.md). The
-  earlier 60-second `functions.wait` observation is session-specific, not a
-  universal cap or synchronous fix. If the outer call yields early, the owner
-  MUST preserve the active cell, session, cursor, and cancellation while marking
-  synchronous waiting unproved; MUST NOT reissue the wait or call a later
-  retrieval a synchronous pass. Only an actual `watcher_wait` result establishes
-  semantic status and returns a new cursor.
+- An empty, unchanged, or timed-out `wait_threads` result, or a tool output
+  yield, MUST NOT by itself complete the assignment, trigger an unchanged status
+  or reasoning turn, or narrow the objective. When the observation obligation
+  remains, continue only through its selected supported route using the latest
+  returned cursor and actual host limits. MUST NOT replace cursor waits with
+  repeated polling. If an outer `functions.exec` cell is pending, resume it
+  rather than issue another wait.
 - A shorter wait or its empty result alone MUST NOT alert. Any shorter wait MUST
   state a reason and MUST NOT become repeated polling. MUST report a
   host/fallback limit only when no supported route permits continuation and
   parent action is required.
-- The recorded intervals were not a matched direct-versus-wrapper comparison,
-  did not verify host interruption or resume, and leave per-path token and cost
-  unknown. These instructions MUST NOT claim fewer no-change parent returns or
-  comparative savings.
 - A new user input may end `wait_threads` early; commentary does not wake that
   wait. Handle input at actual host re-entry, but input or caller re-entry alone
   MUST NOT prove that a pending wait was cancelled or resumed. Keep host
@@ -50,8 +31,7 @@ or automatic scheduler.
   not claim runtime-owned suspension or create an unverified loop.
 - An output-yield cadence alone MUST NOT be treated as shortening the semantic
   wait; applicable higher-priority instructions and actual host limits still
-  govern every blocking call. MUST NOT bypass cursor waits. A target assigned to
-  a Watcher stays on that explicit route.
+  govern every blocking call. MUST NOT bypass cursor waits.
 - Outside a route-required quiet wait, MUST provide concise progress commentary
   at meaningful checkpoints during active work; commentary does not end the turn
   or prove completion. A short wait result alone MUST NOT trigger a final status
@@ -60,47 +40,29 @@ or automatic scheduler.
   permits a finite idle handoff when its actual conditions are met.
 - This default MUST NOT create rapid polling, busy loops, duplicate unchanged
   work, artificial token use, work beyond the authorized scope, or waits beyond
-  host limits. MUST follow [parent supervision](parent-supervision.md) for the
-  assigned Watcher route and exact wait ownership.
+  host limits. MUST follow [parent supervision](parent-supervision.md) for
+  direct wait ownership and per-target cursors.
 
-For an ordinary non-Watcher owner, after a host transition or
+For ordinary Worker observation, after a host transition or
 `No handler
 registered` failure, the owner MUST treat the mismatch as
 host-transition exposure evidence, perform one fresh thread-tool discovery and
 one host-aware `wait_threads` retry before any fallback, MUST NOT use unbounded
 `read_thread`, and any bounded metadata fallback MUST consume the current
-Orchestrator-stage budget and record only returned size/token metadata. On an
-explicitly assigned external Watcher route, the Watcher owns the wait/retry for
-assigned targets; the Orchestrator MUST use `watcher_wait` and MUST NOT directly
-retry or poll those targets.
+Orchestrator-stage budget and record only returned size/token metadata.
 
 For ordinary Orchestrator-owned Worker observation with a callable
 `wait_threads` handler, the Orchestrator MUST use the cursor-based wait while
 the assignment remains. A native reviewer's terminal delivery is its own surface
-and MUST NOT be confused with Worker observation. Separately supplied Watcher
-assignments, their explicit report route, host limits, quiet waits,
-interruption/cancellation, deduplication, and return conditions are defined in
-[parent-supervision.md](parent-supervision.md); MUST read that reference before
-assigning an external Watcher. Only the assigned Watcher MAY wait on its Worker
-targets; the Orchestrator MUST await `watcher_wait` without directly waiting on
-them. The host's automatic continuation behavior is not implied and MUST be
-reported if observed. If a slingshot-host turn still returns
-`No handler registered` after the one fresh discovery and one host-aware retry,
-the owner MUST emit exactly one unavailable evidence receipt and require
-desktop-origin root re-entry; it MUST NOT repeat the wait call, schedule a
-heartbeat relay, use `read_thread`, or use `handoff_thread` for recovery. The
-slingshot recovery route is not an unavailable-wait fallback eligible for
-heartbeat registration; it ends in desktop-origin root re-entry.
-
-## Explicit external Watcher boundary
-
-When a separate Watcher assignment is explicit, its creation, targets, report
-routing, cursor waits, host and transport limits, quiet waiting,
-interruption/cancellation, deduplication, and Orchestrator/Worker ownership are
-defined in [parent-supervision.md](parent-supervision.md). MUST read that
-reference before using an external Watcher. A heartbeat MUST NOT replace that
-route, and the Watcher MUST remain observation-only. The Orchestrator MUST NOT
-directly poll Worker targets assigned to an external Watcher.
+and MUST NOT be confused with Worker observation. The host's automatic
+continuation behavior is not implied and MUST be reported if observed. If a
+slingshot-host turn still returns `No handler registered` after the one fresh
+discovery and one host-aware retry, the owner MUST emit exactly one unavailable
+evidence receipt and require desktop-origin root re-entry; it MUST NOT repeat
+the wait call, schedule a heartbeat relay, use `read_thread`, or use
+`handoff_thread` for recovery. The slingshot recovery route is not an
+unavailable-wait fallback eligible for heartbeat registration; it ends in
+desktop-origin root re-entry.
 
 ## Eligibility And Discovery
 
@@ -112,18 +74,17 @@ declaring persistent monitoring unavailable. A callable heartbeat surface is
 scheduled monitoring or unavailable-wait fallback other than slingshot recovery,
 the owner MUST register a heartbeat instead of repeated model continuations or
 ending without a wakeup path. This route requires explicit scheduled-monitoring
-authorization; it MUST NOT be recreated merely to replace an app Watcher or
-preserve an unconditional Orchestrator turn. The heartbeat MUST use a
-thread-targeted `kind=heartbeat`. The heartbeat schedule MUST be bounded to the
-external gate's expected window. For the current thread, creation MUST use
-`destination="thread"` rather than inventing or copying a target-thread id.
-Creation MUST use a heartbeat name, prompt, bounded schedule, active status, and
-heartbeat kind; the owner MUST retain the returned automation id. It MUST view
-the heartbeat by that id before relying on the monitor. The heartbeat automation
-id, target thread, bounded schedule, and last observed state fingerprint are the
-runtime-issued identity for this route. A heartbeat automation route MUST NOT
-require a persistent exec/session id or same-process resume; those fields
-identify a separate process-backed monitor route.
+authorization and MUST NOT be used to preserve an unconditional Orchestrator
+turn. The heartbeat MUST use a thread-targeted `kind=heartbeat`. Its schedule
+MUST be bounded to the external gate's expected window. For the current thread,
+creation MUST use `destination="thread"` rather than inventing or copying a
+target-thread id. Creation MUST use a heartbeat name, prompt, bounded schedule,
+active status, and heartbeat kind; the owner MUST retain the returned automation
+id. It MUST view the heartbeat by that id before relying on the monitor. The
+heartbeat automation id, target thread, bounded schedule, and last observed
+state fingerprint are the runtime-issued identity for this route. A heartbeat
+automation route MUST NOT require a persistent exec/session id or same-process
+resume; those fields identify a separate process-backed monitor route.
 
 ## Registration Evidence And Prompt
 
@@ -135,10 +96,7 @@ events are a terminal child result, a Sentinel verdict, a new HEAD, a GitHub
 check-state change, actionable review feedback, review-thread resolution, or an
 explicit user/Orchestrator message. The prompt MUST suppress unchanged
 observations and MUST wake the owner only for a material gate change or an
-explicit user/Orchestrator message. A separately configured Watcher reports
-through its assigned MCP path, as defined in
-[parent-supervision.md](parent-supervision.md); reports are not heartbeat events
-or a reason to create a heartbeat.
+explicit user/Orchestrator message.
 
 A live Sentinel, pending Worker, queued CI, pending connector review,
 Orchestrator authorization, dependency integration, or resource slot is a
@@ -152,9 +110,7 @@ decision or missing user information can do so.
 
 ## Goal And Terminal Lifecycle
 
-The following lifecycle applies to ordinary Workers and other owners; the
-Orchestrator remains the owner of the overall goal while a Watcher subagent is
-active. A Watcher report MUST NOT create, replace, or transfer that goal.
+The following lifecycle applies to ordinary Workers and other owners.
 
 A successfully registered heartbeat is runtime-owned waiting; it does not
 authorize goal creation or prove phase completion. Ordinary Worker phases MUST
@@ -177,8 +133,8 @@ phase objective and criteria are distinct from the overall issue outcome.
   parent-owned next action. No heartbeat is required for an explicit parent
   wake.
 - Phase completion MUST NOT claim overall issue completion, PR merge, release,
-  transfer, or parent acceptance. The Orchestrator's overall goal and a
-  Watcher's observation assignment retain their separate boundaries.
+  transfer, or parent acceptance. The Orchestrator's overall goal remains
+  separate from each Worker's phase.
 - For follow-up fixes or another qualifying event, the same owner MUST first
   read the actual lifecycle state. It MUST resume a matching active objective;
   on null/complete it MUST create the authorized fresh phase and read back
