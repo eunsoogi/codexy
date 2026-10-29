@@ -174,13 +174,14 @@ substitution.
 
 This is the direct assignment path for work already evidenced as hard. When a
 general Luna/Max Worker discovers qualifying evidence after work begins, the
-Orchestrator MUST use the [Worker elevation decision](worker-elevation.md); the
-Orchestrator MUST NOT treat that assessment as executing a fork or changing the
-existing Worker's model or ownership. Before any source/target handoff, the
-parent MUST also follow the
+Orchestrator MUST use the [Worker elevation decision](worker-elevation.md). That
+assessment does not execute a fork or change the Worker's model or ownership.
+Before a separately authorized source/target handoff, the parent MUST follow the
 [Worker elevation reconciliation](worker-elevation/reconciliation.md) and keep
-the existing owner until the target setup and supported retirement are
-confirmed.
+the existing owner until the target's identity, active objective, authenticated
+assignment, parent route, same-checkout state, and safe source retirement are
+confirmed through supported readbacks. The target remains read-only until the
+parent transfers the existing owner record.
 
 ### Blocked-goal fork recovery
 

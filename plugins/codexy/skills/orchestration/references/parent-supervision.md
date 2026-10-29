@@ -6,11 +6,13 @@ release goal. It is the canonical detailed source for delegated supervision,
 evidence, and authority boundaries; it does not create a scheduler, replace
 goal-lifecycle, or choose a repository's GitHub policy.
 
-For a general Worker whose hard-work evidence permits elevation, the parent MUST
-use the [Worker elevation reconciliation](worker-elevation/reconciliation.md)
-before transferring ownership. It connects the decision and #1447 transition to
-these existing owner, reservation, event, and per-task cursor records; this
-reference remains authoritative for shared capacity and ordinary observation.
+For a general Worker whose hard-work evidence permits consideration of
+elevation, the parent MUST use the
+[Worker elevation reconciliation](worker-elevation/reconciliation.md) before
+transferring issue ownership. This procedure connects eligibility, checkpoint,
+and supported transition steps to existing owner, reservation, event, and
+per-task cursor records; this reference remains authoritative for shared
+capacity and ordinary observation.
 
 ## Canonical role mapping
 

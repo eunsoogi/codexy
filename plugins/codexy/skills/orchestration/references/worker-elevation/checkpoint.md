@@ -8,8 +8,8 @@ its active goal and reservation. This procedure MUST NOT fork or create a task,
 archive or replace the source, change its model or goal, move its worktree, or
 enable a live elevation entrypoint.
 
-Checkpoint preparation does not execute elevation. After separate #1447
-authorization, the Orchestrator MUST continue through the
+Checkpoint preparation does not execute elevation. After the parent separately
+authorizes the same-issue transition, the Orchestrator MUST continue through the
 [transition procedure](transition.md) and recheck this checkpoint before target
 activation.
 
@@ -19,12 +19,12 @@ across continuation turns. Automatic reasoning and read-only turns may still
 happen. The source task and goal are not terminal, and this procedure MUST NOT
 claim otherwise.
 
-The Orchestrator MUST use this only after rechecking the current #1445 decision,
-the current #1446 maintainer direction, source owner, exact assignment, scope,
-and parent instructions. If any have changed, the Orchestrator MUST stop and
-reassess before continuing. It MUST preserve the same checkout and its staged,
-unstaged, required untracked, and required ignored state. This procedure MUST
-NOT require a clean checkout.
+The Orchestrator MUST use this only after rechecking the current eligibility
+decision and evidence, any separate transition authorization, source owner,
+exact assignment, scope, and parent instructions. If any have changed, the
+Orchestrator MUST stop and reassess before continuing. It MUST preserve the same
+checkout and its staged, unstaged, required untracked, and required ignored
+state. This procedure MUST NOT require a clean checkout.
 
 ## Select supported native operations
 
@@ -89,14 +89,14 @@ continuation may occur under the active goal and is not itself a failed stop.
 
 ## Prepare and verify the checkpoint
 
-1. The Orchestrator MUST recheck the issue, PR, latest #1445 decision and its
-   hard-work evidence and event, the current #1446 maintainer direction, the
-   parent instructions that approved that decision, actual source task ID and
-   host, source ownership, requested model/effort, and the source's exact active
-   goal and objective. It MUST record effective model/effort only when the host
-   exposes it; otherwise record it as unknown. If the decision, evidence, event,
-   maintainer direction, or parent instructions have changed, the Orchestrator
-   MUST stop preparation and update the existing decision before continuing.
+1. The Orchestrator MUST recheck the issue, PR, current eligibility decision and
+   evidence, any separate transition authorization, and the parent instructions
+   that permit it. It MUST verify the actual source task ID and host, source
+   ownership, requested model/effort, and the source's exact active goal and
+   objective. It MUST record effective model/effort only when the host exposes
+   it; otherwise record it as unknown. If the decision, evidence, authorization,
+   or parent instructions have changed, the Orchestrator MUST stop preparation
+   and update the existing decision before continuing.
 2. The Orchestrator MUST ask the source to finish any current write-producing
    call, stop launching writes, and keep a cooperative no-write instruction in
    force across continuation turns until an explicitly supported transfer or
@@ -117,9 +117,9 @@ continuation may occur under the active goal and is not itself a failed stop.
    writing the same files and that the source's cooperative no-write instruction
    remains in force. Automatic reasoning and read-only turns do not by
    themselves invalidate this state. The checkpoint is not a durable lock: the
-   authorized #1447 owner MUST independently recheck the source, writers, and
-   checkout immediately before any later transition. If that readback observes
-   an implementation write, a new writer, or changed checkpoint state, the
+   transition owner MUST independently recheck the source, writers, and checkout
+   immediately before any later transition. If that readback observes an
+   implementation write, a new writer, or changed checkpoint state, the
    Orchestrator MUST invalidate the record and wait for a new matching readback.
 4. After identified current writers have ended and the source's cooperative
    no-write instruction is in force, the Orchestrator MUST have the source read
@@ -179,13 +179,14 @@ continuation may occur under the active goal and is not itself a failed stop.
    appeared, or an implementation write occurred, the Orchestrator MUST
    invalidate the record and prepare it again. Automatic reasoning or a
    read-only turn alone does not invalidate the record. Only after the record
-   matches, the Orchestrator MUST provide it to the already authorized #1447
+   matches, the Orchestrator MUST provide it to the parent-authorized transition
    owner through the existing information handoff route. This is not an
    ownership transfer: the source keeps the issue and reservation until an
    explicitly supported transfer. This preparation MUST NOT create, fork, or
-   start a target task. The checkpoint is not a terminal stop or lock; #1447
-   MUST perform its own immediate readback before proceeding. It MUST NOT
-   commit, stash, reset, clean, or move the worktree to make the record match.
+   start a target task. The checkpoint is not a terminal stop or lock; the
+   transition owner MUST perform its own immediate readback before proceeding.
+   It MUST NOT commit, stash, reset, clean, or move the worktree to make the
+   record match.
 
 The checkpoint records a later transition's required source and checkout state
 only when every listed field matches, each identified current writer has an
