@@ -87,6 +87,7 @@ _KOREAN_EXECUTION_TARGET = re.compile(
     r"(?:테스트|검사|체크|검증|린트|포맷|빌드)",
     re.IGNORECASE,
 )
+# Topic-marked objects can match this shape; only known caller or assignee actors decide responsibility.
 _KOREAN_SUBJECT = re.compile(r"(?P<actor>[\w-]+?)(?:이|가|은|는)\s+")
 _KOREAN_CALLER_ACTORS = frozenset({"내", "나", "저", "제", "우리", "저희"})
 # The standard nominative form `네가` is a common second-person variant of `너가`.
@@ -139,10 +140,13 @@ def _korean_action_is_assigned(message: str, match: re.Match[str]) -> bool:
     subjects = list(_KOREAN_SUBJECT.finditer(clause_prefix(message, match.start())))
     if not subjects:
         return True
-    actor = subjects[-1].group("actor").casefold()
-    if actor in _KOREAN_CALLER_ACTORS:
-        return False
-    return bool(_KOREAN_ASSIGNEE_ACTOR.fullmatch(actor))
+    for subject in reversed(subjects):
+        actor = subject.group("actor").casefold()
+        if actor in _KOREAN_CALLER_ACTORS:
+            return False
+        if _KOREAN_ASSIGNEE_ACTOR.fullmatch(actor):
+            return True
+    return False
 
 
 def delegated_work_reason(message: str) -> str | None:

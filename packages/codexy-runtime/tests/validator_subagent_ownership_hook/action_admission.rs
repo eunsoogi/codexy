@@ -150,6 +150,26 @@ fn explicit_korean_assignee_pronouns_remain_denied() -> TestResult {
 }
 
 #[test]
+fn explicit_korean_assignee_survives_topic_marked_implementation_object() -> TestResult {
+    assert_action_denied(
+        "codexy-auditor",
+        "네가 파서는 수정해.",
+        "IMPLEMENTATION_REQUEST",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn explicit_korean_assignee_survives_topic_marked_execution_object() -> TestResult {
+    assert_action_denied(
+        "codexy-auditor",
+        "네가 테스트는 실행해.",
+        "EXECUTION_VERIFICATION",
+    )?;
+    Ok(())
+}
+
+#[test]
 fn verification_by_execution_is_denied_but_caller_retained_work_is_allowed() -> TestResult {
     assert_action_denied(
         "codexy-auditor",
