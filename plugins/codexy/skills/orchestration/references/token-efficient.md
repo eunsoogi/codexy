@@ -53,23 +53,22 @@ NOT be polled; it is not a polling exception. The Orchestrator MUST NOT use
 generic polling for Worker host observation. See
 [parent supervision](parent-supervision.md) for its wait route. Both the Worker
 owner and the root Orchestrator MUST NOT message, interrupt, replace, duplicate,
-follow up with, or poll a live Sentinel. When
-only a native-reviewer event remains pending, the Worker MUST NOT start
-unchanged model-continuation turns or poll the reviewer. Once the current finite
-execution phase is satisfied, the Worker MUST use the existing finite idle-wait
-handoff; that finite phase transition MUST be reported separately and MUST NOT
-be treated as completion of an unmet issue, release, or long-lived goal. If the
-current finite phase objective is genuinely unmet, the Worker MUST retain its
-honest goal state and return control through the supported wait or
-terminal-delivery path; it MUST NOT force-complete the unmet goal or edit
-goal-lifecycle state merely to escape the wait. A bounded wait with no event is
-a non-terminal `PENDING` observation, and an independently observed live
-reviewer is `RUNNING`; neither observation is a reviewer verdict or
-fallback-eligible. The owning lane MUST retain the same reviewer and wait for
-its natural terminal result. A live Sentinel MUST report its own terminal
-`PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally. A native reviewer's
-terminal delivery is its own surface and MUST NOT be treated as Worker host
-observation.
+follow up with, or poll a live Sentinel. When only a native-reviewer event
+remains pending, the Worker MUST NOT start unchanged model-continuation turns or
+poll the reviewer. Once the current finite execution phase is satisfied, the
+Worker MUST use the existing finite idle-wait handoff; that finite phase
+transition MUST be reported separately and MUST NOT be treated as completion of
+an unmet issue, release, or long-lived goal. If the current finite phase
+objective is genuinely unmet, the Worker MUST retain its honest goal state and
+return control through the supported wait or terminal-delivery path; it MUST NOT
+force-complete the unmet goal or edit goal-lifecycle state merely to escape the
+wait. A bounded wait with no event is a non-terminal `PENDING` observation, and
+an independently observed live reviewer is `RUNNING`; neither observation is a
+reviewer verdict or fallback-eligible. The owning lane MUST retain the same
+reviewer and wait for its natural terminal result. A live Sentinel MUST report
+its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally. A native
+reviewer's terminal delivery is its own surface and MUST NOT be treated as
+Worker host observation.
 
 ## Proof State To Retain
 
@@ -97,15 +96,15 @@ MUST use this flow after compaction and before handoff:
    limits, quiet waits, cancellation, and fallback MUST follow
    [parent-supervision.md](parent-supervision.md). Native-reviewer terminal
    delivery is a separate route and MUST NOT be confused with Worker
-   observation. Unchanged active-goal reads, routine
-   pre/post/continuation receipts, liveness-only goal-status messages, normal
-   progress, intermediate successful tests, resolved command mistakes, commits,
-   and queued CI MUST remain internal; they MUST NOT wake the Orchestrator. For
-   absence classifications, apply
-   [observation-evidence.md](observation-evidence.md). Workers MUST send compact
-   deltas for terminal Worker state, their fatal/gate/final callbacks, PR
-   creation, a required external check-state change, actionable review feedback,
-   or review-thread resolution. Selected reviewers MUST send their verdicts.
+   observation. Unchanged active-goal reads, routine pre/post/continuation
+   receipts, liveness-only goal-status messages, normal progress, intermediate
+   successful tests, resolved command mistakes, commits, and queued CI MUST
+   remain internal; they MUST NOT wake the Orchestrator. For absence
+   classifications, apply [observation-evidence.md](observation-evidence.md).
+   Workers MUST send compact deltas for terminal Worker state, their
+   fatal/gate/final callbacks, PR creation, a required external check-state
+   change, actionable review feedback, or review-thread resolution. Selected
+   reviewers MUST send their verdicts.
 3. **Validate stable event identity**: every event MUST use a deterministic
    `<kind>|<lane>|<subject>` identity. The ledger MUST reject a repeated
    identity before it changes counters or next actions.
@@ -182,8 +181,8 @@ shared message rule.
 
 MUST use [runtime-heartbeats.md](runtime-heartbeats.md) for registration,
 schedules, fingerprints, cleanup, and Worker idle handoffs. A heartbeat MUST NOT
-replace a live Sentinel's no-poll route. The owner MUST record the Orchestrator's
-active overall goal separately from the heartbeat registration.
+replace a live Sentinel's no-poll route. The owner MUST record the
+Orchestrator's active overall goal separately from the heartbeat registration.
 
 For repeat handoffs, copy [the delta-poll template](../templates/delta-poll.md)
 and fill only the current slots. MUST keep the template output in the thread or

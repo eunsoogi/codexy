@@ -10,12 +10,12 @@ description: Use before any explicitly authorized Orchestrator or implementation
 Codex MUST use this skill before explicitly assigned Orchestrator or
 implementation Worker task work, including read-only diagnosis, and for every
 goal-tool operation or resume of a task controlled by a goal. Codex MUST load it
-before task-specific work, not only after choosing a goal-tool operation.
-Codex MUST treat the host goal tools as authoritative. The lifecycle governs
-fresh goal startup, active continuation, and authorized
-recovery from blocked goals. It MUST NOT change host goal state, issue
-ownership, branch, or worktree to simulate completion. Recovery changes only the
-active task thread through a same-directory fork and archive.
+before task-specific work, not only after choosing a goal-tool operation. Codex
+MUST treat the host goal tools as authoritative. The lifecycle governs fresh
+goal startup, active continuation, and authorized recovery from blocked goals.
+It MUST NOT change host goal state, issue ownership, branch, or worktree to
+simulate completion. Recovery changes only the active task thread through a
+same-directory fork and archive.
 
 ## Delegated assignment authorization
 

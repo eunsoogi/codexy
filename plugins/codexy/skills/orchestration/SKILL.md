@@ -12,21 +12,20 @@ before task-specific work. The goal check MUST precede issue/PR reads, task
 diagnosis, repository/GitHub reads, branch or worktree setup, planning,
 delegation, edits, and verification. It applies to Orchestrators and
 implementation Workers in their own current tasks. The task MUST apply the goal
-lifecycle's result rules: create
-only for an authorized assignment on exact null, top-level goal=null, or
-status=complete. Continue only for an exact active objective; use the documented
-sequence for blocked; stop on error, malformed or unexpected state, or a
-different active objective. Ordinary questions, ambiguous conversation, and
-incidental suggestions MUST NOT be treated as execution authority or a reason to
-create a goal.
+lifecycle's result rules: create only for an authorized assignment on exact
+null, top-level goal=null, or status=complete. Continue only for an exact active
+objective; use the documented sequence for blocked; stop on error, malformed or
+unexpected state, or a different active objective. Ordinary questions, ambiguous
+conversation, and incidental suggestions MUST NOT be treated as execution
+authority or a reason to create a goal.
 
 After the goal gate, read issue/PR material and classify task/surface/risk. Read
 the [context retention contract](references/context-tiers.md) for the existing
 runtime handoff/route contract, then load the references selected by that route;
 these are the canonical handoff references. When a separate condition requires
-additional guidance (for example, app-thread workers or delegated
-goal ownership), the agent MUST load that reference when the condition applies
-and MUST NOT add it to unrelated routes. Progressive disclosure does not require
+additional guidance (for example, app-thread workers or delegated goal
+ownership), the agent MUST load that reference when the condition applies and
+MUST NOT add it to unrelated routes. Progressive disclosure does not require
 loading every reference. A GitHub surface alone does not select review-specific
 references. Compaction: current state MUST win. Missing proof MUST NOT authorize
 a completion/readiness claim or the specific action whose effect requires that
@@ -205,8 +204,8 @@ re-enter planning when it is already selected and in progress.
   [classification and control](references/classification-and-control.md) when
   assigning ownership, coordinating a child, or applying stop gates.
 - MUST read [parent supervision](references/parent-supervision.md) when an issue
-  uses app-thread workers, worker callbacks, drift correction, or
-  delegated goal ownership.
+  uses app-thread workers, worker callbacks, drift correction, or delegated goal
+  ownership.
 - MUST read [agent registration](references/agent-registration.md) when
   discovering or invoking packaged specialist agents.
 

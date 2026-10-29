@@ -1,10 +1,10 @@
 # Orchestrator Supervision (compatibility filename: `parent-supervision.md`)
 
 Codex MUST use this reference when an Orchestrator coordinates issue-sized work
-through Codex app tasks, Worker callbacks, drift correction, or a
-long-lived release goal. It is the canonical detailed source for delegated
-supervision, evidence, and authority boundaries; it does not create a scheduler,
-replace goal-lifecycle, or choose a repository's GitHub policy.
+through Codex app tasks, Worker callbacks, drift correction, or a long-lived
+release goal. It is the canonical detailed source for delegated supervision,
+evidence, and authority boundaries; it does not create a scheduler, replace
+goal-lifecycle, or choose a repository's GitHub policy.
 
 For a general Worker whose hard-work evidence permits elevation, the parent MUST
 use the [Worker elevation reconciliation](worker-elevation/reconciliation.md)
@@ -57,9 +57,9 @@ alter protected technical text.
   fixes.
 - Workers MUST remain independent Codex app tasks in the same saved project.
 - Codex MUST distinguish app Workers from native subagents and packaged
-  reviewers at the actual creating and readback tools. Codex MUST
-  preserve native BLOCK, PASS, UNOBSERVABLE, and closed-handle history and MUST
-  NOT fabricate a verdict or reset a review count to fit a newer surface.
+  reviewers at the actual creating and readback tools. Codex MUST preserve
+  native BLOCK, PASS, UNOBSERVABLE, and closed-handle history and MUST NOT
+  fabricate a verdict or reset a review count to fit a newer surface.
 
 ## Supervised app-child capacity
 
@@ -120,15 +120,14 @@ reconciling setup and duplicate-owner evidence.
   relevant artifact, diff, or call against accepted scope, ownership, and latest
   user constraints; MUST NOT rely only on status, HEAD, or self-report. MUST
   distinguish progress from material drift and report only the latter. For the
-  same operation, target, and intended outcome, later authoritative success
-  MUST mark its earlier error historical; only new failure evidence can reopen
-  it.
+  same operation, target, and intended outcome, later authoritative success MUST
+  mark its earlier error historical; only new failure evidence can reopen it.
 - A credible drift finding MUST identify the concrete source or call inspected,
   the conflicting current requirement, and the consequence or remaining
-  uncertainty. The Orchestrator MUST judge and direct the Worker using the
-  unmet criterion and required evidence; the Worker chooses and makes any
-  in-scope repair, and the Orchestrator verifies the next relevant source, call,
-  diff, or result.
+  uncertainty. The Orchestrator MUST judge and direct the Worker using the unmet
+  criterion and required evidence; the Worker chooses and makes any in-scope
+  repair, and the Orchestrator verifies the next relevant source, call, diff, or
+  result.
 
 ## Waiting and direct correction
 
@@ -150,8 +149,8 @@ reconciling setup and duplicate-owner evidence.
   unchanged cursor, bounded timeout, or long command is not a stall; continue
   through the supported wait without routine status messages or transcript
   reads. A first result MUST NOT close other active targets or a later turn on
-  the same task. Native reviewer delivery remains a separate surface.
-  One bounded readback after an actionable report is judgement-only.
+  the same task. Native reviewer delivery remains a separate surface. One
+  bounded readback after an actionable report is judgement-only.
 - When an actionable signal arrives, the Orchestrator MUST send one grouped,
   actionable correction to the existing Worker naming the observed deviation and
   either the unmet issue criterion or a verified ownership, safety, or
@@ -163,6 +162,7 @@ reconciling setup and duplicate-owner evidence.
   relevant actual tool call, diff, or result. A cooperative freeze-and-report
   instruction does not cancel an in-flight tool unless the host proves a hard
   stop.
+
 ## Recovery, evaluation, and handoff
 
 Read the

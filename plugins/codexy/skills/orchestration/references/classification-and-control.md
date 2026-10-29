@@ -91,11 +91,11 @@ verification, direct cursor-based Worker observation, and assigned model
 policies. A text-only record MAY capture the requested objective and exact
 unavailable-goal limitation, but it MUST NOT replace a native goal, authorize
 normal execution, or prove progress or completion. If a required task-creation,
-goal, or direct wait capability is unavailable, the agent MUST report
-the exact unsupported state and required action; it MUST NOT use an app-server/
-CLI bypass, fake task, silent fallback, or completion claim. It MUST NOT report
-an app-server/CLI path, fake task invisible to the user, or unverified native
-agent as an app task.
+goal, or direct wait capability is unavailable, the agent MUST report the exact
+unsupported state and required action; it MUST NOT use an app-server/ CLI
+bypass, fake task, silent fallback, or completion claim. It MUST NOT report an
+app-server/CLI path, fake task invisible to the user, or unverified native agent
+as an app task.
 
 ## Compaction And Continuation
 

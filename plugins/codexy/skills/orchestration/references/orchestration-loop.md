@@ -46,8 +46,7 @@
      this loop alone.
    - For delegated outcomes, MUST record one Worker owner, the saved project
      identity, the callback channels, and one current next action. MUST NOT
-     require a fixed checkpoint count or
-     unchanged-progress receipt.
+     require a fixed checkpoint count or unchanged-progress receipt.
    - In [the canonical role mapping](parent-supervision.md), MUST read back the
      Orchestrator's exact active overall goal.
    - MUST split independent outcomes into separate issues and lanes unless a
@@ -132,11 +131,11 @@
      execution MUST go to the owner or a bounded investigation child.
    - MUST preserve user changes and unrelated work.
    - MUST treat Worker callbacks as signals, not acceptance. For drift, the
-     Orchestrator MUST compare the observed evidence
-     with current scope, ownership, and user constraints. It MUST give
-     criteria-based direction; the Worker MUST choose and implement repairs. The
-     Orchestrator MUST verify the next relevant call, diff, or result and
-     preserve the creating surface and native review history.
+     Orchestrator MUST compare the observed evidence with current scope,
+     ownership, and user constraints. It MUST give criteria-based direction; the
+     Worker MUST choose and implement repairs. The Orchestrator MUST verify the
+     next relevant call, diff, or result and preserve the creating surface and
+     native review history.
    - MUST resolve cross-lane conflicts in the orchestrator thread and route
      child-owned issue findings to the owning Worker under
      [issue-owned implementation decisions](task-classification.md#issue-owned-implementation-decisions).

@@ -30,8 +30,7 @@ cursor, and deduplicate returned events before changing plan state. Partial or
 empty observations MUST remain unknown and MUST NOT prove that a callback or
 event is absent. The plan MUST preserve parent judgment and ownership, the
 assigned model, reasoning, host, and permission policy, and report a missing
-capability; it MUST
-NOT silently fall back.
+capability; it MUST NOT silently fall back.
 
 ## Prepare the plan
 

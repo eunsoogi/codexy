@@ -12,13 +12,13 @@ unavailable.
   active goal owner, and next uncompleted action. A same-turn wait applies only
   while the host keeps the existing supported route available; this instruction
   MUST NOT imply runtime-owned parent suspension.
-- An empty, unchanged, or timed-out `wait_threads` result, or
-  a tool output yield, MUST NOT by itself complete the assignment, trigger an
-  unchanged status or reasoning turn, or narrow the objective. When the
-  observation obligation remains, continue only through its selected supported
-  route using the latest returned cursor and actual host limits. MUST NOT
-  replace cursor waits with repeated polling. If an outer `functions.exec` cell
-  is pending, resume it rather than issue another wait.
+- An empty, unchanged, or timed-out `wait_threads` result, or a tool output
+  yield, MUST NOT by itself complete the assignment, trigger an unchanged status
+  or reasoning turn, or narrow the objective. When the observation obligation
+  remains, continue only through its selected supported route using the latest
+  returned cursor and actual host limits. MUST NOT replace cursor waits with
+  repeated polling. If an outer `functions.exec` cell is pending, resume it
+  rather than issue another wait.
 - A shorter wait or its empty result alone MUST NOT alert. Any shorter wait MUST
   state a reason and MUST NOT become repeated polling. MUST report a
   host/fallback limit only when no supported route permits continuation and
@@ -56,13 +56,13 @@ For ordinary Orchestrator-owned Worker observation with a callable
 the assignment remains. A native reviewer's terminal delivery is its own surface
 and MUST NOT be confused with Worker observation. The host's automatic
 continuation behavior is not implied and MUST be reported if observed. If a
-slingshot-host turn still returns
-`No handler registered` after the one fresh discovery and one host-aware retry,
-the owner MUST emit exactly one unavailable evidence receipt and require
-desktop-origin root re-entry; it MUST NOT repeat the wait call, schedule a
-heartbeat relay, use `read_thread`, or use `handoff_thread` for recovery. The
-slingshot recovery route is not an unavailable-wait fallback eligible for
-heartbeat registration; it ends in desktop-origin root re-entry.
+slingshot-host turn still returns `No handler registered` after the one fresh
+discovery and one host-aware retry, the owner MUST emit exactly one unavailable
+evidence receipt and require desktop-origin root re-entry; it MUST NOT repeat
+the wait call, schedule a heartbeat relay, use `read_thread`, or use
+`handoff_thread` for recovery. The slingshot recovery route is not an
+unavailable-wait fallback eligible for heartbeat registration; it ends in
+desktop-origin root re-entry.
 
 ## Eligibility And Discovery
 
@@ -77,15 +77,14 @@ ending without a wakeup path. This route requires explicit scheduled-monitoring
 authorization and MUST NOT be used to preserve an unconditional Orchestrator
 turn. The heartbeat MUST use a thread-targeted `kind=heartbeat`. Its schedule
 MUST be bounded to the external gate's expected window. For the current thread,
-creation MUST use
-`destination="thread"` rather than inventing or copying a target-thread id.
-Creation MUST use a heartbeat name, prompt, bounded schedule, active status, and
-heartbeat kind; the owner MUST retain the returned automation id. It MUST view
-the heartbeat by that id before relying on the monitor. The heartbeat automation
-id, target thread, bounded schedule, and last observed state fingerprint are the
-runtime-issued identity for this route. A heartbeat automation route MUST NOT
-require a persistent exec/session id or same-process resume; those fields
-identify a separate process-backed monitor route.
+creation MUST use `destination="thread"` rather than inventing or copying a
+target-thread id. Creation MUST use a heartbeat name, prompt, bounded schedule,
+active status, and heartbeat kind; the owner MUST retain the returned automation
+id. It MUST view the heartbeat by that id before relying on the monitor. The
+heartbeat automation id, target thread, bounded schedule, and last observed
+state fingerprint are the runtime-issued identity for this route. A heartbeat
+automation route MUST NOT require a persistent exec/session id or same-process
+resume; those fields identify a separate process-backed monitor route.
 
 ## Registration Evidence And Prompt
 

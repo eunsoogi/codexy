@@ -22,8 +22,8 @@
   fixed case matrix, or unmeasured savings claim.
 - When evaluation is in scope, the evaluator MUST use actual Orchestrator and
   Worker calls with the configured model/effort where those roles matter and
-  MUST report unavailable telemetry as unmeasured. The evaluator MUST
-  choose cases and comparisons proportionate to the changed boundary rather than
+  MUST report unavailable telemetry as unmeasured. The evaluator MUST choose
+  cases and comparisons proportionate to the changed boundary rather than
   copying a hidden answer. Observed cumulative usage totals MUST NOT be
   presented as priced, cached, or proven savings without the corresponding
   measurement.
