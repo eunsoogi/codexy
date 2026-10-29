@@ -152,38 +152,28 @@ objective, use the existing event-driven or same-turn wait route, and continue
 available work on re-entry. The task MUST NOT repeat model turns for unchanged
 waits or to reach a threshold.
 
-If parent action can advance a dependency, the child MUST send a concise
-nonterminal update through the assignment's supported report route naming the
-needed parent action and next child action, then preserve ownership through the
-supported wake route. When no immediate action remains, the task MUST use the
-existing wait/handoff contract and MUST NOT complete a finite phase before its
-criteria are met or mark an unfinished assigned goal complete to clear a wait.
-The task MUST follow the existing
+When parent action or an external event can advance an unmet phase, the task
+MUST keep its actual goal state and ownership. Use
 [goal-transition-reporting](../orchestration/references/goal-transition-reporting.md)
-and [runtime-heartbeats](../orchestration/references/runtime-heartbeats.md)
-contracts for handoff and finite-phase rules. The task MUST NOT ask the user to
-clear the goal to resume the same assignment or use a fabricated `complete`,
-`blocked`, or `paused` transition to make a wait disappear.
+for the report and handoff, and
+[runtime-heartbeats](../orchestration/references/runtime-heartbeats.md) for the
+supported wake route. Neither a wait nor unavailable monitoring changes the
+blocked-state criteria above. The task MUST NOT ask the user to clear the goal
+to resume the same assignment or fabricate a `complete`, `blocked`, or `paused`
+transition to make a wait disappear.
 
 ## Completion boundary
 
-The task MUST use `$proof-driven-completion` and compare the actual active
-objective with its stated phase criteria before completion. It MUST complete
-only when every criterion, required proof, and handoff is satisfied. A submitted
-result alone is insufficient when verification or review remains in that phase.
-An external wait, lack of immediate work, or parent silence MUST NOT substitute
-for satisfied criteria or justify a false `complete`, `paused`, or `blocked`.
-
-Once the phase criteria and required handoff delivery are satisfied, the child
-MUST complete that phase and leave the task idle without waiting for a parent
-reply or merge. It MUST preserve issue ownership, branch, worktree, artifacts,
-remaining external gates, and the parent-owned next action. Phase completion
-MUST NOT imply issue closure, PR merge, release, or parent acceptance. Follow-up
-fixes MUST use the same owner and actual lifecycle readback: continue a matching
-active objective, or create an authorized fresh phase on null/complete and read
-back active before work. A different unfinished objective MUST stop; blocked
-recovery MUST follow the ordered same-scope procedure and MUST NOT be reported
-as complete when the objective remains unfinished.
+The task MAY call `update_goal(complete)` only after
+[$proof-driven-completion](../proof-driven-completion/SKILL.md) establishes that
+the assigned phase's criteria and required proof are satisfied and the required
+handoff follows
+[goal-transition-reporting](../orchestration/references/goal-transition-reporting.md).
+The host result controls the actual goal state. A completed goal ends only that
+finite phase; it MUST NOT imply issue closure, PR merge, release, or parent
+acceptance. Follow-up work MUST use the same owner's actual lifecycle readback;
+a different unfinished objective MUST stop, and blocked recovery MUST follow the
+ordered same-scope procedure.
 
 Before post-archive acceptance, the task MAY perform only the recovery
 preparation and native operations in the linked procedure, including necessary

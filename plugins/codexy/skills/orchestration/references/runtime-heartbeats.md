@@ -86,6 +86,14 @@ state fingerprint are the runtime-issued identity for this route. A heartbeat
 automation route MUST NOT require a persistent exec/session id or same-process
 resume; those fields identify a separate process-backed monitor route.
 
+A process-backed monitor MAY observe only when runtime-issued evidence binds a
+persistent exec/session identifier, a scheduled next-observation deadline, the
+last observed state fingerprint or event identity, and same-process resume.
+Repeated model/assistant turns, tool-driven re-entry, goal continuation, or
+agent invocation without that identity MUST remain continuation turns unless
+they use the registered heartbeat route. An unchanged continuation MUST NOT
+reschedule itself or emit another unchanged turn.
+
 ## Registration Evidence And Prompt
 
 The owner MUST record the automation id, target thread, bounded schedule, stable
@@ -100,48 +108,18 @@ explicit user/Orchestrator message.
 
 A live Sentinel, pending Worker, queued CI, pending connector review,
 Orchestrator authorization, dependency integration, or resource slot is a
-nonterminal producer. The owner MUST preserve ownership through a nonterminal
-wait handoff while immediately executable work remains, or through an idle-wait
-handoff only after the assigned finite phase's criteria, proof, and handoff are
-satisfied. A wait alone MUST NOT satisfy those criteria. The owner MUST use its
-event route rather than declaring an execution impasse. An unavailable wake
-route does not authorize a blocked goal; only an unanswered material user
-decision or missing user information can do so.
+nonterminal producer. Its goal state, phase outcome, and wait or idle handoff
+MUST follow the [Goal And Terminal Lifecycle](#goal-and-terminal-lifecycle)
+contract below.
 
 ## Goal And Terminal Lifecycle
 
-The following lifecycle applies to ordinary Workers and other owners.
-
-A successfully registered heartbeat is runtime-owned waiting; it does not
-authorize goal creation or prove phase completion. Ordinary Worker phases MUST
-follow [goal-lifecycle](../../goal-lifecycle/SKILL.md): the assignment's exact
-phase objective and criteria are distinct from the overall issue outcome.
-
-- During preparation, implementation, or verification, the owner MUST retain its
-  matching active goal while any assigned criterion or proof remains unmet,
-  including required CI or review. It MUST record `goal state=active` and
-  `goal transition=none` and use the supported wait/return route when needed.
-- An external wait or no immediately executable work MUST NOT turn an unmet
-  phase into a complete one. The owner MUST preserve the actual goal state and
-  remaining proof; it MUST NOT narrow a broader active goal, invent a completed
-  subphase, or use false `complete`, `paused`, or `blocked` to clear a wait.
-- Once all stated phase criteria, proof, and required handoff delivery are
-  satisfied, the owner MUST complete only that finite phase and leave the task
-  idle. It MUST NOT wait for a parent reply, merge, or future instructions to
-  complete the phase. The idle-wait handoff in `goal-transition-reporting.md`
-  MUST preserve ownership, branch/worktree, artifacts, external gates, and the
-  parent-owned next action. No heartbeat is required for an explicit parent
-  wake.
-- Phase completion MUST NOT claim overall issue completion, PR merge, release,
-  transfer, or parent acceptance. The Orchestrator's overall goal remains
-  separate from each Worker's phase.
-- For follow-up fixes or another qualifying event, the same owner MUST first
-  read the actual lifecycle state. It MUST resume a matching active objective;
-  on null/complete it MUST create the authorized fresh phase and read back
-  `active` before edits, proof, or review responses. Creation MUST remain
-  subject to host authority, including any explicit user/system goal-request
-  rule. A different unfinished objective MUST stop for supported disposition;
-  `blocked` MUST follow the existing goal-lifecycle recovery sequence.
+Heartbeat registration governs monitoring only; it does not set native goal
+state or prove a phase outcome. For native transitions, phase outcome judgment,
+and terminal delivery, use [goal-lifecycle](../../goal-lifecycle/SKILL.md),
+[proof-driven-completion](../../proof-driven-completion/SKILL.md), and
+[goal-transition-reporting](goal-transition-reporting.md), respectively.
+Heartbeat state MUST NOT override or stand in for any of those contracts.
 
 The awakened owner MUST consume the event in the same turn and record the
 resulting lifecycle state in the compact lane delta. When no further observation

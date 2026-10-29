@@ -24,18 +24,17 @@ no-change parent-turn savings remain unmeasured.
   assignment, active goal owner, and next action. Same-turn waiting applies only
   while the host keeps its supported route; it does not imply runtime suspension
   of a parent turn.
-- Same-goal re-entry MUST resume the Worker owner, active goal, latest
-  per-target `wait_threads` cursors, and next action. Advance only on actual
-  results. Handle input at re-entry; MUST NOT infer wait cancel/resume or repeat
-  work.
+- Same-owner re-entry MUST follow the actual
+  [goal-lifecycle](../../goal-lifecycle/SKILL.md) readback and preserve the
+  latest per-target cursors under [parent supervision](parent-supervision.md).
+  Advance only on actual results; input at re-entry MUST NOT imply wait
+  cancellation or resumption.
 - Outside a route-required quiet wait, MUST provide concise progress commentary
   at meaningful checkpoints during active work; commentary does not end the turn
-  or prove completion. MUST reserve final handoff for the complete assigned
-  outcome, an actual user decision, an explicit stop or pause, a verified host
-  limit or inability to proceed, or a lifecycle-valid finite idle handoff when
-  no actionable owner work remains and only an external event or wake can
-  advance. Existing nonterminal-wait and idle-lifecycle rules remain
-  authoritative.
+  or prove completion. Phase outcome and final handoff MUST follow the canonical
+  [proof](../../proof-driven-completion/SKILL.md),
+  [goal lifecycle](../../goal-lifecycle/SKILL.md), and
+  [reporting](goal-transition-reporting.md) contracts.
 - This default MUST NOT create busy polling, endless loops, repeat unchanged
   work, artificial token use, exceed host limits, or extend work beyond
   authorized scope.
@@ -46,29 +45,15 @@ fields MUST be treated as user-visible and MUST follow the shared
 structured fields to remove repetition while keeping surrounding prose and
 protected technical text intact.
 
-Live Sentinel observation MUST be read-only and event-driven. Generic task and
-ledger polling MUST NOT replace cursor-based `wait_threads` observation of
-Worker targets. Native-reviewer terminal delivery remains event-driven and MUST
-NOT be polled; it is not a polling exception. The Orchestrator MUST NOT use
-generic polling for Worker host observation. See
-[parent supervision](parent-supervision.md) for its wait route. Both the Worker
-owner and the root Orchestrator MUST NOT message, interrupt, replace, duplicate,
-follow up with, or poll a live Sentinel. When only a native-reviewer event
-remains pending, the Worker MUST NOT start unchanged model-continuation turns or
-poll the reviewer. Once the current finite execution phase is satisfied, the
-Worker MUST use the existing finite idle-wait handoff; that finite phase
-transition MUST be reported separately and MUST NOT be treated as completion of
-an unmet issue, release, or long-lived goal. If the current finite phase
-objective is genuinely unmet, the Worker MUST retain its honest goal state and
-return control through the supported wait or terminal-delivery path; it MUST NOT
-force-complete the unmet goal or edit goal-lifecycle state merely to escape the
-wait. A bounded wait with no event is a non-terminal `PENDING` observation, and
-an independently observed live reviewer is `RUNNING`; neither observation is a
-reviewer verdict or fallback-eligible. The owning lane MUST retain the same
-reviewer and wait for its natural terminal result. A live Sentinel MUST report
-its own terminal `PASS`, `BLOCK`, or `UNOBSERVABLE` result naturally. A native
-reviewer's terminal delivery is its own surface and MUST NOT be treated as
-Worker host observation.
+Live Sentinel observation MUST remain read-only and event-driven. Generic task
+and ledger polling MUST NOT replace cursor-based `wait_threads` observation of
+Worker targets; see [parent supervision](parent-supervision.md). The same
+reviewer MUST remain pending until its natural terminal result and MUST NOT be
+polled, messaged, interrupted, replaced, or duplicated. Use
+[review-lifecycle](review-lifecycle.md) for reviewer state, and the canonical
+[goal lifecycle](../../goal-lifecycle/SKILL.md),
+[proof](../../proof-driven-completion/SKILL.md), and
+[reporting](goal-transition-reporting.md) contracts for phase state and handoff.
 
 ## Proof State To Retain
 
@@ -123,36 +108,15 @@ MUST use this flow after compaction and before handoff:
    Orchestrator message.
 6. **Carry one next action**: each lane MUST end with exactly one current
    action.
-7. **Require runtime polling evidence**: polling/monitoring MUST be reserved for
-   an observation bound to one complete runtime-issued monitor identity. A
-   heartbeat route MUST bind the observation to its heartbeat automation id,
-   target thread, bounded schedule, and last observed state fingerprint or event
-   identity. The heartbeat route MUST NOT require a persistent exec/session
-   identifier or same-process resume. A separate process-backed monitor MUST
-   bind the observation to a persistent runtime monitor or wait session id, a
-   scheduled next-observation time or deadline, the last observed state
-   fingerprint or event identity, and same-process resume. Distinct
-   model/assistant turn ids, tool-driven re-entry, goal continuation, or agent
-   invocation without either complete runtime-issued identity are continuation
-   turns, not polling; unchanged continuation turns MUST NOT reschedule
-   themselves or emit another unchanged turn.
-8. **Suppress unchanged continuation turns**: when an authorized Worker-local
-   monitor observes no qualifying event and the stable event identity, head,
-   checks, review state, and next action are unchanged, it MUST keep the monitor
-   scheduled but MUST NOT emit a status message or start another model turn. The
-   next scheduled read-only observation MAY run at its bounded interval. A new
-   model turn may start only when that monitor observes a qualifying event, or
-   when an explicit Orchestrator/user message arrives. This rule MUST NOT
-   terminate or cancel the underlying wait/monitor session.
+7. **Use the runtime wait contract**: monitor identity, scheduled observations,
+   and suppression of unchanged continuation turns MUST follow
+   [runtime-heartbeats](runtime-heartbeats.md).
 
-Worker terminal submission MUST follow
-[goal-transition-reporting.md](goal-transition-reporting.md): one
-satisfied-phase handoff, transport acceptance when messaging is authorized, or
-the explicitly unconfirmed host terminal result when permission is absent. MUST
-NOT wait on the parent or require its reply/approval for normal submission.
-Native goal completion MUST precede an idle-complete claim; unmet objectives,
-failed transitions, other terminal exits, and blocked recovery retain that
-contract's distinct requirements. MUST retain ownership and external gates.
+Native goal status, outcome judgment, and worker-to-parent delivery MUST follow
+[goal-lifecycle](../../goal-lifecycle/SKILL.md),
+[proof-driven-completion](../../proof-driven-completion/SKILL.md), and
+[goal-transition-reporting](goal-transition-reporting.md), respectively. This
+coordination guide MUST NOT define a second phase-completion or handoff rule.
 
 ## Event Delta Shape
 

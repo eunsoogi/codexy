@@ -63,32 +63,14 @@ or missing. Absence claims MUST also follow the
 
 ## Goal startup boundary
 
-Delegated assignment authorization, exact objective selection, and native goal
-startup are defined by [goal-lifecycle](../../goal-lifecycle/SKILL.md). A goal
-refresh for the same assignment MUST NOT ask for permission again unless the
-next action adds material scope or requires authority not already provided,
-including external/destructive authority.
+Native goal reads, objective selection, and transition rules are owned by
+[goal-lifecycle](../../goal-lifecycle/SKILL.md).
 
-## Runtime Polling Boundary
+## Monitoring route
 
-Polling/monitoring is a runtime claim, not an agent label: a runtime monitor
-MUST live outside an execution goal. A Codex heartbeat route is bound by its
-heartbeat automation id, target thread, bounded schedule, and last observed
-state fingerprint or event identity; it MUST NOT require a persistent
-exec/session identifier or same-process resume. A separate process-backed
-monitor MAY call an observation only when runtime-issued evidence binds it to a
-persistent exec/session identifier, a scheduled next-observation deadline, the
-last observed state fingerprint or event identity, and same-process resume.
-Repeated model/assistant turn ids, tool-driven re-entry, goal continuation, or
-agent invocation without all runtime fields MUST be classified as a continuation
-turn unless it is a registered heartbeat automation route, even when each turn
-reports that it is polling. Unchanged continuation turns MUST NOT reschedule
-themselves or emit another unchanged turn.
-
-An authorized child-local monitor that observes no qualifying event MUST keep
-its bounded schedule without emitting status or starting another model turn.
-Only a qualifying event or explicit parent/user message may start a new model
-turn; This MUST NOT terminate the underlying monitor.
+Heartbeat registration and runtime monitor identity are defined by
+[runtime-heartbeats](runtime-heartbeats.md). A handoff receipt MUST NOT be used
+as evidence that a monitor exists or ran.
 
 ## Ordered Receipts
 
@@ -97,10 +79,10 @@ Native startup and routine readbacks MUST remain task-local under
 
 ### Normal completed-phase submission
 
-The child MUST compare its actual active objective with every assigned phase
-criterion, required proof, CI, and review, following
-[goal-lifecycle](../../goal-lifecycle/SKILL.md). A submitted result, external
-wait, or lack of immediate work MUST NOT complete an unfinished objective.
+Before submission, the owner MUST establish that the phase outcome is satisfied
+under [$proof-driven-completion](../../proof-driven-completion/SKILL.md). Native
+goal state follows [goal-lifecycle](../../goal-lifecycle/SKILL.md); this section
+owns the handoff receipt and delivery sequence.
 
 For a satisfied phase, the child MUST prepare exactly one `Idle wait handoff:`.
 This is the terminal handoff, not an additional pre-delivery receipt. It MUST
@@ -124,8 +106,9 @@ and `return control=confirmed`.
    It MUST NOT send an unauthorized message, claim confirmed delivery, retry, or
    manufacture a parent receipt. This fallback preserves the result and
    reservation for parent observation; it does not prove transport acceptance.
-3. The child MUST call `update_goal(complete)` only for the satisfied phase and
-   preserve the exact native result locally. Static evidence uses
+3. After the handoff submission or permitted host-result fallback, the child
+   MUST make the lifecycle-authorized completion call and preserve its exact
+   native result locally. Static evidence uses
    `Goal tool result: operation=update_goal(complete); status=<native status>`;
    the status-form operation spelling is also supported. A failed, unknown, or
    still-active result MUST retain its actual state and MUST NOT claim idle
@@ -140,9 +123,9 @@ and `return control=confirmed`.
 One event identity MUST NOT authorize a second transition. Duplicate delivery
 observations MUST be deduplicated rather than trigger another send or goal call.
 Follow-up work stays with the same owner and MUST use the actual lifecycle
-readback defined by `goal-lifecycle`, rather than unconditionally creating a
-goal. Authentic proof that a completed phase becomes idle without a parent reply
-is owned by #1405; validator fixtures MUST NOT claim host behavior.
+readback defined by [goal-lifecycle](../../goal-lifecycle/SKILL.md), rather than
+unconditionally creating a goal. Validator fixtures prove receipt checks, not
+that a live host completed an idle transition.
 
 ### Other terminal exits and blocked recovery
 
@@ -158,32 +141,27 @@ archive or ownership release MUST require a separate confirmed terminal receipt.
 If delivery is unavailable, the child MUST emit one unavailable receipt, retain
 the lane, and MUST NOT retry or perform the stop/archive/blocked transition.
 
-Blocked-goal recovery retains its ordered receipts. Before
-`update_goal(blocked)`, the child MUST send a `Parent goal pre-delivery:` naming
-issue/PR, pending operation, parent task, plan step, branch/worktree, HEAD,
-dirty/index, evidence, next action, stable transition key, and confirmed
-transport acceptance. It MUST NOT call blocked before that acceptance. After the
-call, it MUST send `Parent goal post-result:` with the exact tool result,
-operation, parent task, matching key, and actual delivery state. The terminal
-handoff and intended-transition data MAY share one transport submission; static
-records MUST preserve each record's fields and ordering. These blocked-recovery
-obligations MUST NOT add pre/post-result messages to normal phase completion.
-Runtime delivery mechanics remain owned by #367.
+Blocked-goal recovery retains its ordered receipts. Whether a native blocked
+transition is permitted is owned by
+[goal-lifecycle](../../goal-lifecycle/SKILL.md). Before `update_goal(blocked)`,
+the child MUST send a `Parent goal pre-delivery:` naming issue/PR, pending
+operation, parent task, plan step, branch/worktree, HEAD, dirty/index, evidence,
+next action, stable transition key, and confirmed transport acceptance. It MUST
+NOT call blocked before that acceptance. After the call, it MUST send
+`Parent goal post-result:` with the exact tool result, operation, parent task,
+matching key, and actual delivery state. The terminal handoff and
+intended-transition data MAY share one transport submission; static records MUST
+preserve each record's fields and ordering. These blocked-recovery obligations
+MUST NOT add pre/post-result messages to normal phase completion.
 
 ## Blocked Goal User-Decision Gate
 
-Codex MUST reserve `update_goal(blocked)` for missing user input or unanswered
-material decisions. Same-objective recovery MUST NOT need new user approval.
-Pre-delivery MUST include one typed `Blocked goal user-decision gate:` with ID;
+When `goal-lifecycle` permits a blocked transition, pre-delivery MUST include
+one typed `Blocked goal user-decision gate:` with ID;
 `blocker class=user-decision` or `missing-user-information`;
 `decision owner=user`; the exact `user question`; `user response=unanswered`; at
 least two distinct `decision branches`; their `material impact`;
-`safe default=unavailable`; and `in-scope action=unavailable`. Sentinel, CI,
-connector review, parent authorization, dependency integration, resource slots,
-alternate evidence routes, and event-idle children are nonterminal and MUST NOT
-lead to a blocked call. Repeated turns, fingerprints, elapsed time, token
-pressure, difficulty, uncertainty, or incomplete work MUST NOT authorize a
-blocked goal.
+`safe default=unavailable`; and `in-scope action=unavailable`.
 
 Immediately before the blocked call, the child MUST record a final
 `Blocked goal pre-mutation check:` with the gate id, the pre-delivery and
@@ -198,29 +176,19 @@ window, whether it appears before or after a stale matching pre-mutation check.
 Before any blocked call, the child MUST renew the typed gate, pre-delivery
 receipt, and matching pre-mutation check after that event.
 
-A child with an immediately executable in-scope obligation that is waiting on an
-external event MUST use `Nonterminal wait handoff:` with a stable state
-fingerprint, nonterminal producer, wake route, `ownership=retained`,
-`goal state=active`, `plan state=active`, `goal transition=none`, and
-`return control=confirmed`; it MUST NOT call `update_goal(complete)` or
-`update_goal(blocked)` merely for that wait.
+A child with an immediately executable in-scope obligation waiting on an
+external event MUST follow the nonterminal wait classification in
+[goal-lifecycle](../../goal-lifecycle/SKILL.md) and use
+`Nonterminal wait
+handoff:` with a stable state fingerprint, nonterminal
+producer, wake route, `ownership=retained`, `goal state=active`,
+`plan state=active`, `goal transition=none`, and `return control=confirmed`.
 
-When every assigned finite-phase criterion and proof is satisfied, the child
-MUST use the normal completed-phase submission above. An external wait alone
-MUST NOT satisfy the phase. The idle handoff MUST preserve the issue owner,
+After [proof-driven-completion](../../proof-driven-completion/SKILL.md)
+establishes phase satisfaction, the child MUST use the normal completed-phase
+submission above. The idle handoff MUST preserve the issue owner,
 branch/worktree, artifacts, remaining external gates, and explicit parent wake
 route without polling, interrupting, replacing, or approving a live producer.
-
-## Static Recovery Shapes
-
-Static validator fixtures MUST cover representative handoff shapes: #360 and
-#276 blocked notices, #311 and #365 usage-limited notices, and #350 task-CWD
-versus canonical reserved worktree mismatch. These are evidence-contract
-fixtures only; they MUST NOT claim runtime allocator, archive, replacement, or
-freeze behavior owned by #373.
-
-When a fixture shows a task CWD that differs from the canonical reserved
-worktree, it MUST report the mismatch before any goal continuation evidence.
 
 ## Validator Contract
 

@@ -6,18 +6,10 @@ description: Use when classifying workflow, surface, and risk or coordinating ow
 Read the user request, parent assignment, and applicable AGENTS.md instruction
 files first. Determine whether they explicitly assign bounded work, including
 read-only diagnosis or preflight. For an authorized Orchestrator or Worker task,
-Codex MUST load the [goal lifecycle](../goal-lifecycle/SKILL.md), call the
-current task's host-scoped get_goal, and complete its Required first transition
-before task-specific work. The goal check MUST precede issue/PR reads, task
-diagnosis, repository/GitHub reads, branch or worktree setup, planning,
-delegation, edits, and verification. It applies to Orchestrators and
-implementation Workers in their own current tasks. The task MUST apply the goal
-lifecycle's result rules: create only for an authorized assignment on exact
-null, top-level goal=null, or status=complete. Continue only for an exact active
-objective; use the documented sequence for blocked; stop on error, malformed or
-unexpected state, or a different active objective. Ordinary questions, ambiguous
-conversation, and incidental suggestions MUST NOT be treated as execution
-authority or a reason to create a goal.
+Codex MUST follow the required first transition in
+[goal-lifecycle](../goal-lifecycle/SKILL.md) before task-specific work. That
+skill owns host goal reads, native state meanings, transition rules, and
+recovery; this entrypoint MUST NOT restate those rules.
 
 After the goal gate, read issue/PR material and classify task/surface/risk. Read
 the [context retention contract](references/context-tiers.md) for the existing
@@ -27,11 +19,10 @@ additional guidance (for example, app-thread workers or delegated goal
 ownership), the agent MUST load that reference when the condition applies and
 MUST NOT add it to unrelated routes. Progressive disclosure does not require
 loading every reference. A GitHub surface alone does not select review-specific
-references. Compaction: current state MUST win. Missing proof MUST NOT authorize
-a completion/readiness claim or the specific action whose effect requires that
-proof; it MAY require evidence collection or leave authorized reversible work in
-progress, but it MUST NOT by itself require a new approval to continue that
-work.
+references. Compaction: current state MUST win. The
+[proof-driven-completion](../proof-driven-completion/SKILL.md) contract owns
+evidence-to-outcome judgment; missing proof MUST withhold only claims or actions
+that depend on it and MUST NOT block unrelated authorized reversible work.
 
 When a non-routine judgment needs an Advisor's second opinion, Orchestrators and
 Workers MUST follow the
@@ -98,16 +89,15 @@ confused with Worker observation. MUST read `parent-supervision.md` for
 target/cursor handling, host limits, quiet waits, interruption, cancellation,
 and message authority before execution.
 
-Before dispatching a Worker, the Orchestrator MUST have an active `get_goal`
-readback for its exact overall assignment. Each Worker prompt MUST contain one
-exact `Assignment objective:`, bounded scope, success criteria, verification,
-handoff, and a stop condition. The initial assignment MUST distinguish the issue
-outcome from the executable finite phase under
-[goal-lifecycle](../goal-lifecycle/SKILL.md), carry the
-[terminal handoff](references/goal-transition-reporting.md) route, and bind the
+Before dispatching a Worker, the Orchestrator MUST have an active overall goal.
+Each Worker prompt MUST contain one exact `Assignment objective:`, bounded
+scope, success criteria, verification, handoff, and stop condition. It MUST bind
+the
 [supervised slot](references/parent-supervision.md#supervised-app-child-capacity)
-reservation. It MUST direct the Worker to complete its own first goal transition
-before task-specific work. The parent goal MUST NOT stand in for the child goal.
+and direct the Worker to use its own
+[goal-lifecycle](../goal-lifecycle/SKILL.md) sequence and the
+[terminal handoff](references/goal-transition-reporting.md) route. The parent
+goal MUST NOT stand in for the child's goal.
 
 For selected child-owned issue lanes, the Orchestrator MUST assign one Worker
 before implementation; that Worker owns implementation and review-response
