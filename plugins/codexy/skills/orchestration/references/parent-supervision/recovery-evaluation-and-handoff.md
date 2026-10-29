@@ -6,7 +6,8 @@
   insufficient. MUST retain the task, worktree, and branch through merge
   readback (#289). MUST follow
   [cleanup procedure](../../../../../codexy-github/skills/git-workflow/references/local-git-and-branches.md#accepted-child-cleanup):
-  worktree snapshot before task archive (#330), then safe local branch removal.
+  parent-owned preservation, direct thread archive and identity readback, then
+  safe local branch removal; worktree archival is not a prerequisite.
 - Missing output, truncated extraction, or a wrong item-type filter does not
   prove that host evidence is absent. Codex MUST check the actual saved
   artifact, worktree, source record, and creating surface. Codex MUST NOT invent

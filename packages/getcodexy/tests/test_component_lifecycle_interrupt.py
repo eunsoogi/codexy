@@ -105,8 +105,8 @@ names = {"core": "codexy", "github": "codexy-github", "devtools": "codexy-devtoo
 reverse = {value: key for key, value in names.items()}
 selected = json.load(open(state))
 command = sys.argv[1:]
-events = {"PostToolUse": "postToolUse", "PreToolUse": "preToolUse", "PermissionRequest": "permissionRequest", "UserPromptSubmit": "userPromptSubmit", "Interrupt": "interrupt"}
-event_keys = {"PostToolUse": "post_tool_use", "PreToolUse": "pre_tool_use", "PermissionRequest": "permission_request", "UserPromptSubmit": "user_prompt_submit", "Interrupt": "interrupt"}
+events = {"PostToolUse": "postToolUse", "PreToolUse": "preToolUse", "PermissionRequest": "permissionRequest", "UserPromptSubmit": "userPromptSubmit", "Interrupt": "interrupt", "Stop": "stop"}
+event_keys = {"PostToolUse": "post_tool_use", "PreToolUse": "pre_tool_use", "PermissionRequest": "permission_request", "UserPromptSubmit": "user_prompt_submit", "Interrupt": "interrupt", "Stop": "stop"}
 
 def hook_rows():
     rows = []

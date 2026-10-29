@@ -61,6 +61,7 @@ class PublicSmokeHostTests(unittest.TestCase):
         rows = list_hooks(self.host, self.home)
         self.assertTrue(rows)
         self.assertEqual({row["pluginId"] for row in rows}, {"codexy@codexy"})
+        self.assertIn("stop", {row["eventName"] for row in rows})
         self.select(["core", "github", "devtools"])
         rows = list_hooks(self.host, self.home)
         self.assertEqual(

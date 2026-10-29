@@ -10,6 +10,9 @@
         "plugins/codexy/hooks/hooks.json",
         "plugins/codexy/hooks/capability-contract.json",
         "plugins/codexy/hooks/codexy-hook-runtime.sh",
+        "plugins/codexy/hooks/codexy-cleanup-progress.cmd",
+        "plugins/codexy/hooks/codexy-cleanup-progress.sh",
+        "plugins/codexy/hooks/codexy_cleanup_progress.py",
         "plugins/codexy/hooks/codexy-thread-delivery.cmd",
         "plugins/codexy/hooks/codexy-thread-delivery.py",
         "plugins/codexy/hooks/codexy-thread-delivery.sh",
@@ -29,6 +32,7 @@
       "sources": [
         "plugins/codexy/hooks/codexy_policy/__init__.py",
         "plugins/codexy/hooks/codexy_policy/envelope.py",
+        "plugins/codexy/hooks/codexy_policy/cleanup_progress.py",
         "plugins/codexy/hooks/codexy_policy/thread_delivery.py",
         "plugins/codexy/hooks/codexy_policy/child_thread_creation.py",
         "plugins/codexy/hooks/codexy_policy/subagent_ownership.py",
