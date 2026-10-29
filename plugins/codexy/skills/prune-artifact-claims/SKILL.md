@@ -40,8 +40,7 @@ sibling artifact, or make another path writable. MUST hand off scope expansion.
 
 ## Contract
 
-The exact receipt fields and deterministic corpus are maintained in
-[contract.md](contract.md).
+The exact receipt fields are maintained in [contract.md](contract.md).
 
 ## Receipt
 
