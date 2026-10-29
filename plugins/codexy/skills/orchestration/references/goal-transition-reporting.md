@@ -152,8 +152,7 @@ NOT call blocked before that acceptance. After the call, it MUST send
 matching key, and actual delivery state. The terminal handoff and
 intended-transition data MAY share one transport submission; static records MUST
 preserve each record's fields and ordering. These blocked-recovery obligations
-MUST NOT add pre/post-result messages to normal phase completion. Runtime
-delivery mechanics are owned by [runtime-heartbeats](runtime-heartbeats.md).
+MUST NOT add pre/post-result messages to normal phase completion.
 
 ## Blocked Goal User-Decision Gate
 
