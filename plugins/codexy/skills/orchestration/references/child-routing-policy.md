@@ -198,6 +198,14 @@ NOT inherit sender or role defaults or reselect the task role. A requested pair
 proves only what was requested. If effective settings are not exposed, Codex
 MUST report them as unavailable/not observed, not as preserved.
 
+Recovery of the unchanged objective and scope carries the original assignment
+authority; blocked status alone MUST NOT require new user confirmation. The
+ordered preparation, checkout-association, topology-specific preservation,
+archive, and post-archive acceptance steps are owned by
+[goal-lifecycle](../../goal-lifecycle/SKILL.md) and its
+[executable-checkout recovery](../../goal-lifecycle/references/executable-checkout-recovery.md).
+This routing clause MUST NOT be read as a separate recovery procedure.
+
 Worker selection owns recipient and model routing, not verification policy. The
 closed route in [context tiers](context-tiers.md) selects profile, sequencing,
 finite-work, review, and final-proof references only when applicable.

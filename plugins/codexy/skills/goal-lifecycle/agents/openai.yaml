@@ -1,6 +1,6 @@
 interface:
   display_name: "Goal Lifecycle"
-  short_description: "Use goal tools and recover blocked goals through a preserved-model fork."
-  default_prompt: "You MUST use $goal-lifecycle before authorized Orchestrator or Worker task work and every native goal operation. For authorized blocked-goal recovery, you MUST NOT mark the unfinished goal complete; you MUST first prove a supported route preserves the exact checkout through source archival; otherwise stop before the unsafe transition. When supported, fork once in the same directory, preserve checkout association and identity, archive the source, pass its model and reasoning effort explicitly, confirm an active goal, and verify a successful process at the intended CWD before issue work."
+  short_description: "Use goal tools and follow supported same-directory recovery for blocked goals."
+  default_prompt: "You MUST use $goal-lifecycle before authorized Orchestrator or Worker task work and every native goal operation. Recovery of an unchanged objective and scope carries the original assignment authority; a blocked state alone MUST NOT require new user confirmation. You MUST NOT mark an unfinished goal complete to obtain recovery. You MUST follow the executable-checkout recovery procedure for bounded preparation, one same-directory fork, supported checkout association and lifetime-preservation checks for the exact topology, source archival, and post-archive acceptance. You MUST keep issue work stopped until one owner, the exact authorized active objective, and a successful process at the preserved checkout are confirmed. You MUST report requested model/effort separately from host-exposed effective settings."
 policy:
   allow_implicit_invocation: true
