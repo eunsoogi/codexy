@@ -197,11 +197,9 @@ fn check_yaml_file(plugin_root: &Path, path: &Path) -> Result<Vec<String>> {
     }
     let implicit_invocation =
         prompt_yaml::get_path(&parsed, &["policy", "allow_implicit_invocation"]);
-    let valid_implicit_invocation = match implicit_invocation {
-        Some(prompt_yaml::Scalar::Bool(true)) => true,
-        Some(prompt_yaml::Scalar::Bool(false)) => is_explicit_only_skill(plugin_root, path),
-        _ => false,
-    };
+    // Keep invocation metadata strict for every prompt; skills have no opt-out.
+    let valid_implicit_invocation =
+        matches!(implicit_invocation, Some(prompt_yaml::Scalar::Bool(true)));
     if !valid_implicit_invocation {
         errors.push(format!(
             "{} policy.allow_implicit_invocation must be true",
@@ -214,15 +212,6 @@ fn check_yaml_file(plugin_root: &Path, path: &Path) -> Result<Vec<String>> {
 fn requires_orchestration_route(plugin_root: &Path, path: &Path) -> bool {
     path == plugin_root.join("agents/openai.yaml")
         && plugin_name(plugin_root).as_deref() != Some("codexy-devtools")
-}
-
-fn is_explicit_only_skill(plugin_root: &Path, path: &Path) -> bool {
-    match plugin_name(plugin_root).as_deref() {
-        Some("codexy") => {
-            path == plugin_root.join("skills/realtime-voice-orchestration/agents/openai.yaml")
-        }
-        _ => false,
-    }
 }
 
 fn plugin_name(plugin_root: &Path) -> Option<String> {
