@@ -93,6 +93,63 @@ fn action_requests_are_denied_for_every_bounded_role() -> TestResult {
 }
 
 #[test]
+fn list_and_follow_on_action_prefixes_remain_denied() -> TestResult {
+    for (message, code) in [
+        ("- Implement the parser fix.", "IMPLEMENTATION_REQUEST"),
+        (
+            "- Run the unit tests and report failures.",
+            "EXECUTION_VERIFICATION",
+        ),
+        (
+            "Review the parser and also implement the fix.",
+            "IMPLEMENTATION_REQUEST",
+        ),
+    ] {
+        assert_action_denied("codexy-auditor", message, code)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn explicit_execution_responsibility_is_denied() -> TestResult {
+    assert_action_denied(
+        "codexy-auditor",
+        "You are responsible for running the tests and reporting results.",
+        "EXECUTION_VERIFICATION",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn caller_retained_korean_work_remains_admitted() -> TestResult {
+    assert_admitted(
+        "codexy-auditor",
+        "내가 파서를 수정하고 테스트를 실행할게. 너는 코드만 리뷰해.",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn third_party_korean_process_description_remains_admitted() -> TestResult {
+    assert_admitted(
+        "codexy-auditor",
+        "파서가 테스트를 실행하고 결과를 저장하는 과정을 설명해.",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn explicit_korean_assignee_pronouns_remain_denied() -> TestResult {
+    assert_action_denied("codexy-auditor", "네가 파서를 수정해.", "IMPLEMENTATION_REQUEST")?;
+    assert_action_denied(
+        "codexy-auditor",
+        "네가 테스트를 실행해.",
+        "EXECUTION_VERIFICATION",
+    )?;
+    Ok(())
+}
+
+#[test]
 fn verification_by_execution_is_denied_but_caller_retained_work_is_allowed() -> TestResult {
     assert_action_denied(
         "codexy-auditor",

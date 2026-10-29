@@ -48,6 +48,12 @@ _ASSIGNED_MODAL_TAIL = re.compile(
     + r"reviewer|auditor|helper|implementer))\s+(?:must|should|shall|will)\s*$",
     re.IGNORECASE,
 )
+_ASSIGNED_RESPONSIBILITY_TAIL = re.compile(
+    r"\b(?:you|the\s+(?:assigned\s+)?(?:agent|subagent|child|worker|specialist|"
+    + r"reviewer|auditor|helper|implementer))\s+(?:are|remain|will\s+be)\s+"
+    + r"(?:responsible|accountable)\s+(?:for|to)\s*$",
+    re.IGNORECASE,
+)
 # A verification verb followed by "by" assigns the concrete execution that follows.
 _VERIFICATION_METHOD_TAIL = re.compile(
     r"^(?:please\s+)?(?:(?:you|the\s+(?:assigned\s+)?(?:agent|subagent|child|worker|"
@@ -81,6 +87,15 @@ _KOREAN_EXECUTION_TARGET = re.compile(
     r"(?:테스트|검사|체크|검증|린트|포맷|빌드)",
     re.IGNORECASE,
 )
+_KOREAN_SUBJECT = re.compile(r"(?P<actor>[\w-]+?)(?:이|가|은|는)\s+")
+_KOREAN_CALLER_ACTORS = frozenset({"내", "나", "저", "제", "우리", "저희"})
+# The standard nominative form `네가` is a common second-person variant of `너가`.
+_KOREAN_ASSIGNEE_ACTOR = re.compile(
+    r"(?:네|너|당신|에이전트|서브에이전트|워커|담당자|전문가|리뷰어|감사자|도우미|"
+    + r"헬퍼|explorer|agent|subagent|worker|specialist|reviewer|auditor|helper|"
+    + r"implementer|assistant|codexy-[a-z0-9_-]+)",
+    re.IGNORECASE,
+)
 _SENTENCE_BOUNDARY = re.compile(r"[\n.!?;]")
 
 
@@ -104,14 +119,30 @@ def _instructional_action(message: str, match: re.Match[str]) -> bool:
     tail = re.split(r"\b(?:and|then)\s+", prefix, flags=re.IGNORECASE)[-1].strip(
         " \t\"'`“”"
     )
-    if tail.casefold() == "then":
+    # List markers and the common "also" connector do not change an imperative.
+    tail = re.sub(r"^(?:[-*+•]\s*)+", "", tail)
+    if tail.casefold() in {"then", "also"}:
         tail = ""
     return not tail or bool(
         _DIRECTIVE_TAIL.search(tail)
         or _ASSIGNED_MODAL_TAIL.search(tail)
+        or _ASSIGNED_RESPONSIBILITY_TAIL.search(tail)
         or _VERIFICATION_METHOD_TAIL.search(tail)
         or _ASSIGNMENT_TO.search(tail)
     )
+
+
+def _korean_action_is_assigned(message: str, match: re.Match[str]) -> bool:
+    """Skip caller-owned actions and descriptions of non-agent actors."""
+    if is_negated(message, match):
+        return False
+    subjects = list(_KOREAN_SUBJECT.finditer(clause_prefix(message, match.start())))
+    if not subjects:
+        return True
+    actor = subjects[-1].group("actor").casefold()
+    if actor in _KOREAN_CALLER_ACTORS:
+        return False
+    return bool(_KOREAN_ASSIGNEE_ACTOR.fullmatch(actor))
 
 
 def delegated_work_reason(message: str) -> str | None:
@@ -132,7 +163,7 @@ def delegated_work_reason(message: str) -> str | None:
         if _instructional_action(masked, match):
             return "IMPLEMENTATION_REQUEST"
     for match in _KOREAN_IMPLEMENTATION_ACTION.finditer(masked):
-        if not is_negated(masked, match):
+        if _korean_action_is_assigned(masked, match):
             return "IMPLEMENTATION_REQUEST"
 
     for match in _EXECUTION_ACTION.finditer(masked):
@@ -144,8 +175,8 @@ def delegated_work_reason(message: str) -> str | None:
         ):
             return "EXECUTION_VERIFICATION"
     for match in _KOREAN_EXECUTION_ACTION.finditer(masked):
-        if not is_negated(masked, match) and _KOREAN_EXECUTION_TARGET.search(
-            _sentence_text(masked, match.start())
-        ):
+        if _korean_action_is_assigned(
+            masked, match
+        ) and _KOREAN_EXECUTION_TARGET.search(_sentence_text(masked, match.start())):
             return "EXECUTION_VERIFICATION"
     return None
