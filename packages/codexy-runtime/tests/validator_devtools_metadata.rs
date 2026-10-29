@@ -51,19 +51,6 @@ fn direct_devtools_check_rejects_invalid_agent_metadata() -> TestResult {
 }
 
 #[test]
-fn core_check_accepts_explicit_only_designated_skill_metadata() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let core = temp.path().join("plugins/codexy");
-    copy_core(&core)?;
-    set_implicit_invocation(
-        &core.join("skills/realtime-voice-orchestration/agents/openai.yaml"),
-        false,
-    )?;
-
-    assert_accepted(&core)
-}
-
-#[test]
 fn core_check_accepts_implicit_wiki_metadata() -> TestResult {
     let temp = tempfile::tempdir()?;
     let core = temp.path().join("plugins/codexy");
@@ -72,10 +59,12 @@ fn core_check_accepts_implicit_wiki_metadata() -> TestResult {
     assert_accepted(&core)
 }
 
+// Core prompts, including remaining skills, keep the shared invocation rule.
 #[test]
-fn core_check_rejects_explicit_only_other_core_metadata() -> TestResult {
+fn core_check_rejects_disabled_implicit_invocation_for_core_metadata() -> TestResult {
     for relative in [
         "agents/openai.yaml",
+        "skills/orchestration/agents/openai.yaml",
         "skills/engineering/agents/openai.yaml",
         "skills/wiki/agents/openai.yaml",
     ] {
