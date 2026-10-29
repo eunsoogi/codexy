@@ -9,6 +9,8 @@ use serde_json::{Value, json};
 mod retired_watcher;
 #[path = "validator_subagent_ownership_hook/catalog_admission.rs"]
 mod catalog_admission;
+#[path = "validator_subagent_ownership_hook/followup.rs"]
+mod followup;
 
 pub(crate) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -18,7 +20,7 @@ pub(crate) const TOOLS: &[&str] = &[
     "multi_agent_v1__spawn_agent",
 ];
 pub(crate) const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
-const MATCHER: &str = "^(?:(?:agents|multi_agent_v1)__)?spawn_agent$";
+const MATCHER: &str = "^(?:(?:agents|multi_agent_v1)__)?(?:spawn_agent|send_message|followup_task)$";
 const LAUNCHER: &str = "codexy-subagent-ownership.sh";
 
 #[test]
@@ -32,7 +34,12 @@ fn installed_matcher_covers_observed_native_and_flattened_names() -> TestResult 
     for tool in TOOLS {
         assert!(matcher.is_match(tool), "matcher misses {tool}");
     }
-    for tool in ["create_thread", "spawn_agent_extra", "agents__send_message"] {
+    for prefix in ["", "agents__", "multi_agent_v1__"] {
+        for name in ["send_message", "followup_task"] {
+            assert!(matcher.is_match(&format!("{prefix}{name}")));
+        }
+    }
+    for tool in ["create_thread", "spawn_agent_extra", "mcp__codex_app__send_message_to_thread"] {
         assert!(!matcher.is_match(tool), "matcher overmatches {tool}");
     }
     Ok(())

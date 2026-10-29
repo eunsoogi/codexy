@@ -168,7 +168,7 @@ class WatcherRegistrationTests(unittest.TestCase):
             expected_matchers = {
                 "^(?:codex_app__|mcp__codex_app__)send_message_to_thread$",
                 "^(?:codex_app__|mcp__codex_app__)create_thread$",
-                "^(?:(?:agents|multi_agent_v1)__)?spawn_agent$",
+                "^(?:(?:agents|multi_agent_v1)__)?(?:spawn_agent|send_message|followup_task)$",
             }
             for event in ("PermissionRequest", "PreToolUse"):
                 self.assertEqual(
