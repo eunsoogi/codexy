@@ -8,106 +8,116 @@ description: MUST use when preparing plugin versions, version sync, changelogs, 
 ## Purpose
 
 Turn a verified change set into a reproducible release candidate. MUST keep
-versions, manifests, release notes, artifacts, automation, and rollback evidence
-aligned before publishing or tagging.
+release-owned version fields, release notes, workflows, artifacts, and rollback
+evidence aligned before publishing or tagging.
 
 ## Workflow
 
-1. MUST identify release unit:
-   - plugin manifest,
-   - marketplace entry,
-   - skill bundle,
-   - MCP configuration,
-   - LSP configuration and catalog,
-   - codegraph MCP registration and code-exploration guidance,
-   - role metadata or custom agent TOMLs,
-   - thread/worktree orchestration guidance,
-   - GitHub Action,
-   - documentation bundle,
-   - tag or GitHub release.
-2. MUST find version sources of truth:
-   - `plugins/<plugin>/.codex-plugin/plugin.json`,
-   - `.agents/plugins/marketplace.json` when it carries install availability,
-   - package metadata only when a package manager is intentionally present,
-   - release workflow inputs,
-   - changelog or release notes.
-3. MUST choose version policy:
-   - patch for compatible fixes,
-   - minor for new skills or capabilities,
-   - major for breaking invocation, manifest, or compatibility changes.
-4. Synchronize versions across every declared source of truth.
-5. Prepare release PR gates:
-   - clean worktree,
-   - manifest parser checks,
-   - marketplace parser checks,
-   - LSP config, MCP config, role metadata, custom agent TOML, and
-     thread/worktree wording checks for plugin architecture changes, limited to
-     the surfaces that exist for that plugin,
-   - codegraph MCP registration checks when the release advertises code
-     exploration or thread/agent repository discovery,
-   - for Codexy plugin releases specifically,
-     `scripts/validate-plugin-config.sh --check` when the validator exists,
-   - child-owned PR review feedback routed to the owning child thread with fresh
-     verification before the parent thread merges,
-   - skill metadata checks,
-   - asset existence checks,
-   - workflow syntax checks when GitHub Actions changed,
-   - release notes or changelog when a user-facing version changes.
-6. Validate artifact or package shape from the release unit, not only source
-   files.
-7. MUST inspect artifacts for secrets, local paths, debug files, oversized
-   files, and unintended dependencies.
-8. Publish, tag, or create GitHub releases only when explicitly requested by the
-   active workflow.
+1. MUST identify the release unit from the surfaces that actually exist:
+   - plugin manifest;
+   - marketplace entry;
+   - skill bundle;
+   - MCP or LSP configuration;
+   - role metadata or custom agent TOMLs;
+   - Codegraph MCP registration and code-exploration guidance;
+   - thread/worktree orchestration guidance;
+   - GitHub Action, documentation bundle, tag, or GitHub release.
+2. MUST find every version source of truth: the plugin manifest at
+   `plugins/<plugin>/.codex-plugin/plugin.json`,
+   `.agents/plugins/marketplace.json` when it carries install availability,
+   package metadata only when a package manager is intentionally present,
+   release workflow inputs, and the changelog or release notes.
+3. MUST choose the compatible version policy (patch for compatible fixes, minor
+   for new skills or capabilities, major for breaking invocation, manifest, or
+   compatibility changes) and synchronize the release-owned version fields.
+   Direct file inspection or parser output MUST prove synchronization.
+4. MUST complete the [Marketplace Release Handoff](#marketplace-release-handoff)
+   for plugin or marketplace releases. It supplies the current source-readiness
+   result and the plugin-configuration checks owned by Marketplace Prep.
+5. When GitHub Actions change, MUST validate workflow syntax or command behavior
+   where possible. Workflow paths MUST resolve from the repository root, and
+   release workflow version inputs MUST agree with the release-owned version
+   sources.
+6. MUST validate artifact shape from the actual release unit and inspect the
+   resulting artifact for secrets, local paths, debug files, oversized files,
+   and unintended dependencies. Source-tree checks alone MUST NOT stand in for
+   artifact inspection.
+7. When a user-facing version changes, MUST prepare release notes or a changelog
+   and keep them consistent with the actual change and merged work. A rollback
+   plan MUST identify the prior version, tag or commit, and steps to restore
+   installability.
+8. MUST publish, tag, or create a GitHub release only when the active workflow
+   explicitly authorizes that action.
+
+## Marketplace Release Handoff
+
+This is the single procedure connecting Marketplace Prep and Release
+Engineering. Marketplace Prep owns discovery, structure, non-version metadata,
+and asset references. Release Engineering owns version values, artifacts,
+publication, and rollback.
+
+1. Marketplace Prep MUST validate the plugin and marketplace source for the
+   candidate revision. Its result MUST identify that revision, the plugin and
+   marketplace paths, applicable validation results, and unresolved gaps. It
+   proves source readiness only.
+2. Release Engineering MUST consume that result for the same candidate revision
+   and use it for marketplace-owned structure, metadata, asset, and plugin
+   configuration checks. Plugin-architecture release readiness MUST include all
+   applicable supported surfaces from that result. Release work MUST NOT copy
+   those checklists. If release work changes a marketplace-owned field, path, or
+   asset, Marketplace Prep MUST refresh the affected checks for the new revision
+   before release readiness is claimed.
+3. When Marketplace Prep evaluates a listing or install candidate that names a
+   release version, tag, artifact, or published state, it MUST consume Release
+   Engineering's result for the same candidate and verify any external
+   availability claim from the corresponding release surface. Without that
+   result, it MUST limit its conclusion to source readiness and identify the
+   missing release evidence.
+4. Source validation, artifact inspection, actual installation, and external
+   publication each prove a separate claim. Neither skill may substitute one
+   surface's evidence for another. Evidence reuse and completion claims MUST
+   follow `$proof-driven-completion`.
+5. GitHub issue, PR, review, and handoff work MUST follow `$orchestration` and
+   `$git-workflow`.
 
 ## Required Output
 
 ```text
+Candidate revision:
 Release unit:
 Current version:
 Target version:
 Version policy:
 Files to sync:
 Release PR gates:
+Marketplace readiness:
 Architecture validation:
 Validation commands:
 Artifact checks:
+Publication state:
 Rollback plan:
 Not publishing because:
 ```
 
 ## Gates
 
-- MUST NOT bump one version source without syncing the rest.
+- MUST NOT change a release-owned version field without synchronizing its other
+  sources of truth.
+- MUST NOT claim a release candidate is ready from a dirty worktree.
 - MUST NOT publish from a dirty tree.
 - MUST NOT tag before the release PR is merged unless the workflow explicitly
   requires pre-merge tags.
-- MUST NOT treat source-tree validation as artifact validation when a package,
-  archive, or marketplace bundle is produced.
-- MUST NOT release plugin architecture changes while LSP, MCP, role metadata,
-  custom agent TOML, or thread/worktree orchestration checks are missing.
-- MUST NOT release code-exploration behavior without packaged codegraph MCP
-  registration evidence.
-- MUST NOT merge child-owned release or architecture feedback from the parent
-  thread alone. The owning child thread MUST address or explicitly reject the
-  feedback and return current verification.
-
-## Evidence Rules
-
-- Version sync MUST include direct file inspection or parser output.
-- Architecture validation MUST include parser output for structured config and
-  surface-specific checks for only the plugin surfaces that exist. For Codexy
-  plugin releases, MUST run `scripts/validate-plugin-config.sh --check` when
-  present.
-- GitHub Actions changes MUST require syntax or command-level validation where
-  possible.
-- Release notes MUST match the actual diff and merged PRs.
-- Rollback plans MUST name the prior version, prior tag or commit, and how to
-  restore installability.
+- MUST NOT claim artifact, installation, or publication readiness from
+  source-tree validation.
+- MUST NOT claim a plugin release is marketplace-ready without the current
+  Marketplace Release Handoff result.
 
 ## Failure Modes
 
-- Bumping versions without updating release notes.
-- Publishing from an unreviewed PR head.
+- Updating one version field while leaving another source stale.
+- Publishing an artifact whose contents or provenance were not inspected.
+- Treating a source manifest or marketplace entry as proof of installation or
+  publication.
+- Omitting release notes or a changelog for a user-facing version change.
 - Adding release automation without a manual run and audit path.
-- Mixing release prep with unrelated feature work.
+- Mixing release preparation with unrelated feature work.

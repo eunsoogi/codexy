@@ -14,20 +14,12 @@ after the owner and route are established.
 MUST treat loss of the active `@Codexy` or Codexy plugin workflow contract after
 context compaction, goal continuation, or resume as a dogfooding defect.
 
-Before editing after compaction or continuation, re-check the selected external
-surface state when the task has an issue or PR. For a repository-owned lane,
-also capture a fresh git preflight with:
-
-```sh
-pwd
-git status --short --branch
-git rev-parse HEAD
-git rev-parse origin/main
-git log --graph --oneline --decorate --all -n 12
-```
-
-If a summary omits duplicate/no-active-work issue state, PR state, parent/child
-ownership, or authoritative stop condition, rebuild the evidence before editing.
+Before editing after compaction or continuation, follow
+[Dreaming's current-state recovery](../../dreaming/SKILL.md#refresh-current-state)
+to decide whether a live external surface needs refresh and which one. This
+section MUST NOT add a second repository, PR, review, or release inventory. The
+canonical [goal-transition handoff contract](goal-transition-reporting.md) owns
+terminal handoff fields and delivery.
 
 ## Child Execution Discipline
 
@@ -107,8 +99,11 @@ If the handoff discusses addressed review feedback, MUST include GraphQL
 including outdated-but-fixed threads, remain invalid unless the report documents
 an accepted no-change rationale.
 
-A checked contract is the sole merge authorization; generic finish, completion,
-silence, clean gates, and a ready PR are non-authoritative signals.
+Merge authority MUST follow the Git Workflow
+[merge boundary](../../../../codexy-github/skills/git-workflow/SKILL.md#merge-boundary).
+A selected contract may add prerequisites but does not replace host/connector
+authorization or GitHub permissions. Generic finish, completion, silence, clean
+gates, and a ready PR are not authorization.
 
 ## Direct Review-State Handoff
 
