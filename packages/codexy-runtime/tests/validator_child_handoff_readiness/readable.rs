@@ -42,3 +42,24 @@ fn readable_readiness_claim_must_match_dirty_status_and_head() -> TestResult {
     );
     Ok(())
 }
+
+#[test]
+fn readiness_tables_preserve_negative_and_wrapped_status() -> TestResult {
+    let negative = "Child handoff:\n| Field | Value |\n| --- | --- |\n| PR ready | no |\n| Parent can merge | no |\n| Pushed | no |\n";
+    let dirty = pr_state_with(
+        r#""mergeStateStatus":"DIRTY","headRefOid":"1111111111111111111111111111111111111111","worktreeStatus":"M changed","reviewThreads":{"pageInfo":{"hasNextPage":false},"nodes":[]}"#,
+    );
+    let output = validate_handoff_with_pr_state(negative, &dirty)?;
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let wrapped = "Child handoff:\n| Field | Value |\n| --- | --- |\n| Status | ready for parent\nhandoff |\n| Branch | clean and pushed |\n| Head | 068dbb247b7755035223c91ee39f26830f3c1609 |\n";
+    assert!(
+        !validate_handoff_with_pr_state(wrapped, &dirty)?
+            .status
+            .success()
+    );
+    Ok(())
+}

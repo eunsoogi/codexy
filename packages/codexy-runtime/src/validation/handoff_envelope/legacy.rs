@@ -1,3 +1,4 @@
+mod current;
 mod delta;
 mod fields;
 use super::schema::{
@@ -41,13 +42,14 @@ pub(super) fn migrate(text: &str, context: &LegacyContext) -> Result<HandoffEnve
         !matches!(input.as_bytes().first(), Some(b'{' | b'[')),
         "canonical JSON is not a legacy handoff"
     );
+    let current = current::markdown(input);
     let delta_counts = ["## Lane", "## Delta", "## Next"]
-        .map(|heading| schema::exact_heading_count(input, heading));
+        .map(|heading| schema::exact_heading_count(&current, heading));
     let delta_present = delta_counts.iter().any(|count| *count != 0);
     let has_delta = delta_counts.iter().all(|count| *count == 1); /* all three delta sections once */
     let marker = "Terminal parent handoff:";
     // Historical and quoted text cannot supply current authority to the migration.
-    let sanitized = input.replace('\u{1f}', "\u{fffd}");
+    let sanitized = current.replace('\u{1f}', "\u{fffd}");
     let active = super::super::readiness_context::current_text(&sanitized);
     let alternate = "Parent handoff:";
     let alternate_count = active
@@ -65,7 +67,7 @@ pub(super) fn migrate(text: &str, context: &LegacyContext) -> Result<HandoffEnve
         "legacy handoff has no recognized canonical boundary"
     );
     if has_delta {
-        delta::migrate_delta(input, context)
+        delta::migrate_delta(&current, context)
     } else {
         let start = active
             .find(marker)
@@ -90,7 +92,7 @@ fn migrate_terminal(line: &str, context: &LegacyContext) -> Result<HandoffEnvelo
     let normalized = body.replace('\n', " ");
     let fields = fields(
         &normalized,
-        &"event id|issue/pr|child task|parent task|branch|worktree|head|clean/index|last proof|current gate|preserved reservation/artifacts|parent next action|delivery|task surface"
+        &"event id|issue/pr|child task|parent task|branch|worktree|head|clean/index|last proof|current gate|preserved reservation/artifacts|parent next action|delivery|task surface|message permission"
             .split('|')
             .collect::<Vec<_>>(),
         '=',
@@ -106,6 +108,13 @@ fn migrate_terminal(line: &str, context: &LegacyContext) -> Result<HandoffEnvelo
     ensure!(
         schema::required(&fields, "task surface")? == "codex task/thread",
         "terminal task surface is not canonical"
+    );
+    // An explicit permission state must agree with the claimed delivery; omission remains legacy-compatible.
+    ensure!(
+        fields
+            .get("message permission")
+            .is_none_or(|value| value.eq_ignore_ascii_case("granted")),
+        "terminal message permission is not granted"
     );
     let child_task = schema::optional_value(&fields, "child task")?;
     let parent_task = schema::optional_value(&fields, "parent task")?;

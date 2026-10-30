@@ -54,5 +54,10 @@ fn original_table_reaches_native_bridge_with_bound_authority() -> TestResult {
         )
         .is_err()
     );
+    let unauthorized = original.replace(
+        "| delivery | confirmed |",
+        "| delivery | confirmed |\n| message permission | absent |",
+    );
+    assert!(migrate_legacy_handoff(&unauthorized, &context).is_err());
     Ok(())
 }

@@ -38,6 +38,18 @@ fn validator_rejects_local_parent_routes_in_terminal_only_handoffs() -> TestResu
     Ok(())
 }
 
+#[test]
+fn conflicting_terminal_actions_never_bypass_handoff() -> TestResult {
+    for transition in [
+        "Terminal child transition: action=archive; action=stop\n",
+        "Terminal child transition:\n| Field | Value |\n| --- | --- |\n| Action | archive |\n| Action | stop |\n",
+    ] {
+        let evidence = format!("Lane ownership: child-owned\n{transition}");
+        assert!(!run_validator(&evidence)?.status.success(), "{evidence}");
+    }
+    Ok(())
+}
+
 fn terminal_only_evidence(parent_route: &str) -> String {
     format!(
         "Lane ownership: child-owned\nTerminal parent handoff: event id=terminal-child|417|archive; issue/pr=#417 / PR #418; child task=child-417; parent task=019f49da-d44c-7e41-afde-8b1f7c58efa0; branch=eunsoogi/417-distinguish-runtime-monitors; worktree=/worktree; head=abc; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\nParent route: {parent_route}\nTerminal child transition: action=archive\n"

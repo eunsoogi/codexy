@@ -119,6 +119,9 @@ impl TerminalHandoffs {
         {
             return Some("phase result submission must not wait_threads on its parent");
         }
+        if line.starts_with("terminal child transition:") && field(line, "action").is_none() {
+            return Some("terminal child transition requires one unambiguous action");
+        }
         if let Some(transition) = terminal_transition(line) {
             let valid = (matches!(self.state, HandoffState::Ready)
                 && (!self.phase || transition == "goal"))

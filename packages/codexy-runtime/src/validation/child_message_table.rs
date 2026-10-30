@@ -1,5 +1,25 @@
 use super::child_lane_gfm_classification_table::classification_table_row;
 
+/// Track matching Markdown fence characters and lengths so examples cannot become authority.
+pub(super) fn fence_boundary(line: &str, state: &mut Option<(char, usize)>) -> bool {
+    let Some(marker) = line.chars().next().filter(|ch| matches!(ch, '`' | '~')) else {
+        return false;
+    };
+    let length = line.chars().take_while(|ch| *ch == marker).count();
+    if let Some((open, minimum)) = *state {
+        if marker == open && length >= minimum && line[length..].trim().is_empty() {
+            *state = None;
+            return true;
+        }
+        return false;
+    }
+    if length >= 3 {
+        *state = Some((marker, length));
+        return true;
+    }
+    false
+}
+
 /// Reads one bounded row, joining wrapped text without consuming a new row or control event.
 pub(super) fn wrapped_row(lines: &[&str], start: usize) -> Option<(String, String, usize)> {
     let mut row = lines.get(start)?.trim().to_owned();

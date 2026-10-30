@@ -29,6 +29,17 @@ fn readable_handoff_migrates_and_retains_authority_and_replay_checks() -> TestRe
         .map(|line| format!("> {line}\n"))
         .collect::<String>();
     assert!(migrate_legacy_handoff(&historical, &migration_context()).is_err());
+    let fenced = format!("~~~markdown\n{table}\n~~~\n");
+    assert!(migrate_legacy_handoff(&fenced, &migration_context()).is_err());
+    let partial_fence = format!("````markdown\n```\n{table}\n````\n");
+    assert!(migrate_legacy_handoff(&partial_fence, &migration_context()).is_err());
+    let unauthorized = table.replace(
+        "| delivery | confirmed |",
+        "| delivery | confirmed |\n| message permission | absent |",
+    );
+    assert!(migrate_legacy_handoff(&unauthorized, &migration_context()).is_err());
+    let conflicting = table.replace("| delivery | confirmed |", "| delivery | confirmed |\n| message permission | granted |\n| message permission | absent |");
+    assert!(migrate_legacy_handoff(&conflicting, &migration_context()).is_err());
     assert!(
         migrate_legacy_handoff(
             &table.replace(
@@ -50,6 +61,8 @@ fn readable_delta_preserves_lane_and_event_authority() -> TestResult {
         .replace("| owner | child-owned |", "| owner | `child-owned` |");
     let migrated = migrate_legacy_handoff(&wrapped, &migration_context())?;
     assert!(validate_handoff(&migrated, &authority()).is_ok());
+    let fenced = format!("```markdown\n{wrapped}\n```\n");
+    assert!(migrate_legacy_handoff(&fenced, &migration_context()).is_err());
     assert!(
         migrate_legacy_handoff(
             &text.replace("| owner | child-owned |", "| owner | parent-owned |"),

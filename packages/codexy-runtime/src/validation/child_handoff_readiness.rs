@@ -9,7 +9,7 @@ use super::child_handoff_readiness_text::has_non_claim_phrase_label;
 // Reject inconsistent current Git and review evidence.
 pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let normalized = handoff.to_ascii_lowercase();
-    let text = super::readiness_context::current_text(&normalized);
+    let text = super::child_handoff_readiness_table::normalized(&normalized);
     let claims_pr_ready = claims::pr_ready(&text);
     let claims_child_readiness = claims::child_readiness(&text);
     let claims_clean = claims::clean(&text);
@@ -17,11 +17,9 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let claims_pushed = claims::pushed(&text);
     let claims_current_pr_readiness = is_current_pr_readiness(handoff);
     let mut errors = Vec::new();
-    let table_labels = super::child_handoff_readiness_table::label_text(&text);
-    let claim_text = format!("{text}\n{table_labels}");
     errors.extend(
         negative_proof_labels(
-            &claim_text,
+            &text,
             claims_pr_ready,
             claims_clean,
             claims_synced,
@@ -114,7 +112,7 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
 // Only affirmative current readiness activates the PR evidence gate.
 pub(super) fn is_current_pr_readiness(handoff: &str) -> bool {
     let normalized = handoff.to_ascii_lowercase();
-    let text = super::readiness_context::current_text(&normalized);
+    let text = super::child_handoff_readiness_table::normalized(&normalized);
     let claims_pr_ready = claims::pr_ready(&text);
     let claims_child_readiness = claims::child_readiness(&text);
     let claims_synced = claims::synced(&text);

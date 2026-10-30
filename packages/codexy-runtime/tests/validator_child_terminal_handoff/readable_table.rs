@@ -117,6 +117,16 @@ fn terminal_handoff_accepts_a_readable_table() -> TestResult {
         "| Task | Status | Next owner |\n| --- | --- | --- |\n| child-a | running | worker-a |\n| child-b | waiting | parent |\n\n{evidence}"
     );
     assert!(super::run_validator(&multi_task)?.status.success());
+    let historical = evidence
+        .replace(
+            "Terminal parent handoff:\n",
+            "~~~markdown\nTerminal parent handoff:\n",
+        )
+        .replace(
+            "Terminal child transition: action=archive",
+            "~~~\nTerminal child transition: action=archive",
+        );
+    assert!(!super::run_validator(&historical)?.status.success());
     let formatted = evidence
         .replace("Terminal parent handoff:\n", "Parent handoff:\n\n")
         .replace("| Field | Value |", "| Item | Details |")

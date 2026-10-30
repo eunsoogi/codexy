@@ -33,14 +33,13 @@ pub(super) fn current_text(text: &str) -> String {
     let mut current = String::new();
     let mut stale_heading = false;
     let mut stale_label = false;
-    let mut fenced = false;
+    let mut fence = None;
     for (index, raw_line) in lines.iter().enumerate() {
         let trimmed = without_container_prefix(raw_line);
-        if trimmed.starts_with("```") {
-            fenced = !fenced;
+        if super::child_message_table::fence_boundary(trimmed, &mut fence) {
             continue;
         }
-        if fenced || trimmed.starts_with('>') {
+        if fence.is_some() || trimmed.starts_with('>') {
             continue;
         }
         if trimmed.starts_with('#') {
