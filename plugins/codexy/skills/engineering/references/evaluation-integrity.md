@@ -74,11 +74,11 @@ only favorable runs to resolve the regression.
 The repository's evaluator procedure remains repository-only; a packaged user
 does not need that local skill installed. When selected, that procedure owns
 case execution and recording; this document owns product evaluation meaning and
-independence. A designated evaluator can implement this access boundary with
-its available authorized tools. Role labels alone do not establish
-independence, and this document MUST NOT create agents or change assigned
-models. Product instructions MUST NOT contain private answers. Before
-author-facing handoff, the evaluator MUST check allowed disclosure fields and
-preserve unsuccessful and invalid runs privately. If private execution,
-isolation, or comparison cannot be established, MUST report the permitted status
-and failed dimension; MUST NOT claim successful holdout evaluation.
+independence. A designated evaluator can implement this access boundary with its
+available authorized tools. Role labels alone do not establish independence, and
+this document MUST NOT create agents or change assigned models. Product
+instructions MUST NOT contain private answers. Before author-facing handoff, the
+evaluator MUST check allowed disclosure fields and preserve unsuccessful and
+invalid runs privately. If private execution, isolation, or comparison cannot be
+established, MUST report the permitted status and failed dimension; MUST NOT
+claim successful holdout evaluation.

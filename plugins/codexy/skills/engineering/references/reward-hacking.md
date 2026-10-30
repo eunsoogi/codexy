@@ -40,9 +40,9 @@ This check detects divergence rather than treating all optimization as suspect.
 For supported overfitting or gaming signals, MUST suspend further optimization
 of the affected branch against the suspect proxy and withhold rule promotion
 under [evaluation integrity](evaluation-integrity.md). MUST preserve the
-candidate, observed failures, and reason for suspension.
-Suspending a strategy branch MUST NOT pause a native goal, cancel unrelated
-authorized work, or change ownership.
+candidate, observed failures, and reason for suspension. Suspending a strategy
+branch MUST NOT pause a native goal, cancel unrelated authorized work, or change
+ownership.
 
 MUST select a proportionate stronger evaluation within the limits kept by the
 [shared improvement invariants](../../self-improvement/SKILL.md#shared-improvement-invariants).
@@ -83,10 +83,9 @@ MUST follow the supported-signal response above: keep the affected optimization
 branch suspended pending the fresh, uncontaminated evaluation required by
 [evaluation integrity](evaluation-integrity.md). If that check is unavailable,
 MUST report the limit and retain suspension. MUST preserve the private
-disclosure boundary. A new score after adjusting the evaluator is not
-comparable by default; apply the evaluation integrity contract and preserve the
-earlier results. MUST NOT remove failed cases or relax criteria to claim a
-recovery.
+disclosure boundary. A new score after adjusting the evaluator is not comparable
+by default; apply the evaluation integrity contract and preserve the earlier
+results. MUST NOT remove failed cases or relax criteria to claim a recovery.
 
 Reviewing a proxy's fidelity is allowed within its existing scope. Changing the
 meaning of the protected goal or original success criteria is not: MUST report

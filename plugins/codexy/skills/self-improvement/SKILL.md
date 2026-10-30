@@ -5,8 +5,8 @@ description: Use when repeated failure, uncertain premises, conflicting verifica
 
 # Self-improvement
 
-Improve how the current task reaches and verifies its goal. This skill changes
-a supported strategy or evaluation method; it does not train model weights or
+Improve how the current task reaches and verifies its goal. This skill changes a
+supported strategy or evaluation method; it does not train model weights or
 grant permission for future work.
 
 ## Shared improvement invariants

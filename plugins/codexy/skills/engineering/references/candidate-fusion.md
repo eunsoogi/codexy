@@ -3,7 +3,8 @@
 Use after exploring meaningful alternatives under
 [strategy search](strategy-search.md), when combining their strengths could
 improve on selecting one candidate. Fusion is optional. When selected, it MUST
-follow the [shared improvement invariants](../../self-improvement/SKILL.md#shared-improvement-invariants).
+follow the
+[shared improvement invariants](../../self-improvement/SKILL.md#shared-improvement-invariants).
 This guide neither redesigns branch management nor applies code or creates an
 executor.
 

@@ -33,9 +33,8 @@ exact invocations, measurements, and their sources. MUST distinguish observed
 process and outcome validity. Unavailable measurements remain unavailable with
 reasons; estimates MUST NOT replace them.
 
-For baseline comparison, MUST follow the packaged evaluation integrity
-criteria for same-case, original-criteria, and materially equivalent
-comparisons. MUST
+For baseline comparison, MUST follow the packaged evaluation integrity criteria
+for same-case, original-criteria, and materially equivalent comparisons. MUST
 document condition differences privately and mark incomparable runs invalid or
 needs-review. Preserve all failed, interrupted, invalid, and needs-review
 records, including their causes.

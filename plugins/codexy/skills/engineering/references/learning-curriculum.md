@@ -2,7 +2,8 @@
 
 Use this guide when bounded continuing improvement is within the current task's
 scope, or when asked to propose the next diagnostic task. This method MUST
-follow the [shared improvement invariants](../../self-improvement/SKILL.md#shared-improvement-invariants).
+follow the
+[shared improvement invariants](../../self-improvement/SKILL.md#shared-improvement-invariants).
 Selection can finish with a proposal; it does not authorize execution.
 
 Consume current [strategy evidence](strategy-search.md) and
