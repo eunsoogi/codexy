@@ -57,17 +57,15 @@ polled, messaged, interrupted, replaced, or duplicated. Use
 
 ## Proof State To Retain
 
-MUST retain issue/PR, branch/worktree, owner boundary and Worker task id,
-head/base SHAs, checks, unresolved review ids and outdated state, verification
-commands/results, and merge readiness or explicit wait/stop condition.
-
-Some lane gates may legitimately be absent, especially in issue-only, pre-PR,
-Orchestrator-owned, or pre-review loops. MUST record those slots explicitly as
-not-created or not-applicable states with a short reason instead of inventing
-evidence or stalling the lane. MUST use those states only when the gate
-genuinely does not apply or has not been created yet. For gates that MUST exist
-for the current lane, refresh existing gates directly instead of inferring them
-from older context.
+For implementation recovery, retain the current owner, worktree, branch, HEAD,
+and open obligations. Refresh checks, review, verification, PR, or release state
+only when an active obligation depends on that surface. Plan-only recovery MUST
+NOT require unrelated PR or release proof. Use
+[Dreaming's current-state recovery](../../dreaming/SKILL.md#refresh-current-state)
+to select what to refresh, and [context retention](context-tiers.md) for typed
+omissions in the runtime envelope. The
+[goal-transition handoff contract](goal-transition-reporting.md) owns terminal
+receipt fields and delivery; this guide MUST NOT redefine that data shape.
 
 ## Event-driven delta
 
@@ -155,11 +153,12 @@ gate points to them.
 
 ## Compaction Budget
 
-After compaction, MUST refresh the single active-lane inventory: latest SHAs,
-unresolved review ids, child ownership/stop condition, current-gate proof, and
-relevant tool exposure mismatches. MUST reuse prior commands only while they
-prove that gate. MUST NOT reload unchanged references, old review/command
-output, resolved feedback, or closed lanes unless referenced by a current gate.
+After compaction, MUST follow
+[Dreaming's current-state recovery](../../dreaming/SKILL.md#refresh-current-state)
+to select the live facts needed for the next permitted action. MUST reuse prior
+commands only while they prove a relevant gate. MUST NOT reload unchanged
+references, old review/command output, resolved feedback, or closed lanes unless
+a current gate requires them.
 
 ## Handoff Discipline
 
