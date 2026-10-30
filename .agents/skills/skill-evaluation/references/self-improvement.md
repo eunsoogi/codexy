@@ -33,8 +33,9 @@ exact invocations, measurements, and their sources. MUST distinguish observed
 process and outcome validity. Unavailable measurements remain unavailable with
 reasons; estimates MUST NOT replace them.
 
-For baseline comparison, follow the packaged evaluation integrity criteria for
-same-case, original-criteria, and materially equivalent comparisons. MUST
+For baseline comparison, MUST follow the packaged evaluation integrity
+criteria for same-case, original-criteria, and materially equivalent
+comparisons. MUST
 document condition differences privately and mark incomparable runs invalid or
 needs-review. Preserve all failed, interrupted, invalid, and needs-review
 records, including their causes.
@@ -42,11 +43,11 @@ records, including their causes.
 ## Re-evaluation and safe feedback
 
 After a meaningful candidate, strategy, harness, evaluator, or proxy change,
-follow the packaged fresh-freeze and contamination rules. MUST NOT reuse a case
-that reached the author as a private case. Changed or contaminated cases and
-their prior results MUST remain recorded; replacement cases belong to a new
-run. Unchanged private cases may support a comparison only under the packaged
-boundary's privacy and comparability conditions.
+MUST follow the packaged fresh-freeze and contamination rules. A case that
+reached the author MUST NOT be reused as a private case. Changed or contaminated
+cases and their prior results MUST remain recorded; replacement cases belong to
+a new run. Unchanged private cases may support a comparison only under the
+packaged boundary's privacy and comparability conditions.
 
 Before releasing feedback, MUST inspect it for leakage. Only case hashes,
 status, failed dimensions, and cost summaries may leave evaluator ownership.
@@ -55,7 +56,7 @@ links, exact invocations, or raw measurements that expose cases. If a summary
 leaks a case, MUST mark the affected evaluation invalid and arrange a fresh
 private run; an edited public summary alone does not restore case secrecy.
 
-For development and holdout divergence, follow the packaged evaluation
+For development and holdout divergence, MUST follow the packaged evaluation
 integrity promotion criteria and report only the allowed status and failed
 dimension. Authors repair from the public rubric and development cases; MUST NOT
 lower criteria or remove failed holdout cases. This procedure does not itself

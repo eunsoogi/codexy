@@ -43,7 +43,7 @@ minimum is not proof of universal generalization, statistical superiority, or
 reliability beyond the observed sample. MUST keep unsuccessful diagnostics and
 uncertainty visible alongside successful ones.
 
-For a meaningful strategy or harness change, follow
+For a meaningful strategy or harness change, MUST follow
 [evaluation integrity](evaluation-integrity.md), which owns independent-holdout
 and promotion criteria. Apply [reward-hacking checks](reward-hacking.md) when
 evidence supports them. A single weak feedback item MUST NOT justify adoption;
