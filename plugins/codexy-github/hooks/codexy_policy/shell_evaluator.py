@@ -6,14 +6,14 @@ from dataclasses import replace
 from itertools import count
 from typing import Protocol
 
-from .execution_context import assignment, at as context_at
+from .execution_context import assignment
 from .execution_context_types import CommandEffect, ExecutionContext
 from .execution_filesystem import after_external_command
 from .invocation import Invocation, resolve
 from .shell_builtins import test_effect
 from .shell_brace_expansion import is_product as is_brace_product
 from .shell_brace_expansion import restore as restore_brace_word
-from .shell_context import changed_directory
+from .shell_context import after_cd, changed_directory
 from .shell_credentials import CredentialPolicy, credential_assignment
 from .shell_groups import GroupSyntaxError, parse
 from .shell_opaque import DYNAMIC_NAME
@@ -153,10 +153,11 @@ def _segment(
         directory = changed_directory(
             [invocation.executable, *invocation.arguments], invocation.context.cwd
         )
-        return (
-            (True, CommandEffect(None))
-            if directory.opaque
-            else (False, CommandEffect(context_at(invocation.context, directory.cwd)))
+        if directory.opaque:
+            return True, CommandEffect(None)
+        # A parsed target can still fail at runtime, so keep the original shell state too.
+        return False, CommandEffect(
+            after_cd(invocation.context, directory.cwd), invocation.context
         )
     if invocation.executable in {".", "source"}:
         return True, CommandEffect(None)

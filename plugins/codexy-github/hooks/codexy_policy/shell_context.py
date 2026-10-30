@@ -4,14 +4,38 @@ from __future__ import annotations
 
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
+
+from .execution_context_types import ExecutionContext
+from .repository import git_directory_owned, repository_owned
 
 
 @dataclass(frozen=True)
 class DirectoryChange:
     cwd: str
     opaque: bool = False
+
+
+def at(context: ExecutionContext, cwd: str) -> ExecutionContext:
+    """Apply a command-scoped directory without changing the shell's PWD."""
+    owned = (
+        git_directory_owned(cwd, context.git_dir)
+        if context.git_dir is not None
+        else repository_owned(cwd)
+    )
+    return replace(context, cwd=cwd, cwd_owned=owned)
+
+
+def after_cd(context: ExecutionContext, cwd: str) -> ExecutionContext:
+    """Record a successful shell directory change and its modeled PWD value."""
+    updated = at(context, cwd)
+    environment = dict(updated.environment)
+    if Path(cwd).is_absolute():
+        environment["PWD"] = cwd
+    else:
+        _ = environment.pop("PWD", None)
+    return replace(updated, environment=tuple(environment.items()))
 
 
 REDIRECTION = re.compile(r"^\d*(?:>>|<>|>|<)(.*)$")

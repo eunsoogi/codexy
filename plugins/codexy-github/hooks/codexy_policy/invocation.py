@@ -8,7 +8,6 @@ from .execution_context import (
     ExecutionContext,
     assigned_variables,
     assignment,
-    at,
     expand,
     expand_tokens,
     export_variables,
@@ -29,7 +28,7 @@ from .invocation_options import (
     exec_command as _exec,
     xargs as _xargs,
 )
-from .shell_context import command_option, name, resolve_cwd
+from .shell_context import at, command_option, name, resolve_cwd
 
 MAX_WRAPPER_DEPTH = 8
 SHELL_INTERPRETERS = {"sh", "bash", "zsh", "dash"}

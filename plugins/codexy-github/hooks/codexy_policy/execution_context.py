@@ -34,7 +34,12 @@ def assign(value: str, context: ExecutionContext) -> ExecutionContext:
     expanded = expand(assigned, context)
     environment = dict(context.environment)
     # Unknown expansion must not be used as repository-selection evidence later in the command.
-    if expanded is None or (key in POLICY_SELECTORS and DYNAMIC_VALUE in expanded):
+    # A PWD assignment is safe only when it preserves the modeled shell value.
+    if (
+        expanded is None
+        or (key in POLICY_SELECTORS and DYNAMIC_VALUE in expanded)
+        or (key == "PWD" and expanded != environment.get("PWD"))
+    ):
         environment[key] = assigned
         return replace(
             context,
@@ -80,16 +85,6 @@ def assigned_variables(
     for argument in arguments:
         context = assign(argument, context)
     return context
-
-
-def at(context: ExecutionContext, cwd: str) -> ExecutionContext:
-    # A cd-like transition changes which repository owns later relative Git effects.
-    owned = (
-        git_directory_owned(cwd, context.git_dir)
-        if context.git_dir is not None
-        else repository_owned(cwd)
-    )
-    return replace(context, cwd=cwd, cwd_owned=owned)
 
 
 def remote_url(
