@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from collections.abc import Callable
 from pathlib import Path
@@ -22,6 +23,7 @@ native_command = cast(
 sys.path.insert(0, str(PLUGIN / "hooks"))
 from codexy_policy.execution_context import assign  # noqa: E402
 from codexy_policy.execution_context_types import ExecutionContext  # noqa: E402
+from codexy_policy.shell_context import after_cd, at  # noqa: E402
 from codexy_policy.shell_entry import context as shell_context  # noqa: E402
 
 
@@ -41,9 +43,11 @@ class ShellWorkingDirectoryContextTests(unittest.TestCase):
             ),
         )
 
-    def _classify(self, command: str, event: str = "PreToolUse") -> str:
+    def _classify(
+        self, command: str, event: str = "PreToolUse", cwd: str | None = None
+    ) -> str:
         hook = PLUGIN / "hooks/codexy-destructive-command.sh"
-        cwd = str(PLUGIN.parents[1])
+        cwd = cwd or str(PLUGIN.parents[1])
         payload = json.dumps(
             {
                 "hook_event_name": event,
@@ -78,15 +82,62 @@ class ShellWorkingDirectoryContextTests(unittest.TestCase):
         context = self._context("relative/directory")
 
         assigned = assign("worktree_path=$PWD", context)
+        conflicting = assign("PWD=relative/directory", context)
 
         self.assertNotIn("PWD", dict(context.environment))
         self.assertTrue(assigned.opaque_environment)
+        self.assertTrue(conflicting.opaque_environment)
+
+    def test_scoped_directory_does_not_rewrite_shell_pwd(self) -> None:
+        cwd = str(PLUGIN.parents[1])
+        plugins = str(Path(cwd) / "plugins")
+        context = self._context(cwd)
+
+        shell_context_after_cd = after_cd(context, plugins)
+        scoped_context = at(context, plugins)
+
+        self.assertEqual(dict(shell_context_after_cd.environment)["PWD"], plugins)
+        self.assertEqual(scoped_context.cwd, plugins)
+        self.assertEqual(dict(scoped_context.environment)["PWD"], cwd)
 
     def test_known_pwd_allows_bounded_read_only_git_status(self) -> None:
         command = 'worktree_path="$PWD" git status --short'
         for event in ("PermissionRequest", "PreToolUse"):
             with self.subTest(event=event):
                 self.assertEqual(self._classify(command, event), "")
+
+    def test_shell_cd_keeps_pwd_assignment_in_the_current_directory(self) -> None:
+        command = 'cd plugins && PWD="$PWD" git status --short'
+        for event in ("PermissionRequest", "PreToolUse"):
+            with self.subTest(event=event):
+                self.assertEqual(self._classify(command, event), "")
+
+    def test_shell_cd_does_not_let_stale_pwd_hide_repository_deletion(self) -> None:
+        repository = str(PLUGIN.parents[1])
+        command = (
+            'initial_directory="$PWD"\n'
+            f'cd "{repository}" && cd "$PWD" && rm -rf packages'
+        )
+        for event in ("PermissionRequest", "PreToolUse"):
+            with self.subTest(event=event):
+                output = self._classify(command, event, cwd="/tmp")
+                self.assertIn("CODEXY_DESTRUCTIVE_COMMAND_DESTRUCTIVE_EFFECT", output)
+
+    def test_failed_shell_cd_keeps_the_original_pwd_for_later_commands(self) -> None:
+        repository = str(PLUGIN.parents[1])
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            missing_directory = Path(temporary_directory) / "missing"
+            command = (
+                f'cd "{missing_directory}" ; cd "$PWD" '
+                "&& rm -rf packages"
+            )
+
+            for event in ("PermissionRequest", "PreToolUse"):
+                with self.subTest(event=event):
+                    output = self._classify(command, event, cwd=repository)
+                    self.assertIn(
+                        "CODEXY_DESTRUCTIVE_COMMAND_DESTRUCTIVE_EFFECT", output
+                    )
 
     def test_unknown_dynamic_and_conflicting_pwd_remain_denied(self) -> None:
         commands = (
