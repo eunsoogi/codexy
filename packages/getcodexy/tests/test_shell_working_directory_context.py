@@ -127,10 +127,7 @@ class ShellWorkingDirectoryContextTests(unittest.TestCase):
         repository = str(PLUGIN.parents[1])
         with tempfile.TemporaryDirectory() as temporary_directory:
             missing_directory = Path(temporary_directory) / "missing"
-            command = (
-                f'cd "{missing_directory}" ; cd "$PWD" '
-                "&& rm -rf packages"
-            )
+            command = f'cd "{missing_directory}" ; cd "$PWD" && rm -rf packages'
 
             for event in ("PermissionRequest", "PreToolUse"):
                 with self.subTest(event=event):
