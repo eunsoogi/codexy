@@ -104,8 +104,9 @@ Not publishing because:
 - MUST NOT change a release-owned version field without synchronizing its other
   sources of truth.
 - MUST NOT claim a release candidate is ready from a dirty worktree.
-- MUST NOT publish from a dirty tree or tag before merge unless the workflow
-  explicitly requires a pre-merge tag.
+- MUST NOT publish from a dirty tree.
+- MUST NOT tag before the release PR is merged unless the workflow explicitly
+  requires pre-merge tags.
 - MUST NOT claim artifact, installation, or publication readiness from
   source-tree validation.
 - MUST NOT claim a plugin release is marketplace-ready without the current
