@@ -11,36 +11,41 @@ memory. It MUST NOT mutate task, Git, GitHub, review, owner, or memory state.
 
 ## Refresh Current State
 
-1. MUST re-read the governing instruction and current task or issue scope.
-2. MUST refresh the worktree, branch, HEAD, base, issue or PR, checks, review
-   threads, owner, and stop condition from their authoritative surfaces.
-3. MUST compare every inherited claim with that current evidence. A summary or
-   memory item is context, never current-state proof by itself.
-4. If the current head, owner, stop condition, or conflicting state cannot be
-   resolved, stop with `BLOCKED_AUTHORITY_REGRESSION`; MUST NOT infer it.
+1. MUST re-read governing instructions, the current request, and the native
+   goal's current state and objective. Identify the authorized owner, scope,
+   stop condition, and current unresolved obligation. Summaries and memory are
+   context, never current-state proof by themselves.
+2. MUST select only the authoritative surfaces needed to resume that work. For
+   plan-only recovery, refresh the request, goal, and owner, and read the one
+   assigned plan when present; MUST NOT require unrelated GitHub, PR, review,
+   check, or release evidence. For implementation recovery, refresh the actual
+   worktree, branch, current HEAD and base, owner, and open issue obligations.
+   Refresh PR, check, review, or external-gate state only when that surface
+   exists and an open obligation depends on it. Other work MUST use only its
+   relevant current surfaces. MUST NOT invent a plan, issue, PR, gate, or owner.
+3. MUST compare each inherited claim with those current readbacks. Keep
+   confirmed constraints in `Remember` and evidenced unresolved obligations in
+   `Fix`; place resolved, stale, superseded, duplicated, or unproved history in
+   `Forget or demote`. Resolved work MUST NOT be resumed. A stale head is
+   demoted, while a current exact-head failure remains active. Preserve
+   unchanged completed history without reloading whole references; refresh only
+   missing current facts needed to choose the next permitted action.
+4. If the current goal, owner, implementation head, relevant obligation, stop
+   condition, or conflicting state cannot be resolved, stop with
+   `BLOCKED_AUTHORITY_REGRESSION`; MUST NOT infer it.
 
-Current authoritative task/Git/GitHub state wins over inherited summaries and
-memory. Resolved feedback and superseded checks stay resolved; a stale head is
-demoted, while a current exact-head failure remains active.
+## Preserve active failure episodes
 
-## Active failure-episode recovery
-
-When a repair flow has an open episode, MUST reconstruct it from the existing
-task or recovery record: distinct actual failures, affected original criteria,
-partial passes, and the last Advisor consultation boundary. MUST preserve that
-context in Remember or Fix; model changes, handoffs, and compaction MUST NOT
-reset it. MUST NOT count duplicate reports, rereads, unchanged waits, intended
-initial RED, or reproductions of the same defect without a new repair or
-verification attempt as new events. MUST NOT close the episode after a partial
-success; MUST close it only when all related original criteria pass.
-
-If the record cannot establish the event sequence or consultation boundary, MUST
-keep that state unknown and MUST stop before the next speculative repair. MUST
-recover the relevant existing record or refer the decision to the Orchestrator
-before proceeding. MUST use the canonical
+When a repair flow already has an open failure episode, MUST preserve its
+existing task or recovery record through model changes, handoffs, and
+compaction, including enough context to recover the observed failure sequence,
+affected original criteria, partial passes, and last consultation boundary. The
+canonical
 [Advisor consultation rule](../orchestration/references/advisor-consultation.md#repeated-and-chained-repair-failures)
-when due. If consultation is unavailable, MUST stop unsupported changes in that
-episode and report the limitation to the Orchestrator. MUST NOT create a runtime
+owns episode boundaries, event counting, closure, and consultation criteria;
+MUST use it instead of defining those criteria here. If the record cannot
+establish the sequence or consultation boundary required by that rule, keep the
+state unknown and stop before a speculative repair. MUST NOT create a runtime
 counter, permanent database, or new record format.
 
 ## Resuming Implementation

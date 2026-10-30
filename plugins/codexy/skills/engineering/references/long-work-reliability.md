@@ -10,14 +10,12 @@ authoritative.
 
 ## Preserve active repair episodes
 
-During live work, MUST use the shared
+During live repair work, the canonical
 [Advisor consultation rule](../../orchestration/references/advisor-consultation.md#repeated-and-chained-repair-failures)
-to count repeated or chained failures and decide when to consult. MUST keep an
-open episode in the existing task or recovery record so model changes, context
-compaction, and partial success do not erase it. MUST keep independent Worker
-episodes separate and close an episode only after all related original criteria
-pass. This is an execution-time escalation rule, not another reliability
-counter; the run denominators and dimensions below remain unchanged.
+owns episode boundaries, event counting, closure, and consultation criteria.
+Reliability summaries MUST preserve observed attempts and outcomes from the
+existing task or recovery record; they MUST NOT define or retally live failure
+episodes. The run denominators and dimensions below remain unchanged.
 
 ## Preserve the observation set
 

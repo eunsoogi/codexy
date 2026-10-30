@@ -1,9 +1,13 @@
 # Context retention and safety
 
-The runtime retains safety state on every handoff: issue and PR identity, owner
-and worktree, base and head, dirty-index state, checks, unresolved review
+The runtime handoff carries its existing safety state: issue and PR identity,
+owner and worktree, base and head, dirty-index state, checks, unresolved review
 threads, selected reviewer state, verification, external gates, and the next
-action. Omitted safety state is typed and never treated as proof of absence.
+action. This describes transported state; it does not require refreshing every
+listed surface during recovery. Use
+[Dreaming's current-state procedure](../../dreaming/SKILL.md#refresh-current-state)
+to select relevant live facts. Omitted safety state is typed and never treated
+as proof of absence.
 
 Task references are selected from the closed task, surface, and risk routes in
 the runtime handoff contract. Unknown, ambiguous, high-risk, security,
