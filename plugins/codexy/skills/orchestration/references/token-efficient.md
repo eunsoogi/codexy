@@ -153,11 +153,12 @@ gate points to them.
 
 ## Compaction Budget
 
-After compaction, MUST refresh the single active-lane inventory: latest SHAs,
-unresolved review ids, child ownership/stop condition, current-gate proof, and
-relevant tool exposure mismatches. MUST reuse prior commands only while they
-prove that gate. MUST NOT reload unchanged references, old review/command
-output, resolved feedback, or closed lanes unless referenced by a current gate.
+After compaction, MUST follow
+[Dreaming's current-state recovery](../../dreaming/SKILL.md#refresh-current-state)
+to select the live facts needed for the next permitted action. MUST reuse prior
+commands only while they prove a relevant gate. MUST NOT reload unchanged
+references, old review/command output, resolved feedback, or closed lanes unless
+a current gate requires them.
 
 ## Handoff Discipline
 
