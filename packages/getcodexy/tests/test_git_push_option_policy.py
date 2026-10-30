@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import json
 import os
 import subprocess
@@ -11,17 +12,27 @@ import unittest
 
 from github_native_hook_support import PLUGIN, ROOT, native_command
 
-sys.path.insert(0, str(PLUGIN / "hooks"))
-try:
-    normalize_git_options = importlib.import_module(
-        "codexy_policy.git_options"
-    ).normalize
-    evaluate_git_policy = importlib.import_module("codexy_policy.shell_git").evaluate
-    ExecutionContext = importlib.import_module(
-        "codexy_policy.execution_context_types"
-    ).ExecutionContext
-finally:
-    sys.path.pop(0)
+# Both plugins use this package name; keep the GitHub test modules isolated in mixed suites.
+_POLICY_PACKAGE = "_codexy_github_policy_tests"
+_POLICY_ROOT = PLUGIN / "hooks" / "codexy_policy"
+_POLICY_SPEC = importlib.util.spec_from_file_location(
+    _POLICY_PACKAGE,
+    _POLICY_ROOT / "__init__.py",
+    submodule_search_locations=[str(_POLICY_ROOT)],
+)
+if _POLICY_SPEC is None or _POLICY_SPEC.loader is None:
+    raise ImportError(f"Could not load GitHub policy package at {_POLICY_ROOT}")
+_POLICY_MODULE = importlib.util.module_from_spec(_POLICY_SPEC)
+sys.modules[_POLICY_PACKAGE] = _POLICY_MODULE
+_POLICY_SPEC.loader.exec_module(_POLICY_MODULE)
+
+normalize_git_options = importlib.import_module(
+    f"{_POLICY_PACKAGE}.git_options"
+).normalize
+evaluate_git_policy = importlib.import_module(f"{_POLICY_PACKAGE}.shell_git").evaluate
+ExecutionContext = importlib.import_module(
+    f"{_POLICY_PACKAGE}.execution_context_types"
+).ExecutionContext
 
 
 def evaluate_source_hook(command: str) -> str:
@@ -90,6 +101,40 @@ class GitPushOptionPolicyTests(unittest.TestCase):
                     [option, "origin", refspec],
                 )
                 self.assertFalse(self.evaluate_push([option, "origin", refspec]))
+
+    def test_github_policy_import_keeps_core_windows_helper_resolvable(self) -> None:
+        # Both plugins use codexy_policy, so a test import must not claim the core package name.
+        script = """
+import importlib
+import sys
+from pathlib import Path
+
+from test_git_push_option_policy import ROOT
+
+core_hooks = ROOT / "plugins" / "codexy" / "hooks"
+sys.path.insert(0, str(core_hooks))
+module = importlib.import_module("codexy_policy.windows_timing")
+expected = core_hooks / "codexy_policy" / "windows_timing.py"
+assert Path(module.__file__).resolve() == expected.resolve()
+"""
+        environment = {
+            **os.environ,
+            "PYTHONPATH": os.pathsep.join(
+                (
+                    str(ROOT / "packages/getcodexy/src"),
+                    str(ROOT / "packages/getcodexy/tests"),
+                    os.environ.get("PYTHONPATH", ""),
+                )
+            ),
+        }
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            text=True,
+            env=environment,
+            check=False,
+        )
+        self.assertEqual((result.returncode, result.stderr), (0, ""))
 
     def test_destructive_and_unknown_push_forms_still_deny(self) -> None:
         arguments = [
