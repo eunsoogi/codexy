@@ -155,7 +155,7 @@ waits or to reach a threshold.
 When parent action or an external event can advance an unmet phase, the task
 MUST keep its actual goal state and ownership. Use
 [goal-transition-reporting](../orchestration/references/goal-transition-reporting.md)
-for the report and handoff, and
+for the readable table report and handoff, and
 [runtime-heartbeats](../orchestration/references/runtime-heartbeats.md) for the
 supported wake route. Neither a wait nor unavailable monitoring changes the
 blocked-state criteria above. The task MUST NOT ask the user to clear the goal

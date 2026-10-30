@@ -31,7 +31,7 @@ pub(super) fn terminal_goal_transition(status: &str, key: &str, include_handoff:
 }
 
 /// A completed phase uses one receipt and a local goal result, with no parent response.
-fn phase_evidence(delivery: &str, status: &str) -> String {
+pub(super) fn phase_evidence(delivery: &str, status: &str) -> String {
     let receipt = handoff_for_parent("phase-1401", "parent-375")
         .replace("Terminal parent handoff:", "Idle wait handoff:")
         .replace("delivery=confirmed; task surface=codex task/thread", delivery)

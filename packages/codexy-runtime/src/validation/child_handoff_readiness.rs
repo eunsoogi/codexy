@@ -17,9 +17,11 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
     let claims_pushed = claims::pushed(&text);
     let claims_current_pr_readiness = is_current_pr_readiness(handoff);
     let mut errors = Vec::new();
+    let table_labels = super::child_handoff_readiness_table::label_text(&text);
+    let claim_text = format!("{text}\n{table_labels}");
     errors.extend(
         negative_proof_labels(
-            &text,
+            &claim_text,
             claims_pr_ready,
             claims_clean,
             claims_synced,
@@ -66,7 +68,9 @@ pub(super) fn check(handoff: &str, pr_state: &Value) -> Vec<String> {
                 "child handoff claims pushed/synced branch but current branch status is not pushed: {status}"
             ));
         }
-        if let Some(error) = pushed_head_mismatch(handoff, pr_state) {
+        if let Some(error) =
+            super::child_handoff_readiness_heads::pushed_head_mismatch(handoff, pr_state)
+        {
             errors.push(error);
         }
     }
@@ -179,33 +183,6 @@ fn negative_proof_labels(
                 .any(|phrase| has_non_claim_phrase_label(text, phrase)))
         .then_some(label)
     })
-}
-
-fn pushed_head_mismatch(handoff: &str, pr_state: &Value) -> Option<String> {
-    let Some(pr_head) = string_field(pr_state, "headRefOid").filter(|head| !head.is_empty()) else {
-        return Some(
-            "child handoff claims pushed/synced head but PR state is missing headRefOid".into(),
-        );
-    };
-    let claimed = super::child_handoff_readiness_heads::claimed_pushed_heads(handoff);
-    if claimed.is_empty() {
-        return Some(format!(
-            "child handoff claims pushed/synced head but PR headRefOid is {pr_head}, not any comparable handoff head"
-        ));
-    }
-    if claimed
-        .iter()
-        .all(|oid| pr_head.to_ascii_lowercase().starts_with(oid))
-    {
-        return None;
-    }
-    let mismatched = claimed
-        .iter()
-        .find(|oid| !pr_head.to_ascii_lowercase().starts_with(*oid));
-    Some(format!(
-        "child handoff claims pushed/synced head but PR headRefOid is {pr_head}, not {}",
-        mismatched.map_or("any comparable handoff head", String::as_str)
-    ))
 }
 
 fn has_standalone_ready_line(text: &str) -> bool {

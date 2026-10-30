@@ -67,6 +67,21 @@ fn is_gfm_delimiter_cell(cell: &str) -> bool {
     cell.len() >= 3 && cell.chars().all(|character| character == '-')
 }
 
+/// Recognizes a two-column delimiter without applying the classification row schema.
+pub(super) fn is_two_column_separator(line: &str) -> bool {
+    matches!(parse_table_separator(line), GfmDelimiterRow::Valid)
+}
+
+/// A message table may use ordinary header wording without changing classification rules.
+pub(super) fn is_field_value_header(key: &str, value: &str) -> bool {
+    ["field", "item", "fact"]
+        .iter()
+        .any(|name| key.eq_ignore_ascii_case(name))
+        && ["value", "detail", "details"]
+            .iter()
+            .any(|name| value.eq_ignore_ascii_case(name))
+}
+
 /// Tracks table headers and ordered classification rows without treating arbitrary tables as authority.
 #[derive(Default)]
 pub(super) struct GfmClassificationTable {

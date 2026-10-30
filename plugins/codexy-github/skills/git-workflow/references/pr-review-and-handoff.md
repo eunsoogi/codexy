@@ -111,11 +111,11 @@ child-owned branch or resolve a thread from prose alone.
 ## Handoff
 
 For a child-owned implementation or an explicitly selected completion-handoff
-contract, the handoff MUST bind the issue, branch/worktree, base,
-local/remote/PR head, changed paths, relevant verification, checks, selected
-review result, labels, issue linkage, and any in-scope unresolved threads. Ask
-`$orchestration` to apply its public **completion-handoff** contract to this
-captured state. An intentionally open PR MUST state the explicit parent-owned
-next gate; it is not merged completion. An ordinary authorized remote metadata
-operation does not require this handoff shape solely because the plugin is
-installed.
+contract, the handoff MUST use a readable Markdown table and bind the issue,
+branch/worktree, base, local/remote/PR head, changed paths, relevant
+verification, checks, selected review result, labels, issue linkage, and any
+in-scope unresolved threads. Ask `$orchestration` to apply its public
+**completion-handoff** contract to this captured state. An intentionally open PR
+MUST state the explicit parent-owned next gate; it is not merged completion. An
+ordinary authorized remote metadata operation does not require this handoff
+shape solely because the plugin is installed.

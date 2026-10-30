@@ -69,8 +69,9 @@ receipt fields and delivery; this guide MUST NOT redefine that data shape.
 
 MUST use this flow after compaction and before handoff:
 
-1. **Inventory once**: MUST keep one compact ledger line per active lane with
-   `issue`, `PR`, `branch`, `head`, `owner`, and `state`.
+1. **Inventory once**: MUST use a readable table for active lanes, retaining
+   each relevant issue, PR, branch, head, owner, and state without mixing facts
+   between lanes.
 2. **Accept qualifying events only**: the Orchestrator MUST use event-driven
    `wait_threads` for assigned Worker targets and preserve each target's latest
    cursor. Result sufficiency, bounded evidence reads, report routing, host

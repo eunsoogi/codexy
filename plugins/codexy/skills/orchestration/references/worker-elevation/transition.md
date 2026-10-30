@@ -158,11 +158,11 @@ The source MUST send exactly one `Terminal parent handoff:` under the existing
 [goal-transition reporting contract](../goal-transition-reporting.md), using its
 authenticated parent ID, a fresh event identity, and the Worker-to- Orchestrator
 pair. The source MUST preserve the contract's exact common bound fields and
-`delivery=confirmed; task surface=codex task/thread`. It MUST add the issue/PR,
-source and target IDs, objective, branch/worktree/HEAD and dirty-index state,
-source writer results, target goal/environment/model/parent readbacks, review
-and failure history, remaining checks, and requested ownership transfer. The
-source MUST NOT reuse the event identity for a second transition. Transport
+confirmed delivery through the Codex task/thread surface. It MUST add the
+issue/PR, source and target IDs, objective, branch/worktree/HEAD and dirty-index
+state, source writer results, target goal/environment/model/parent readbacks,
+review and failure history, remaining checks, and requested ownership transfer.
+The source MUST NOT reuse the event identity for a second transition. Transport
 acceptance is not parent approval or proof of a callback. Once the authenticated
 handoff is accepted, an unobserved callback MUST remain a separate unknown and
 MUST NOT add a parent-reply or callback-observation gate to source retirement.

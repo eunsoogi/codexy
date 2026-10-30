@@ -94,15 +94,42 @@ fn child_terminal_errors(evidence: &str) -> Vec<String> {
         .iter()
         .map(|line| line.text.as_str())
         .collect::<Vec<_>>();
-    let source = lines
+    let sources = lines
         .iter()
-        .find_map(|line| line.strip_prefix("source thread id: "))
-        .filter(|value| !value.is_empty());
+        .filter_map(|line| {
+            line.strip_prefix("source thread id: ").and_then(|value| {
+                if value.starts_with('\u{1f}') {
+                    child_terminal_handoff::field(line, "parent task")
+                } else {
+                    Some(value)
+                }
+            })
+        })
+        .filter(|value| !value.is_empty())
+        .collect::<Vec<_>>();
+    let source = sources.first().copied();
     let mut errors = child_terminal_handoff::check(&lines, source);
     if lines.iter().any(|line| {
-        line.strip_prefix("parent route: ")
-            .and_then(|route| route.split([';', ',', ' ']).next())
-            .is_some_and(child_terminal_handoff::is_local_task_target)
+        line.starts_with("source thread id: \u{1f}")
+            && child_terminal_handoff::field(line, "parent task").is_none_or(str::is_empty)
+    }) {
+        errors.push("source thread table requires one parent task identity".into());
+    }
+    if sources.iter().any(|value| Some(*value) != source) {
+        errors.push("conflicting source thread identities cannot authorize a handoff".into());
+    }
+    if lines.iter().any(|line| {
+        line.strip_prefix("parent route: ").is_some_and(|route| {
+            if route.starts_with('\u{1f}') {
+                child_terminal_handoff::field(line, "target")
+                    .is_none_or(child_terminal_handoff::is_local_task_target)
+            } else {
+                route
+                    .split([';', ',', ' '])
+                    .next()
+                    .is_some_and(child_terminal_handoff::is_local_task_target)
+            }
+        })
     }) {
         errors.push("terminal child handoff must not use local agents /root routing".into());
     }

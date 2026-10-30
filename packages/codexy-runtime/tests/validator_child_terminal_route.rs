@@ -13,6 +13,10 @@ fn validator_rejects_local_parent_routes_in_terminal_only_handoffs() -> TestResu
             !local.status.success(),
             "terminal-only handoff must reject local parent route {route:?}"
         );
+        let table = terminal_only_evidence("codex task/thread").replace(
+            "Parent route: codex task/thread", &format!("Parent route:\n| Field | Value |\n| --- | --- |\n| Target | {route} |"),
+        );
+        assert!(!run_validator(&table)?.status.success(), "table route must reject {route}");
         assert!(
             String::from_utf8_lossy(&local.stderr)
                 .contains("terminal child handoff must not use local agents /root routing")
@@ -25,6 +29,12 @@ fn validator_rejects_local_parent_routes_in_terminal_only_handoffs() -> TestResu
         "Codex task/thread route must remain valid: {}",
         String::from_utf8_lossy(&codex.stderr)
     );
+    let table = terminal_only_evidence("codex task/thread").replace(
+        "Parent route: codex task/thread",
+        "Parent route:\n| Field | Value |\n| --- | --- |\n| Target | codex task/thread |",
+    );
+    let valid = run_validator(&table)?;
+    assert!(valid.status.success(), "{}", String::from_utf8_lossy(&valid.stderr));
     Ok(())
 }
 

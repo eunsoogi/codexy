@@ -64,7 +64,11 @@ pub(super) fn field<'a>(line: &'a str, name: &str) -> Option<&'a str> {
     let mut values = line
         .split_once(": ")
         .map_or(line, |(_, value)| value)
-        .split(';')
+        .split(if line.contains('\u{1f}') {
+            '\u{1f}'
+        } else {
+            ';'
+        })
         .map(str::trim)
         .filter_map(|part| part.strip_prefix(&prefix));
     let value = values.next()?;

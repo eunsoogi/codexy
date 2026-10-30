@@ -84,9 +84,13 @@ under [$proof-driven-completion](../../proof-driven-completion/SKILL.md). Native
 goal state follows [goal-lifecycle](../../goal-lifecycle/SKILL.md); this section
 owns the handoff receipt and delivery sequence.
 
-For a satisfied phase, the child MUST prepare exactly one `Idle wait handoff:`.
-This is the terminal handoff, not an additional pre-delivery receipt. It MUST
-bind `event id`, `issue/pr`, `child task`, `parent task`, `branch`, `worktree`,
+For a satisfied phase, the child MUST prepare exactly one `Idle wait handoff:`
+as a readable Markdown table with one fact per row. Row order and ordinary
+wording MAY vary; code, links, and escaped pipes MAY appear in values. Unknown
+facts MUST remain visible. A quoted or historical table MUST NOT authorize a
+current action, and a conflicting duplicate MUST NOT be treated as a fact. This
+is the terminal handoff, not an additional pre-delivery receipt. It MUST bind
+`event id`, `issue/pr`, `child task`, `parent task`, `branch`, `worktree`,
 `head`, `clean/index`, `last proof`, `current gate`,
 `preserved reservation/artifacts`, and `parent next action`. It MUST also carry
 `phase objective` matching the active goal, `phase criteria=satisfied`,
@@ -95,30 +99,28 @@ bind `event id`, `issue/pr`, `child task`, `parent task`, `branch`, `worktree`,
 and `return control=confirmed`.
 
 1. With actual message permission, the child MUST submit that handoff once to
-   the authenticated parent. Transport acceptance permits
-   `delivery=confirmed; task surface=codex task/thread`. The child MUST NOT call
-   `wait_threads` on its parent or await a parent reply or approval for normal
-   result submission. Static call evidence uses
-   `Child tool call: wait_threads; target=<parent task>`.
+   the authenticated parent. Transport acceptance permits confirmed delivery
+   through the Codex task/thread surface. The child MUST NOT call `wait_threads`
+   on its parent or await a parent reply or approval for normal result
+   submission. Static call evidence uses the parent as a `wait_threads` target.
 2. Without actual message permission, the child MUST prepare the same handoff
-   for its host terminal result with
-   `delivery=unconfirmed; task surface=host terminal result; message permission=absent`.
-   It MUST NOT send an unauthorized message, claim confirmed delivery, retry, or
-   manufacture a parent receipt. This fallback preserves the result and
-   reservation for parent observation; it does not prove transport acceptance.
+   for its host terminal result with unconfirmed delivery through the host
+   terminal result and absent message permission. It MUST NOT send an
+   unauthorized message, claim confirmed delivery, retry, or manufacture a
+   parent receipt. This fallback preserves the result and reservation for parent
+   observation; it does not prove transport acceptance.
 3. After the handoff submission or permitted host-result fallback, the child
    MUST make the lifecycle-authorized completion call and preserve its exact
-   native result locally. Static evidence uses
-   `Goal tool result: operation=update_goal(complete); status=<native status>`;
-   the status-form operation spelling is also supported. A failed, unknown, or
-   still-active result MUST retain its actual state and MUST NOT claim idle
-   completion. The handoff MUST NOT be resent to obtain a successful goal call.
-4. Only after native completion, the child MUST record
-   `Idle child state: goal state=complete; plan state=idle`, then return its
-   compact terminal result and leave the task idle. That result MUST include the
-   exact goal outcome and any unconfirmed delivery limitation. A separate parent
-   post-result message MUST NOT be required. Phase completion MUST NOT claim
-   issue closure, merge, release, ownership transfer, or parent acceptance.
+   native result locally, including the operation and returned status. A failed,
+   unknown, or still-active result MUST retain its actual state and MUST NOT
+   claim idle completion. The handoff MUST NOT be resent to obtain a successful
+   goal call.
+4. Only after native completion, the child MUST record the complete goal and
+   idle plan state, then return its compact terminal result and leave the task
+   idle. That result MUST include the exact goal outcome and any unconfirmed
+   delivery limitation. A separate parent post-result message MUST NOT be
+   required. Phase completion MUST NOT claim issue closure, merge, release,
+   ownership transfer, or parent acceptance.
 
 One event identity MUST NOT authorize a second transition. Duplicate delivery
 observations MUST be deduplicated rather than trigger another send or goal call.
@@ -130,16 +132,16 @@ that a live host completed an idle transition.
 ### Other terminal exits and blocked recovery
 
 For stop, archive, ownership release, or blocked transition outside normal phase
-completion, the child MUST send exactly one `Terminal parent handoff:` before
-transitioning. It MUST carry the common bound fields above plus
-`delivery=confirmed; task surface=codex task/thread`. Static evidence uses
-`Terminal child transition: action=stop`, `action=archive`,
-`action=ownership release`, or `action=blocked` when no goal operation
-represents it. A related terminal stop and ownership release MUST share the same
-receipt. A completed-phase handoff authorizes only its idle/stop outcome;
-archive or ownership release MUST require a separate confirmed terminal receipt.
-If delivery is unavailable, the child MUST emit one unavailable receipt, retain
-the lane, and MUST NOT retry or perform the stop/archive/blocked transition.
+completion, the child MUST send exactly one `Terminal parent handoff:` table
+before transitioning. It MUST carry the common bound fields above and show
+confirmed delivery on the Codex task/thread surface. When no goal operation
+represents the transition, evidence MUST identify the actual stop, archive,
+ownership release, or blocked action. A related terminal stop and ownership
+release MUST share the same receipt. A completed-phase handoff authorizes only
+its idle/stop outcome; archive or ownership release MUST require a separate
+confirmed terminal receipt. If delivery is unavailable, the child MUST emit one
+unavailable receipt, retain the lane, and MUST NOT retry or perform the
+stop/archive/blocked transition.
 
 Blocked-goal recovery retains its ordered receipts. Whether a native blocked
 transition is permitted is owned by
