@@ -63,6 +63,10 @@ fn readable_delta_preserves_lane_and_event_authority() -> TestResult {
     assert!(validate_handoff(&migrated, &authority()).is_ok());
     let fenced = format!("```markdown\n{wrapped}\n```\n");
     assert!(migrate_legacy_handoff(&fenced, &migration_context()).is_err());
+    let historical = format!("# Historical example\n{wrapped}");
+    assert!(migrate_legacy_handoff(&historical, &migration_context()).is_err());
+    let resumed = format!("{historical}\n# Current\n{wrapped}");
+    assert!(migrate_legacy_handoff(&resumed, &migration_context()).is_ok());
     assert!(
         migrate_legacy_handoff(
             &text.replace("| owner | child-owned |", "| owner | parent-owned |"),

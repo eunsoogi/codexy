@@ -31,7 +31,7 @@ pub(super) fn current_text(text: &str) -> String {
     // Remove quoted, fenced, and historical examples before readiness claims are evaluated.
     let lines: Vec<_> = text.lines().collect();
     let mut current = String::new();
-    let mut stale_heading = false;
+    let mut stale_heading: Option<usize> = None;
     let mut stale_label = false;
     let mut fence = None;
     for (index, raw_line) in lines.iter().enumerate() {
@@ -43,23 +43,29 @@ pub(super) fn current_text(text: &str) -> String {
             continue;
         }
         if trimmed.starts_with('#') {
-            stale_heading = is_stale(trimmed.trim_start_matches('#').trim_start());
+            let depth = trimmed.chars().take_while(|ch| *ch == '#').count();
+            if stale_heading.is_none_or(|prior| depth <= prior) {
+                stale_heading =
+                    is_stale(trimmed.trim_start_matches('#').trim_start()).then_some(depth);
+            }
             stale_label = false;
             continue;
         }
         if trimmed.is_empty() {
             stale_label = false;
-            if !stale_heading {
+            if stale_heading.is_none() {
                 current.push('\n');
             }
             continue;
         }
         let current_suffix = current_lane_suffix(trimmed);
-        if stale_heading || stale_label {
+        if stale_heading.is_some() {
+            continue;
+        }
+        if stale_label {
             let Some(suffix) = current_suffix else {
                 continue;
             };
-            stale_heading = false;
             stale_label = false;
             current.push_str(suffix);
             current.push('\n');

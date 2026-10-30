@@ -43,6 +43,7 @@ fn conflicting_terminal_actions_never_bypass_handoff() -> TestResult {
     for transition in [
         "Terminal child transition: action=archive; action=stop\n",
         "Terminal child transition:\n| Field | Value |\n| --- | --- |\n| Action | archive |\n| Action | stop |\n",
+        "Terminal child transition:\n| Field | Value |\n| --- | --- |\n| Action | |\n",
     ] {
         let evidence = format!("Lane ownership: child-owned\n{transition}");
         assert!(!run_validator(&evidence)?.status.success(), "{evidence}");

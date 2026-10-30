@@ -2,7 +2,7 @@
 pub(super) fn markdown(input: &str) -> String {
     let mut output = String::new();
     let mut fence = None;
-    let mut historical = false;
+    let mut historical_depth: Option<usize> = None;
     for line in input.lines() {
         let trimmed = line.trim_start();
         if super::super::super::child_message_table::fence_boundary(trimmed, &mut fence) {
@@ -12,11 +12,15 @@ pub(super) fn markdown(input: &str) -> String {
             continue;
         }
         if trimmed.starts_with('#') {
-            historical = super::super::super::readiness_context::is_stale(
+            let depth = trimmed.chars().take_while(|ch| *ch == '#').count();
+            let stale = super::super::super::readiness_context::is_stale(
                 trimmed.trim_start_matches('#').trim_start(),
             );
+            if historical_depth.is_none_or(|prior| depth <= prior) {
+                historical_depth = stale.then_some(depth);
+            }
         }
-        if !historical {
+        if historical_depth.is_none() {
             output.push_str(line);
             output.push('\n');
         }

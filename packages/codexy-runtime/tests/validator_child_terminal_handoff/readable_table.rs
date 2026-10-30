@@ -127,6 +127,16 @@ fn terminal_handoff_accepts_a_readable_table() -> TestResult {
             "~~~\nTerminal child transition: action=archive",
         );
     assert!(!super::run_validator(&historical)?.status.success());
+    let historical_heading = evidence
+        .replace(
+            "Terminal parent handoff:\n",
+            "# Historical example\n## Old handoff\nTerminal parent handoff:\n",
+        )
+        .replace(
+            "Terminal child transition: action=archive",
+            "# Current\nTerminal child transition: action=archive",
+        );
+    assert!(!super::run_validator(&historical_heading)?.status.success());
     let formatted = evidence
         .replace("Terminal parent handoff:\n", "Parent handoff:\n\n")
         .replace("| Field | Value |", "| Item | Details |")
