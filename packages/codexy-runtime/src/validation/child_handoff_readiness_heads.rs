@@ -2,7 +2,8 @@ use serde_json::Value;
 
 /// Extracts SHA-like values only from sentences that discuss pushed or synchronized heads.
 pub(super) fn claimed_pushed_heads(text: &str) -> Vec<String> {
-    text.split(['\n', ';'])
+    let mut heads = text
+        .split(['\n', ';'])
         .flat_map(|line| line.split(". "))
         .filter(|sentence| {
             let lower = sentence.to_ascii_lowercase();
@@ -12,6 +13,36 @@ pub(super) fn claimed_pushed_heads(text: &str) -> Vec<String> {
                 || lower.contains("remote/pr head match")
         })
         .flat_map(head_refs_after_markers)
+        .collect::<Vec<_>>();
+    heads.extend(table_heads(text));
+    heads
+}
+
+/// A readable handoff may put the pushed state and its head on separate rows.
+fn table_heads(text: &str) -> Vec<String> {
+    super::child_handoff_readiness_table::rows(text)
+        .into_iter()
+        .filter(|rows| {
+            rows.iter().any(|(key, value)| {
+                let lower = value.to_ascii_lowercase();
+                lower.contains("pushed")
+                    || lower.contains("synced")
+                    || key.eq_ignore_ascii_case("pushed")
+            })
+        })
+        .flat_map(|rows| {
+            rows.into_iter().filter_map(|(key, value)| {
+                if !["head", "head sha", "local head"]
+                    .iter()
+                    .any(|name| key.eq_ignore_ascii_case(name))
+                {
+                    return None;
+                }
+                let value = value.trim().trim_matches('`');
+                ((7..=40).contains(&value.len()) && value.chars().all(|ch| ch.is_ascii_hexdigit()))
+                    .then(|| value.to_ascii_lowercase())
+            })
+        })
         .collect()
 }
 
@@ -128,4 +159,31 @@ fn head_refs_after_markers(text: &str) -> Vec<String> {
             .to_ascii_lowercase();
     }
     refs
+}
+
+pub(super) fn pushed_head_mismatch(handoff: &str, pr_state: &Value) -> Option<String> {
+    let Some(pr_head) = string_field(pr_state, "headRefOid").filter(|head| !head.is_empty()) else {
+        return Some(
+            "child handoff claims pushed/synced head but PR state is missing headRefOid".into(),
+        );
+    };
+    let claimed = claimed_pushed_heads(handoff);
+    if claimed.is_empty() {
+        return Some(format!(
+            "child handoff claims pushed/synced head but PR headRefOid is {pr_head}, not any comparable handoff head"
+        ));
+    }
+    if claimed
+        .iter()
+        .all(|oid| pr_head.to_ascii_lowercase().starts_with(oid))
+    {
+        return None;
+    }
+    let mismatched = claimed
+        .iter()
+        .find(|oid| !pr_head.to_ascii_lowercase().starts_with(*oid));
+    Some(format!(
+        "child handoff claims pushed/synced head but PR headRefOid is {pr_head}, not {}",
+        mismatched.map_or("any comparable handoff head", String::as_str)
+    ))
 }

@@ -2,90 +2,134 @@
 
 ## Lane
 
-- issue:
-- PR:
-- branch:
-- owner:
-- worktree:
-- head SHA:
-- base SHA:
+| Field    | Value |
+| -------- | ----- |
+| issue    |       |
+| PR       |       |
+| branch   |       |
+| owner    |       |
+| worktree |       |
+| head SHA |       |
+| base SHA |       |
 
 ## Delta
 
-- event id:
-- event kind:
-- delta:
-- changed ids:
-- stale or demoted:
+| Field            | Value |
+| ---------------- | ----- |
+| event id         |       |
+| event kind       |       |
+| delta            |       |
+| changed ids      |       |
+| stale or demoted |       |
 
 ## Current-head Review
 
-- selected profile:
-- policy reviewer:
-- exact reviewed head:
-- terminal result or non-terminal status:
-- unresolved findings:
-- current-head verification:
+| Field                                  | Value |
+| -------------------------------------- | ----- |
+| selected profile                       |       |
+| policy reviewer                        |       |
+| exact reviewed head                    |       |
+| terminal result or non-terminal status |       |
+| unresolved findings                    |       |
+| current-head verification              |       |
 
 ## External Gate Wait
 
-- external gate wait:
-- bounded child-local monitoring:
-- parent delta before transition:
+| Field                          | Value |
+| ------------------------------ | ----- |
+| external gate wait             |       |
+| bounded child-local monitoring |       |
+| parent delta before transition |       |
 
 ## Idle Wait Handoff
 
-- state fingerprint:
-- nonterminal producer:
-- exact wake route:
-- issue/PR state: issue=not complete; PR=
-- ownership: retained
-- parent task/child task/delivery/task surface:
-- branch/worktree/head/clean-index:
-- last proof/current gate:
-- preserved reservation or artifacts:
-- goal transition: complete
-- parent-owned next action:
-- return control: confirmed
-- confirmed idle state: goal state=complete; plan state=idle
+Idle wait handoff:
 
-Terminal parent handoff: event id=<event id>; issue/pr=<issue> / PR
-<pr or not-created>; child task=<child task>; parent task=<parent task>;
-branch=<branch>; worktree=<worktree>; head=<head>; clean/index=<clean or dirty>;
-last proof=<last proof>; current gate=<current gate>; preserved
-reservation/artifacts=<reservation or artifacts>; parent next
-action=<one parent-owned action>; delivery=confirmed; task surface=codex
-task/thread
+| Field                           | Value        |
+| ------------------------------- | ------------ |
+| Event id                        |              |
+| Issue/PR                        |              |
+| Child task                      |              |
+| Parent task                     |              |
+| Branch                          |              |
+| Worktree                        |              |
+| Head                            |              |
+| Clean/index                     |              |
+| Last proof                      |              |
+| Current gate                    |              |
+| Preserved reservation/artifacts |              |
+| Parent next action              |              |
+| Delivery                        |              |
+| Task surface                    |              |
+| Message permission              |              |
+| Phase objective                 |              |
+| Phase criteria                  | satisfied    |
+| State fingerprint               |              |
+| Producer state                  |              |
+| Wake route                      |              |
+| Ownership                       | retained     |
+| Issue state                     | not complete |
+| Goal transition                 | complete     |
+| Return control                  | confirmed    |
+
+Terminal parent handoff:
+
+| Field                           | Value                            |
+| ------------------------------- | -------------------------------- |
+| Event id                        | <event id>                       |
+| Issue/PR                        | <issue> / PR <pr or not-created> |
+| Child task                      | <child task>                     |
+| Parent task                     | <parent task>                    |
+| Branch                          | <branch>                         |
+| Worktree                        | <worktree>                       |
+| Head                            | <head>                           |
+| Clean/index                     | <clean or dirty>                 |
+| Last proof                      | <last proof>                     |
+| Current gate                    | <current gate>                   |
+| Preserved reservation/artifacts | <reservation or artifacts>       |
+| Parent next action              | <one parent-owned action>        |
+| Delivery                        | confirmed                        |
+| Task surface                    | codex task/thread                |
 
 ## Runtime Heartbeat
 
-- callable discovery/exposure evidence:
-- heartbeat automation id:
-- target thread:
-- bounded schedule:
-- state fingerprint:
-- eligible material events:
-- unchanged observations suppressed:
-- terminal delete/disable action:
+| Field                                | Value |
+| ------------------------------------ | ----- |
+| callable discovery/exposure evidence |       |
+| heartbeat automation id              |       |
+| target thread                        |       |
+| bounded schedule                     |       |
+| state fingerprint                    |       |
+| eligible material events             |       |
+| unchanged observations suppressed    |       |
+| terminal delete/disable action       |       |
 
 ## New Child Setup
 
-- archive candidates inspected:
-- active reservation ledger:
-- archive decision:
+| Field                        | Value |
+| ---------------------------- | ----- |
+| archive candidates inspected |       |
+| active reservation ledger    |       |
+| archive decision             |       |
 
 ## Required Gates
 
-- checks:
-- unresolved review thread ids and outdated status:
-- child owner evidence:
-- verification:
-- merge readiness or stop condition:
+| Field                                            | Value |
+| ------------------------------------------------ | ----- |
+| checks                                           |       |
+| unresolved review thread ids and outdated status |       |
+| child owner evidence                             |       |
+| verification                                     |       |
+| merge readiness or stop condition                |       |
 
 ## Active Obligations
 
-- current unresolved work:
+| Field                   | Value |
+| ----------------------- | ----- |
+| current unresolved work |       |
 
 ## Next
 
-- one next action:
+| Field           | Value |
+| --------------- | ----- |
+| one next action |       |

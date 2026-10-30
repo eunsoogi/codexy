@@ -7,6 +7,7 @@ mod child_handoff_readiness;
 mod child_handoff_readiness_claims;
 mod child_handoff_readiness_heads;
 mod child_handoff_readiness_status;
+mod child_handoff_readiness_table;
 mod child_handoff_readiness_text;
 #[path = "child_lane_active_threads_module.rs"]
 mod child_lane_active_threads;
@@ -53,6 +54,7 @@ mod child_lane_thread_tool_handler_scope_labels;
 mod child_lane_thread_tool_handlers;
 mod child_lane_thread_tools;
 mod child_lifecycle_events;
+mod child_message_table;
 mod child_terminal_handoff;
 mod completion_handoff;
 mod completion_handoff_compaction;

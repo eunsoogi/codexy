@@ -3,6 +3,8 @@
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 type OutputResult = Result<std::process::Output, Box<dyn std::error::Error>>;
+#[path = "validator_child_handoff_readiness/readable.rs"]
+mod readable;
 #[test]
 fn validator_rejects_false_clean_synced_pushed_child_handoff() -> TestResult {
     assert_rejects_child_handoff(

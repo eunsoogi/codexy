@@ -2,6 +2,9 @@ use crate::support::TestResult;
 use codexy_runtime::validation::*;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
+#[path = "validator_handoff_envelope/readable.rs"]
+mod readable;
+use readable::migration_context;
 #[test] // Canonical events retain active review and owner-bound head state.
 fn canonical_serialization_separates_stable_and_volatile_payloads() -> TestResult {
     let first = HandoffEnvelope::new(stable(), volatile("red"));
@@ -223,28 +226,4 @@ fn rejects_envelope(value: HandoffVolatile, authority: HandoffAuthority) -> Test
         authority,
     );
     Ok(())
-}
-fn migration_context() -> LegacyContext {
-    let source = volatile("context");
-    LegacyContext {
-        stable: stable(),
-        owner: source.owner_worktree.owner,
-        branch: source.owner_worktree.branch,
-        worktree: source.owner_worktree.worktree,
-        base: source.base_head_sha.base,
-        dirty_index_state: source.dirty_index_state,
-        checks: source.checks,
-        unresolved_review_threads: source.unresolved_review_threads,
-        selected_reviewer_state: source.selected_reviewer_state,
-        verification: source.verification,
-        active_obligation: source.active_obligation,
-        external_gate: source.external_gate,
-        child_task: source.child_task,
-        parent_task: source.parent_task,
-        preserved_artifacts: source.preserved_artifacts,
-        authoritative_refresh_handles: source.authoritative_refresh_handles,
-        delivery: source.delivery,
-        task_surface: source.task_surface,
-        omissions: omissions(false),
-    }
 }

@@ -1,9 +1,13 @@
+mod current;
+mod delta;
+mod fields;
 use super::schema::{
     BaseHeadSha, DirtyIndexState, HandoffEnvelope, HandoffEvent, HandoffVolatile, IssuePrIdentity,
     OwnerWorktree, ReviewThread, StableHandoff,
 };
 use super::{OmissionReason, schema};
 use anyhow::{Result, bail, ensure};
+use fields::fields;
 use std::collections::BTreeMap;
 const MAX_LEGACY_BYTES: usize = 64 * 1024;
 #[derive(Clone, Debug)]
@@ -38,12 +42,21 @@ pub(super) fn migrate(text: &str, context: &LegacyContext) -> Result<HandoffEnve
         !matches!(input.as_bytes().first(), Some(b'{' | b'[')),
         "canonical JSON is not a legacy handoff"
     );
+    let current = current::markdown(input);
     let delta_counts = ["## Lane", "## Delta", "## Next"]
-        .map(|heading| schema::exact_heading_count(input, heading));
+        .map(|heading| schema::exact_heading_count(&current, heading));
     let delta_present = delta_counts.iter().any(|count| *count != 0);
     let has_delta = delta_counts.iter().all(|count| *count == 1); /* all three delta sections once */
     let marker = "Terminal parent handoff:";
-    let terminal_count = input.matches(marker).count();
+    // Historical and quoted text cannot supply current authority to the migration.
+    let sanitized = current.replace('\u{1f}', "\u{fffd}");
+    let active = super::super::readiness_context::current_text(&sanitized);
+    let alternate = "Parent handoff:";
+    let alternate_count = active
+        .lines()
+        .filter(|line| line.trim() == alternate)
+        .count();
+    let terminal_count = active.matches(marker).count() + alternate_count;
     ensure!(terminal_count <= 1, "legacy terminal boundary is repeated");
     ensure!(
         !(delta_present && terminal_count != 0),
@@ -54,57 +67,32 @@ pub(super) fn migrate(text: &str, context: &LegacyContext) -> Result<HandoffEnve
         "legacy handoff has no recognized canonical boundary"
     );
     if has_delta {
-        migrate_delta(input, context)
+        delta::migrate_delta(&current, context)
     } else {
-        migrate_terminal(&input[input.find(marker).unwrap_or(0)..], context)
+        let start = active
+            .find(marker)
+            .or_else(|| active.find(alternate))
+            .unwrap_or(0);
+        migrate_terminal(&active[start..], context)
     }
 }
-fn migrate_delta(input: &str, context: &LegacyContext) -> Result<HandoffEnvelope> {
-    let lane = fields(
-        schema::section(input, "## Lane")?,
-        &[
-            "issue", "PR", "branch", "owner", "worktree", "head SHA", "base SHA",
-        ],
-        ':',
-    )?;
-    let delta = fields(
-        schema::section(input, "## Delta")?,
-        &["event id", "event kind", "delta"],
-        ':',
-    )?;
-    let next = fields(
-        schema::section(input, "## Next")?,
-        &["one next action"],
-        ':',
-    )?;
-    let issue_pr = issue_pr(
-        schema::required(&lane, "issue")?,
-        schema::required(&lane, "PR")?,
-    )?;
-    schema::require_same(&lane, "owner", &context.owner)?;
-    schema::require_same(&lane, "branch", &context.branch)?;
-    schema::require_same(&lane, "worktree", &context.worktree)?;
-    let event = event_from_id(
-        schema::required(&delta, "event id")?,
-        schema::required(&delta, "event kind")?,
-        schema::required(&delta, "delta")?,
-    )?;
-    let mut volatile = volatile_from(context, issue_pr, event);
-    volatile.base_head_sha = BaseHeadSha {
-        base: schema::required(&lane, "base SHA")?.to_owned(),
-        head: schema::required(&lane, "head SHA")?.to_owned(),
-    };
-    schema::required(&next, "one next action")?.clone_into(&mut volatile.next_action);
-    Ok(HandoffEnvelope::new(context.stable.clone(), volatile))
-}
 fn migrate_terminal(line: &str, context: &LegacyContext) -> Result<HandoffEnvelope> {
+    let lines = line.lines().collect::<Vec<_>>();
+    let table = super::super::child_lifecycle_events::table_record(&lines);
+    if let Some((_, consumed)) = &table {
+        ensure!(
+            lines[*consumed..].iter().all(|line| line.trim().is_empty()),
+            "unexpected content after handoff table"
+        );
+    }
+    let line = table.as_ref().map_or(line, |(record, _)| record.as_str());
     let body = line
         .strip_prefix("Terminal parent handoff:")
         .ok_or_else(|| anyhow::anyhow!("invalid terminal handoff boundary"))?;
     let normalized = body.replace('\n', " ");
     let fields = fields(
         &normalized,
-        &"event id|issue/pr|child task|parent task|branch|worktree|head|clean/index|last proof|current gate|preserved reservation/artifacts|parent next action|delivery|task surface"
+        &"event id|issue/pr|child task|parent task|branch|worktree|head|clean/index|last proof|current gate|preserved reservation/artifacts|parent next action|delivery|task surface|message permission"
             .split('|')
             .collect::<Vec<_>>(),
         '=',
@@ -121,8 +109,30 @@ fn migrate_terminal(line: &str, context: &LegacyContext) -> Result<HandoffEnvelo
         schema::required(&fields, "task surface")? == "codex task/thread",
         "terminal task surface is not canonical"
     );
+    // An explicit permission state must agree with the claimed delivery; omission remains legacy-compatible.
+    ensure!(
+        fields
+            .get("message permission")
+            .is_none_or(|value| value.eq_ignore_ascii_case("granted")),
+        "terminal message permission is not granted"
+    );
     let child_task = schema::optional_value(&fields, "child task")?;
     let parent_task = schema::optional_value(&fields, "parent task")?;
+    // Trusted task identities bind the reported handoff to its intended recipient.
+    ensure!(
+        child_task
+            .as_ref()
+            .zip(context.child_task.as_ref())
+            .is_some_and(|(actual, expected)| actual == expected),
+        "child task authority"
+    );
+    ensure!(
+        parent_task
+            .as_ref()
+            .zip(context.parent_task.as_ref())
+            .is_some_and(|(actual, expected)| actual == expected),
+        "parent task authority"
+    );
     let preserved_artifacts = schema::optional_value(&fields, "preserved reservation/artifacts")?;
     let last_proof = schema::required(&fields, "last proof")?;
     let mut volatile = volatile_from(
@@ -228,23 +238,4 @@ fn number_opt(value: &str, field: &str) -> Result<Option<u64>> {
         .parse::<u64>()
         .map(Some)
         .map_err(|_| anyhow::anyhow!("{field} must be numeric or not-created"))
-}
-fn fields(input: &str, wanted: &[&str], delimiter: char) -> Result<BTreeMap<String, String>> {
-    let mut result = BTreeMap::new();
-    for part in input.split(if delimiter == ':' { '\n' } else { ';' }) {
-        let part = part.trim().strip_prefix("- ").unwrap_or(part.trim());
-        let Some((key, value)) = part.split_once(delimiter) else {
-            continue;
-        };
-        let key = key.trim();
-        if wanted.contains(&key) {
-            let value = value.trim();
-            ensure!(!value.is_empty(), "legacy field {key} is empty");
-            ensure!(
-                result.insert(key.to_owned(), value.to_owned()).is_none(),
-                "legacy field {key} is repeated"
-            );
-        }
-    }
-    Ok(result)
 }

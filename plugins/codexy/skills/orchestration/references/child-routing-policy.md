@@ -219,6 +219,13 @@ reviewer, task, or thread.`)
 applies to that recipient and MUST NOT be copied into a Worker assignment as a
 ban on the Worker's required review.
 
+Assignments and corrections MUST use readable Markdown tables that convey the
+purpose, scope, completion criteria, and any relevant ownership or direction.
+Worker progress and results MUST use tables conveying status, changes,
+verification, remaining work, and the next owner as applicable. One table MAY
+cover multiple tasks when each task remains unambiguous. MUST NOT require a
+second authored machine payload or hide one in a table cell.
+
 When a handoff contract requires a receipt, it MUST carry that contract's stable
 `transition key`, `event id`, or `state fingerprint`. A completed delivery with
 the same recipient, phase, and key MUST NOT be sent again; unchanged status MUST

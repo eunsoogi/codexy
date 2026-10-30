@@ -1,5 +1,8 @@
 #[path = "wait_taxonomy/event.rs"]
 mod event;
+#[path = "wait_taxonomy/producer.rs"]
+mod producer;
+pub(in crate::validation) use producer::classify_producer;
 
 use super::negation::is_negation;
 use event::{event_words, has_lifecycle_state, is_nonterminal_wait, words};
@@ -9,20 +12,6 @@ pub(in crate::validation) enum WaitDisposition {
     Nonterminal,
     Actionable,
 }
-
-const NONTERMINAL_PRODUCERS: &[&str] = &[
-    "sentinel-running",
-    "child-pending",
-    "ci-queued",
-    "connector-review-pending",
-    "reviewer-pending",
-    "parent-authorization-pending",
-    "dependency-integration-pending",
-    "resource-slot-pending",
-    "alternate-evidence-pending",
-    "async-tool-pending",
-    "event-idle-child",
-];
 
 const REVIEW_SUBJECTS: &[&str] = &[
     "review",
@@ -61,12 +50,6 @@ const OPERATIONAL_NONTERMINAL_STATES: &[&str] = &[
 struct ReviewSubject {
     end: usize,
     negated: bool,
-}
-
-pub(in crate::validation) fn classify_producer(value: &str) -> Option<WaitDisposition> {
-    NONTERMINAL_PRODUCERS
-        .contains(&value)
-        .then_some(WaitDisposition::Nonterminal)
 }
 
 pub(in crate::validation) fn classify_wait_text(text: &str) -> Option<WaitDisposition> {

@@ -8,6 +8,8 @@ use std::process::Output;
 mod blocked_goal;
 #[path = "validator_child_terminal_handoff/records.rs"]
 mod records;
+#[path = "validator_child_terminal_handoff/readable_table.rs"]
+mod readable_table;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
