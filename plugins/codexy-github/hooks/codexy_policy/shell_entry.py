@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from .execution_context import ExecutionContext
 from .repository import git_directory_owned, repository_owned, repository_status
 
@@ -14,9 +16,15 @@ def context(
     git_config_environment: tuple[tuple[str, str], ...],
     runtime_environment: tuple[tuple[str, str], ...],
 ) -> ExecutionContext:
+    # The hook runner's PWD may differ; only the request's absolute CWD describes this shell.
+    shell_environment = tuple(
+        (key, value) for key, value in runtime_environment if key != "PWD"
+    )
+    if Path(cwd).is_absolute():
+        shell_environment += (("PWD", cwd),)
     # Seed the evaluator with only the host variables its repository and Git policy understands.
     environment = (
-        runtime_environment
+        shell_environment
         + tuple(
             (key, value)
             for key, value in (

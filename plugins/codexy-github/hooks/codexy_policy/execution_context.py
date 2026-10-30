@@ -34,7 +34,12 @@ def assign(value: str, context: ExecutionContext) -> ExecutionContext:
     expanded = expand(assigned, context)
     environment = dict(context.environment)
     # Unknown expansion must not be used as repository-selection evidence later in the command.
-    if expanded is None or (key in POLICY_SELECTORS and DYNAMIC_VALUE in expanded):
+    # A conflicting PWD claim cannot safely stand in for the request's working directory.
+    if (
+        expanded is None
+        or (key in POLICY_SELECTORS and DYNAMIC_VALUE in expanded)
+        or (key == "PWD" and expanded != context.cwd)
+    ):
         environment[key] = assigned
         return replace(
             context,
