@@ -40,10 +40,8 @@ no-change parent-turn savings remain unmeasured.
   authorized scope.
 
 Task-to-task prompts, progress and callback messages, handoffs, and tool prompt
-fields MUST be treated as user-visible and MUST follow the shared
-[plain-language message rule](plain-language-user-replies.md). Use IDs and
-structured fields to remove repetition while keeping surrounding prose and
-protected technical text intact.
+fields are user-visible and MUST follow the shared
+[plain-language user-replies contract](plain-language-user-replies.md).
 
 Live Sentinel observation MUST remain read-only and event-driven. Generic task
 and ledger polling MUST NOT replace cursor-based `wait_threads` observation of

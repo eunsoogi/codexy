@@ -45,11 +45,10 @@ unrelated route.
 
 ### Readable communication boundary
 
-All assistant-authored text that a person may see MUST follow the shared
-[plain-language message rule](references/plain-language-user-replies.md). This
-includes parent replies, task/agent prompts, delegated instructions, progress
-and callback messages, handoffs, and tool prompt fields. Concision and protected
-technical text MUST follow that contract.
+All assistant-authored text a person may see MUST read and follow the shared
+[plain-language user-replies contract](references/plain-language-user-replies.md).
+For Korean text, MUST also read and follow
+[Natural Korean User Replies](references/natural-korean-responses.md).
 
 ### Task kind and owner decisions
 
@@ -169,10 +168,3 @@ prove that execution or verification occurred.
   proportionate current-head reviewer.
 - MUST read [review lifecycle](references/review-lifecycle.md) when waiting for,
   repairing from, or handing off a current-head reviewer result.
-- MUST read
-  [plain-language user replies](references/plain-language-user-replies.md) when
-  writing any user-visible message, including task/agent prompts, callbacks,
-  handoffs, and tool prompt fields.
-- MUST read
-  [natural Korean user replies](references/natural-korean-responses.md) when the
-  user-visible message is in Korean.

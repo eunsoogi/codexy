@@ -1,58 +1,23 @@
 # Natural Korean User Replies
 
-MUST also follow [Plain-Language User Replies](plain-language-user-replies.md)
-for the shared English and Korean boundary around unexplained workflow terms.
-MUST use this contract for every Korean assistant-authored message a user may
-see, including parent replies, task/agent prompts, delegated instructions,
-progress and callback messages, handoffs, and tool prompt fields. MUST keep
-workflow control and proof exact in their own evidence surfaces while making the
-main reply useful to a general user.
+This Korean-specific supplement extends
+[Plain-Language User Replies](plain-language-user-replies.md).
 
-## User Summary
+## Korean Wording
 
-- Korean text MUST use normal spacing, grammar, punctuation, sentence
-  boundaries, and readable paragraphs. Concision MUST remove repetition and
-  irrelevant detail; it MUST NOT join words or drop particles, endings,
-  punctuation, or sentence breaks.
-- MUST lead with the outcome, problem, or next action in natural Korean word
-  order.
-- The user summary MUST use context-appropriate honorific tone without sounding
-  stiff or ceremonial.
-- MUST prefer short sentences, ordinary connective phrases, and context-specific
-  Korean over literal translations of English workflow nouns.
-- The user summary MUST NOT expose unnecessary internal workflow vocabulary.
-- Internal workflow vocabulary is unnecessary when it does not change the user's
-  decision or next action.
-- Internal workflow vocabulary includes `intake receipt`, `terminal receipt`,
-  `handoff`, `packaged`, `gate`, and `lane`.
-- Essential internal terms MUST receive a brief explanation in plain Korean or
-  be replaced with the concrete event they represent.
-- MUST preserve the strength of mandatory source rules without mechanically
-  repeating `MUST` or `MUST NOT` in an ordinary Korean conversation.
+- Korean user summaries MUST use natural Korean word order and
+  context-appropriate honorifics without sounding stiff or ceremonial. They MUST
+  use particles, endings, and connective phrases that fit the sentence.
+- MUST describe the concrete event and next step in context-specific Korean. For
+  workflow terminology, MUST prefer wording that names the event over a literal
+  word-for-word translation; this does not ban accurate Korean terms.
+- Accurate technical or borrowed terms MAY remain when they are useful to the
+  reader.
+- When a source requirement is expressed in ordinary Korean, its force MUST
+  remain intact without mechanically repeating the English words `MUST` or
+  `MUST NOT`.
 
-## Machine-Readable Evidence
+## Example
 
-- Machine-readable evidence MUST remain complete and unchanged.
-- MUST keep receipts, exact commands, structured logs, review records, and other
-  internal proof separate from the main user summary.
-- MUST place technical evidence under a clearly separate evidence section or in
-  the required task/thread delivery surface when the user does not need it.
-
-## Protected Technical Text
-
-- MUST preserve code, commands, paths, identifiers, issue/PR numbers, and
-  product names.
-- Protected source semantics include `MUST/MUST NOT` requirements.
-- MUST NOT translate or paraphrase protected technical text when doing so could
-  change its meaning or prevent the user from copying it exactly.
-
-## Examples
-
-MUST prefer the right-hand wording in a normal user summary. MUST keep the
-left-hand details only in internal or machine-readable evidence when required.
-
-| Avoid                                                                               | Prefer                                                                                |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| 재현 게이트가 통과되지 않아 현재 lane은 BLOCK 상태입니다.                           | 문제를 아직 재현하지 못해 수정을 시작할 수 없습니다.                                  |
-| packaged Sentinel gate가 PASS했고 handoff가 준비되었습니다.                         | 최종 검토를 통과해 결과를 전달할 준비가 됐습니다.                                     |
-| intake receipt 승인 후 lane을 시작했고 terminal receipt를 parent에 handoff했습니다. | 이슈 생성 전 확인을 마치고 작업을 시작했습니다. 종료 기록은 별도 증거에 보관했습니다. |
+A natural Korean reply when a review calls for a repair could be: “검토에서
+수정할 부분이 남아 있어 먼저 고치겠습니다.”

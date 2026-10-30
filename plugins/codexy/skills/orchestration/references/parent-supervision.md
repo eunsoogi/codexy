@@ -50,9 +50,7 @@ NOT ask for approval again per child or message, or treat it as host permission.
 Task-to-task prompts, delegated instructions, callbacks, progress updates,
 corrections, and handoffs, including their tool prompt fields, MUST be treated
 as user-visible and MUST follow the shared
-[plain-language message rule](plain-language-user-replies.md). Keep compactness
-in fact selection and repetition removal; MUST NOT damage ordinary prose or
-alter protected technical text.
+[plain-language user-replies contract](plain-language-user-replies.md).
 
 ## Ownership and task surfaces
 
