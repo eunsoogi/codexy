@@ -1,9 +1,9 @@
 # Choosing the next learning task
 
 Use this guide when bounded continuing improvement is within the current task's
-scope, or when asked to propose the next diagnostic task. MUST preserve the
-protected goal, original success criteria, execution authority, and
-[adaptive work budget](../../orchestration/references/adaptive-work.md).
+scope, or when asked to propose the next diagnostic task. This method MUST
+follow the
+[shared improvement invariants](../../self-improvement/SKILL.md#shared-improvement-invariants).
 Selection can finish with a proposal; it does not authorize execution.
 
 Consume current [strategy evidence](strategy-search.md) and
@@ -71,5 +71,6 @@ background learning; it MUST NOT adopt or revise stored rules itself.
 If no candidate offers useful information within the current boundary, MUST end
 selection and record why. Remaining compute is not a reason to generate more
 tasks. A useful but unaffordable or unauthorized task can remain a proposal, not
-an active learning commitment. Replanning or selecting a new difficulty MUST NOT
-reset the finite budget.
+an active learning commitment. Replanning and difficulty changes MUST continue
+to follow the unchanged budget in the
+[shared improvement invariants](../../self-improvement/SKILL.md#shared-improvement-invariants).

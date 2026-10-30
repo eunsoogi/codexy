@@ -2,10 +2,11 @@
 
 Use after exploring meaningful alternatives under
 [strategy search](strategy-search.md), when combining their strengths could
-improve on selecting one candidate. Fusion is optional. MUST preserve the
-protected goal, original success criteria, existing authority, and finite
-budget. This guide neither redesigns branch management nor applies code or
-creates an executor.
+improve on selecting one candidate. Fusion is optional. When selected, it MUST
+follow the
+[shared improvement invariants](../../self-improvement/SKILL.md#shared-improvement-invariants).
+This guide neither redesigns branch management nor applies code or creates an
+executor.
 
 ## Decide whether to combine
 
@@ -59,8 +60,8 @@ Ordinary one-off work retains the existing proportionate verification boundary.
 If fusion introduces a failure, MUST retain the fused result and original
 candidate results separately. MUST identify the evidenced incompatible
 interaction or unresolved cause without rewriting the original candidates'
-history. A repair or smaller combination is another candidate whose affected
-checks must be performed; the budget and authority do not reset.
+history. A repair or smaller combination is another candidate; MUST perform its
+affected checks under the same shared invariants.
 
 If relevant validation is unavailable or fails, MUST keep the fused candidate
 unverified or failed rather than declaring it better from component scores. A
@@ -70,5 +71,6 @@ still applicable to the current task. Otherwise report the remaining gap.
 Return either the distinct fused candidate and its validation status, or the
 no-fusion decision, with provenance, compatibility/benefit reasons, and limits.
 Required changes to the goal or authority go to the orchestrator rather than
-being silently adopted. Fusion MUST NOT promote a reusable rule, choose future
-learning tasks, or replace review, completion, merge, or publication gates.
+being silently adopted. Reusable-rule adoption belongs to
+[rule learning](rule-learning.md). Fusion MUST NOT choose future learning tasks
+or replace review, completion, merge, or publication gates.

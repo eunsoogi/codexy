@@ -5,10 +5,26 @@ description: Use when repeated failure, uncertain premises, conflicting verifica
 
 # Self-improvement
 
-Improve how the current task reaches and verifies its goal. MUST keep the
-protected goal, original success criteria, ownership, assigned models, and
-actual authority fixed. This skill changes a supported strategy or evaluation
-method; it does not train model weights or grant permission for future work.
+Improve how the current task reaches and verifies its goal. This skill changes a
+supported strategy or evaluation method; it does not train model weights or
+grant permission for future work.
+
+## Shared improvement invariants
+
+Every selected method MUST preserve the current goal, success criteria, owner,
+assigned models, actual authority, and finite budget. A method MUST NOT expand
+scope, transfer ownership, change models, grant permission, or reset the budget.
+The existing orchestration and engineering owners retain those decisions.
+
+For a strategy, harness, evaluator, or proxy proposed for reuse,
+[evaluation integrity](../engineering/references/evaluation-integrity.md) owns
+product evaluation meaning, independent-evaluation criteria, and promotion
+conditions. [Rule learning](../engineering/references/rule-learning.md) owns
+rule scope and destination-owner adoption. Scores, candidate validity, and a
+scope-validated rule MUST NOT substitute for those decisions; budget exhaustion
+MUST NOT promote or adopt a candidate. Repository-only evaluation procedures,
+when selected, own execution and recording and MUST NOT redefine product
+evaluation meaning or independence.
 
 ## Select only useful steps
 
@@ -23,8 +39,9 @@ task when they add no useful information.
 MUST begin with the existing
 [adaptive work policy](../orchestration/references/adaptive-work.md), using the
 task's difficulty, verifiability, duration, reversibility, and context to choose
-effort. Read only the relevant contracts below; MUST NOT run every step as a
-fixed checklist.
+effort. The table routes only current needs; selected methods inherit the shared
+invariants above, while unselected methods remain inactive. Read only the
+relevant contracts below; MUST NOT run every step as a fixed checklist.
 
 | Current need                                                     | Contract and result                                                                                                                                                |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

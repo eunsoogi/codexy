@@ -20,6 +20,7 @@ existing authorized note. This record is not permission to persist a rule.
   status:
 - Permitted next action, or candidate-only stopping reason:
 
-MUST keep one-off success and development diagnostics distinct from validated
-transfer and private holdout evidence. Missing write authority MUST NOT turn a
+Use [rule learning](../references/rule-learning.md) and
+[evaluation integrity](../references/evaluation-integrity.md) for evidence,
+holdout, and adoption decisions. Missing write authority MUST NOT turn a
 candidate into an adopted rule or authorize global memory mutation.

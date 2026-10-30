@@ -2,7 +2,8 @@
 
 Use this check at meaningful optimization checkpoints, after an evaluator or
 proxy change, or when evidence suggests that scores and actual goal quality have
-diverged. MUST preserve the protected goal and original success criteria. Use
+diverged. This method MUST follow the
+[shared improvement invariants](../../self-improvement/SKILL.md#shared-improvement-invariants).
 [feedback evidence](feedback-evidence.md) for source/confidence,
 [attempt validation](attempt-validation.md) for independent process/outcome
 judgments, and [evaluation integrity](evaluation-integrity.md) for private cases
@@ -37,13 +38,15 @@ This check detects divergence rather than treating all optimization as suspect.
 ## Respond to the supported boundary
 
 For supported overfitting or gaming signals, MUST suspend further optimization
-of the affected branch against the suspect proxy and withhold rule promotion.
-MUST preserve the candidate, observed failures, and reason for suspension.
-Suspending a strategy branch MUST NOT pause a native goal, cancel unrelated
-authorized work, or change ownership.
+of the affected branch against the suspect proxy and withhold rule promotion
+under [evaluation integrity](evaluation-integrity.md). MUST preserve the
+candidate, observed failures, and reason for suspension. Suspending a strategy
+branch MUST NOT pause a native goal, cancel unrelated authorized work, or change
+ownership.
 
-MUST select a proportionate stronger evaluation within the existing authority
-and finite budget. Depending on the supported signal, this can mean:
+MUST select a proportionate stronger evaluation within the limits kept by the
+[shared improvement invariants](../../self-improvement/SKILL.md#shared-improvement-invariants).
+Depending on the supported signal, this can mean:
 
 - A direct observation of goal quality that tests the apparent proxy gain.
 - Independent evidence or an evaluation method that does not share the suspect
@@ -77,12 +80,12 @@ the candidate into a promoted rule.
 
 A change with improved development scores and degraded valid holdout results
 MUST follow the supported-signal response above: keep the affected optimization
-branch suspended, withhold promotion, and choose a fresh, uncontaminated
-evaluation before resumption. If that check is unavailable, MUST report the
-limit and retain suspension. MUST preserve the private disclosure boundary. A
-new score after adjusting the evaluator is not comparable by default; apply the
-evaluation integrity contract and preserve the earlier results. MUST NOT remove
-failed cases or relax criteria to claim a recovery.
+branch suspended pending the fresh, uncontaminated evaluation required by
+[evaluation integrity](evaluation-integrity.md). If that check is unavailable,
+MUST report the limit and retain suspension. MUST preserve the private
+disclosure boundary. A new score after adjusting the evaluator is not comparable
+by default; apply the evaluation integrity contract and preserve the earlier
+results. MUST NOT remove failed cases or relax criteria to claim a recovery.
 
 Reviewing a proxy's fidelity is allowed within its existing scope. Changing the
 meaning of the protected goal or original success criteria is not: MUST report

@@ -6,11 +6,12 @@ under [attempt validation](attempt-validation.md). A lucky outcome from a bad
 process, one success, or repeated success on the same example MUST NOT establish
 a reusable rule.
 
-MUST preserve the protected goal, original success criteria, authority, and
-finite budget. [Strategy search](strategy-search.md) supplies competing
-hypotheses; [feedback evidence](feedback-evidence.md) supplies confidence and
-provenance. This guide does not choose a future learning curriculum or authorize
-background learning, weight training, scheduling, or global memory writes.
+This method MUST follow the
+[shared improvement invariants](../../self-improvement/SKILL.md#shared-improvement-invariants).
+[Strategy search](strategy-search.md) supplies competing hypotheses;
+[feedback evidence](feedback-evidence.md) supplies confidence and provenance.
+This guide does not choose a future learning curriculum or authorize background
+learning, weight training, scheduling, or global memory writes.
 
 ## State the rule before testing
 
@@ -42,13 +43,11 @@ minimum is not proof of universal generalization, statistical superiority, or
 reliability beyond the observed sample. MUST keep unsuccessful diagnostics and
 uncertainty visible alongside successful ones.
 
-MUST use [evaluation integrity](evaluation-integrity.md) for meaningful strategy
-or harness changes, including fresh uncontaminated holdout evidence before
-promotion. Author-created diagnostics are development cases, not private
-holdouts. MUST NOT inspect private cases to manufacture apparent transfer. Apply
-[reward-hacking checks](reward-hacking.md) when evidence supports them. Single
-weak feedback, duplicate examples, or development gains with valid holdout
-regression MUST NOT justify permanent promotion.
+For a meaningful strategy or harness change, MUST follow
+[evaluation integrity](evaluation-integrity.md), which owns independent-holdout
+and promotion criteria. Apply [reward-hacking checks](reward-hacking.md) when
+evidence supports them. A single weak feedback item MUST NOT justify adoption;
+assess it under [feedback evidence](feedback-evidence.md).
 
 ## Track evidence state and disposition
 
