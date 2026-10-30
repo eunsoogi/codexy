@@ -49,6 +49,8 @@ SCHEMAS: dict[str, dict[str, ValueMode]] = {
         "set-upstream": "none",
         "atomic": "none",
         "follow-tags": "none",
+        # Preserve the explicit opt-out when Git config enables push.followTags.
+        "no-follow-tags": "none",
         "signed": "optional-equals",
         "no-signed": "none",
         "push-option": "required",

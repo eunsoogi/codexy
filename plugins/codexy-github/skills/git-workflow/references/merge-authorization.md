@@ -4,7 +4,9 @@ Codexy does not provide a merge wrapper or a mutation admission route. The host,
 connector authentication, and GitHub permissions/branch protections are the only
 authorities that can authorize a merge. The checks below are optional evidence
 guidance for a repository or maintainer that explicitly selects this merge
-contract, not a plugin-owned veto.
+contract, not a plugin-owned veto. Selection follows the parent's
+[policy-selection boundary](../SKILL.md#policy-selection); this evidence does
+not grant merge permission.
 
 When this contract is selected, passing gates make a PR eligible; they do not
 authorize merge. The chosen authorized route MUST fresh-read the exact
@@ -14,8 +16,9 @@ GitHub's response; do not require this comment, a local authorization file, or a
 diagnostic invocation merely because the plugin is installed.
 
 If selected, explicit repository authorization requires one fresh GitHub PR
-comment with immutable comment identity and URL, authored by an `OWNER` or
-`MEMBER`, whose body exactly matches the live target:
+comment as evidence of that repository policy, with immutable comment identity
+and URL, authored by an `OWNER` or `MEMBER`, whose body exactly matches the live
+target:
 
 ```text
 AUTHORIZE SQUASH MERGE: PR #<number> BASE <base> HEAD <head>
