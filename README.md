@@ -35,7 +35,7 @@ transactional lifecycle commands.
 Install the complete Codexy product:
 
 ```sh
-uv tool install getcodexy==2.1.0
+uv tool install getcodexy==2.2.0
 uv tool update-shell
 getcodexy install
 ```
@@ -68,7 +68,7 @@ automatically.
 ```sh
 getcodexy status                       # read the installed-component inventory
 getcodexy doctor                       # check host readiness and component health
-uv tool upgrade getcodexy==2.1.0       # update the installed CLI itself
+uv tool upgrade getcodexy==2.2.0       # update the installed CLI itself
 getcodexy update                       # update every installed component
 getcodexy update github                # update one installed dependency closure
 getcodexy install github               # add GitHub to an existing selection
@@ -107,7 +107,7 @@ it when you need to install individual components directly, and install `core`
 first.
 
 ```sh
-codex plugin marketplace add eunsoogi/codexy --ref v2.1.0
+codex plugin marketplace add eunsoogi/codexy --ref v2.2.0
 codex plugin add codexy@codexy
 codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
