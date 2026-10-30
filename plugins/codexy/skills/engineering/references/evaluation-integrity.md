@@ -2,9 +2,11 @@
 
 Use this boundary for a meaningful strategy, harness, evaluator, or proxy change
 being evaluated for reuse. Ordinary one-off tasks MUST NOT acquire a mandatory
-holdout procedure. MUST preserve the protected goal, original success criteria,
-[adaptive work budget](../../orchestration/references/adaptive-work.md), and
-[independent process/outcome assessment](attempt-validation.md).
+holdout procedure. This boundary MUST follow the
+[shared improvement invariants](../../self-improvement/SKILL.md#shared-improvement-invariants)
+and owns product-level evaluation meaning, independent-evaluation criteria, and
+promotion conditions. For process/outcome assessment, use
+[attempt validation](attempt-validation.md).
 
 ## Separate development and holdout access
 
@@ -12,7 +14,9 @@ Authors may use public requirements, rubrics, and development cases to improve a
 candidate. Holdout evaluation belongs to an independent evaluator. The author
 MUST NOT create, inspect, or optimize against the private holdout cases,
 expected or prohibited behavior, raw results, exact invocations, or
-measurements.
+measurements. Cases counted as independent MUST test the relevant boundary
+without sharing a copied answer or relying on a single surface cue. Author-
+created diagnostics remain development evidence, not private holdout evidence.
 
 The evaluator MUST freeze the candidate revision, environment, criteria, and
 finite evaluation budget before creating private cases. It MUST retain those
@@ -68,16 +72,13 @@ only favorable runs to resolve the regression.
 ## Evaluator and author handoff
 
 The repository's evaluator procedure remains repository-only; a packaged user
-does not need that local skill installed. A designated evaluator can implement
-this access boundary with its available authorized tools. Role labels alone do
-not establish independence, and this document MUST NOT create agents or change
-assigned models.
-
-Where the repository skill-evaluation procedure applies, MUST retain all four
-private case types with at least two independent cases each: existing-wording
-variants, new domains, quotation/negation, and insufficient input. Product
-instructions MUST NOT contain their answers. Before author-facing handoff, the
-evaluator MUST check the allowed disclosure fields and preserve unsuccessful and
-invalid runs privately. If private execution, isolation, or comparison cannot be
-established, MUST report the permitted status and failed dimension; MUST NOT
-claim successful holdout evaluation.
+does not need that local skill installed. When selected, that procedure owns
+case execution and recording; this document owns product evaluation meaning and
+independence. A designated evaluator can implement this access boundary with
+its available authorized tools. Role labels alone do not establish
+independence, and this document MUST NOT create agents or change assigned
+models. Product instructions MUST NOT contain private answers. Before
+author-facing handoff, the evaluator MUST check allowed disclosure fields and
+preserve unsuccessful and invalid runs privately. If private execution,
+isolation, or comparison cannot be established, MUST report the permitted status
+and failed dimension; MUST NOT claim successful holdout evaluation.

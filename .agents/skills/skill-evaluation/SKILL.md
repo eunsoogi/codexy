@@ -7,9 +7,11 @@ description: Use when evaluating a shipped skill with private cases for semantic
 
 ## Purpose and boundary
 
-This repository-only skill defines a small, manual evaluation procedure for a
-deployed skill. It separates evaluator-owned cases and evidence from the prompts
-that are shipped to users.
+This repository-only skill defines manual execution and recording for evaluation
+of a deployed skill. Product evaluation meaning, independence, and promotion
+follow the packaged
+[evaluation integrity boundary](../../../plugins/codexy/skills/engineering/references/evaluation-integrity.md).
+It separates evaluator-owned cases and evidence from prompts shipped to users.
 
 This skill MUST NOT build an execution service, an automatic LLM evaluator, a
 score dashboard, or skill-specific answer files. It MUST NOT add evaluation
@@ -55,9 +57,8 @@ The evaluator MUST create at least two independent cases of each type:
 - insufficient input that tests uncertainty, refusal, or a request for what is
   missing.
 
-Independence means that the cases do not share a copied answer or a single
-surface cue. The evaluator MUST NOT turn the matrix into instruction-wording
-tests.
+Case independence follows the packaged evaluation integrity boundary. The
+evaluator MUST NOT turn the matrix into instruction-wording tests.
 
 ## Per-case record format
 
@@ -120,8 +121,5 @@ evaluator MUST NOT lower the rubric or remove cases.
 
 ## Reuse in skill issues
 
-When this procedure is copied into future skill-specific issues, the evaluator
-MUST keep the same case matrix and record fields. The evaluator MUST attach only
-the fields allowed by the public storage boundary. The evaluator MUST keep all
-complete case records, holdout answers, and private inputs in an
-evaluator-controlled private bounded artifact, outside the deployed skill paths.
+When reusing this procedure for skill issues, the evaluator MUST follow the same
+case matrix, record format, and public storage boundary defined above.

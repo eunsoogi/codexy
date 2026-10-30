@@ -2,10 +2,11 @@
 
 Use a finite search when the
 [adaptive work policy](../../orchestration/references/adaptive-work.md) calls
-for alternative strategies or competing premises. MUST preserve its task
-classification, contribution check, authority, and budget. A branch here is a
-candidate approach, not a Git branch, app task, or authorization to create one.
-This procedure MUST NOT change the explicit invocation boundary of
+for alternative strategies or competing premises. Every search MUST follow the
+[shared improvement invariants](../../self-improvement/SKILL.md#shared-improvement-invariants).
+A branch here is a candidate approach, not a Git branch, app task, or
+authorization to create one. This procedure MUST NOT change the explicit
+invocation boundary of
 [`frame-alternatives`](../../frame-alternatives/SKILL.md).
 
 ## Create substantive alternatives
@@ -95,5 +96,5 @@ Return the finite active/stopped set, the leader if supported, the materially
 different retained alternative if available, observed evidence versus estimates,
 and the next permitted action or stopping reason. Candidate fusion is a separate
 decision and MUST NOT be implied by retaining multiple branches. A search result
-MUST NOT replace final validation, promote a permanent rule, or weaken the
-protected goal and success criteria.
+MUST NOT replace final validation or weaken the protected goal and success
+criteria. Permanent-rule adoption follows [rule learning](rule-learning.md).
