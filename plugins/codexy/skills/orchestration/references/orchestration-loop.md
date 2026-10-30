@@ -11,16 +11,16 @@
      eligible hard-work elevation MUST follow
      [reconciliation](worker-elevation/reconciliation.md) before transfer. Role
      boundaries MUST stay distinct.
-   - For orchestration requests, MUST apply the
-     [orchestration-request ownership boundary](task-classification.md#orchestration-request-ownership):
-     parent coordination and acceptance; child investigation, design, execution,
-     tests, and verification. Small, urgent, or read-only work MUST NOT be
-     exempt.
+   - MUST use
+     [task classification](task-classification.md#orchestration-request-ownership)
+     as the only decision source for request kind, scoped authority, owner, and
+     dependency/resource/integration distinctions. This loop MUST consume that
+     decision rather than create another.
    - MUST separate hard requirements, preferences, assumptions, and non-goals.
    - MUST identify the observable surface that proves the request worked.
-   - MUST decide separate app-task creation from branch/worktree/PR need by
-     checking the callable tool, current user authority, and existing owner as
-     independent facts.
+   - MUST supply current tool-availability, user-authority, and active-owner
+     evidence to the task-classification decision about separate app-task
+     creation; branch/worktree/PR need alone MUST NOT decide the owner.
    - MUST use the available `codegraph` MCP to map relevant code files and
      neighbors when the selected task has a code or repository surface.
 2. Plan:
@@ -30,11 +30,9 @@
      instructions for plan content, updates, and plan-file rules. Orchestration
      MUST NOT duplicate those rules or re-enter planning when it is already
      selected and in progress.
-   - A plan-only request MUST return the planning result and MUST NOT create an
-     issue, branch, worktree, child task, or implementation. When execution is
-     authorized for one atomic issue, orchestration MUST NOT require a plan file
-     or a new approval for ordinary implementation choices. An existing plan's
-     completion marker MUST NOT prove current execution or verification.
+   - MUST use task classification to determine whether the request remains
+     plan-only or has an assigned execution owner. An existing plan's completion
+     marker MUST NOT prove current execution or verification.
    - When a plan exists for the selected planning workflow, orchestration MUST
      carry its classification, ownership, and dependency evidence into the
      planning handoff or update request before execution actions; `$planning`
@@ -49,14 +47,15 @@
      require a fixed checkpoint count or unchanged-progress receipt.
    - In [the canonical role mapping](parent-supervision.md), MUST read back the
      Orchestrator's exact active overall goal.
-   - MUST split independent outcomes into separate issues and lanes unless a
-     maintainer explicitly scopes them as one atomic lane.
-   - MUST mark ownership before substantive work. Under an orchestration
-     request, independent non-coordination work MUST be child-assigned under
-     [child routing](child-routing-policy.md#orchestration-request-dispatch).
+   - MUST apply task classification before substantive work and carry its
+     established atomic scope into the selected planning or dispatch procedure.
+     Use [child routing](child-routing-policy.md#orchestration-request-dispatch)
+     only for dispatch mechanics after an owner and authorized route are set.
 3. Dispatch:
-   - MUST NOT dispatch until classification proves lane type, owner, atomicity,
-     required skills, required tools, and first allowed action.
+   - MUST NOT dispatch until
+     [task classification](task-classification.md#orchestration-request-ownership)
+     establishes the lane and owner; the assignment then records its atomic
+     scope, required skills/tools, and first allowed action.
    - The root orchestrator MUST start specialist subagents only for bounded
      lanes without their own branch or PR.
    - Every helper or Sentinel assignment MUST include the nonrecursive
@@ -66,16 +65,10 @@
      specialist whose stated scope clearly matches the task surface, or record a
      concrete skip rationale. It MUST NOT count that specialist as the Codex
      child-thread/worktree owner for an issue-sized implementation lane.
-   - For an explicitly requested child-owned implementation lane, the root
-     orchestrator MUST start or fork a separate Codex thread in a worktree when
-     the tool is available. A current-task-owned lane MUST NOT be dispatched to
-     another task merely because it needs a branch, worktree, or PR.
-   - For orchestration requests, MUST resolve a suitable child and authority
-     before independent investigation or execution. MUST reuse existing owners.
-     Generic orchestration wording MUST NOT override the actual `create_thread`
-     contract or designate the parent as implementer. Missing authority or an
-     unavailable child surface MUST leave that work pending; MUST NOT relabel it
-     for parent execution or use unsupported CLI/app-server substitutes.
+   - After classification selects an app-task route, follow the actual
+     [thread/worktree creation procedure](thread-and-worktree-routing.md). MUST
+     preserve missing authority or an unavailable required surface as pending;
+     MUST NOT use an app-server/CLI substitute.
    - Ordinary Worker observation belongs to the Orchestrator, which MUST use
      native cursor-based `wait_threads` for its assigned targets and retain each
      target's latest cursor. The Worker MUST use only already-authorized
@@ -105,24 +98,10 @@
      The parent MUST verify actual task state and permissions before releasing
      the already-scoped execution phase; the same owner MUST use actual goal
      lifecycle readback. Setup completion alone MUST NOT authorize execution.
-   - A ready independent lane MUST continue through implementation,
-     verification, selected review, and handoff within its existing authority.
-     MUST NOT split it into routine sequential read-only, plan-approval, or
-     code-only prompts. Shared migrations, Simulator reservations, other
-     shared-file/resource conflicts, missing authority, and material safety
-     decisions MUST retain parent gates. MUST stop only the affected work and
-     continue independent authorized work; required review, routing, and slot
-     limits remain binding.
-   - If the current task is already explicitly assigned as implementation owner
-     for the lane and no new task was explicitly requested, MUST continue in the
-     current task under its native goal and MUST NOT create another app task. If
-     an active child owns the lane, the parent MUST send correction instructions
-     to that owner through the supported task route without requiring authority
-     to create another task. The parent MUST NOT take over implementation or
-     create a duplicate owner.
-   - If a new app task was explicitly requested, MUST use the actual callable
-     `create_thread` contract, verify the returned task and owner before
-     execution, and MUST NOT use an app-server/CLI bypass or fake task.
+   - Dependency, owner, and conflict decisions MUST come from task
+     classification. After they are established, keep ready work moving within
+     the selected capacity and resource procedures; route actual integration
+     conflicts through the owning branch.
 4. Integrate:
    - MUST process actionable compact child results before re-reading
      transcripts; MUST verify the linked current artifacts and missing or
@@ -136,8 +115,9 @@
      Worker MUST choose and implement repairs. The Orchestrator MUST verify the
      next relevant call, diff, or result and preserve the creating surface and
      native review history.
-   - MUST resolve cross-lane conflicts in the orchestrator thread and route
-     child-owned issue findings to the owning Worker under
+   - MUST route actual cross-lane integration conflicts through the owning
+     branch procedures, and route child-owned issue findings to the owning
+     Worker under
      [issue-owned implementation decisions](task-classification.md#issue-owned-implementation-decisions).
      Feedback MUST identify an unmet criterion or verified constraint and its
      evidence gap; the Worker chooses the repair.
@@ -152,8 +132,9 @@
      review, and `$proof-driven-completion` owns final claims. This loop MUST
      NOT add a universal test, review, or evidence checklist.
    - MUST run local checks in the owning worktree.
-   - Execution verification MUST run in the owning child/worktree for an
-     orchestration request; parent acceptance MUST judge its returned proof.
+   - Follow
+     [task classification](task-classification.md#issue-owned-implementation-decisions)
+     for the division between owner-run verification and parent acceptance.
    - The assigned execution owner MUST drive the selected external surface when
      changing GitHub, browser/desktop, CLI, plugin, marketplace,
      documents/artifacts, spreadsheets/data, research/wiki, or project settings
@@ -215,7 +196,7 @@ Classification evidence:
 Review feedback route:
 Parent acceptance: criteria/evidence; Worker chooses repairs
 Initial phase contract: issue outcome; Assignment objective; phase criteria
-Capacity: reserved slot; shared-file/resource reservations; parent gates
+Capacity: reserved slot; concrete shared-resource reservations; parent gates
 Setup phase: only if required; check, evidence, release condition
 Completion route: goal-transition-reporting.md; compact current-head result
 Return evidence: selected route/profile only; exact head, checks, findings,

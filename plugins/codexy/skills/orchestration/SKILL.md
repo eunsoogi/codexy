@@ -40,8 +40,8 @@ per-boundary sequencing and proof,
 evidence reuse, [review profiles](references/review-profiles.md) and
 [review lifecycle](references/review-lifecycle.md) own current-head review, and
 [proof-driven completion](../proof-driven-completion/SKILL.md) owns final
-claims. Do not restate these policies here or preload them for an unrelated
-route.
+claims. This entrypoint MUST NOT restate these policies or preload them for an
+unrelated route.
 
 ### Readable communication boundary
 
@@ -51,23 +51,14 @@ includes parent replies, task/agent prompts, delegated instructions, progress
 and callback messages, handoffs, and tool prompt fields. Concision and protected
 technical text MUST follow that contract.
 
-### Orchestration-request boundary
+### Task kind and owner decisions
 
-When the user asks to orchestrate, the parent MUST delegate every independent
-investigation, research, diagnosis, design, implementation, test, and execution
-verification task, including small, urgent, or read-only work. It MUST retain
-only coordination, minimum state/evidence readbacks, acceptance judgment, next
-directions, and reporting under
-[task classification](references/task-classification.md#orchestration-request-ownership).
-Ordinary single-task requests and assigned implementation Workers MUST retain
-their existing roles. An explicit scoped orchestration assignment authorizes
-required bounded child tasks and necessary task messages under the
-[authority contract](references/child-routing-policy.md). Codex MUST NOT ask for
-approval again per child or message. Delegation MUST preserve host/user
-permissions, prerequisites, owners, setup, goals, review, and capacity; missing
-authority or tools MUST NOT authorize parent execution. For scoped assignments,
-this authority supersedes the task-creation exclusions in
-`classification-and-control.md`.
+[Task classification](references/task-classification.md#orchestration-request-ownership)
+is the single decision source for request kind, scoped authority, implementation
+owner, and dependency/resource/integration distinctions. MUST apply it before
+route selection or work ordering. This entrypoint MUST NOT add a competing
+decision; [child routing](references/child-routing-policy.md) owns dispatch
+mechanics.
 
 ### Delegated supervision route
 
@@ -79,67 +70,21 @@ read [reconciliation](references/worker-elevation/reconciliation.md). These
 references define role, model, report and wait routing, plus deduplication,
 capacity, interruption, cancellation, drift, and evaluation.
 
-The route has these mandatory boundaries: the Orchestrator owns the overall
-goal, judgement, correction, and acceptance; the Worker owns its implementation
-and finite goal; ordinary Worker observation is owned directly by the
-Orchestrator. Direct observation MUST use event-driven `wait_threads` with each
-target's latest cursor and preserve per-target cursors across results. A native
-reviewer's own terminal delivery follows its review route and MUST NOT be
-confused with Worker observation. MUST read `parent-supervision.md` for
-target/cursor handling, host limits, quiet waits, interruption, cancellation,
-and message authority before execution.
-
-Before dispatching a Worker, the Orchestrator MUST have an active overall goal.
-Each Worker prompt MUST contain one exact `Assignment objective:`, bounded
-scope, success criteria, verification, handoff, and stop condition. It MUST bind
-the
-[supervised slot](references/parent-supervision.md#supervised-app-child-capacity)
-and direct the Worker to use its own
-[goal-lifecycle](../goal-lifecycle/SKILL.md) sequence and the
-[terminal handoff](references/goal-transition-reporting.md) route. The parent
-goal MUST NOT stand in for the child's goal.
-
-For selected child-owned issue lanes, the Orchestrator MUST assign one Worker
-before implementation; that Worker owns implementation and review-response
-patches. Existing usable Workers retain ownership, and the Orchestrator MUST NOT
-patch the lane or create a duplicate. The Orchestrator MUST coordinate and judge
-returned proof; the Worker MUST execute verification. Merge and publication
-remain separately authorized. Each implementation Worker MUST start in an
-app-managed project worktree requested in its initial `create_thread` call. A
-local or projectless task MUST NOT be retrofitted with a different worktree
-route. The parent MUST verify actual task state and exposed permissions before
-implementation; when this requires post-creation parent environment validation,
-it MUST assign a short setup phase with the exact check, evidence, and
-parent-owned release condition. Otherwise, a ready independent lane MUST proceed
-through implementation, verification, selected review, and handoff within its
-initial authority, without routine read-only, plan-review, or code-only approval
-prompts. The setup release MUST carry the already-defined execution scope;
-follow-up goal startup MUST use actual lifecycle readback. Dependency-ready
-same-wave work MUST start concurrently within capacity, even when owned paths
-overlap. Codex MUST NOT scan or compare paths as a dispatch gate. Actual
-integration conflicts MUST be resolved in the owning child branch before merge
-while preserving both changes. Shared-resource conflicts (including migration
-execution or Simulator reservations), prerequisites, missing authority, and
-material safety decisions MUST remain gates. Required review and slot capacity
-MUST remain binding. Model and effort MUST be selected automatically from
-recipient role without asking the user to choose or reconfirm, subject to the
-actual tool contract.
+The task-classification contract selects the owner and classifies dependencies,
+resource reservations, and integration conflicts. After that decision, MUST
+apply the parent-supervision and child-routing procedures without changing the
+owner or repeating the task-kind decision here.
 
 ### Planning and execution boundary
 
 `$planning` is the source of instructions for plan content, plan updates, and
 local plan-file rules. MUST select it for an explicit plan-creation or
 plan-update request, or when genuinely necessary decomposition is required for
-large work. Orchestration remains authoritative for task classification,
-ownership, assignment, worktree, dispatch, execution coordination, and merge. A
-plan is a supporting artifact: it MUST NOT create execution authority, replace a
-native goal, or prove that execution or verification occurred.
-
-A plan-only request MUST return the planning result and MUST NOT create an
-issue, branch, worktree, child task, or implementation. When execution is
-already authorized for one atomic issue, orchestration MUST NOT require a plan
-file or a new approval for ordinary implementation choices, and MUST NOT
-re-enter planning when it is already selected and in progress.
+large work. MUST follow
+[task classification](references/task-classification.md#orchestration-request-ownership)
+for plan-only versus executable work and its owner. A plan is a supporting
+artifact: it MUST NOT create execution authority, replace a native goal, or
+prove that execution or verification occurred.
 
 ### Permission boundary
 

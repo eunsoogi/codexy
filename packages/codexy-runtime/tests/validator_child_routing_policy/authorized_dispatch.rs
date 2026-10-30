@@ -38,37 +38,12 @@ fn routing_needs_no_extra_approval_or_path_allocation_fields() -> TestResult {
 #[test]
 fn canonical_guidance_preserves_scoped_authority_and_parallel_dispatch() -> TestResult {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy/skills");
-    // Guard the contradictory source clauses seen in #1424, while keeping live
-    // app evidence a separate parent-owned acceptance gate.
+    // Keep authority consumers linked to the canonical source while
+    // retaining the host and supervisor boundaries checked below.
     for (path, required, obsolete) in [
-        (
-            "orchestration/SKILL.md",
-            "MUST NOT scan or compare paths as a dispatch gate",
-            "Shared-file or resource conflicts",
-        ),
-        (
-            "orchestration/SKILL.md",
-            "this authority supersedes the task-creation exclusions in `classification-and-control.md`",
-            "",
-        ),
-        (
-            "orchestration/references/child-routing-policy.md",
-            "MUST NOT ask for approval again per child or per message",
-            "MUST preserve current task-creation/message authority",
-        ),
-        (
-            "orchestration/references/thread-and-worktree-routing.md",
-            "even when owned paths overlap",
-            "disjoint lanes MAY run concurrently",
-        ),
         (
             "orchestration/references/parent-supervision.md",
             "without scanning paths or gating on path overlap",
-            "",
-        ),
-        (
-            "orchestration/references/goal-transition-reporting.md",
-            "bounded reports and recovery messages without another approval",
             "",
         ),
         (
@@ -88,15 +63,31 @@ fn canonical_guidance_preserves_scoped_authority_and_parallel_dispatch() -> Test
             "{path}: stale dispatch gate"
         );
     }
+    // Authority consumers link to the canonical decision; its meaning remains
+    // a source-review obligation rather than another prose assertion here.
+    for (consumer, target) in [
+        (
+            "orchestration/SKILL.md",
+            "references/task-classification.md#orchestration-request-ownership",
+        ),
+        (
+            "orchestration/references/child-routing-policy.md",
+            "task-classification.md#orchestration-request-ownership",
+        ),
+        (
+            "orchestration/references/thread-and-worktree-routing.md",
+            "task-classification.md#orchestration-request-ownership",
+        ),
+    ] {
+        assert_authority_link_resolves(&root, consumer, target)?;
+    }
     let worktree = std::fs::read_to_string(
         root.join("orchestration/references/thread-and-worktree-routing.md"),
     )?;
     let prose = worktree.split_whitespace().collect::<Vec<_>>().join(" ");
     for invariant in [
-        "one owner and isolated app-managed worktree per issue",
-        "Real integration conflicts MUST be resolved before merge through the owning task's branch",
+        "Actual integration conflicts MUST be resolved before merge through the owning task's branch",
         "MUST NOT infer parent permission inheritance",
-        "MUST NOT scan or compare paths as a dispatch gate",
     ] {
         assert!(
             prose.contains(invariant),
@@ -104,4 +95,61 @@ fn canonical_guidance_preserves_scoped_authority_and_parallel_dispatch() -> Test
         );
     }
     Ok(())
+}
+
+fn assert_authority_link_resolves(
+    skills_root: &std::path::Path,
+    consumer: &str,
+    expected_target: &str,
+) -> TestResult {
+    let consumer_path = skills_root.join(consumer);
+    let source = std::fs::read_to_string(&consumer_path)?;
+    let target = source
+        .split("](")
+        .skip(1)
+        .filter_map(|remainder| remainder.split_once(')').map(|(target, _)| target))
+        .find(|target| *target == expected_target)
+        .ok_or_else(|| format!("{consumer} does not link to the canonical authority section"))?;
+    let (relative_path, fragment) = target
+        .split_once('#')
+        .ok_or_else(|| format!("{consumer} authority link has no heading fragment"))?;
+    let target_document = consumer_path
+        .parent()
+        .ok_or_else(|| format!("{consumer} has no parent directory"))?
+        .join(relative_path);
+    let target_source = std::fs::read_to_string(&target_document)?;
+    assert!(
+        target_source
+            .lines()
+            .filter_map(plain_heading_anchor)
+            .any(|anchor| anchor == fragment),
+        "{consumer} authority link does not resolve to a heading in {}",
+        target_document.display()
+    );
+    Ok(())
+}
+
+// The canonical section uses a plain ATX heading, so its fragment joins lower-case words.
+fn plain_heading_anchor(line: &str) -> Option<String> {
+    let heading = line.trim_start();
+    let level = heading.bytes().take_while(|byte| *byte == b'#').count();
+    if !(1..=6).contains(&level) {
+        return None;
+    }
+    let title = heading
+        .get(level..)?
+        .strip_prefix(' ')?
+        .trim()
+        .trim_end_matches('#')
+        .trim();
+    if title.is_empty() {
+        return None;
+    }
+    Some(
+        title
+            .split_whitespace()
+            .map(|word| word.to_ascii_lowercase())
+            .collect::<Vec<_>>()
+            .join("-"),
+    )
 }

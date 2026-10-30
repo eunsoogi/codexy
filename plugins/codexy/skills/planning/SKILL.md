@@ -72,11 +72,18 @@ item can start.
 
 ## Order and parallelism
 
-MUST map path overlaps, shared contracts, generated inputs, and dependency
-outputs before choosing an order. MUST put prerequisite work before its
-consumers. MUST propose parallel work only when the items have disjoint writes,
-independent inputs, and no shared contract that requires serialized judgment.
-Otherwise, MUST keep the order explicit and MUST explain the dependency.
+MUST identify each dependency by the artifact, outcome, or contract decision a
+consumer needs, and MUST put actual prerequisites before their consumers. MUST
+use
+[task classification](../orchestration/references/task-classification.md#dependencies-reservations-and-integration-conflicts)
+to distinguish dependencies from concrete execution reservations and actual
+integration conflicts. Path overlap alone MUST NOT establish a planning
+dependency, prohibit parallel work in isolated branches, or create a dispatch
+barrier. A shared contract that needs a decision before a consumer starts MUST
+be named as that consumer's dependency and ordered first. A concrete exclusive
+resource MAY require a reservation and ordered use; MUST name the resource and
+the work it gates. This execution constraint is not a planning dependency.
+Actual integration conflicts belong to the owning branch's execution flow.
 
 ## Save and update
 

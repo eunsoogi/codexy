@@ -1,101 +1,13 @@
 # Classification And Control
 
-## Parent And Child Boundary
+## Task Classification Decision
 
-- A Codex task MUST retain its assigned ownership role when invoking the plugin
-  or loading a skill. Invocation MUST NOT promote an assigned Worker, evaluator,
-  or helper to orchestrator or expand its task-creation authority.
-- The assigned orchestrator creates or confirms issues, assigns branches,
-  delegates lanes, opens PRs when appropriate, performs parent verification,
-  coordinates squash merge, and syncs `main` within its authorized scope.
-- Every role MUST preserve explicit user and delegated task-creation limits. A
-  fresh-stage prerequisite MUST NOT authorize an assigned candidate to create a
-  nested task; it MUST report an unmet prerequisite to its stage owner.
-- A child Codex worktree thread owns implementation edits, local verification,
-  and review-response fixes for its assigned issue or lane.
-- `$planning` owns plan content, plan updates, and plan-file rules.
-  Orchestration owns task classification, ownership, assignment, worktree,
-  dispatch, execution coordination, and merge; a plan MUST NOT transfer those
-  authorities.
-- Durable delegation and multi-lane ownership preserve this ownership boundary
-  but do not select a strict workflow profile by themselves; profile selection
-  follows concrete risk, explicit audit, or materially shared integration risk.
-- Independent requested outcomes MUST be decomposed into separate issue-sized
-  atomic lanes before creating separate child tasks, worktrees, branches, or
-  PRs. A need for any of those surfaces MUST NOT by itself choose a child-owned
-  route.
-- A request to orchestrate or coordinate multiple independent issue outcomes
-  MUST be separated from implementation ownership. It authorizes coordination
-  and lane decomposition, but by itself neither assigns implementation to the
-  current task nor authorizes separate app-task creation. Before edits, the
-  parent MUST resolve the intended implementation topology for each lane. If
-  that intent is unresolved, implementation MUST remain pending until the user
-  or maintainer resolves it; the parent MUST NOT silently choose itself as the
-  implementer.
-- For a child-owned lane, the root orchestrator MUST create, fork, or assign the
-  owning child thread before implementation patches begin. A current-task-owned
-  lane MUST remain in the current task when no separate task was explicitly
-  requested, even when it needs a branch, worktree, or PR.
-- The orchestrator MUST NOT directly fix child-owned review feedback unless a
-  maintainer explicitly reassigns the lane to the orchestrator or the feedback
-  belongs to the orchestrator's own scoped lane.
-- If a child lane is bundled after dispatch or edits begin, MUST stop that lane,
-  MUST preserve draft state, report the overlap, and MUST split independent
-  outcomes into atomic issues, threads, worktrees, branches, and PRs before
-  resuming.
-
-## App Task Creation Authority
-
-Before creating or routing a separate Codex app task, the Orchestrator MUST
-check these facts independently:
-
-- Tool availability: `create_thread` MUST be callable through the current Codex
-  app surface and its actual contract MUST be available. A source, connector, or
-  app-server registration alone MUST NOT prove availability.
-- Invocation authority: a separate task MAY be created only when the current
-  user request explicitly asks for a new app task and the requested target is
-  within the authorized scope. Issue complexity, a needed branch/worktree/PR, or
-  a parent handoff MUST NOT by itself authorize another task.
-- Existing active owner: the Orchestrator MUST inspect the current task and
-  active child ownership for the same issue or lane before creating. A GitHub
-  assignee, branch, or visible task summary MUST NOT substitute for an
-  active-owner readback.
-
-When the current task is already explicitly assigned as implementation owner for
-the lane and no separate task was requested, the current-task route MUST
-continue under its native goal; it MUST NOT invoke `create_thread` merely to
-obtain an issue branch, worktree, or PR. A direct standalone implementation
-request remains a valid current-task assignment. When an active child already
-owns the issue or lane, the parent MUST keep that child as owner and send
-correction instructions through the supported task route; it MUST NOT implement
-in the parent or create a duplicate owner. Continuing with that existing owner
-does not require authority to create another app task. An explicitly requested
-new-task route MUST create the task only after the three checks and MUST verify
-the returned task identity, owner, target project/worktree, and native goal
-before execution.
-
-The current-task route applies only after the current task is assigned as the
-implementation owner for that lane; it MUST NOT resolve an orchestration request
-whose implementation topology is still unclear. For a request to orchestrate
-independent issue outcomes, the parent's coordinator role, active overall goal,
-or presence of the current task MUST NOT substitute for a lane-specific
-implementation assignment. If a lane is selected as child-owned, no active child
-already owns the lane, and authority to create its separate app task is absent
-or ambiguous, the lane MUST remain child-owned and implementation MUST remain
-pending. The parent MUST report the exact missing authority or owner decision
-and MUST NOT relabel that lane as parent-owned or current-task-owned to begin
-work.
-
-Both routes MUST preserve branch/worktree isolation, code ownership,
-verification, direct cursor-based Worker observation, and assigned model
-policies. A text-only record MAY capture the requested objective and exact
-unavailable-goal limitation, but it MUST NOT replace a native goal, authorize
-normal execution, or prove progress or completion. If a required task-creation,
-goal, or direct wait capability is unavailable, the agent MUST report the exact
-unsupported state and required action; it MUST NOT use an app-server/ CLI
-bypass, fake task, silent fallback, or completion claim. It MUST NOT report an
-app-server/CLI path, fake task invisible to the user, or unverified native agent
-as an app task.
+MUST use
+[task classification](task-classification.md#orchestration-request-ownership) as
+the single source for task kind, scoped authority, implementation owner, and
+dependency/resource/integration decisions. This reference MUST consume that
+decision and MUST NOT restate or override it. The remaining guidance applies
+after the owner and route are established.
 
 ## Compaction And Continuation
 

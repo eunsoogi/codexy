@@ -3,38 +3,34 @@
 MUST run this checkpoint before any implementation edit when a lane may need a
 branch, worktree, PR, durable child context, or review-response ownership:
 
-1. MUST name the atomic lane and decide ownership as `parent-owned` or
-   `child-owned`. When the user asks to orchestrate independent issue outcomes,
-   the parent MUST resolve each lane's implementation owner before selecting a
-   route; that coordination request alone neither selects parent implementation
-   nor authorizes separate app-task creation.
-2. Before selecting a current-task route or creating a separate app task, the
-   parent MUST record tool availability, current user invocation authority, and
-   existing current/child owner as three independent facts. A needed branch,
-   worktree, PR, issue assignment, or task complexity MUST NOT by itself
-   authorize `create_thread`. Generic requests to orchestrate or coordinate
-   independent issues MUST NOT be treated as explicit child-task requests.
-3. If the current task is explicitly assigned as implementation owner for this
-   lane and no separate task was requested, the current-task route MUST continue
-   under its native goal and MUST NOT create another app task. A direct
-   standalone implementation request remains a valid assignment. For an
-   orchestration request covering independent issues, the parent/coordinator
-   role, active overall goal, or presence of the current task MUST NOT count as
-   a lane-specific implementation assignment. The current-task route MUST NOT
-   resolve unclear topology or a previously selected child-owned lane. If
-   ownership intent is unresolved, or no active child already owns a selected
-   child-owned lane and task-creation authority is unavailable or ambiguous,
-   implementation MUST remain pending until the user or maintainer resolves the
-   owner/topology. If an active child already owns the lane, the parent MUST
-   send correction instructions through the supported task route without
-   requiring authority to create another task, and MUST NOT implement in the
-   parent or create a duplicate owner.
-4. If a separate task was explicitly requested, the parent MUST use the actual
-   callable `create_thread` contract and verify the returned task identity,
-   owner, project/worktree, and native goal before execution. The parent MUST
-   NOT use an app-server/CLI bypass, fake task, or silent fallback. A text-only
-   record MAY preserve the objective and exact unsupported state, but it MUST
-   NOT authorize execution or prove completion without the native goal.
+1. MUST apply
+   [task classification](task-classification.md#orchestration-request-ownership)
+   for task kind, scoped authority, lane owner, and the distinction between
+   dependencies, resource reservations, and integration conflicts. MUST record
+   the atomic lane and selected owner before choosing a route. This checkpoint
+   MUST NOT redefine those decisions.
+2. Before choosing the current-task route or creating an app task, the parent
+   MUST read back callable-tool availability, current user invocation authority
+   (including explicit no-new-task or recipient limits), and the existing
+   current/child owner as independent facts. The classification determines
+   whether scoped orchestration authority covers a necessary bounded child task.
+   A needed branch, worktree, PR, issue assignment, or task complexity MUST NOT
+   by itself authorize `create_thread`.
+3. When classification assigns the lane to the current task, the current-task
+   route MUST continue under its native goal without creating a duplicate task.
+   When classification selects a child-owned lane, the parent MUST NOT implement
+   in that lane or create a duplicate owner. If ownership is unresolved or
+   required authority or tooling is unavailable, implementation MUST remain
+   pending and the exact gap MUST be reported. If an active child already owns
+   the lane, the parent MUST send correction instructions through the supported
+   task route; this does not require authority to create another task.
+4. When the classified route selects an app task and current invocation limits
+   and host permissions allow it, the parent MUST use the actual callable
+   `create_thread` contract and verify the returned task identity, owner,
+   project/worktree, and native goal before execution. The parent MUST NOT use
+   an app-server/CLI bypass, fake task, or silent fallback. A text-only record
+   MAY preserve the objective and exact unsupported state, but MUST NOT
+   authorize execution or prove completion without the native goal.
 5. If the lane is `child-owned`, the parent may prepare issue text, branch
    names, worktree requests, handoff text, and acceptance criteria, but it MUST
    NOT patch implementation files, create implementation branches or worktrees
