@@ -99,8 +99,11 @@ If the handoff discusses addressed review feedback, MUST include GraphQL
 including outdated-but-fixed threads, remain invalid unless the report documents
 an accepted no-change rationale.
 
-A checked contract is the sole merge authorization; generic finish, completion,
-silence, clean gates, and a ready PR are non-authoritative signals.
+Merge authority MUST follow the Git Workflow
+[merge boundary](../../../../codexy-github/skills/git-workflow/SKILL.md#merge-boundary).
+A selected contract may add prerequisites but does not replace host/connector
+authorization or GitHub permissions. Generic finish, completion, silence, clean
+gates, and a ready PR are not authorization.
 
 ## Direct Review-State Handoff
 

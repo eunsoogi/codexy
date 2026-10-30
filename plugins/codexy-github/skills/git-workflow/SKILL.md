@@ -27,6 +27,17 @@ authenticated admission and lifecycle boundaries.
 
 MUST read only the references matching the requested operation before acting.
 
+## Policy Selection
+
+MUST base repository requirements on governing instructions or authenticated
+live repository state; explicit user or maintainer direction may select an
+optional contract for the task. An example or optional procedure included with
+this plugin does not select itself. For ordinary metadata and remote operations,
+installation alone MUST NOT require an issue, branch or worktree, fixed body or
+footer template, approval phrase, extra reviewer or review quota, transcript
+reconstruction, diagnostic invocation, or exclusive route. Use the matching
+reference for issue-sized or explicitly selected contracts.
+
 ## Admission Boundaries
 
 - For issue-sized implementation work, or when a repository or maintainer
@@ -49,16 +60,18 @@ MUST read only the references matching the requested operation before acting.
 The installed plugin adds workflow context and narrowly scoped local safety
 checks. It does not admit, deny, or rewrite general GitHub mutations. It retains
 the existing issue-title, PR-title, and squash-subject checks on their supported
-paths; those narrow checks are separate from operation admission and body or
-review formatting. Commands MUST use the host, connector, and GitHub
-authorization that applies to the current session; repository-local instructions
-remain repository-owned.
+paths; those narrow checks are separate from operation admission and from
+selected body, review, or evidence contracts. Commands MUST use the host,
+connector, and GitHub authorization that applies to the current session;
+repository-local instructions remain repository-owned.
 
 ## Merge Boundary
 
 Merge and auto-merge mutations use the normal host or connector route and
 GitHub's server-side permissions and branch protections. Gate success, generic
-completion, local state, or parent prose does not manufacture authorization.
+completion, local state, or parent prose does not manufacture authorization. A
+selected repository evidence contract may add prerequisites, but it does not
+grant merge authority or replace those permissions.
 
 ## GitHub And Local Tools
 

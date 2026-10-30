@@ -2,34 +2,33 @@
 
 ## PR Admission
 
-For a PR that belongs to an issue-sized implementation lane, or when this
-repository or maintainer explicitly selects the following PR contract, MUST
-confirm the issue, exact branch/base relationship, local verification, and
-repository taxonomy before opening it. Use a Conventional Commit title and a
-body with visible `## Summary`, `## Rationale`, `## Changed Areas`,
-`## Verification`, `## Evidence`, `## Not Run`, and `## Follow-ups` sections;
-the only closing reference MUST be the final line `Fixes #<issue>`. Keep a PR
-draft while proof or known risk is incomplete.
+For a PR in an issue-sized implementation lane, MUST confirm the issue, exact
+branch/base relationship, local verification, and repository taxonomy before
+opening it. The PR body MUST reference the issue; issue size alone does not
+select the structured body contract below. Use a Conventional Commit title and
+keep a PR draft while proof or known risk is incomplete.
 
-For ordinary authorized GitHub metadata or remote operations, including an
-issue/PR update, review, workflow, release, or merge request, do not require a
-new issue, local branch/worktree, prescribed body/footer, transcript
-reconstruction, or diagnostic invocation solely because this plugin is
-installed. The existing PR-title and squash-subject checks remain effective on
-their supported paths; otherwise follow the actual user or repository choice and
-the host, connector, and GitHub response.
+When the user, repository, or maintainer explicitly selects this structured
+PR-body contract, the body MUST contain visible `## Summary`, `## Rationale`,
+`## Changed Areas`, `## Verification`, `## Evidence`, `## Not Run`, and
+`## Follow-ups` sections; the only closing reference MUST be the final line
+`Fixes #<issue>`.
 
-Prefer an existing repository template when one is selected. If none is
-selected, offer a concise `Summary` and `Verification` example and expand it
-only as needed. The source contract retains its PR-title rule on supported
-creation and edit paths and its squash-subject rule on squash merges. Those
-rules are limited to the existing title contracts and do not impose a body
-template, review quota, or fixed approval phrase. Source presence or a replay
-MUST NOT be reported as proof that a particular host invoked a check or consumed
-its denial; without request-correlated host evidence, host enforcement MUST
-remain unverified. An adequate free-form description, renamed/omitted/reordered
-sections, or another language MUST NOT be blocked, rewritten, or sent for extra
-approval by the distributed default.
+For ordinary authorized GitHub metadata or remote operations, follow the
+[policy-selection boundary](../SKILL.md#policy-selection). The existing PR-title
+and squash-subject checks remain effective on their supported paths, and
+mutations use the normal host or connector route.
+
+Prefer a selected repository template. Without one or the selected body contract
+above, follow the user's format or, if none was supplied, offer a concise
+`Summary` and `Verification` example. A free-form description with renamed,
+omitted, or reordered headings, or in another language MUST NOT be blocked,
+rewritten, or sent for extra approval by the distributed default when no
+selected template or body contract applies. Review follows the selected profile,
+and the installed plugin alone does not add a reviewer or approval phrase.
+Source presence or replay is not proof that a host invoked a check or consumed
+its denial; without request-correlated evidence, host enforcement MUST remain
+unverified.
 
 The retained PR-title check applies on supported PR creation and title-edit
 paths. On those paths, the PR title MUST use `type(scope): description`, with a
@@ -38,9 +37,7 @@ goes after the scope: `feat(task)!: change behavior`. The PR title MUST NOT
 include an issue or PR number. The retained squash-subject check applies on
 squash merges. The squash subject MUST be the validated PR title followed by one
 ASCII space and `(#<actual PR number>)`. It MUST be added only after the
-captured PR title has passed validation. These retained title checks do not
-impose a body template, review quota, fixed approval phrase, or exclusive
-mutation route.
+captured PR title has passed validation.
 
 A valid PR title alone MUST NOT prove the final squash subject is valid. The
 merging owner MUST follow the ordered
