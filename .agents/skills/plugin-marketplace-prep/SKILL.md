@@ -7,96 +7,83 @@ description: MUST use when preparing Codex plugin manifests, marketplace listing
 
 ## Purpose
 
-MUST treat plugin and marketplace metadata as a product surface. A plugin is
-ready only when Codex can discover it, users can understand it, assets resolve,
-and validation proves the packaged paths match the repository layout.
+MUST treat plugin discovery, structure, metadata, and assets as a product
+surface. A plugin is source-ready only when Codex can discover it, users can
+understand it, referenced assets resolve, and checks match the repository layout
+and advertised package paths.
 
 ## Workflow
 
-1. MUST inspect canonical layout:
-   - `.agents/plugins/marketplace.json`,
-   - `plugins/<plugin>/.codex-plugin/plugin.json`,
-   - `plugins/<plugin>/skills/*/SKILL.md`,
-   - `plugins/<plugin>/skills/*/agents/openai.yaml`,
-   - optional `plugins/<plugin>/skills/*/references/*`,
-   - optional `plugins/<plugin>/agents/catalog.toml`,
-   - optional `plugins/<plugin>/agents/*.toml` specialist agent definitions,
-   - optional `plugins/<plugin>/.codex/lsp-client.json`,
-   - optional `plugins/<plugin>/hooks/hooks.json`,
-   - `plugins/<plugin>/assets/*`,
-   - optional `plugins/<plugin>/.mcp.json` or app manifests when present.
-2. Validate plugin manifest:
-   - `name` matches the plugin folder,
-   - `version` is explicit,
-   - `license`, `author`, `repository`, and `homepage` are current,
-   - interface copy matches implemented behavior,
-   - referenced `logo`, `composerIcon`, screenshots, or assets exist.
-3. Validate marketplace entry:
-   - `source.path` is relative to the repository or marketplace installation
-     root, using the canonical `./plugins/<plugin>` shape for this repository,
-   - `policy.installation` and `policy.authentication` are explicit,
-   - `category` is present,
-   - plugin order is intentional,
-   - no obsolete root `.codex-plugin`, root marketplace, or package-only
-     assumption is reintroduced.
-4. Validate skills:
-   - `SKILL.md` has `name` and `description` frontmatter,
-   - names are lowercase hyphen-case,
-   - descriptions start with triggering context such as `Use when`,
-   - `agents/openai.yaml` has `display_name`, `short_description`,
-     `default_prompt`, and `allow_implicit_invocation: true`,
-   - default prompts mention `$skill-name` when they route the user.
-5. Validate packaged safety:
-   - no secrets,
-   - no local machine paths,
-   - no `.omo` state,
-   - no temporary logs,
-   - no missing assets.
-6. Validate architecture surfaces when present:
-   - LSP config and its catalog agree on server ids and covered extensions,
-   - MCP config contains only verified packaged or official endpoints,
-   - lifecycle hooks use plugin-root-relative commands, stay read-only unless
-     explicitly scoped otherwise, and MUST NOT use user-state mutation paths,
-   - `scripts/validate-plugin-config.sh --check-touched-loc --base-ref <base>`
-     passes for touched implementation and test-harness files. Every governed
-     file MUST stay at or below 250 LOC. MUST NOT use or authorize LOC
-     exceptions,
-   - Codexy MCP config includes packaged `lsp` and `codegraph` servers when the
-     plugin advertises LSP or code exploration behavior,
-   - specialist agent or custom agent TOMLs parse and MUST NOT define a
-     competing Orchestrator when the invoking thread is the Orchestrator,
-   - Codexy specialist agent TOMLs use Codex custom-agent compatible fields so
-     the registration bridge can project them into the stable marker-owned
-     `$CODEX_HOME/agents/codexy/` discovery subtree without versioned cache
-     paths,
-   - the executable pre-start Codexy agent bootstrap exists at
-     `bootstrap-codexy-agents`, the non-mutating update checker exists at
-     `check-codexy-agents`, and the executable bootstrap and registration
-     delegates exist under
-     `skills/orchestration/scripts/bootstrap_codexy_github_agent.py` and
-     `skills/orchestration/scripts/register_codexy_agents.py`,
-   - Codexy reviewer agent metadata follows the selected profile: light uses no
-     LLM reviewer; standard uses one `codexy-inspector` when the profile or
-     change requires independent review; strict uses one `codexy-sentinel`,
-   - thread/worktree orchestration wording includes handoff fields, evidence,
-     stop conditions, and Orchestrator verification,
-   - Worker-owned PR review feedback is routed back to the owning Worker task
-     and revalidated there before the Orchestrator merges,
-   - for Codexy plugin prep specifically,
-     `scripts/validate-plugin-config.sh --check` passes when that validator is
-     present in the revision being prepared,
-   - for other plugins, validate only the packaged surfaces that exist instead
-     of requiring the full Codexy contract.
-7. Validate automation and release surfaces when present:
-   - GitHub Actions reference repository-root paths,
-   - workflow version inputs match plugin manifest expectations,
-   - marketplace validation can run without package-manager scaffolding unless
-     that scaffolding is part of the release issue.
-8. MUST record install/readiness evidence and unresolved risks.
+1. MUST inspect the canonical layout that exists for the candidate:
+   - `.agents/plugins/marketplace.json`;
+   - `plugins/<plugin>/.codex-plugin/plugin.json`;
+   - `plugins/<plugin>/skills/*/SKILL.md` and their `agents/openai.yaml` files;
+   - optional skill `references/*`, `agents/catalog.toml`, specialist agent
+     TOMLs, `.codex/lsp-client.json`, `hooks/hooks.json`, and `.mcp.json`;
+   - `plugins/<plugin>/assets/*` and any app manifests.
+2. MUST validate marketplace-owned metadata and paths:
+   - the plugin manifest name matches its folder and its required version field
+     is present; version policy and synchronized values belong to Release
+     Engineering;
+   - license, author, repository, homepage, and interface copy are current;
+     logo, composer icon, screenshots, and other referenced assets resolve from
+     the plugin root and exist;
+   - the marketplace entry uses the canonical repository-relative
+     `./plugins/<plugin>` source path, states installation and authentication
+     policy, has a category, and preserves intentional plugin order.
+3. MUST validate skill bundles and prompts: frontmatter has `name` and
+   `description`, names use lowercase hyphen-case, descriptions start with
+   triggering context such as `Use when`, and `agents/openai.yaml` has
+   `display_name`, `short_description`, `default_prompt`, and
+   `policy.allow_implicit_invocation: true`. A default prompt MUST mention
+   `$skill-name` when it routes the user.
+4. MUST validate each advertised architecture surface that actually exists:
+   - LSP configuration agrees with its catalog and covered extensions;
+   - MCP configuration contains only verified packaged or official endpoints;
+   - hooks use plugin-root-relative commands, stay read-only unless explicitly
+     scoped otherwise, and avoid user-state mutation paths;
+   - specialist and custom-agent TOMLs parse and use Codex-compatible fields;
+     when the invoking thread is the Orchestrator, they MUST NOT define a
+     competing Orchestrator. Codexy registration projects marker-owned copies
+     into `$CODEX_HOME/agents/codexy/`, not versioned cache paths, and MUST NOT
+     treat plugin-internal `.codex/agents/*.toml` files as canonical;
+   - for Codexy, the executable root entrypoints
+     `plugins/codexy/bootstrap-codexy-agents` and
+     `plugins/codexy/check-codexy-agents`, plus the packaged delegates
+     `plugins/codexy/skills/orchestration/scripts/bootstrap-codexy-agents` and
+     `plugins/codexy/skills/orchestration/scripts/register_codexy_agents.py`,
+     exist as regular, non-symlink executables; the update checker MUST remain
+     read-only;
+   - when packaged, the Codexy GitHub agent bootstrap exists at
+     `plugins/codexy-github/skills/git-workflow/scripts/bootstrap_codexy_github_agent.py`
+     as an executable;
+   - Codexy reviewer-agent metadata follows the selected profile: light uses no
+     LLM reviewer, standard uses one `codexy-inspector` when the profile or
+     change requires independent review, and strict uses one `codexy-sentinel`;
+   - when Codexy advertises LSP or code exploration, its packaged configuration
+     includes the matching LSP and Codegraph servers;
+   - thread/worktree guidance states handoff fields, evidence, stop conditions,
+     and Orchestrator verification.
+5. For Codexy, MUST run `scripts/validate-plugin-config.sh --check` when present
+   and `scripts/validate-plugin-config.sh --check-touched-loc --base-ref <base>`
+   for all touched governed files. Every governed file MUST stay at or below 250
+   lines; MUST NOT use or authorize LOC exceptions. Relevant JSON, YAML, and
+   TOML configuration MUST parse. Other plugins require checks only for their
+   existing supported surfaces.
+6. MUST check source-tree safety for secrets, local paths, `.omo` state,
+   temporary logs, and unintended dependencies. MUST NOT create package-manager
+   files solely to validate a static plugin unless its release or automation
+   scope requires them.
+7. When a release, artifact, or release-backed install claim is involved, MUST
+   use the single
+   [Marketplace Release Handoff](../release-engineering/SKILL.md#marketplace-release-handoff).
+   This skill supplies the marketplace source-readiness result; it MUST NOT
+   repeat release-owned version, artifact, publication, or rollback checks.
 
 ## Required Output
 
 ```text
+Candidate revision:
 Plugin path:
 Marketplace path:
 Manifest checks:
@@ -112,41 +99,25 @@ Risks:
 
 ## Gates
 
-- MUST NOT claim marketplace readiness while any referenced path is missing.
+- MUST NOT claim marketplace readiness while a required referenced path is
+  missing or its applicable parser or asset check is absent.
 - MUST NOT advertise tools, MCP servers, apps, hooks, or assets that are not
   actually packaged.
-- MUST NOT claim LSP, MCP, specialist agent TOML, custom agent TOML, or
-  thread/worktree readiness without parser evidence and the plugin config
-  validator when it is available.
-- MUST NOT let the Orchestrator silently patch Worker-owned plugin architecture
-  feedback. MUST route review feedback to the owning Worker task and MUST
-  require that task's verification evidence before marketplace readiness.
-- MUST NOT add root-level plugin manifests when the canonical layout is
-  `plugins/<plugin>/.codex-plugin/plugin.json`.
-- MUST NOT present plugin-internal `.codex/agents/*.toml` files as canonical or
-  supported. Codexy uses `plugins/<plugin>/agents/catalog.toml` and
-  `plugins/<plugin>/agents/<name>.toml` for packaged specialist definitions,
-  then projects marker-owned copies into `$CODEX_HOME/agents/codexy/` when
-  native `spawn_agent` roles are needed.
-- MUST NOT create package manager files solely to validate a static plugin
-  unless the release or automation scope requires them.
-
-## Evidence Rules
-
-- JSON manifests MUST require parser validation.
-- LSP and MCP config MUST require parser validation and, when the plugin being
-  prepared is Codexy, `scripts/validate-plugin-config.sh --check`.
-- Custom agent TOMLs and specialist agent definitions MUST require parser
-  validation and evidence that no separate Orchestrator agent competes with the
-  invoking thread.
-- Skill bundles MUST require frontmatter and metadata validation.
-- Asset references MUST require file-existence checks from the plugin root.
-- Marketplace installability MUST require checking both the repo-root-relative
-  marketplace entry and plugin manifest paths.
+- MUST NOT present a GitHub repository, source validator, or marketplace entry
+  as proof of a built artifact, actual installation, or publication. Those
+  claims MUST use the shared handoff and evidence for the matching surface.
+- MUST NOT add a root-level plugin manifest or marketplace file when the
+  canonical layout is `.agents/plugins/marketplace.json` and
+  `plugins/<plugin>/.codex-plugin/plugin.json`, obsolete package scripts,
+  package-only assumptions, or local absolute paths.
+- Issue-owned implementation and GitHub review feedback MUST follow
+  `$orchestration` and `$git-workflow`. Source, artifact, installation, and
+  publication evidence MUST follow `$proof-driven-completion`.
 
 ## Failure Modes
 
 - Confusing a GitHub repository with an installable Codex plugin.
 - Letting marketplace copy drift from implemented skills.
+- Letting marketplace metadata or assets drift from the current plugin source.
 - Reintroducing obsolete root manifests or stale package scripts.
-- Shipping plugin metadata that depends on a local absolute path.
+- Depending on a local absolute path.
