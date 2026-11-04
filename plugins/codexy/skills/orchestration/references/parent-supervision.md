@@ -151,7 +151,7 @@ available in existing task records and conversation; any native goal transition
 MUST follow [goal-lifecycle](../../goal-lifecycle/SKILL.md). MUST NOT create a
 new ledger or record format.
 
-## Waiting and Worker correction
+## Waiting and direct correction
 
 - A new child blocked report MUST follow the
   [Advisor consultation procedure](advisor-consultation.md#a-new-child-blocked-report)

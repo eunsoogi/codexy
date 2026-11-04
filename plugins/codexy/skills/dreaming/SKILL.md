@@ -30,11 +30,13 @@ memory. It MUST NOT mutate task, Git, GitHub, review, owner, or memory state.
    demoted, while a current exact-head failure remains active. Preserve
    unchanged completed history without reloading whole references; refresh only
    missing current facts needed to choose the next permitted action. When a user
-   correction arrived, MUST apply the
+   correction arrived, MUST use the
    [user-correction contract](../orchestration/references/parent-supervision.md#applying-user-corrections)
-   and carry its changed scope, owner, constraints, completion conditions, and
-   next action in existing task records. The unchanged request MUST NOT need to
-   be repeated for recovery.
+   to recover its recorded scope, owner, constraints, completion conditions, and
+   next action from existing task records. This read-only pass MUST NOT send
+   assignment updates or execute that next action; after recovery,
+   `$orchestration` MUST verify the current owner and authority before acting.
+   The unchanged request MUST NOT need to be repeated for recovery.
 4. If the current goal, owner, implementation head, relevant obligation, stop
    condition, or conflicting state cannot be resolved, stop with
    `BLOCKED_AUTHORITY_REGRESSION`; MUST NOT infer it.
