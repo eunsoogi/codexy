@@ -58,8 +58,8 @@ as user-visible and MUST follow the shared
   Orchestrator keeps outcome, correction, and final-acceptance responsibility;
   the Worker owns its branch, files, local verification, and review-response
   fixes. Later messages and repairs MUST return to that Worker and its managed
-  worktree; missing child evidence MUST NOT be replaced by parent execution or
-  a native helper. The Orchestrator retains accepted-child cleanup.
+  worktree; missing child evidence MUST NOT be replaced by parent execution or a
+  native helper. The Orchestrator retains accepted-child cleanup.
 - Workers MUST remain independent Codex app tasks in the same saved project.
 - Codex MUST distinguish app Workers from native subagents and packaged
   reviewers at the actual creating and readback tools. Codex MUST preserve
