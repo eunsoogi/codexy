@@ -89,14 +89,26 @@ as a readable Markdown table with one fact per row. Row order and ordinary
 wording MAY vary; code, links, and escaped pipes MAY appear in values. Unknown
 facts MUST remain visible. A quoted or historical table MUST NOT authorize a
 current action, and a conflicting duplicate MUST NOT be treated as a fact. This
-is the terminal handoff, not an additional pre-delivery receipt. It MUST bind
-`event id`, `issue/pr`, `child task`, `parent task`, `branch`, `worktree`,
-`head`, `clean/index`, `last proof`, `current gate`,
-`preserved reservation/artifacts`, and `parent next action`. It MUST also carry
-`phase objective` matching the active goal, `phase criteria=satisfied`,
-`state fingerprint`, nonterminal `producer state`, exact `wake route`,
-`ownership=retained`, `issue state=not complete`, `goal transition=complete`,
-and `return control=confirmed`.
+is the terminal handoff, not a wait for parent follow-through or an additional
+pre-delivery receipt. It MUST bind `event id`, `issue/pr`, `child task`,
+`parent task`, `branch`, `worktree`, `head`, `clean/index`, `last proof`,
+`current gate`, `preserved reservation/artifacts`, and `parent next action`. It
+MUST also carry `phase objective` matching the active goal,
+`phase criteria=satisfied`, `state fingerprint`, nonterminal `producer state`,
+exact `wake route`, `ownership=retained`, `issue state=not complete`,
+`goal transition=complete`, and `return control=confirmed`.
+
+The `current gate`, `producer state`, `wake route`, and `parent next action`
+MUST distinguish a required child-phase result from a pending parent-owned gate.
+A required review or execution result for an unmet child criterion keeps the
+phase active and uses the nonterminal wait route below. A parent-owned merge,
+acceptance or acknowledgement, or future assignment after this handoff MUST NOT
+delay child completion. The `parent next action` MUST name one supported
+operation or observation and its owner. The parent MUST continue its own active
+goal from that action, using [parent supervision](parent-supervision.md) for
+Worker observation and [runtime-heartbeats](runtime-heartbeats.md) for scheduled
+monitoring. Message transport acceptance proves delivery only; it does not prove
+parent readback, acceptance, or merge.
 
 1. With actual message permission, the child MUST submit that handoff once to
    the authenticated parent. Transport acceptance permits confirmed delivery
@@ -178,13 +190,16 @@ window, whether it appears before or after a stale matching pre-mutation check.
 Before any blocked call, the child MUST renew the typed gate, pre-delivery
 receipt, and matching pre-mutation check after that event.
 
-A child with an immediately executable in-scope obligation waiting on an
-external event MUST follow the nonterminal wait classification in
-[goal-lifecycle](../../goal-lifecycle/SKILL.md) and use
+When a required child-phase result remains pending, the child MUST follow the
+nonterminal wait classification in
+[goal-lifecycle](../../goal-lifecycle/SKILL.md) and use a
 `Nonterminal wait
-handoff:` with a stable state fingerprint, nonterminal
-producer, wake route, `ownership=retained`, `goal state=active`,
-`plan state=active`, `goal transition=none`, and `return control=confirmed`.
+handoff:` with a stable state fingerprint, the unmet
+criterion, nonterminal producer, wake route, `ownership=retained`,
+`goal state=active`, `plan state=active`, `goal transition=none`, and
+`return control=confirmed`. A pending parent-owned gate after child-phase
+completion MUST be recorded in the terminal handoff above; it MUST NOT be
+represented as a child wait for the parent.
 
 After [proof-driven-completion](../../proof-driven-completion/SKILL.md)
 establishes phase satisfaction, the child MUST use the normal completed-phase
@@ -198,8 +213,9 @@ The blocked-goal and terminal-handoff validators MUST enforce only their
 respective transition and exit receipts, required ordering, parent route, and
 bound fields. Normal idle-phase records MUST accept one transport-confirmed
 handoff or the explicitly unconfirmed host-result fallback, require satisfied
-phase criteria, reject repeated event identities and parent waits, and require a
-successful native goal result before an idle completion claim. They MUST NOT
-require parent pre-delivery or post-result registration receipts for initial
-`get_goal`, `create_goal`, or active readback; native startup order remains
-governed by `goal-lifecycle`.
+phase criteria, reject repeated event identities and child waits for parent
+merge, acknowledgement, or future assignment, and require a successful native
+goal result before an idle completion claim. They MUST NOT require parent
+pre-delivery or post-result registration receipts for initial `get_goal`,
+`create_goal`, or active readback; native startup order remains governed by
+`goal-lifecycle`.
