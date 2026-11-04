@@ -10,10 +10,12 @@ between dependencies, resource reservations, and integration conflicts, MUST
 follow
 [task classification](task-classification.md#orchestration-request-ownership).
 That decision MUST precede dispatch; this reference MUST NOT create a competing
-decision. When classification selects a child-owned route, MUST use a matching
-bounded specialist helper only for read-only research/review, or an app-managed
-task/worktree for a child-owned issue implementation. A helper MUST NOT replace,
-duplicate, or patch an implementation owner.
+decision. For child-owned issue implementation or repair, MUST route the first
+assignment and later corrections to its app Worker in the required managed
+worktree. A matching native helper MAY perform bounded research or review; it
+MUST NOT replace, duplicate, or patch the implementation owner. If that owner
+or its evidence is unavailable, MUST report the gap rather than substitute a
+helper or parent implementation. Apply scoped user overrides only as directed.
 
 Each assignment MUST name the exact objective, scope, input evidence,
 deliverable and success criteria, verification, and stop/report conditions.

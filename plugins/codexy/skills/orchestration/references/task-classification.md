@@ -15,6 +15,11 @@ execution conflicts. MUST apply it before choosing a route or ordering work.
 
 ### Task kind, authority, and owner
 
+Before each dispatch, MUST classify the actual action and its authority, then
+select its owner and workspace. Difficulty or model selection MUST NOT change
+that owner. Apply an explicit user override only to its stated scope; MUST NOT
+generalize it to other actions, owners, or future work.
+
 1. An explicit plan-only request MUST stay with `$planning`; it MUST NOT create
    an issue, child task, branch, worktree, or implementation. A plan MUST NOT
    grant execution authority or transfer an existing owner.
@@ -41,6 +46,10 @@ execution conflicts. MUST apply it before choosing a route or ordering work.
    Independent outcomes MUST be split into atomic lanes before separate tasks,
    worktrees, branches, or PRs are assigned, unless a maintainer scopes them as
    one outcome.
+   For a child-owned issue, implementation and subsequent repairs MUST stay
+   with its app Worker in the required managed worktree. Bounded research or
+   review MAY use a suitable native helper without transferring ownership.
+   Acceptance, coordination, and accepted-child cleanup remain parent-owned.
 4. Before dispatch, the parent MUST read back the active owner for the same
    issue-sized outcome and reuse a suitable existing owner. A helper MUST NOT
    replace, duplicate, or patch an implementation owner. MUST keep exactly one
