@@ -129,9 +129,9 @@ request only the concrete missing authority; if the capability is unsupported,
 it MUST report the exact operation, host boundary, and concrete action needed
 from its owner, not ask the user to approve an unavailable capability. It MUST
 keep the affected operation pending, continue independent authorized work, and
-avoid repeating an unchanged setup request. A host-only change MUST be identified
-as such; skill prose or user acknowledgement MUST NOT override a higher-priority
-tool restriction.
+avoid repeating an unchanged setup request. A host-only change MUST be
+identified as such; skill prose or user acknowledgement MUST NOT override a
+higher-priority tool restriction.
 
 ### Classify and route
 

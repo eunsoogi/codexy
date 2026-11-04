@@ -32,8 +32,8 @@ authority MUST NOT override the host's goal-creation rules. When the host
 requires an explicit user or system goal request, the task MUST NOT infer that
 authority from delegation alone or require a forbidden `create_goal` call. An
 applicable explicit user request covering multiple Worker goals MUST be reused;
-the task MUST NOT require a separate unchanged confirmation for each Worker.
-It MUST preserve the readback and report genuinely missing authority before task
+the task MUST NOT require a separate unchanged confirmation for each Worker. It
+MUST preserve the readback and report genuinely missing authority before task
 work. When the host cannot support the required operation, it MUST identify the
 host boundary rather than describe it as missing authorization. Scoped
 orchestration authority covers necessary child tasks and bounded task messages
