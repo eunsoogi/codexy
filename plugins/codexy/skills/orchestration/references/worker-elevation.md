@@ -60,6 +60,11 @@ wording or create new hard-work criteria. If a request requires automatic
 elevation outside these criteria, the Orchestrator MUST report that it needs a
 separate maintainer policy decision and MUST NOT apply it through this path.
 
+Evidence MUST describe the current task's remaining acceptance criteria and
+observed work. A repeated repair result MAY support elevation only when its
+task-specific observations establish every required fact in one existing
+category; repetition alone does not qualify.
+
 An actual native blocked goal MUST remain blocked until the explicitly
 authorized, source-pair-preserving recovery in
 [goal lifecycle](../../goal-lifecycle/SKILL.md) is complete. This assessment
@@ -100,28 +105,37 @@ change. It MUST NOT reuse an earlier decision for changed state or instructions.
 
 ## Cases that keep their existing handling
 
-File count, long context, an unfamiliar library, model availability, or failure
-count alone MUST NOT justify elevation. Three failures alone MUST NOT trigger an
-automatic elevation decision. An intended initial TDD RED MUST NOT count as a
-failure event.
+Before considering elevation, the Orchestrator MUST distinguish implementation
+difficulty in the current task from a non-model failure, identify what failed,
+and identify who can resolve it. Missing inputs or permissions, an unresolved
+user choice, a host/tool/environment restriction, resource contention or
+capacity, an owner conflict, a CI or dependency wait, and a reviewer `BLOCK`
+MUST retain their existing owner and handling. They MUST NOT become hard-work
+evidence, and elevation MUST NOT resolve or override them. A separate
+implementation observation MAY still qualify when it independently satisfies a
+complete existing `hard_work` category. When a blocker prevents a safe next
+action, the Orchestrator MUST retain the owner and follow that blocker's
+existing route.
 
-Missing inputs or permissions, an unresolved user choice, an owner conflict, a
-CI or dependency wait, and a reviewer `BLOCK` MUST retain their existing
-handling. They MUST NOT become elevation evidence, and elevation MUST NOT
-resolve or override them. When these conditions prevent a safe next action, the
-Orchestrator MUST retain the owner and take the next action.
+File count, long context, an unfamiliar library, model availability, and
+failure count alone MUST NOT justify elevation. Repeated repair attempts count
+only through their task-specific observations that satisfy one existing
+category; a count or threshold MUST NOT create another category. Three failures
+alone MUST NOT trigger model elevation. An intended initial TDD RED MUST NOT
+count as a failure event.
 
 The existing Advisor triggers MUST remain in force: after the third actual
 failure in an open repair episode, consult before a fourth speculative repair;
 consult immediately for a newly reported blocker; and consult for an unclear
-cross-lane decision. The Orchestrator MUST be able to assess sufficient
-hard-work evidence without waiting for a failure count, and a clear application
-of this policy MUST NOT add an Advisor approval step. If a required consultation
-is unavailable, the outcome MUST remain waiting; the Orchestrator MUST preserve
-the current owner and conditions and own the next action. Failure episodes,
-actionable review findings, and repair budgets MUST continue under their
-existing contracts through any later transition; they MUST NOT be reset by a
-model change or handoff.
+cross-lane decision. The third-failure trigger requires Advisor consultation;
+it does not qualify the task for model elevation. The Orchestrator MUST be able
+to assess sufficient hard-work evidence without waiting for a failure count,
+and a clear application of this policy MUST NOT add an Advisor approval step.
+If a required consultation is unavailable, the outcome MUST remain waiting; the
+Orchestrator MUST preserve the current owner and conditions and own the next
+action. Failure episodes, actionable review findings, and repair budgets MUST
+continue under their existing contracts through any later transition; they MUST
+NOT be reset by a model change or handoff.
 
 The Orchestrator MUST treat redelivery of the same report as the same event. It
 MUST NOT cause a duplicate consultation, failure event, or fork. An elevation
