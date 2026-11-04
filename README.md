@@ -103,10 +103,9 @@ environment that starts Codex.
   impact, and LSP for language-aware navigation when a compatible server is
   available. Check recommendations are advisory; they do not run checks.
 
-When a Worker needs help from another Worker, the orchestration guidance
-explains how to prepare and verify an ownership handoff while keeping the task
-goal and relevant evidence connected. The Codex host remains the authority for
-the active task owner. See the
+When an active task needs different expertise, Codexy guides the Orchestrator in
+deciding whether another Worker should take over. The Codex host determines who
+owns the active task. See the
 [Worker handoff guidance](plugins/codexy/skills/orchestration/references/worker-elevation/reconciliation.md).
 
 ## How work flows

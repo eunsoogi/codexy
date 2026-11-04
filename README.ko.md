@@ -101,9 +101,9 @@ MCP 서버는 uv와 uvx로 실행됩니다. Codex를 시작하는 host 환경의
   language server가 있으면 LSP로 코드를 탐색합니다. 체크 추천은 참고 정보이며
   실제 체크를 실행하지는 않습니다.
 
-현재 Worker가 다른 Worker의 도움이 필요할 때 담당을 넘기는 방법은 오케스트레이션
-안내에서 확인할 수 있습니다. 목표와 관련 근거를 이어 가는 절차도 함께
-설명합니다. 실제 담당 상태는 Codex host에서 확인하세요. 자세한 내용은
+진행 중인 작업에 다른 전문성이 필요하면 Codexy는 Orchestrator가 담당자를 바꾸는
+방안을 검토하도록 안내합니다. 실제 작업 담당자는 Codex host가 결정합니다. 자세한
+내용은
 [Worker 인계 안내](plugins/codexy/skills/orchestration/references/worker-elevation/reconciliation.md)를
 참고하세요.
 
@@ -119,11 +119,11 @@ flowchart LR
 
 ## 지원 환경
 
-패키지 대상은 macOS ARM64와 Linux x86_64입니다. Windows에서 안내하는 지원 범위는
-컴포넌트 CLI, 복구, GitHub 활성화입니다. 기존 설치 자동 탐색과 devtools 런타임은
-지원 대상으로 안내하지 않습니다. LSP를 사용하려면 Codex를 실행하는 환경에서
-language server를 실행할 수 있어야 합니다. 자세한 범위는
-[아키텍처 안내서](docs/architecture.md)를 참고하세요.
+Codexy의 패키지 대상에는 macOS ARM64와 Linux x86_64가 포함됩니다. Windows에서
+안내하는 지원 범위는 컴포넌트 CLI, 복구, GitHub 활성화입니다. 기존 설치 자동
+탐색과 devtools 런타임은 지원 대상으로 안내하지 않습니다. LSP를 사용하려면
+Codex를 실행하는 환경에서 language server를 실행할 수 있어야 합니다. 자세한
+범위는 [아키텍처 안내서](docs/architecture.md)를 참고하세요.
 
 ## 자세한 안내
 
