@@ -153,14 +153,14 @@ owner. It MUST state which commit, push, Draft PR, archive, or deletion actions
 were authorized, completed, failed, or remain unauthorized at the time of the
 handoff, and identify any authorized next action as pending. It MUST report the
 goal and thread state observed before the transition and MUST NOT use
-completion-only values such as
-`phase criteria=satisfied` or `goal transition=complete` for unfinished work. A
-cooperative stop message or its delivery MUST NOT be represented as proof that
-an in-flight write ended. An explicit cease-write direction MUST still be
-honored by issuing no further implementation or worktree writes while the
-handoff or preservation is pending; this does not itself prove a goal, thread,
-archive, or ownership transition. The parent MUST verify recoverability and the
-continuation owner before separately authorized archival, following the
+completion-only values such as `phase criteria=satisfied` or
+`goal transition=complete` for unfinished work. A cooperative stop message or
+its delivery MUST NOT be represented as proof that an in-flight write ended. An
+explicit cease-write direction MUST still be honored by issuing no further
+implementation or worktree writes while the handoff or preservation is pending;
+this does not itself prove a goal, thread, archive, or ownership transition. The
+parent MUST verify recoverability and the continuation owner before separately
+authorized archival, following the
 [local Git preservation guidance](../../../../codexy-github/skills/git-workflow/references/local-git-and-branches.md#unfinished-work-preservation).
 
 After any authorized action marked pending in the handoff is attempted, the
