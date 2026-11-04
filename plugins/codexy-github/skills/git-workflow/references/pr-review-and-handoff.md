@@ -8,6 +8,19 @@ opening it. The PR body MUST reference the issue; issue size alone does not
 select the structured body contract below. Use a Conventional Commit title and
 keep a PR draft while proof or known risk is incomplete.
 
+When the user selects publication language, assignee(s), labels, or a milestone
+for a PR, MUST carry those exact selections from the current request or existing
+task state through PR creation or update. MUST apply them through supported
+GitHub operations and verify them with authenticated readback before claiming
+publication or readiness. If the creation operation lacks a selected field, MUST
+use a supported follow-up mutation before readiness; if the host surface or
+authority cannot apply it, keep that item outstanding and report the precise
+gap. The selected language governs free-form title and body text while
+preserving Conventional Commit title syntax and any selected template or
+explicit body contract. MUST NOT drop a selection across turns or infer one
+solely from plugin installation or unrelated issue metadata. Repository-required
+metadata remains independent.
+
 When the user, repository, or maintainer explicitly selects this structured
 PR-body contract, the body MUST contain visible `## Summary`, `## Rationale`,
 `## Changed Areas`, `## Verification`, `## Evidence`, `## Not Run`, and

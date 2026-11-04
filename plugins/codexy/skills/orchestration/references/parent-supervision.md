@@ -224,5 +224,24 @@ The parent Orchestrator MUST perform accepted-child eligibility checks,
 preservation, archival, safe local branch deletion, and outcome readback under
 the
 [cleanup policy](../../../../codexy-github/skills/git-workflow/references/local-git-and-branches.md#accepted-child-cleanup).
-A user reminder MUST resume that flow; forwarding it does not establish
+After parent acceptance and completion of required merge, publication, and other
+in-scope delivery work for a child, the Orchestrator MUST enter that procedure
+as its next parent-owned action without waiting for a reminder. A reminder also
+resumes the procedure; receiving or forwarding one does not establish cleanup
 progress.
+
+The Orchestrator MUST retain accepted children whose cleanup remains pending in
+existing task state across turns and compaction, including the current cleanup
+step, completed steps, exact deferral condition, and next action. On relevant
+progress or task resumption, MUST re-read the task and relevant thread, GitHub,
+and local Git/worktree state, then resume deferred cleanup when its condition
+clears. A deferral MUST apply only to its affected child or operation; MUST
+continue other eligible cleanup. Eligibility, preservation, destructive
+authority, thread archival, safe branch removal, and outcome readback remain
+governed by the cleanup policy.
+
+An actual unsupported host operation, required public-contract or runtime
+change, or unresolved ownership or authority decision MUST be reported to the
+Orchestrator before scope expands. A missing capability MUST be reported as a
+capability gap, not missing user permission; user acknowledgement MUST NOT
+substitute for an unavailable operation.
