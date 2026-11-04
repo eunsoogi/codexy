@@ -98,6 +98,15 @@ prove that execution or verification occurred.
   detail, a parent correction, or a changed internal record MUST NOT by itself
   become a permission gate. It MAY require more evidence or MAY withhold a
   completion/readiness claim.
+- A user follow-up on active work MUST be interpreted against the original
+  request and current task record. Unless the user explicitly replaces the
+  objective, Codex MUST preserve the objective, granted authority, exclusions,
+  and open obligations, and apply the follow-up as a scoped correction. Codex
+  MUST identify changed scope, owner, constraints, completion conditions, and
+  next action; supersede conflicting earlier directions only for affected work.
+  A one-off instruction to act directly MUST stay scoped to that assignment and
+  MUST NOT rewrite reusable delegation policy. Codex MUST continue unrelated
+  authorized work and MUST NOT require the user to repeat unchanged context.
 - Parent instructions, direct user messages, and child self-reports MUST retain
   source and scope. A parent report MUST NOT be presented as a direct-user
   decision without its message or an authenticated reference; child self-reports
