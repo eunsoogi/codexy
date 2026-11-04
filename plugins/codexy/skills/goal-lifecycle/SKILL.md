@@ -26,8 +26,9 @@ verification, handoff, and a stop condition. Preparation, implementation, or
 verification MAY be separate phases only when explicitly assigned; the child
 MUST NOT invent a narrower phase to clear an unfinished goal. The phase criteria
 MUST cover the assigned deliverable, required proof, and any review or execution
-result required for that phase. The child MUST keep the phase active while any
-such criterion is unmet. Parent merge, parent acceptance or acknowledgement, and
+result required for that phase. The child MUST keep the phase unfinished while
+any such criterion is unmet; native goal status MUST follow the applicable
+lifecycle rules below. Parent merge, parent acceptance or acknowledgement, and
 future instructions MUST NOT be phase completion criteria.
 
 The child MUST use that exact phase objective for its finite goal. Assignment
