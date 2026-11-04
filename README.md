@@ -5,7 +5,7 @@
 <h1 align="center">Codexy</h1>
 
 <p align="center">
-  A Codex harness for coordinating agents through planning, implementation, verification, and review.
+  A Codex harness for coordinating repository work from planning through implementation, verification, and handoff.
 </p>
 
 <p align="center">
@@ -18,21 +18,14 @@
   <a href="https://github.com/eunsoogi/codexy/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/eunsoogi/codexy.svg"></a>
 </p>
 
-Codexy is a Codex harness for coordinating agents through planning, work
-division, implementation, verification, and review. It turns a broad repository
-request into an owned plan, divides work across agents, checks actual outcomes,
-and keeps the next handoff tied to current evidence. Detailed architecture and
-executable contracts live in the linked guides.
+Codexy helps Codex keep repository work scoped, owned, and tied to evidence. It
+provides three plugins for task coordination, GitHub workflow context, and
+developer tools. Detailed product and support boundaries are in the linked
+guides.
 
 ## Install with getcodexy
 
-`getcodexy` is the recommended way to install and maintain Codexy. It resolves
-component dependencies, records the installed inventory, and exposes
-transactional lifecycle commands.
-
-### Default installation
-
-Install the complete Codexy product:
+The recommended installation uses the getcodexy CLI:
 
 ```sh
 uv tool install getcodexy==2.2.0
@@ -40,71 +33,49 @@ uv tool update-shell
 getcodexy install
 ```
 
-Add uv's tool bin directory to `PATH`, then restart or reload your shell if
-needed. The default selection installs `core`, `github`, and `devtools`; open a
-fresh Codex session after installation or update so the host can expose new
-plugins, skills, hooks, agents, and MCP servers.
+Add uv's tool bin directory to PATH. After installation or an update, open a
+fresh Codex session so it can load the available plugins and tools. The default
+install includes core, github, and devtools.
 
-### Select components
+### Choose components
 
-`github` and `devtools` each depend on `core`; dependencies are added
-automatically.
+The github and devtools components include core automatically.
 
-| Component  | Plugin            | What it adds                                                                                           |
-| ---------- | ----------------- | ------------------------------------------------------------------------------------------------------ |
-| `core`     | `codexy`          | Orchestration, goals and plans, worktree ownership, specialists, instruction hooks, proof, and Wiki.   |
-| `github`   | `codexy-github`   | GitHub workflow context, narrow title checks, and local credential, filesystem, and Git safety checks. |
-| `devtools` | `codexy-devtools` | Local Codegraph and LSP MCP servers, wrappers, configuration, and developer-tool guidance.             |
+| Component | What it adds                                                                                                      | Install command              |
+| --------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| core      | Task coordination, specialist agents, verification guidance, and Wiki.                                            | `getcodexy install core`     |
+| github    | GitHub workflow guidance and local Git safety checks. Host, connector, and repository permissions govern actions. | `getcodexy install github`   |
+| devtools  | Codegraph and LSP tools for repository exploration and navigation. LSP requires a language server on the host.    | `getcodexy install devtools` |
 
-| Desired result           | Command                             |
-| ------------------------ | ----------------------------------- |
-| core only                | `getcodexy install core`            |
-| core + GitHub            | `getcodexy install github`          |
-| core + devtools          | `getcodexy install devtools`        |
-| core + GitHub + devtools | `getcodexy install github devtools` |
-
-### Lifecycle commands
+### Common commands
 
 ```sh
-getcodexy status                       # read the installed-component inventory
-getcodexy doctor                       # check host readiness and component health
-uv tool upgrade getcodexy==2.2.0       # update the installed CLI itself
-getcodexy update                       # update every installed component
-getcodexy update github                # update one installed dependency closure
-getcodexy install github               # add GitHub to an existing selection
-getcodexy remove github                # remove GitHub when dependencies allow it
-getcodexy bootstrap                    # converge on the complete default selection
+getcodexy status
+getcodexy doctor
+getcodexy update
+uv tool upgrade getcodexy==2.2.0
 ```
 
-All commands accept `--json`. Mutations use a durable journal and receipt. A
-failed lifecycle mutation automatically restores the exact previous selection;
-there is no manual `getcodexy rollback` command. Dependency-protected removals,
-mixed versions, unknown components, and inconsistent inventories are rejected
-before mutation. See the
-[component installation and migration
-contract](docs/getcodexy-component-installation.md) for selection rules,
-receipts, errors, and recovery behavior.
+Use `getcodexy status` and `getcodexy doctor` to inspect the installation,
+`getcodexy update` to refresh installed components, and `uv tool upgrade` to
+update the CLI itself.
 
-### Migrate a legacy monolith
+### Migrate a legacy installation
 
-Migration is host-mediated. The trusted Codex host must supply its executable as
-an absolute path:
+Migration requires the trusted Codex executable as an absolute path:
 
 ```sh
 getcodexy --codex /absolute/path/to/codex migrate
-getcodexy --codex /absolute/path/to/codex migrate core devtools
 ```
 
-Only an exact, unmodified, versioned legacy tree and a distinct split target are
-eligible. Modified, linked, unreadable, unknown, or ambiguous trees fail closed.
-Interrupted or failed migrations recover the prior configuration transactionally
-or preserve a durable recovery journal for the next trusted retry.
+Only exact, unmodified, versioned legacy installations are eligible. See the
+[component installation and migration contract](docs/getcodexy-component-installation.md)
+for details.
 
-### Advanced: direct plugin installation
+### Advanced: install plugins directly
 
-Direct marketplace installation is for development or controlled recovery. Use
-it when you need to install individual components directly, and install `core`
-first.
+Direct marketplace installation is intended for development or controlled
+recovery. Install core first:
 
 ```sh
 codex plugin marketplace add eunsoogi/codexy --ref v2.2.0
@@ -113,232 +84,84 @@ codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
 ```
 
-The registered MCP servers launch the shared bootstrap through `uv`, and that
-bootstrap resolves the selected release with `uvx`. Ensure both `uv` and `uvx`
-are on the `PATH` of the host that starts Codex before opening a session. Check
-with `command -v uv` and `command -v uvx` (or `Get-Command uv` and
-`Get-Command uvx` in PowerShell).
+The MCP servers use uv and uvx to launch. Both must be on PATH in the host
+environment that starts Codex.
 
-## What Codexy does
+## What Codexy offers
 
-Codexy is useful when repository work spans planning, implementation,
-verification, review, and handoff, or when several agents need clear boundaries.
-The current source tree provides:
+- **Task coordination.** Set goals, plans, and clear ownership for issue-sized
+  work, then carry relevant evidence through the handoff.
+- **Specialist roles.** Orchestrators assign work and check evidence, Workers
+  implement and verify assigned tasks, and Advisors provide bounded analysis.
+- **Verification guidance.** Choose checks that match the result being claimed
+  and keep unresolved limits visible.
+- **Source-backed Wiki.** Build a focused topic Wiki with citations and
+  freshness information.
+- **GitHub workflow guidance.** Coordinate issue and pull request work while
+  respecting the permissions of the Codex host, connector, and repository.
+- **Developer tools.** Use Codegraph for repository relationships and change
+  impact, and LSP for language-aware navigation when a compatible server is
+  available. Check recommendations are advisory; they do not run checks.
 
-- **Orchestration and ownership.** Classify the task, establish finite goals and
-  current plans, assign one owner per issue-sized branch/worktree, and preserve
-  durable evidence through handoffs and context compaction.
-- **Profiles and specialists.** Route bounded work to packaged specialists;
-  standard review uses Inspector and strict review uses Sentinel.
-- **Instruction hooks.** Author scoped `AGENTS.md` files with explicit
-  precedence and readback. Core validates task-thread delivery metadata. The
-  GitHub component adds workflow context and independent local safety checks; it
-  does not admit, deny, or rewrite general GitHub mutations.
-- **Proof and engineering.** Match verification and evidence depth to the
-  claimed surface; detailed boundary rules live in the linked guides.
-- **LLM Wiki.** Maintain a bounded topic root through
-  `init → ingest → compile → query → refresh`, with immutable raw sources,
-  citations, provenance, freshness checks, and explicit knowledge gaps.
-- **GitHub workflow.** Coordinate issue intake, branches and worktrees, PRs, CI,
-  review feedback, authorized squash merge, release work, and post-merge `main`
-  synchronization through normal host, connector, and GitHub authorization.
-- **Developer tools.** Explore bounded dependency neighborhoods with Codegraph
-  and use LSP discovery, symbols, definitions, references, and diagnostics when
-  a matching language server is installed.
-- **Change impact and check advice.** Codegraph also exposes
-  `codegraph_change_impact` and `codegraph_check_selection` for read-only Git
-  change analysis and explicit-mapping check recommendations. Results retain
-  limits, unknown areas, reasons, gaps, broader verification, and manual
-  judgment. Recommendation command text is data only: checks are not executed,
-  waived, or marked complete. Installed-runtime demos cover documentation, a
-  single module, and a shared fixture; active host exposure remains unknown
-  until the host's callable tool list and invocation are separately verified.
-- **Selected batch-result application.** The installed engineering workflow and
-  `batch_change.py` CLI show readable diffs, apply only explicitly selected
-  successful results, recheck originals before each independent replacement, and
-  read back applied files. Conflicts and incomplete items remain visible; user
-  changes are preserved and the command never commits or pushes them.
-- **Packaging and recovery.** Keep the three plugins version-aligned, validate
-  their public boundaries, and retain receipts and rollback evidence for
-  installation and release operations.
+When an active task needs different expertise, Codexy guides the Orchestrator in
+deciding whether another Worker should take over. The Codex host determines who
+owns the active task. See the
+[Worker handoff guidance](plugins/codexy/skills/orchestration/references/worker-elevation/reconciliation.md).
+
+Use `$planning` to create or update a plan. `planning` owns plan content,
+`orchestration` owns execution coordination, and `engineering` owns individual
+implementation and verification. `plan-stress-test` is an opt-in plan review,
+not an automatic review stage.
+
+## How work flows
+
+```mermaid
+flowchart LR
+    request["Request"] --> goal["Set a goal and owner"]
+    goal --> work["Implement the assigned work"]
+    work --> verify["Verify the result"]
+    verify --> handoff["Review and hand off"]
+```
+
+## Supported environments
+
+Codexy's packaged plugin targets include macOS ARM64 and Linux x86_64. On
+Windows, the documented coverage includes the component CLI, recovery, and
+GitHub activation; automatic legacy discovery and the packaged devtools runtime
+are not claimed. Each LSP language server must be installed and executable in
+the Codex host environment. See the [architecture guide](docs/architecture.md)
+for current support boundaries.
+
+## More information
+
+- [Component installation and migration](docs/getcodexy-component-installation.md)
+- [GitHub product boundary](docs/plugin-product-boundary.md)
+- [Open issues](https://github.com/eunsoogi/codexy/issues)
 
 ## Skill inventory
 
-The installed distribution contains these skills. Each row names the skill,
-summarizes its purpose, identifies its component, and links to the actual
-`SKILL.md` source.
+The packaged plugins include these reusable skills. Each link opens its guide.
 
-| Skill                                                                             | Purpose                                                                                              | Component  |
-| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------- |
-| [agents-md-authoring](plugins/codexy/skills/agents-md-authoring/SKILL.md)         | Create, review, move, or scope `AGENTS.md` instruction files.                                        | `core`     |
-| [blind-read](plugins/codexy/skills/blind-read/SKILL.md)                           | Let a fresh reader interpret one named artifact and action.                                          | `core`     |
-| [decision-rationale](plugins/codexy/skills/decision-rationale/SKILL.md)           | Inspect the stated reason and evidence for an existing choice.                                       | `core`     |
-| [dreaming](plugins/codexy/skills/dreaming/SKILL.md)                               | Recover durable facts and active work after context compaction.                                      | `core`     |
-| [engineering](plugins/codexy/skills/engineering/SKILL.md)                         | Diagnose, specify, implement, refactor, verify one outcome, and apply selected batch results safely. | `core`     |
-| [frame-alternatives](plugins/codexy/skills/frame-alternatives/SKILL.md)           | Surface credible alternatives against supplied constraints.                                          | `core`     |
-| [goal-lifecycle](plugins/codexy/skills/goal-lifecycle/SKILL.md)                   | Use real goal states and recover stale blocked execution records.                                    | `core`     |
-| [orchestration](plugins/codexy/skills/orchestration/SKILL.md)                     | Classify ownership, execution, evidence, handoffs, and review routing.                               | `core`     |
-| [plan-stress-test](plugins/codexy/skills/plan-stress-test/SKILL.md)               | Explicitly opt in to challenge one important plan; it is not an automatic review stage.              | `core`     |
-| [planning](plugins/codexy/skills/planning/SKILL.md)                               | Create or update an actionable project plan without taking execution authority.                      | `core`     |
-| [project-brief](plugins/codexy/skills/project-brief/SKILL.md)                     | Give a read-only brief of recorded current project state.                                            | `core`     |
-| [proof-driven-completion](plugins/codexy/skills/proof-driven-completion/SKILL.md) | Match each completion claim to current authoritative proof.                                          | `core`     |
-| [prune-artifact-claims](plugins/codexy/skills/prune-artifact-claims/SKILL.md)     | Refresh one artifact against one governing source by pruning stale claims.                           | `core`     |
-| [self-improvement](plugins/codexy/skills/self-improvement/SKILL.md)               | Select bounded improvements for repeated failure, uncertain premises, or conflicting verification.   | `core`     |
-| [wiki](plugins/codexy/skills/wiki/SKILL.md)                                       | Build or operate one bounded, source-backed topic knowledge base.                                    | `core`     |
-| [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md)                | Manage issue, branch, worktree, PR, review, merge, and main-sync workflow.                           | `github`   |
-| [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md)                    | Explore bounded repository structure and dependency edges.                                           | `devtools` |
-| [lsp](plugins/codexy-devtools/skills/lsp/SKILL.md)                                | Request language-aware symbols, references, definitions, or diagnostics.                             | `devtools` |
-
-Repository-only maintenance skills such as `mcp-test`,
-`plugin-marketplace-prep`, `release-engineering`, and `skill-evaluation` remain
-under `.agents/skills` and are not installed features. The repository-only
-`mcp-test` skill runs and compares explicit local MCP scenarios during Codexy
-development.
-
-### Planning, orchestration, and engineering
-
-Use `$planning` when you need to create or update plan content. For example:
-
-```text
-$planning Turn this issue into a three-step plan with an owner, proof, and stop condition for each step.
-```
-
-`planning` owns plan content. `orchestration` owns execution coordination,
-including ownership and handoffs. `engineering` owns individual implementation
-and its verification. A planning request does not assign work or grant execution
-authority. `plan-stress-test` requires an explicit opt-in and is an advisory
-challenge, not an automatic review stage.
-
-### Orchestration at a glance
-
-The orchestration path keeps ownership, verification, and review visible from
-the first request to the final handoff:
-
-```mermaid
-flowchart TD
-    request["Request or issue"] --> classify["Classify scope, owner, and proof"]
-    classify --> plan["Goal + current plan"]
-    plan --> work["Owned branch/worktree work"]
-    work --> verify["Observable verification"]
-    verify --> review["Profile-selected review"]
-    review --> finish["PR, merge, or explicit handoff"]
-```
-
-### Verification workflow
-
-Codexy starts with the goal and material risks, keeps the work issue-sized, and
-uses requirement-led behavioral verification. Test-first order is selected
-separately for each boundary, and verification depth follows the claimed result.
-It adds proportionate review when needed and stops when the evidence is
-sufficient. The architecture guide later in this introduction covers the
-detailed workflow and current runtime contracts.
-
-### Model roles and reasoning effort
-
-Codexy separates task ownership from bundled specialist roles. These are the
-project's role settings; installation does not change a host's default model or
-opt a user into another repository's GitHub policy.
-
-| Role                       | Model                       | Reasoning effort     | Responsibility                                                                                                                                                                                                                                                               |
-| -------------------------- | --------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Orchestrator / parent      | `gpt-6.1-sol`               | `low`                | Assigns and follows Worker work, owns the overall task goal, corrects deviations, verifies reports, and accepts results.                                                                                                                                                     |
-| Advisor / `codexy-advisor` | `gpt-6-astra`               | `medium`             | Instruction-bounded analysis and advice; does not edit, delegate, change ownership, or grant final approval.                                                                                                                                                                 |
-| Worker / ordinary child    | `gpt-6-luna` (default)      | `max` (default)      | Separate app task that owns its implementation branch/worktree. The Orchestrator observes ordinary events directly. Luna/Max is the default for ordinary, simple, bounded, and general implementation work. Ambiguous scope, authority, or required inputs stay fail-closed. |
-|                            | `gpt-6.1-terra` (hard work) | `medium` (hard work) | A new Worker with valid hard-work facts receives Terra/Medium directly. Existing Sol/Medium Workers retain authenticated follow-up delivery; Sol/Medium is not allowed for new Worker creation.                                                                              |
-
-Role pairs are requested settings. Effective host settings remain unavailable
-when unexposed; policy updates do not change an already-running session or
-establish comparative performance.
-
-The simple predicates and bounded evidence limits are defined in the
-[Worker routing policy](plugins/codexy/skills/orchestration/references/child-routing-policy.md).
-These pairs describe routing; they do not establish comparative model cost or
-output quality.
-
-The Advisor's read-only boundary is part of its instructions; it does not imply
-host-level permission enforcement.
-
-For an in-flight general Luna/Max Worker with qualifying hard-work evidence, the
-Orchestrator connects the decision and #1447 transition to its existing owner,
-reservation, event, and cursor records. The source remains the sole
-implementation owner while a same-directory target completes read-only setup and
-the parent confirms its goal, authenticated assignment, parent route, and
-checkout. At transfer, the parent updates the target owner, recipient, goal,
-reservation, and observation target together while keeping source and target
-cursors separate. Missing or unsupported required host readbacks keep the
-transition pending; this source procedure does not prove native execution. See
-the
-[reconciliation procedure](plugins/codexy/skills/orchestration/references/worker-elevation/reconciliation.md)
-and [host contract](docs/worker-elevation-host-contract.md).
-
-Ordinary observation flow: the Orchestrator uses native `wait_threads` with each
-Worker's latest cursor to observe completion, attention, and later turns. One
-Worker event does not end observation of remaining tasks or complete the issue.
-The Orchestrator judges results and retains correction and acceptance authority.
-Codexy no longer packages a native Watcher specialist or registers Watcher MCP
-in the core plugin. The Rust Watcher server, binary, protocol, state, and wait
-implementation, along with its dedicated launchers and interrupt hooks, are
-retired. A separately assigned external Watcher requires its host to supply a
-compatible implementation and transport; ordinary Worker events use the native
-route directly. Message and goal-transition receipts keep their existing
-authorization and destination.
-
-Goal boundary: the Orchestrator owns the overall task goal and the Worker owns
-its finite execution goal. A separately configured Watcher MCP is a reporting
-transport and does not own or transfer goals. These are bundled/requested role
-settings, not proof of the model or reasoning effort used by a running task;
-effective settings remain unknown without an authoritative host/task readback.
-`low`, `medium`, `high`, `xhigh`, and `max` are reasoning-effort settings.
-
-### Packaged specialists
-
-The bundled catalog assigns each specialist its own model and reasoning effort;
-the optional `codexy-github` plugin supplies Weaver.
-
-| Component | Specialist            | Model           | Reasoning effort | Responsibility                                       |
-| --------- | --------------------- | --------------- | ---------------- | ---------------------------------------------------- |
-| core      | `codexy-architect`    | `gpt-6-astra`   | `high`           | Architecture and integration boundaries              |
-| core      | `codexy-advisor`      | `gpt-6-astra`   | `medium`         | Bounded analysis and advice                          |
-| core      | `codexy-sentinel`     | `gpt-6-astra`   | `xhigh`          | Strict review                                        |
-| core      | `codexy-warden`       | `gpt-6-astra`   | `xhigh`          | Safety and permission boundaries                     |
-| core      | `codexy-inspector`    | `gpt-6.1-sol`   | `medium`         | Standard review                                      |
-| core      | `codexy-auditor`      | `gpt-6.1-terra` | `medium`         | Acceptance and observable verification               |
-| core      | `codexy-cartographer` | `gpt-6-luna`    | `low`            | Repository discovery                                 |
-| core      | `codexy-shipwright`   | `gpt-6.1-sol`   | `high`           | Release and packaging                                |
-| github    | `codexy-weaver`       | `gpt-6.1-sol`   | `medium`         | GitHub integration; supplied by the GitHub component |
-
-### Inventory and public boundaries
-
-The detailed [architecture guide](docs/architecture.md) is the source-aligned
-inventory of bundled specialists, packaged skills, repository-only MCP scenario
-tooling, the selected batch-result application route, and the split
-Codegraph/LSP runtime. It also documents LSP batches (1–8 requests, 60 seconds),
-core hook timing (default off, four fields, 1 MiB cap), and doctor's
-configured/loaded/callable/verified states, where `unknown` remains non-proof
-for the observation.
-
-The [GitHub product boundary](docs/plugin-product-boundary.md) explains ordinary
-mutation access, retained title checks, optional diagnostics, and
-repository-owner policy. The installation contract covers lifecycle receipts and
-recovery. Repository-maintenance and release skills remain under `.agents/` and
-are not installed into another repository.
-
-## Supported platforms and proof boundary
-
-| Platform or host surface           | What is supported and verified                                                                                                                                                          |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| macOS ARM64 (`darwin-arm64`)       | Packaged target for `codexy`, `codexy-github`, and `codexy-devtools`; CI builds and installs the package, exercises lifecycle commands, and proves legacy-to-split candidate migration. |
-| Linux x86_64 (`linux-x86_64`)      | Packaged target for all three plugins; Ubuntu CI covers package build/install, lifecycle commands, and legacy-to-split candidate migration.                                             |
-| Windows x86_64 (native CI surface) | CI exercises the component CLI, transaction lifecycle, recovery, and GitHub activation contracts. It does not claim automatic legacy-tree traversal or the packaged devtools runtime.   |
-| LSP host prerequisite              | Each registered language server must also be installed and executable on the host.                                                                                                      |
-
-These rows describe repository-side CI and package support, not a public Codexy
-2.0.0 installation or active-host execution. The merged retained-hook source
-change is [PR #1378](https://github.com/eunsoogi/codexy/pull/1378); authentic
-post-install events remain pending in
-[issue #1345](https://github.com/eunsoogi/codexy/issues/1345). Windows
-verification against the public 2.0.0 bundle remains a separate
-[issue #1346](https://github.com/eunsoogi/codexy/issues/1346).
+| Skill                                                                             | Purpose                                   | Component  |
+| --------------------------------------------------------------------------------- | ----------------------------------------- | ---------- |
+| [agents-md-authoring](plugins/codexy/skills/agents-md-authoring/SKILL.md)         | Create and scope repository instructions. | `core`     |
+| [blind-read](plugins/codexy/skills/blind-read/SKILL.md)                           | Interpret one artifact for a reader.      | `core`     |
+| [decision-rationale](plugins/codexy/skills/decision-rationale/SKILL.md)           | Inspect a decision's rationale.           | `core`     |
+| [dreaming](plugins/codexy/skills/dreaming/SKILL.md)                               | Recover task context after compaction.    | `core`     |
+| [engineering](plugins/codexy/skills/engineering/SKILL.md)                         | Implement and verify one issue.           | `core`     |
+| [frame-alternatives](plugins/codexy/skills/frame-alternatives/SKILL.md)           | Compare credible options.                 | `core`     |
+| [goal-lifecycle](plugins/codexy/skills/goal-lifecycle/SKILL.md)                   | Manage authorized task goals.             | `core`     |
+| [orchestration](plugins/codexy/skills/orchestration/SKILL.md)                     | Coordinate ownership and handoffs.        | `core`     |
+| [plan-stress-test](plugins/codexy/skills/plan-stress-test/SKILL.md)               | Challenge a plan when requested.          | `core`     |
+| [planning](plugins/codexy/skills/planning/SKILL.md)                               | Create or update project plans.           | `core`     |
+| [project-brief](plugins/codexy/skills/project-brief/SKILL.md)                     | Summarize recorded project state.         | `core`     |
+| [proof-driven-completion](plugins/codexy/skills/proof-driven-completion/SKILL.md) | Match outcome claims to proof.            | `core`     |
+| [prune-artifact-claims](plugins/codexy/skills/prune-artifact-claims/SKILL.md)     | Refresh claims against a source.          | `core`     |
+| [self-improvement](plugins/codexy/skills/self-improvement/SKILL.md)               | Improve responses to repeated failures.   | `core`     |
+| [wiki](plugins/codexy/skills/wiki/SKILL.md)                                       | Build source-backed topic knowledge.      | `core`     |
+| [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md)                | Manage GitHub issue and PR workflows.     | `github`   |
+| [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md)                    | Explore structure and dependencies.       | `devtools` |
+| [lsp](plugins/codexy-devtools/skills/lsp/SKILL.md)                                | Navigate code with language servers.      | `devtools` |
 
 ## License
 

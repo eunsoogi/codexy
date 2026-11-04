@@ -5,7 +5,7 @@
 <h1 align="center">Codexy</h1>
 
 <p align="center">
-  Codex 에이전트의 작업을 계획하고 나누어 맡기며, 구현, 검증과 리뷰를 연결하는 하네스
+  Codex가 저장소 작업을 계획하고 구현한 뒤, 검증과 인수인계까지 이어가도록 돕습니다
 </p>
 
 <p align="center">
@@ -18,13 +18,14 @@
   <a href="https://github.com/eunsoogi/codexy/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/eunsoogi/codexy.svg"></a>
 </p>
 
-Codexy는 Codex 에이전트의 작업을 계획하고 나누어 맡기며, 구현 결과를 실제로
-검증하고 리뷰와 인수인계까지 연결하는 Codex 하네스입니다. 자세한 구조와 실행
-계약은 연결된 `docs` 문서에서 확인할 수 있습니다.
+Codexy는 Codex가 저장소 작업의 범위를 정하고 담당자를 지정해, 구현 결과를 근거에
+따라 검증하도록 돕습니다. 작업 조정, GitHub 작업 안내, 개발 도구를 제공하는 세
+가지 플러그인을 포함합니다. 제품과 지원 범위는 연결된 문서에서 확인할 수
+있습니다.
 
 ## getcodexy로 설치하기
 
-`getcodexy`는 컴포넌트 의존성을 계산하고 설치 목록과 수명주기를 관리합니다.
+권장 설치 방법은 getcodexy CLI를 사용하는 것입니다.
 
 ```sh
 uv tool install getcodexy==2.2.0
@@ -32,64 +33,48 @@ uv tool update-shell
 getcodexy install
 ```
 
-tool bin 디렉터리를 `PATH`에 넣고 셸을 다시 연 뒤 사용하세요. 기본 설치는
-`core`, `github`, `devtools`를 모두 포함합니다. 설치나 업데이트 뒤에는 새 Codex
-세션을 열어 플러그인, skill, hook, agent, MCP 서버를 host에 노출하세요.
+uv의 tool bin 디렉터리를 PATH에 추가하세요. 설치나 업데이트 뒤에는 새 Codex
+세션을 열어 플러그인과 도구를 불러오세요. 기본 설치에는 core, github, devtools가
+포함됩니다.
 
 ### 컴포넌트 선택
 
-`github`와 `devtools`는 각각 `core`에 의존하며 필요한 의존성은 자동으로
-포함됩니다.
+github와 devtools를 설치하면 의존성인 core도 자동으로 포함됩니다.
 
-| 컴포넌트   | 플러그인          | 추가되는 기능                                                                           |
-| ---------- | ----------------- | --------------------------------------------------------------------------------------- |
-| `core`     | `codexy`          | 오케스트레이션, 목표와 계획, 담당 worktree, 전문 에이전트, instruction hook, 검증, Wiki |
-| `github`   | `codexy-github`   | GitHub workflow context, 좁은 제목 확인, local credential·filesystem·Git safety 확인    |
-| `devtools` | `codexy-devtools` | 로컬 Codegraph와 LSP MCP 서버, wrapper, 설정, 개발 도구 지침, MCP 시나리오 테스트       |
+| 컴포넌트 | 추가 기능                                                                                              | 설치 명령                    |
+| -------- | ------------------------------------------------------------------------------------------------------ | ---------------------------- |
+| core     | 작업 조정, 전문 에이전트, 검증 안내, Wiki                                                              | `getcodexy install core`     |
+| github   | GitHub 작업 흐름 안내와 로컬 Git 안전 확인. 실제 권한은 Codex host, connector, 저장소 설정을 따릅니다. | `getcodexy install github`   |
+| devtools | 저장소 탐색과 코드 이동을 위한 Codegraph와 LSP. LSP를 쓰려면 host에 언어 서버가 있어야 합니다.         | `getcodexy install devtools` |
 
-| 설치 결과       | 명령                                |
-| --------------- | ----------------------------------- |
-| core만          | `getcodexy install core`            |
-| core + GitHub   | `getcodexy install github`          |
-| core + devtools | `getcodexy install devtools`        |
-| 전체            | `getcodexy install github devtools` |
-
-### 수명주기 명령
+### 자주 쓰는 명령
 
 ```sh
-getcodexy status                       # 설치 목록 확인
-getcodexy doctor                       # host 준비 상태와 컴포넌트 상태 확인
-uv tool upgrade getcodexy==2.2.0       # CLI 자체 업데이트
-getcodexy update                       # 설치된 모든 컴포넌트 업데이트
-getcodexy update github                # GitHub 의존 범위 업데이트
-getcodexy install github               # GitHub 추가
-getcodexy remove github                # 의존 관계가 허용할 때 제거
-getcodexy bootstrap                    # 전체 기본 구성으로 수렴
+getcodexy status
+getcodexy doctor
+getcodexy update
+uv tool upgrade getcodexy==2.2.0
 ```
 
-모든 명령은 `--json`을 지원합니다. 변경 작업은 journal과 receipt를 남깁니다.
-실패한 수명주기 변경은 이전 선택을 자동 복원하며 별도의 `getcodexy rollback`
-명령은 지원하지 않습니다. 선택 규칙과 복구 동작은
-[컴포넌트 설치 및 이전 계약](docs/getcodexy-component-installation.md)에
-있습니다.
+`getcodexy status`와 `getcodexy doctor`로 설치 상태를 확인하고,
+`getcodexy update`로 설치된 컴포넌트를 갱신할 수 있습니다. `uv tool upgrade`는
+CLI 자체를 업데이트합니다.
 
-### 기존 monolith 이전
+### 기존 설치 이전
 
-이전은 host가 중개하며, 신뢰할 수 있는 Codex 실행 파일을 절대 경로로 전달해야
-합니다.
+이전하려면 신뢰할 수 있는 Codex 실행 파일을 절대 경로로 지정해야 합니다.
 
 ```sh
 getcodexy --codex /absolute/path/to/codex migrate
-getcodexy --codex /absolute/path/to/codex migrate core devtools
 ```
 
-정확히 일치하고 수정되지 않은 versioned legacy tree와 서로 다른 split target만
-이전할 수 있습니다. 나머지는 안전하게 거부되며, 중단된 이전은 기존 설정 또는
-durable recovery journal을 보존합니다.
+정확히 일치하고 수정되지 않은 버전 지정 legacy 설치만 이전할 수 있습니다. 자세한
+내용은 [컴포넌트 설치 및 이전 계약](docs/getcodexy-component-installation.md)을
+참고하세요.
 
 ### 고급 사용: 플러그인 직접 설치
 
-개발 또는 통제된 복구에서만 사용하고 `core`부터 설치하세요.
+개발 또는 통제된 복구에서만 사용하고 core부터 설치하세요.
 
 ```sh
 codex plugin marketplace add eunsoogi/codexy --ref v2.2.0
@@ -98,204 +83,84 @@ codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
 ```
 
-등록된 MCP 서버는 `uv`로 공통 부트스트랩을 실행하고, 부트스트랩은 `uvx`로 선택된
-release를 실행합니다. Codex를 시작하는 host 환경의 `PATH`에서 `uv`와 `uvx`를
-모두 찾을 수 있어야 세션에서 MCP 서버가 실행됩니다. `command -v uv`와
-`command -v uvx`(PowerShell에서는 `Get-Command uv`, `Get-Command uvx`)로
-확인하세요.
+MCP 서버는 uv와 uvx로 실행됩니다. Codex를 시작하는 host 환경의 PATH에 둘 다
+있어야 합니다.
 
-## Codexy가 하는 일
+## Codexy가 제공하는 기능
 
-- **담당 범위와 오케스트레이션.** 작업을 분류하고 목표, 계획, issue 단위
-  branch/worktree 담당자를 정해 인수인계와 context compaction 뒤에도 근거를
-  보존합니다.
-- **전문 에이전트와 검증.** 주장하는 표면에 맞춰 검증과 근거의 깊이를 정하고,
-  세부 경계 규칙은 연결된 문서에서 확인합니다.
-- **Instruction과 Wiki.** `AGENTS.md` 우선순위를 지키고,
-  `init → ingest →
-  compile → query → refresh` 흐름으로 출처와 freshness를
-  보존하는 Wiki를 운영합니다.
-- **GitHub 연동.** GitHub 컴포넌트는 workflow context와 독립적인 local safety
-  확인을 제공합니다. 일반 issue·PR·review·merge의 권한과 정책은 host, connector,
-  GitHub 및 저장소 소유자가 정합니다. 설치만으로 일반 작업을 차단하거나 PR 본문,
-  review 횟수, 고정 승인 문구를 요구하지 않습니다.
-- **개발 도구와 복구.** Codegraph와 LSP로 필요한 범위를 탐색하고, 세 컴포넌트의
-  설치·업데이트·복구 과정에 receipt와 rollback 근거를 남깁니다.
-- **변경 영향과 체크 조언.** Codegraph에는 읽기 전용 Git 변경 분석과 명시적
-  mapping 기반 체크 추천을 위한 `codegraph_change_impact`와
-  `codegraph_check_selection`도 포함됩니다. 결과는 limits, unknown 영역, 추천
-  이유, gap, broader verification, manual judgment를 숨기지 않습니다. 추천
-  command text는 데이터일 뿐 체크를 실행하거나 waive하거나 완료로 판정하지
-  않습니다. 설치 runtime demo는 문서, 단일 module, shared fixture를 다루며,
-  host의 callable tool list와 실제 호출을 따로 확인하기 전에는 host 노출을
-  unknown으로 유지합니다.
-- **선택한 batch 결과 적용.** 설치된 engineering workflow와 `batch_change.py`
-  CLI는 읽을 수 있는 diff를 보여 주고, 명시적으로 선택한 성공 결과만 적용하며,
-  각 파일을 바꾸기 직전에 원본을 다시 확인하고 적용 결과를 readback합니다.
-  conflict와 incomplete 항목은 구분해 남기고 사용자 변경을 보존하며, 사용자
-  변경을 자동으로 commit하거나 push하지 않습니다.
+- **작업 조정.** 목표와 계획을 세우고 이슈 단위 작업의 담당자를 정해 근거를
+  인수인계까지 이어갑니다.
+- **전문 역할.** Orchestrator는 작업을 배정하고 근거를 확인하며, Worker는 맡은
+  작업을 구현하고 검증합니다. Advisor는 범위가 정해진 분석을 제공합니다.
+- **검증 안내.** 주장하는 결과에 맞는 확인 방법을 고르고 아직 확인하지 못한
+  한계를 드러냅니다.
+- **출처 기반 Wiki.** 인용과 최신성 정보를 갖춘 주제별 Wiki를 관리합니다.
+- **GitHub 작업 안내.** Codex host, connector, 저장소의 권한과 설정에 따라
+  이슈와 pull request 작업을 조정합니다.
+- **개발 도구.** Codegraph로 저장소 관계와 변경 영향을 살피고, 사용할 수 있는
+  language server가 있으면 LSP로 코드를 탐색합니다. 체크 추천은 참고 정보이며
+  실제 체크를 실행하지는 않습니다.
+
+진행 중인 작업에 다른 전문성이 필요하면 Codexy는 Orchestrator가 담당자를 바꾸는
+방안을 검토하도록 안내합니다. 실제 작업 담당자는 Codex host가 결정합니다. 자세한
+내용은
+[Worker 인계 안내](plugins/codexy/skills/orchestration/references/worker-elevation/reconciliation.md)를
+참고하세요.
+
+`$planning`은 계획 내용을 만들거나 갱신할 때 사용합니다. `planning`은 계획 내용,
+`orchestration`은 실행 조정, `engineering`은 개별 구현과 검증을 맡습니다.
+`plan-stress-test`는 명시적으로 선택하는 계획 검토이며 자동 리뷰 단계가
+아닙니다.
+
+## 작업 흐름
+
+```mermaid
+flowchart LR
+    request["요청"] --> goal["목표와 담당자 정하기"]
+    goal --> work["배정된 작업 구현"]
+    work --> verify["결과 검증"]
+    verify --> handoff["리뷰와 인수인계"]
+```
+
+## 지원 환경
+
+Codexy의 패키지 대상에는 macOS ARM64와 Linux x86_64가 포함됩니다. Windows에서
+안내하는 지원 범위는 컴포넌트 CLI, 복구, GitHub 활성화입니다. 기존 설치 자동
+탐색과 devtools 런타임은 지원 대상으로 안내하지 않습니다. LSP를 사용하려면
+Codex를 실행하는 환경에서 language server를 실행할 수 있어야 합니다. 자세한
+범위는 [아키텍처 안내서](docs/architecture.md)를 참고하세요.
+
+## 자세한 안내
+
+- [컴포넌트 설치 및 이전](docs/getcodexy-component-installation.md)
+- [GitHub 제품 경계](docs/plugin-product-boundary.md)
+- [열린 이슈](https://github.com/eunsoogi/codexy/issues)
 
 ## Skill 목록
 
-설치되는 배포본에는 다음 skill이 포함됩니다. 각 행에서 정확한 이름과 짧은 목적,
-컴포넌트, 실제 `SKILL.md` 원문 링크를 확인할 수 있습니다.
-
-| Skill                                                                             | 목적                                                                                      | 컴포넌트   |
-| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ---------- |
-| [agents-md-authoring](plugins/codexy/skills/agents-md-authoring/SKILL.md)         | `AGENTS.md` 지침 파일을 만들고, 검토하고, 옮기고, 범위를 정합니다.                        | `core`     |
-| [blind-read](plugins/codexy/skills/blind-read/SKILL.md)                           | 한 가지 artifact와 행동을 새 독자의 관점에서 해석합니다.                                  | `core`     |
-| [decision-rationale](plugins/codexy/skills/decision-rationale/SKILL.md)           | 이미 선택한 결정의 이유와 근거를 살핍니다.                                                | `core`     |
-| [dreaming](plugins/codexy/skills/dreaming/SKILL.md)                               | context compaction 뒤에 유지할 사실과 진행 중인 일을 복원합니다.                          | `core`     |
-| [engineering](plugins/codexy/skills/engineering/SKILL.md)                         | 하나의 결과를 진단·구체화·구현·리팩터링·검증하고 선택한 batch 결과를 안전하게 적용합니다. | `core`     |
-| [frame-alternatives](plugins/codexy/skills/frame-alternatives/SKILL.md)           | 주어진 제약 안에서 신뢰할 수 있는 대안을 제시합니다.                                      | `core`     |
-| [goal-lifecycle](plugins/codexy/skills/goal-lifecycle/SKILL.md)                   | 실제 goal 상태를 사용하고 오래된 blocked 실행 기록을 복구합니다.                          | `core`     |
-| [orchestration](plugins/codexy/skills/orchestration/SKILL.md)                     | 담당, 실행, 근거, 인수인계, review 경로를 분류하고 조정합니다.                            | `core`     |
-| [plan-stress-test](plugins/codexy/skills/plan-stress-test/SKILL.md)               | 명시적으로 선택한 하나의 중요한 plan을 점검하며 자동 리뷰 단계가 아닙니다.                | `core`     |
-| [planning](plugins/codexy/skills/planning/SKILL.md)                               | 실행 권한을 가져오지 않고 실행 가능한 project plan을 만들고 갱신합니다.                   | `core`     |
-| [project-brief](plugins/codexy/skills/project-brief/SKILL.md)                     | 기록된 현재 project 상태를 읽기 전용 brief로 정리합니다.                                  | `core`     |
-| [proof-driven-completion](plugins/codexy/skills/proof-driven-completion/SKILL.md) | 모든 완료 주장을 현재의 권위 있는 근거와 연결합니다.                                      | `core`     |
-| [prune-artifact-claims](plugins/codexy/skills/prune-artifact-claims/SKILL.md)     | 하나의 artifact를 하나의 기준 source에 맞춰 오래된 주장을 정리합니다.                     | `core`     |
-| [self-improvement](plugins/codexy/skills/self-improvement/SKILL.md)               | 반복 실패, 불확실한 전제, 검증 충돌에 맞춰 필요한 개선 절차를 선택합니다.                 | `core`     |
-| [wiki](plugins/codexy/skills/wiki/SKILL.md)                                       | 하나의 범위 있는 source 기반 topic knowledge base를 만들고 운영합니다.                    | `core`     |
-| [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md)                | issue, branch, worktree, PR, review, merge, main 동기화 workflow를 관리합니다.            | `github`   |
-| [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md)                    | 저장소 구조와 dependency edge를 정해진 범위에서 탐색합니다.                               | `devtools` |
-| [lsp](plugins/codexy-devtools/skills/lsp/SKILL.md)                                | 언어 인식 symbol, reference, definition, diagnostic을 요청합니다.                         | `devtools` |
-
-`mcp-test`, `plugin-marketplace-prep`, `release-engineering`, `skill-evaluation`
-같은 저장소 전용 유지보수 skill은 `.agents/skills`에 남아 있으며 설치 기능에
-포함되지 않습니다. 저장소 전용 `mcp-test` skill은 Codexy 개발 중 명시적인 local
-MCP 시나리오를 실행하고 비교합니다.
-
-### Planning, orchestration, engineering의 구분
-
-계획 내용을 만들거나 갱신하려면 `$planning`을 사용하세요. 예를 들면 다음과
-같습니다.
-
-```text
-$planning 이 issue를 각 단계의 담당자, 근거, 종료 조건이 있는 세 단계 plan으로 나눠줘.
-```
-
-`planning`은 계획 내용을 맡고, `orchestration`은 담당자와 인수인계를 포함한 실행
-조정을 맡습니다. `engineering`은 개별 구현과 그 검증을 맡습니다. planning
-요청만으로 작업이 배정되거나 실행 권한이 생기지는 않습니다. `plan-stress-test`는
-명시적으로 선택해야 하는 자문 점검이며 자동 리뷰 단계가 아닙니다.
-
-### 오케스트레이션 한눈에 보기
-
-```mermaid
-flowchart TD
-    request["요청 또는 issue"] --> classify["범위·담당자·검증 방법 분류"]
-    classify --> plan["목표 + 최신 계획"]
-    plan --> work["담당 branch/worktree 작업"]
-    work --> verify["실제 동작 검증"]
-    verify --> review["선택한 리뷰"]
-    review --> finish["PR·병합 또는 명시적 인수인계"]
-```
-
-### 검증 workflow
-
-Codexy는 목표와 중요한 위험에서 시작해 작업 범위를 issue 하나에 맞추고,
-요구사항에 따른 행동 검증을 유지합니다. test-first 순서는 경계별로 따로 정하고,
-검증 깊이는 주장하는 결과에 맞춥니다. 필요한 경우 비례적인 review를 추가하고
-근거가 충분하면 멈춥니다. 자세한 workflow와 현재 runtime 계약은 이 소개 뒤쪽의
-아키텍처 안내서에서 확인할 수 있습니다.
-
-### 모델 역할과 추론 수준
-
-Codexy는 작업 담당자와 Codexy에 포함된 전문 에이전트를 구분합니다. 아래는
-프로젝트의 역할 설정이며, 설치만으로 호스트의 기본 모델이 바뀌거나 다른 저장소의
-GitHub 정책에 동의한 것으로 해석되지 않습니다.
-
-| 역할                       | 모델                          | 추론 수준              | 담당 범위                                                                                                                                                                                                                      |
-| -------------------------- | ----------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Orchestrator / parent      | `gpt-6.1-sol`                 | `low`                  | Worker 작업을 배정·추적하고 전체 작업 목표를 맡아 이탈을 교정하며 보고를 검증하고 결과를 인수합니다.                                                                                                                           |
-| Advisor / `codexy-advisor` | `gpt-6-astra`                 | `medium`               | 지정된 질문을 읽고 분석해 조언하며 파일 수정·위임·담당 변경·최종 인수를 하지 않습니다.                                                                                                                                         |
-| Worker / ordinary child    | `gpt-6-luna` (기본)           | `max` (기본)           | 별도 app task에서 이슈를 구현·검증합니다. Orchestrator가 일반 Worker 이벤트를 직접 관찰합니다. 일반 구현·단순 작업·범위가 제한된 요약은 Luna/Max를 기본으로 선택합니다. 범위·권한·필수 입력이 불분명하면 안전 경로로 보냅니다. |
-|                            | `gpt-6.1-terra` (고난도 작업) | `medium` (고난도 작업) | 유효한 고난도 근거를 가진 새 Worker는 Terra/Medium으로 바로 배정합니다. 기존 Sol/Medium Worker의 인증된 후속 전달은 유지하지만, 새 Worker 생성에는 Sol/Medium을 허용하지 않습니다.                                             |
-
-역할별 모델과 추론 강도는 요청 설정입니다. 호스트가 실효 설정을 공개하지 않으면
-확인할 수 없는 상태로 남깁니다. 정책 갱신만으로 실행 중인 세션이 바뀌거나 성능이
-개선됐다고 볼 수 없습니다.
-
-단순 작업의 조건과 읽기 전용 요약의 범위 제한은
-[Worker routing policy](plugins/codexy/skills/orchestration/references/child-routing-policy.md)에
-있습니다. 이 역할 쌍은 작업 분류 기준이며, 모델 비용이나 출력 품질의 우위를 보여
-주는 비교 결과는 아닙니다.
-
-Advisor의 읽기 전용 경계는 에이전트 지침에 따른 행동 규칙이며, 호스트 권한이
-차단된다는 보장은 아닙니다.
-
-작업 중인 일반 Luna/Max Worker가 고난도 근거를 발견하면 Orchestrator는 그 판단과
-#1447 전환 절차를 기존 담당자·예약·이벤트·cursor 기록에 연결합니다. 같은
-디렉터리의 target은 읽기 전용 준비를 마치고, Orchestrator가 목표·인증된
-배정·원래 부모와의 경로·checkout을 확인할 때까지 source가 유일한 구현
-담당자입니다. 담당자를 넘길 때 target의 담당자·수신자·목표·예약·관찰 대상을 함께
-갱신하고 source와 target의 cursor는 따로 유지합니다. 필수 호스트 readback을 할
-수 없거나 지원되지 않으면 전환은 대기 상태로 남습니다. 이 source 절차만으로 실제
-native 동작이 증명되지는 않습니다.
-[조정 절차](plugins/codexy/skills/orchestration/references/worker-elevation/reconciliation.md)와
-[호스트 계약](docs/worker-elevation-host-contract.md)을 참고하세요.
-
-일반 Worker 관찰은 Orchestrator가 각 작업의 최신 cursor를 포함해 native
-`wait_threads`를 호출하고 완료, 도움이 필요한 상태, 이후 새 turn을 직접
-확인합니다. 한 Worker의 이벤트가 다른 작업의 관찰이나 issue 완료를 끝내지는
-않습니다. Orchestrator는 결과를 판단하고 교정과 인수 권한을 유지합니다. Codexy는
-native Watcher 전문 역할을 더 이상 패키징하지 않으며 core 플러그인에 Watcher
-MCP를 등록하지 않습니다. Rust Watcher server, binary, protocol, state/wait
-구현과 전용 launcher 및 interrupt hook도 제거되었습니다. 별도로 배정된 외부
-Watcher를 사용하려면 host가 호환 구현과 transport를 제공해야 합니다. 일반 Worker
-이벤트는 native 경로로 직접 관찰합니다. 메시지와 목표 전환 receipt는 기존 권한과
-수신 대상을 유지합니다.
-
-목표도 분리됩니다. Orchestrator는 전체 작업 목표를 맡고 Worker는 유한한 실행
-목표를 맡습니다. 별도로 설정한 Watcher MCP는 보고 전송 수단이며 목표를
-소유하거나 옮기지 않습니다. 표의 값은 Codexy에 포함되거나 요청되는 역할
-설정이며, 실행 중인 task가 실제 사용한 모델이나 추론 수준의 증거는 아닙니다.
-권위 있는 host/task readback이 없으면 실제 설정은 알 수 없습니다. `low`,
-`medium`, `high`, `xhigh`, `max`는 추론 수준입니다.
-
-### 패키지 전문 에이전트
-
-패키지 catalog는 각 전문 에이전트에 고유한 모델과 추론 수준을 지정하며, 선택형
-`codexy-github` 플러그인이 Weaver를 제공합니다.
-
-| 컴포넌트 | 전문 에이전트         | 모델            | 추론 수준 | 담당 범위                         |
-| -------- | --------------------- | --------------- | --------- | --------------------------------- |
-| core     | `codexy-architect`    | `gpt-6-astra`   | `high`    | 아키텍처와 통합 경계              |
-| core     | `codexy-advisor`      | `gpt-6-astra`   | `medium`  | 지정된 질문의 제한된 분석과 조언  |
-| core     | `codexy-sentinel`     | `gpt-6-astra`   | `xhigh`   | 엄격한 리뷰                       |
-| core     | `codexy-warden`       | `gpt-6-astra`   | `xhigh`   | 안전·권한 경계                    |
-| core     | `codexy-inspector`    | `gpt-6.1-sol`   | `medium`  | 표준 리뷰                         |
-| core     | `codexy-auditor`      | `gpt-6.1-terra` | `medium`  | 인수 기준과 실제 동작 검증        |
-| core     | `codexy-cartographer` | `gpt-6-luna`    | `low`     | 저장소 탐색                       |
-| core     | `codexy-shipwright`   | `gpt-6.1-sol`   | `high`    | 릴리스와 패키징                   |
-| github   | `codexy-weaver`       | `gpt-6.1-sol`   | `medium`  | GitHub 통합; GitHub 컴포넌트 제공 |
-
-### 상세 문서와 공개 경계
-
-패키지 agent·skill·MCP 시나리오 CLI·MCP/LSP runtime의 실제 목록과 LSP batch,
-hook timing, doctor 상태는 [아키텍처 안내서](docs/architecture.md)에서 확인할 수
-있습니다. GitHub의 일반 작업 경계와 선택 가능한 진단은
-[GitHub product boundary](docs/plugin-product-boundary.md), 설치 receipt와
-오류·복구 규칙은 [설치 계약](docs/getcodexy-component-installation.md)에
+배포 플러그인에는 다음 재사용 skill이 포함됩니다. 링크에서 각 안내를 볼 수
 있습니다.
 
-## 지원 플랫폼과 검증 범위
-
-| 플랫폼 또는 host surface      | 지원 및 검증 범위                                                                                                                               |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| macOS ARM64 (`darwin-arm64`)  | 세 플러그인의 패키지 대상이며 CI가 build·install과 lifecycle을 검증합니다.                                                                      |
-| Linux x86_64 (`linux-x86_64`) | 세 플러그인의 패키지 대상이며 Ubuntu CI가 lifecycle과 migration을 검증합니다.                                                                   |
-| Windows x86_64                | CI가 component CLI, transaction lifecycle, recovery, GitHub activation을 실행합니다. 자동 legacy 탐색과 devtools runtime까지 주장하지 않습니다. |
-| LSP host prerequisite         | 등록한 language server가 host에 설치되어 실행 가능해야 합니다.                                                                                  |
-
-이 표는 저장소의 CI와 package 지원 범위이며 공개된 Codexy 2.0.0 설치나 실행 중인
-host 동작을 증명하지 않습니다. 유지되는 core hook의 source 변경은 병합된
-[PR #1378](https://github.com/eunsoogi/codexy/pull/1378)에 기록되어 있고, 실제
-설치 후 event 관찰은
-[issue #1345](https://github.com/eunsoogi/codexy/issues/1345)에 남아 있습니다.
-공개 2.0.0 bundle의 Windows 검증은 별도
-[issue #1346](https://github.com/eunsoogi/codexy/issues/1346)에서 추적합니다.
+| Skill                                                                             | 목적                                  | 컴포넌트   |
+| --------------------------------------------------------------------------------- | ------------------------------------- | ---------- |
+| [agents-md-authoring](plugins/codexy/skills/agents-md-authoring/SKILL.md)         | 저장소 지침 작성과 범위 정하기.       | `core`     |
+| [blind-read](plugins/codexy/skills/blind-read/SKILL.md)                           | 지정한 artifact를 독자 관점에서 해석. | `core`     |
+| [decision-rationale](plugins/codexy/skills/decision-rationale/SKILL.md)           | 결정의 이유와 근거 살피기.            | `core`     |
+| [dreaming](plugins/codexy/skills/dreaming/SKILL.md)                               | 맥락 압축 뒤 작업 정보 복원.          | `core`     |
+| [engineering](plugins/codexy/skills/engineering/SKILL.md)                         | 이슈 하나를 구현하고 검증하기.        | `core`     |
+| [frame-alternatives](plugins/codexy/skills/frame-alternatives/SKILL.md)           | 신뢰할 수 있는 대안 비교.             | `core`     |
+| [goal-lifecycle](plugins/codexy/skills/goal-lifecycle/SKILL.md)                   | 승인된 작업 목표 관리.                | `core`     |
+| [orchestration](plugins/codexy/skills/orchestration/SKILL.md)                     | 담당과 인수인계 조정.                 | `core`     |
+| [plan-stress-test](plugins/codexy/skills/plan-stress-test/SKILL.md)               | 요청 시 계획 점검.                    | `core`     |
+| [planning](plugins/codexy/skills/planning/SKILL.md)                               | 프로젝트 계획 작성과 갱신.            | `core`     |
+| [project-brief](plugins/codexy/skills/project-brief/SKILL.md)                     | 기록된 프로젝트 상태 요약.            | `core`     |
+| [proof-driven-completion](plugins/codexy/skills/proof-driven-completion/SKILL.md) | 결과 주장을 근거와 대조.              | `core`     |
+| [prune-artifact-claims](plugins/codexy/skills/prune-artifact-claims/SKILL.md)     | 기준 source에 맞춰 문서 주장 정리.    | `core`     |
+| [self-improvement](plugins/codexy/skills/self-improvement/SKILL.md)               | 반복 실패를 개선할 경로 선택.         | `core`     |
+| [wiki](plugins/codexy/skills/wiki/SKILL.md)                                       | 출처 기반 주제별 Wiki 만들기.         | `core`     |
+| [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md)                | GitHub issue와 PR 흐름 관리.          | `github`   |
+| [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md)                    | 저장소 구조와 의존 관계 탐색.         | `devtools` |
+| [lsp](plugins/codexy-devtools/skills/lsp/SKILL.md)                                | 언어 서버로 코드 탐색과 진단.         | `devtools` |
 
 ## 라이선스
 
