@@ -17,8 +17,8 @@ An unfinished blocked goal MUST NOT be marked complete, cleared, or replaced to
 obtain recovery. Recovery preparation is limited to preserving necessary owned
 work, preparing one continuation, establishing its supported checkout
 association, and checking the intended environment. Issue implementation and
-ordinary issue verification remain stopped until the post-archive acceptance
-checks below succeed.
+ordinary issue verification remain stopped until the applicable fork or
+same-task acceptance checks below succeed.
 
 Pre-archive attachment and process checks establish only the continuation's
 current association and execution. They do not prove that source archival will
@@ -213,7 +213,7 @@ tasks.
 
 ## Native verification boundary
 
-An actual blocked-recovery PASS requires an authorized real blocked source,
+An actual fork-recovery PASS requires an authorized real blocked source,
 evidence that it remained blocked through archival, exactly one continuation
 owner, preserved checkout association and identity, the exact authorized active
 objective, requested/effective settings kept separate, and a successful
@@ -221,6 +221,10 @@ post-archive process at the intended CWD. If no authorized real scenario covers
 these conditions, the owner MUST report native recovery as unverified.
 Repository checks, instructions, messages, task IDs, and completed-source
 diagnostics do not substitute for these readbacks.
+
+An actual same-task recovery PASS requires a real supported native resumption
+and the same-task acceptance readbacks above. It MUST NOT imply fork/archive
+recovery passed.
 
 For reusable failure interpretation and evidence limits, see
 [recovery checkout diagnosis](recovery-checkout-diagnosis.md).

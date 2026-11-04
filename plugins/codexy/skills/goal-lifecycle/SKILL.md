@@ -14,8 +14,8 @@ before task-specific work, not only after choosing a goal-tool operation. Codex
 MUST treat the host goal tools as authoritative. The lifecycle governs fresh
 goal startup, active continuation, and authorized recovery from blocked goals.
 It MUST NOT change host goal state, issue ownership, branch, or worktree to
-simulate completion. Recovery changes only the active task thread through a
-same-directory fork and archive.
+simulate completion. Fork recovery changes only the active task thread through
+a same-directory fork and archive; a supported same-task resume retains it.
 
 ## Delegated assignment authorization
 
@@ -103,8 +103,8 @@ complete or otherwise clear it for recovery. The original assignment authorizes
 recovery only while the same objective and scope remain in force; blocked status
 alone MUST NOT trigger a new approval request. A user stop, revoked or missing
 assignment, scope change, or actual host permission denial MUST stop the
-sequence. Before post-archive acceptance, the task MUST NOT perform issue
-implementation or ordinary issue verification. It MAY perform only the bounded
+sequence. For fork recovery, before post-archive acceptance, the task MUST NOT
+perform issue implementation or ordinary issue verification. It MAY perform only the bounded
 read-only preflight, necessary preservation of owned work, and other recovery
 operations specified in
 [executable-checkout recovery](references/executable-checkout-recovery.md).
@@ -175,8 +175,8 @@ acceptance. Follow-up work MUST use the same owner's actual lifecycle readback;
 a different unfinished objective MUST stop, and blocked recovery MUST follow the
 ordered same-scope procedure.
 
-Before post-archive acceptance, the task MAY perform only the recovery
-preparation and native operations in the linked procedure, including necessary
+Before fork recovery's post-archive acceptance, the task MAY perform only the
+recovery preparation and native operations in the linked procedure, including necessary
 change preservation and checkout-association checks. The fork's first `get_goal`
 and any permitted fresh-goal creation stay inside that continuation and MUST NOT
 generate registration reports. The task MUST use the existing `$orchestration`
@@ -195,7 +195,7 @@ RED/GREEN. Reuse authorized real recovery readbacks when they cover the
 behavior; the task MUST NOT create a redundant fork or competing owner solely to
 manufacture evidence. An explicitly authorized verification scenario MAY use a
 fork when needed. If no authorized real recovery exists, the task MUST report
-the live app behavior as unavailable/unverified. When an authorized real host
+the live app behavior as unavailable/unverified. When an authorized real fork
 recovery is available, the task MUST verify:
 
 - Exact `null`, a `goal=null` response envelope, and exact `status=complete`
@@ -214,7 +214,8 @@ recovery is available, the task MUST verify:
 - Fork, archive, owner-readback, continuation, and fresh-goal creation failures
   preserving the exact result and stopping task work without another fork.
 
-Real app task, archive, and goal readbacks MUST be the evidence for recovery;
+Real app task and goal readbacks MUST be the evidence for recovery;
 the task MUST NOT use local fixtures, parser logic, or mock-only assertions as
-substitutes. Recovery evidence MUST show the source remained blocked through
-archival; it MUST NOT depend on an `update_goal(complete)` attempt or result.
+substitutes. Fork recovery evidence MUST also include archive readback and show
+the source remained blocked through archival; it MUST NOT depend on an
+`update_goal(complete)` attempt or result.
