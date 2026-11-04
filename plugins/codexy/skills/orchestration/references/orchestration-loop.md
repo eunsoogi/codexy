@@ -152,20 +152,19 @@
    - After accepting a completed child result, MUST select and advance the
      current parent-owned next action from the remaining authorized work. MUST
      complete a ready, authorized merge or requested publication change, and
-     MUST advance an authorized dependency-ready assignment through the
-     existing task-classification and dispatch route when its prerequisites and
-     owner/capacity conditions hold. MUST NOT wait for another reminder or
-     infer missing merge, publication, or assignment authority from acceptance.
+     MUST advance an authorized dependency-ready assignment through the existing
+     task-classification and dispatch route when its prerequisites and
+     owner/capacity conditions hold. MUST NOT wait for another reminder or infer
+     missing merge, publication, or assignment authority from acceptance.
    - After parent acceptance and completion of the child's required merge,
      publication, follow-up, and delivery work, MUST make the existing
      [accepted-child cleanup procedure](../../../../codexy-github/skills/git-workflow/references/local-git-and-branches.md#accepted-child-cleanup)
      the next parent-owned action without a reminder. MUST retain accepted
      children whose cleanup remains pending, the completed cleanup steps, each
      exact deferral, and one next action in existing task state across turns and
-     compaction.
-     On relevant progress or task resumption, MUST re-read actual state and
-     resume eligible cleanup; a blocker for one child MUST NOT stop other
-     eligible children.
+     compaction. On relevant progress or task resumption, MUST re-read actual
+     state and resume eligible cleanup; a blocker for one child MUST NOT stop
+     other eligible children.
    - MUST confirm no running sessions, open child lanes, untracked required
      files, or unverified claims remain.
    - MUST confirm no final-answer or handoff artifact claims completion while a

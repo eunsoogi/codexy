@@ -34,8 +34,8 @@ stage only resolved paths and rerun affected verification.
 The parent Orchestrator MUST enter this sequence as its next action after
 accepting a child's completed work and completing the required merge,
 publication, follow-up, and delivery work. It MUST NOT wait for another
-reminder. A reminder also resumes the sequence; receiving or forwarding one
-does not establish progress. This flow preserves the #289 open-PR guard and
+reminder. A reminder also resumes the sequence; receiving or forwarding one does
+not establish progress. This flow preserves the #289 open-PR guard and
 dirty-worktree protection documented in #330. It MUST NOT replace native goal
 lifecycle or terminal-handoff requirements.
 
@@ -58,9 +58,9 @@ lifecycle or terminal-handoff requirements.
    issue tip alone is insufficient. For unmerged disposal, MUST record the
    explicit parent decision, its scope, and recoverable state; disposal MUST NOT
    be represented as integration.
-4. Before each destructive step, MUST verify that existing authority covers
-   that exact action and child. Previously granted authority MUST be used
-   without asking again. Acceptance or completion alone MUST NOT create missing
+4. Before each destructive step, MUST verify that existing authority covers that
+   exact action and child. Previously granted authority MUST be used without
+   asking again. Acceptance or completion alone MUST NOT create missing
    destructive authority. If authority is missing, MUST retain the affected
    child or dependent action and record the exact gap; MUST continue other
    eligible children.

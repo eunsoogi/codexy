@@ -12,8 +12,8 @@ When the user selects publication language, assignee(s), labels, or a milestone
 for a PR, MUST carry those exact selections from the current request or existing
 task state through PR creation or update. MUST apply them through supported
 GitHub operations and verify them with authenticated readback before claiming
-publication or readiness. If the creation operation lacks a selected field,
-MUST use a supported follow-up mutation before readiness; if the host surface or
+publication or readiness. If the creation operation lacks a selected field, MUST
+use a supported follow-up mutation before readiness; if the host surface or
 authority cannot apply it, keep that item outstanding and report the precise
 gap. The selected language governs free-form title and body text while
 preserving Conventional Commit title syntax and any selected template or

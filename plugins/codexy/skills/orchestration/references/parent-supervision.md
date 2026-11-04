@@ -179,11 +179,11 @@ The parent Orchestrator MUST perform accepted-child eligibility checks,
 preservation, archival, safe local branch deletion, and outcome readback under
 the
 [cleanup policy](../../../../codexy-github/skills/git-workflow/references/local-git-and-branches.md#accepted-child-cleanup).
-After parent acceptance and completion of required merge, publication, and
-other in-scope delivery work for a child, the Orchestrator MUST enter that
-procedure as its next parent-owned action without waiting for a reminder. A
-reminder also resumes the procedure; receiving or forwarding one does not
-establish cleanup progress.
+After parent acceptance and completion of required merge, publication, and other
+in-scope delivery work for a child, the Orchestrator MUST enter that procedure
+as its next parent-owned action without waiting for a reminder. A reminder also
+resumes the procedure; receiving or forwarding one does not establish cleanup
+progress.
 
 The Orchestrator MUST retain accepted children whose cleanup remains pending in
 existing task state across turns and compaction, including the current cleanup
