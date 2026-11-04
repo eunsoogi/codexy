@@ -51,9 +51,11 @@ This does not change the selected model, effort, or ownership rules below.
 Named packaged specialists MUST be selected when their role matches the task;
 their catalogued model and effort apply automatically, and callers MUST NOT
 override them. Ordinary, bounded, and simple Worker assignments MUST default to
-`gpt-6-luna` / `max`. A new general Worker with valid hard-work facts MUST be
-assigned `gpt-6.1-terra` / `medium` directly; the `general` classification alone
-MUST NOT select that pair. Existing Sol/Medium recipients remain eligible for
+`gpt-6-luna` / `max`. For a general Worker, Luna/Max is also the default once
+the safety facts pass; only complete, verified hard-work facts can select
+Terra/Medium. A new general Worker with valid hard-work facts MUST be assigned
+`gpt-6.1-terra` / `medium` directly; the `general` classification alone MUST NOT
+select that pair. Existing Sol/Medium recipients remain eligible for
 authenticated follow-up delivery but MUST NOT be selected for new Worker
 creation. For general work, `fixed_scope`, `low_risk_reversible`, and
 `no_unresolved_decision` MUST be true; `deterministic_oracle` MUST be supplied
@@ -165,8 +167,14 @@ known-pattern implementations and single-boundary fixes retain Luna/Max. A
 malformed, unknown, or incomplete hard-work object MUST be rejected; missing
 hard-work evidence MUST NOT cause escalation. Valid evidence MUST NOT change a
 simple, bounded, ambiguous, incomplete, or high-risk request into a general
-assignment. Capability checks MUST apply to the selected exact pair without
-substitution.
+assignment. Before selecting a hard route, the assigning owner MUST classify any
+reported blocker by its cause. Permission limits, missing inputs,
+host/tool/environment restrictions, resource contention or capacity, and
+unresolved ownership MUST stay with their existing owner or capability path;
+they MUST NOT count as hard-work evidence or be bypassed by a different Worker
+pair. A separate task-specific implementation fact MAY still satisfy a listed
+criterion, but the blocker itself never does. Capability checks MUST apply to
+the selected exact pair without substitution.
 
 This is the direct assignment path for work already evidenced as hard. When a
 general Luna/Max Worker discovers qualifying evidence after work begins, the

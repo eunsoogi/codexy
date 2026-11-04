@@ -9,6 +9,11 @@ transition procedures in this reference bundle. It MUST preserve the role,
 recovery, capacity, observation, receipt, and review contracts those references
 already own.
 
+The decision in [`worker-elevation.md`](../worker-elevation.md) remains the
+source of eligibility and failure classification. A repeated failure count, or a
+permission, input, host/environment, or resource blocker, MUST NOT become
+hard-work evidence or transition authority.
+
 This is an instruction path, not a new executor, serialized state machine,
 journal, event store, receipt format, or host capability. Codex MUST update the
 existing issue-owner and supervision records. A source-level route, fixture,

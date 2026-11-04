@@ -6,13 +6,21 @@ release goal. It is the canonical detailed source for delegated supervision,
 evidence, and authority boundaries; it does not create a scheduler, replace
 goal-lifecycle, or choose a repository's GitHub policy.
 
-For a general Worker whose hard-work evidence permits consideration of
-elevation, the parent MUST use the
+At assignment, the parent MUST use [Worker routing](child-routing-policy.md) for
+ordinary versus hard-work selection; this reference MUST NOT define a separate
+difficulty rule. After work begins, the parent MUST use the
+[Worker elevation decision](worker-elevation.md) and classify each reported
+blocker by its cause before considering elevation. Permission, missing-input,
+host/environment, and resource failures follow their existing owner or
+capability path and MUST NOT themselves count as hard-work evidence. Separate
+task-specific implementation evidence MAY still qualify under the existing
+criteria. Only **Elevation may proceed** permits consideration of a transition;
+the parent MUST use
 [Worker elevation reconciliation](worker-elevation/reconciliation.md) before
-transferring issue ownership. This procedure connects eligibility, checkpoint,
-and supported transition steps to existing owner, reservation, event, and
-per-task cursor records; this reference remains authoritative for shared
-capacity and ordinary observation.
+transferring issue ownership. Reconciliation connects that decision, the source
+checkpoint, and supported transition steps to the existing owner, reservation,
+event, and per-task cursor records; this reference remains authoritative for
+shared capacity and ordinary observation.
 
 ## Canonical role mapping
 
@@ -29,8 +37,9 @@ When this arrangement is authorized, Codex MUST keep these roles distinct:
 Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
 
 - Orchestrator and Worker-to-Orchestrator: `gpt-6.1-sol` / `low` (Sol / Light).
-- Worker creation MUST use [routing](child-routing-policy.md); parent-to-Worker
-  follow-ups MUST preserve the authenticated recipient's pair.
+- Worker creation MUST use [routing](child-routing-policy.md), including its
+  ordinary default and verified hard-work facts; parent-to-Worker follow-ups
+  MUST preserve the authenticated recipient's pair.
 - Inspector: `gpt-6.1-sol` / `medium`.
 
 New-role thread creation and delivery MUST use the explicit model/effort pair
