@@ -113,6 +113,25 @@ prove that execution or verification occurred.
   action or owner needed to resolve it; a repeated approval question MUST NOT
   substitute for missing access or a protection rule.
 
+### Skill and host conflict decision
+
+When a required model, reasoning effort, task/worktree, goal, or message setting
+appears to conflict with the active host, Codex MUST briefly identify the
+required setting, the applicable user authorization, and the actual tool
+contract. It MUST reuse applicable prior authorization, including an explicit
+user request covering multiple Worker goals, without routine per-child setup
+confirmation. A parent assignment alone MUST NOT be treated as user authority
+when the host requires an explicit user request.
+
+Codex MUST select a supported route that preserves every required setting and
+the existing ownership and safety boundaries. If authority is missing, it MUST
+request only the concrete missing authority; if the capability is unsupported,
+it MUST report the exact operation and host boundary to its owner, not ask the
+user to approve an unavailable capability. It MUST keep the affected operation
+pending, continue independent authorized work, and avoid repeating an unchanged
+setup request. A host-only change MUST be identified as such; skill prose or
+user acknowledgement MUST NOT override a higher-priority tool restriction.
+
 ### Classify and route
 
 - MUST use [adaptive work](references/adaptive-work.md) when choosing execution,
