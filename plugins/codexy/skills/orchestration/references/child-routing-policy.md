@@ -43,6 +43,11 @@ recovery MUST stay with its assigned owner.
 
 ## Recipient routing
 
+For a required setting that conflicts with a host tool, MUST apply the
+[skill and host conflict decision](../SKILL.md#skill-and-host-conflict-decision)
+before choosing a supported route or reporting the affected operation pending.
+This does not change the selected model, effort, or ownership rules below.
+
 Named packaged specialists MUST be selected when their role matches the task;
 their catalogued model and effort apply automatically, and callers MUST NOT
 override them. Ordinary, bounded, and simple Worker assignments MUST default to

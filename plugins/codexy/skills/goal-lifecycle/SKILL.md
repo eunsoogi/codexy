@@ -30,8 +30,12 @@ acknowledgement, or future instructions MUST NOT be phase completion criteria.
 The child MUST use that exact phase objective for its finite goal. Assignment
 authority MUST NOT override the host's goal-creation rules. When the host
 requires an explicit user or system goal request, the task MUST NOT infer that
-authority from delegation alone or require a forbidden `create_goal` call. It
-MUST preserve the readback and report missing authority before task work. Scoped
+authority from delegation alone or require a forbidden `create_goal` call. An
+applicable explicit user request covering multiple Worker goals MUST be reused;
+the task MUST NOT require a separate unchanged confirmation for each Worker. It
+MUST preserve the readback and report genuinely missing authority before task
+work. When the host cannot support the required operation, it MUST identify the
+host boundary rather than describe it as missing authorization. Scoped
 orchestration authority covers necessary child tasks and bounded task messages
 under [child routing](../orchestration/references/child-routing-policy.md); it
 MUST NOT be mistaken for host goal-tool permission. When creation is authorized,
