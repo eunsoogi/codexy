@@ -17,8 +17,8 @@ An unfinished blocked goal MUST NOT be marked complete, cleared, or replaced to
 obtain recovery. Recovery preparation is limited to preserving necessary owned
 work, preparing one continuation, establishing its supported checkout
 association, and checking the intended environment. Issue implementation and
-ordinary issue verification remain stopped until the post-archive acceptance
-checks below succeed.
+ordinary issue verification remain stopped until the applicable fork or
+same-task acceptance checks below succeed.
 
 Pre-archive attachment and process checks establish only the continuation's
 current association and execution. They do not prove that source archival will
@@ -80,6 +80,13 @@ archival.
 
 ## Ordered blocked-goal procedure
 
+The source remains the issue owner through preparation and until its archival is
+confirmed. The recovery owner coordinates the steps below; the continuation
+performs only its assigned recovery preparation until post-archive acceptance.
+An authenticated parent MAY coordinate and direct these actions under the
+existing assignment, but a message or child report MUST NOT replace a native
+goal, attachment, archive, or process readback.
+
 1. The recovery owner MUST confirm that the original assignment still authorizes
    the same objective and scope. It MUST NOT request confirmation solely because
    the goal is blocked. If the authorization or scope is absent, stopped,
@@ -91,14 +98,14 @@ archival.
    identify exactly one continuation, it MUST preserve the exact result and stop
    with the source as owner.
 
-3. The recovery owner MUST send the continuation the same authorized objective,
-   a recovery-only instruction, and the source model and reasoning-effort values
-   explicitly through `send_message_to_thread`'s `model` and `thinking` fields.
-   It MUST use the authenticated source parent when one exists; otherwise, it
-   MUST use the current authorized owner. This message carries existing
-   authority and MUST NOT request new approval. If the tool cannot accept both
-   settings or delivery fails or is ambiguous, the owner MUST preserve the
-   result and stop before archival.
+3. The recovery owner or authenticated parent MUST send the continuation the
+   same authorized objective, a recovery-only instruction, and the source model
+   and reasoning-effort values explicitly through `send_message_to_thread`'s
+   `model` and `thinking` fields. It MUST use the authenticated source parent
+   when one exists; otherwise, it MUST use the current authorized owner. This
+   message carries existing authority and MUST NOT request new approval. If the
+   tool cannot accept both settings or delivery fails or is ambiguous, the owner
+   MUST preserve the result and stop before archival.
 
 4. The continuation's first task action MUST be native `get_goal`. It MUST NOT
    assume the fork starts with a particular goal state:
@@ -205,7 +212,7 @@ tasks.
 
 ## Native verification boundary
 
-An actual blocked-recovery PASS requires an authorized real blocked source,
+An actual fork-recovery PASS requires an authorized real blocked source,
 evidence that it remained blocked through archival, exactly one continuation
 owner, preserved checkout association and identity, the exact authorized active
 objective, requested/effective settings kept separate, and a successful
@@ -213,6 +220,10 @@ post-archive process at the intended CWD. If no authorized real scenario covers
 these conditions, the owner MUST report native recovery as unverified.
 Repository checks, instructions, messages, task IDs, and completed-source
 diagnostics do not substitute for these readbacks.
+
+An actual same-task recovery PASS requires a real supported native resumption
+and the same-task acceptance readbacks above. It MUST NOT imply fork/archive
+recovery passed.
 
 For reusable failure interpretation and evidence limits, see
 [recovery checkout diagnosis](recovery-checkout-diagnosis.md).
