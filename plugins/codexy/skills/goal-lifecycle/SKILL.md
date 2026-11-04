@@ -150,11 +150,11 @@ reports or message acceptance MUST NOT prove host state or justify a block.
 
 Ordinary CI, review, dependency, resource, and other producer waits are
 nonterminal while a required phase criterion remains unmet. Retryable errors and
-unfinished but actionable authorized work are also nonterminal. While work
-remains, the task MUST retain ownership of the exact active objective, use the
-existing event-driven or same-turn wait route, and continue available work on
-re-entry. The task MUST NOT repeat model turns for unchanged waits or to reach a
-threshold.
+unfinished but actionable authorized work are also nonterminal. For an ordinary
+producer wait, while work remains, the task MUST retain ownership of the exact
+active objective, use the existing event-driven or same-turn wait route, and
+continue available work on re-entry. The task MUST NOT repeat model turns for
+unchanged waits or to reach a threshold.
 
 When parent action or an external event can advance an unmet phase, the task
 MUST keep its actual goal state and ownership. Use
@@ -164,11 +164,13 @@ for the readable table report and handoff, and
 supported wake route. Neither a wait nor unavailable monitoring changes the
 blocked-state criteria above. The task MUST NOT ask the user to clear the goal
 to resume the same assignment or fabricate a `complete`, `blocked`, or `paused`
-transition to make a wait disappear.
+transition to make a wait disappear. This ordinary wait route MUST NOT override
+a direct user stop, a pause explicitly requested by the user, or a
+host-permitted blocked transition under the lifecycle rules above.
 
-This wait applies only while an assigned phase criterion remains unmet;
-parent-owned work after a completed-phase handoff MUST NOT keep the child's goal
-active.
+This ordinary wait route applies only while an assigned phase criterion remains
+unmet. Parent-owned work after a completed-phase handoff MUST NOT keep the
+child's goal active.
 
 ## Completion boundary
 

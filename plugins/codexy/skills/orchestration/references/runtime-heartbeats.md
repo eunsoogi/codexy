@@ -128,8 +128,11 @@ and terminal delivery, use [goal-lifecycle](../../goal-lifecycle/SKILL.md),
 [goal-transition-reporting](goal-transition-reporting.md), respectively.
 Heartbeat state MUST NOT override or stand in for any of those contracts.
 
-While a required review or execution result is pending, the child keeps its
-phase active and follows its supported wait route. After the child submits its
+While a required review or execution result for an unmet phase criterion is
+pending as an ordinary producer wait, the child MUST keep its goal active and
+follow the supported wait route. A direct user stop, a user-requested pause, or
+a host-permitted blocked transition remains governed by
+[goal-lifecycle](../../goal-lifecycle/SKILL.md). After the child submits its
 completed-phase handoff, remaining parent-owned work stays with the parent under
 its active goal; it MUST continue observation or execution through the supported
 route instead of extending the child's completed goal.

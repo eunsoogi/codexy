@@ -100,13 +100,16 @@ exact `wake route`, `ownership=retained`, `issue state=not complete`,
 
 The `current gate`, `producer state`, `wake route`, and `parent next action`
 MUST distinguish a required child-phase result from a pending parent-owned gate.
-A required review or execution result for an unmet child criterion keeps the
-phase active and uses the nonterminal wait route below. A parent-owned merge,
-acceptance or acknowledgement, or future assignment after this handoff MUST NOT
-delay child completion. The `parent next action` MUST name one supported
-operation or observation and its owner. The parent MUST continue its own active
-goal from that action, using [parent supervision](parent-supervision.md) for
-Worker observation and [runtime-heartbeats](runtime-heartbeats.md) for scheduled
+An ordinary pending review or execution result for an unmet child criterion MUST
+use the nonterminal wait route below while the child goal remains active. A
+direct user stop, a user-requested pause, or a host-permitted blocked transition
+remains governed by [goal-lifecycle](../../goal-lifecycle/SKILL.md) and MUST NOT
+be encoded as this ordinary wait. A parent-owned merge, acceptance or
+acknowledgement, or future assignment after this handoff MUST NOT delay child
+completion. The `parent next action` MUST name one supported operation or
+observation and its owner. The parent MUST continue its own active goal from
+that action, using [parent supervision](parent-supervision.md) for Worker
+observation and [runtime-heartbeats](runtime-heartbeats.md) for scheduled
 monitoring. Message transport acceptance proves delivery only; it does not prove
 parent readback, acceptance, or merge.
 
