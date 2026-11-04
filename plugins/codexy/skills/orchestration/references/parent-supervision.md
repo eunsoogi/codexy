@@ -147,6 +147,25 @@ reconciling setup and duplicate-owner evidence.
   repair, and the Orchestrator verifies the next relevant source, call, diff, or
   result.
 
+## Applying user corrections
+
+When a user corrects an active outcome coordinated by the Orchestrator, the
+Orchestrator MUST compare the correction with the existing request, task record,
+and current goal state. Unless the user explicitly replaces the objective, it
+MUST preserve the original objective, granted authority, exclusions, and open
+obligations. It MUST identify the changed scope, owner, constraints, completion
+conditions, and next action, and supersede earlier directions only where they
+conflict for affected work. It MUST update only affected Worker assignments with
+the actionable change, required evidence, next permitted step, and stop
+condition, and MUST perform parent-owned actions itself. Unaffected authorized
+work MUST continue. The Orchestrator MUST NOT forward a correction verbatim
+without reconciling the assignment or require the user to repeat unchanged
+context. A one-off instruction to act directly applies to that assignment and
+MUST NOT silently rewrite reusable delegation policy. The decision MUST remain
+available in existing task records and conversation; any native goal transition
+MUST follow [goal-lifecycle](../../goal-lifecycle/SKILL.md). MUST NOT create a
+new ledger or record format.
+
 ## Waiting and direct correction
 
 - A new child blocked report MUST follow the
