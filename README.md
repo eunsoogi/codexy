@@ -108,6 +108,11 @@ deciding whether another Worker should take over. The Codex host determines who
 owns the active task. See the
 [Worker handoff guidance](plugins/codexy/skills/orchestration/references/worker-elevation/reconciliation.md).
 
+Use `$planning` to create or update a plan. `planning` owns plan content,
+`orchestration` owns execution coordination, and `engineering` owns individual
+implementation and verification. `plan-stress-test` is an opt-in plan review,
+not an automatic review stage.
+
 ## How work flows
 
 ```mermaid
@@ -132,6 +137,31 @@ for current support boundaries.
 - [Component installation and migration](docs/getcodexy-component-installation.md)
 - [GitHub product boundary](docs/plugin-product-boundary.md)
 - [Open issues](https://github.com/eunsoogi/codexy/issues)
+
+## Skill inventory
+
+The packaged plugins include these reusable skills. Each link opens its guide.
+
+| Skill                                                                             | Purpose                                   | Component  |
+| --------------------------------------------------------------------------------- | ----------------------------------------- | ---------- |
+| [agents-md-authoring](plugins/codexy/skills/agents-md-authoring/SKILL.md)         | Create and scope repository instructions. | `core`     |
+| [blind-read](plugins/codexy/skills/blind-read/SKILL.md)                           | Interpret one artifact for a reader.      | `core`     |
+| [decision-rationale](plugins/codexy/skills/decision-rationale/SKILL.md)           | Inspect a decision's rationale.           | `core`     |
+| [dreaming](plugins/codexy/skills/dreaming/SKILL.md)                               | Recover task context after compaction.    | `core`     |
+| [engineering](plugins/codexy/skills/engineering/SKILL.md)                         | Implement and verify one issue.           | `core`     |
+| [frame-alternatives](plugins/codexy/skills/frame-alternatives/SKILL.md)           | Compare credible options.                 | `core`     |
+| [goal-lifecycle](plugins/codexy/skills/goal-lifecycle/SKILL.md)                   | Manage authorized task goals.             | `core`     |
+| [orchestration](plugins/codexy/skills/orchestration/SKILL.md)                     | Coordinate ownership and handoffs.        | `core`     |
+| [plan-stress-test](plugins/codexy/skills/plan-stress-test/SKILL.md)               | Challenge a plan when requested.          | `core`     |
+| [planning](plugins/codexy/skills/planning/SKILL.md)                               | Create or update project plans.           | `core`     |
+| [project-brief](plugins/codexy/skills/project-brief/SKILL.md)                     | Summarize recorded project state.         | `core`     |
+| [proof-driven-completion](plugins/codexy/skills/proof-driven-completion/SKILL.md) | Match outcome claims to proof.            | `core`     |
+| [prune-artifact-claims](plugins/codexy/skills/prune-artifact-claims/SKILL.md)     | Refresh claims against a source.          | `core`     |
+| [self-improvement](plugins/codexy/skills/self-improvement/SKILL.md)               | Improve responses to repeated failures.   | `core`     |
+| [wiki](plugins/codexy/skills/wiki/SKILL.md)                                       | Build source-backed topic knowledge.      | `core`     |
+| [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md)                | Manage GitHub issue and PR workflows.     | `github`   |
+| [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md)                    | Explore structure and dependencies.       | `devtools` |
+| [lsp](plugins/codexy-devtools/skills/lsp/SKILL.md)                                | Navigate code with language servers.      | `devtools` |
 
 ## License
 

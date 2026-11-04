@@ -107,6 +107,11 @@ MCP 서버는 uv와 uvx로 실행됩니다. Codex를 시작하는 host 환경의
 [Worker 인계 안내](plugins/codexy/skills/orchestration/references/worker-elevation/reconciliation.md)를
 참고하세요.
 
+`$planning`은 계획 내용을 만들거나 갱신할 때 사용합니다. `planning`은 계획 내용,
+`orchestration`은 실행 조정, `engineering`은 개별 구현과 검증을 맡습니다.
+`plan-stress-test`는 명시적으로 선택하는 계획 검토이며 자동 리뷰 단계가
+아닙니다.
+
 ## 작업 흐름
 
 ```mermaid
@@ -130,6 +135,32 @@ Codex를 실행하는 환경에서 language server를 실행할 수 있어야 �
 - [컴포넌트 설치 및 이전](docs/getcodexy-component-installation.md)
 - [GitHub 제품 경계](docs/plugin-product-boundary.md)
 - [열린 이슈](https://github.com/eunsoogi/codexy/issues)
+
+## Skill 목록
+
+배포 플러그인에는 다음 재사용 skill이 포함됩니다. 링크에서 각 안내를 볼 수
+있습니다.
+
+| Skill                                                                             | 목적                                  | 컴포넌트   |
+| --------------------------------------------------------------------------------- | ------------------------------------- | ---------- |
+| [agents-md-authoring](plugins/codexy/skills/agents-md-authoring/SKILL.md)         | 저장소 지침 작성과 범위 정하기.       | `core`     |
+| [blind-read](plugins/codexy/skills/blind-read/SKILL.md)                           | 지정한 artifact를 독자 관점에서 해석. | `core`     |
+| [decision-rationale](plugins/codexy/skills/decision-rationale/SKILL.md)           | 결정의 이유와 근거 살피기.            | `core`     |
+| [dreaming](plugins/codexy/skills/dreaming/SKILL.md)                               | 맥락 압축 뒤 작업 정보 복원.          | `core`     |
+| [engineering](plugins/codexy/skills/engineering/SKILL.md)                         | 이슈 하나를 구현하고 검증하기.        | `core`     |
+| [frame-alternatives](plugins/codexy/skills/frame-alternatives/SKILL.md)           | 신뢰할 수 있는 대안 비교.             | `core`     |
+| [goal-lifecycle](plugins/codexy/skills/goal-lifecycle/SKILL.md)                   | 승인된 작업 목표 관리.                | `core`     |
+| [orchestration](plugins/codexy/skills/orchestration/SKILL.md)                     | 담당과 인수인계 조정.                 | `core`     |
+| [plan-stress-test](plugins/codexy/skills/plan-stress-test/SKILL.md)               | 요청 시 계획 점검.                    | `core`     |
+| [planning](plugins/codexy/skills/planning/SKILL.md)                               | 프로젝트 계획 작성과 갱신.            | `core`     |
+| [project-brief](plugins/codexy/skills/project-brief/SKILL.md)                     | 기록된 프로젝트 상태 요약.            | `core`     |
+| [proof-driven-completion](plugins/codexy/skills/proof-driven-completion/SKILL.md) | 결과 주장을 근거와 대조.              | `core`     |
+| [prune-artifact-claims](plugins/codexy/skills/prune-artifact-claims/SKILL.md)     | 기준 source에 맞춰 문서 주장 정리.    | `core`     |
+| [self-improvement](plugins/codexy/skills/self-improvement/SKILL.md)               | 반복 실패를 개선할 경로 선택.         | `core`     |
+| [wiki](plugins/codexy/skills/wiki/SKILL.md)                                       | 출처 기반 주제별 Wiki 만들기.         | `core`     |
+| [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md)                | GitHub issue와 PR 흐름 관리.          | `github`   |
+| [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md)                    | 저장소 구조와 의존 관계 탐색.         | `devtools` |
+| [lsp](plugins/codexy-devtools/skills/lsp/SKILL.md)                                | 언어 서버로 코드 탐색과 진단.         | `devtools` |
 
 ## 라이선스
 
