@@ -163,14 +163,18 @@ archive, or ownership transition. The parent MUST verify recoverability and the
 continuation owner before separately authorized archival, following the
 [local Git preservation guidance](../../../../codexy-github/skills/git-workflow/references/local-git-and-branches.md#unfinished-work-preservation).
 
-After a stop, archive, or ownership-release action, the terminal result MUST use
-a post-action host readback to report the exact action result and actual goal
-and thread state. The pre-transition handoff MUST NOT be used as proof of a
-later result. If post-action readback is unavailable, the result MUST remain
-unknown or unconfirmed, and any later archival or ownership release that depends
-on the unconfirmed state MUST remain pending until that state is verified. This
-requirement MUST NOT add a second pre-transition handoff or change the ordered
-blocked-goal receipts below.
+After any authorized action marked pending in the handoff is attempted, the
+terminal result MUST report its exact outcome from a post-action readback on the
+relevant authoritative surface. This includes commit, push, Draft PR creation or
+update, stop, archive, deletion, and ownership release. Goal or thread
+transitions MUST also report the resulting goal and thread state from host
+readback; blocked-goal transitions MUST use the ordered receipts below. Actions
+not yet attempted MUST remain pending, and unauthorized actions MUST remain
+unauthorized. The pre-transition handoff MUST NOT be used as proof of a later
+result. If post-action readback is unavailable, the result MUST remain unknown
+or unconfirmed, and any later action that depends on the unconfirmed state MUST
+remain pending until that state is verified. This requirement MUST NOT add a
+second pre-transition handoff or change the ordered blocked-goal receipts below.
 
 If delivery is unavailable, the child MUST emit one unavailable receipt and
 retain the lane. It MUST NOT retry or claim a stop, archive, blocked-goal, or
