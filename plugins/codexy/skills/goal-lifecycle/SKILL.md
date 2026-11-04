@@ -14,8 +14,8 @@ before task-specific work, not only after choosing a goal-tool operation. Codex
 MUST treat the host goal tools as authoritative. The lifecycle governs fresh
 goal startup, active continuation, and authorized recovery from blocked goals.
 It MUST NOT change host goal state, issue ownership, branch, or worktree to
-simulate completion. Fork recovery changes only the active task thread through
-a same-directory fork and archive; a supported same-task resume retains it.
+simulate completion. Fork recovery changes only the active task thread through a
+same-directory fork and archive; a supported same-task resume retains it.
 
 ## Delegated assignment authorization
 
@@ -104,9 +104,9 @@ recovery only while the same objective and scope remain in force; blocked status
 alone MUST NOT trigger a new approval request. A user stop, revoked or missing
 assignment, scope change, or actual host permission denial MUST stop the
 sequence. For fork recovery, before post-archive acceptance, the task MUST NOT
-perform issue implementation or ordinary issue verification. It MAY perform only the bounded
-read-only preflight, necessary preservation of owned work, and other recovery
-operations specified in
+perform issue implementation or ordinary issue verification. It MAY perform only
+the bounded read-only preflight, necessary preservation of owned work, and other
+recovery operations specified in
 [executable-checkout recovery](references/executable-checkout-recovery.md).
 
 Active-goal Worker elevation is a separate same-issue route. It preserves the
@@ -176,17 +176,16 @@ a different unfinished objective MUST stop, and blocked recovery MUST follow the
 ordered same-scope procedure.
 
 Before fork recovery's post-archive acceptance, the task MAY perform only the
-recovery preparation and native operations in the linked procedure, including necessary
-change preservation and checkout-association checks. The fork's first `get_goal`
-and any permitted fresh-goal creation stay inside that continuation and MUST NOT
-generate registration reports. The task MUST use the existing `$orchestration`
-receipt contracts. For fork recovery, issue work MUST resume only after source
-archival, one continuation owner, the exact authorized active objective, and a
-successful process at the preserved checkout are confirmed. A supported
-same-task resume instead follows the separate acceptance checks in the linked
-procedure. This instruction-only behavior
-MUST NOT add a parser, validator, hook, workflow, schema, runtime service, or
-compatibility wrapper.
+recovery preparation and native operations in the linked procedure, including
+necessary change preservation and checkout-association checks. The fork's first
+`get_goal` and any permitted fresh-goal creation stay inside that continuation
+and MUST NOT generate registration reports. The task MUST use the existing
+`$orchestration` receipt contracts. For fork recovery, issue work MUST resume
+only after source archival, one continuation owner, the exact authorized active
+objective, and a successful process at the preserved checkout are confirmed. A
+supported same-task resume instead follows the separate acceptance checks in the
+linked procedure. This instruction-only behavior MUST NOT add a parser,
+validator, hook, workflow, schema, runtime service, or compatibility wrapper.
 
 ## Verification
 
@@ -214,8 +213,8 @@ recovery is available, the task MUST verify:
 - Fork, archive, owner-readback, continuation, and fresh-goal creation failures
   preserving the exact result and stopping task work without another fork.
 
-Real app task and goal readbacks MUST be the evidence for recovery;
-the task MUST NOT use local fixtures, parser logic, or mock-only assertions as
+Real app task and goal readbacks MUST be the evidence for recovery; the task
+MUST NOT use local fixtures, parser logic, or mock-only assertions as
 substitutes. Fork recovery evidence MUST also include archive readback and show
 the source remained blocked through archival; it MUST NOT depend on an
 `update_goal(complete)` attempt or result.

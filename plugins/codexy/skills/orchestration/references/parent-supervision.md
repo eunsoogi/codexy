@@ -150,15 +150,15 @@ reconciling setup and duplicate-owner evidence.
   covers the same objective and scope, the Orchestrator MUST direct the existing
   owner to the next permitted recovery step in
   [executable-checkout recovery](../../goal-lifecycle/references/executable-checkout-recovery.md).
-  It MUST coordinate the one continuation and source retirement when those
-  steps are supported, retaining the source owner until archival is confirmed
-  and the continuation in recovery-only mode until acceptance. A missing direct
-  resume API alone MUST NOT end this route or prompt another approval. If a
-  required host operation or preservation guarantee is unavailable, it MUST
-  report the exact transition and preserve the owner and work; acknowledgement
-  does not supply the missing capability. An actual user stop, revoked or
-  missing authority, changed scope, host denial, or unresolved material decision
-  remains binding.
+  It MUST coordinate the one continuation and source retirement when those steps
+  are supported, retaining the source owner until archival is confirmed and the
+  continuation in recovery-only mode until acceptance. A missing direct resume
+  API alone MUST NOT end this route or prompt another approval. If a required
+  host operation or preservation guarantee is unavailable, it MUST report the
+  exact transition and preserve the owner and work; acknowledgement does not
+  supply the missing capability. An actual user stop, revoked or missing
+  authority, changed scope, host denial, or unresolved material decision remains
+  binding.
 - For ordinary Orchestrator-owned Worker waits, the owner MUST use cursor-based
   `wait_threads` with targets within the supervised-child ceiling and the latest
   cursor for each target. Multiple batches MUST NOT bypass that ceiling. An
