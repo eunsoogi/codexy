@@ -84,7 +84,10 @@ before execution. The requested target, checkout path, or attached artifact
 alone does not prove the task environment. The call is non-blocking: a ready
 `threadId`/`hostId` is an actual task identity, while a setup `clientThreadId`
 is only a pending setup identity and MUST NOT be passed to tools that require
-`threadId`.
+`threadId`. Creation or a pending setup does not establish ready ownership: MUST
+wait for the ready task and verify its actual owner and worktree before
+implementation starts. Later repairs MUST return to that owner and workspace
+unless a supported, authorized ownership transition has completed.
 
 Each selected owner route MUST preserve the native goal and ordinary direct
 `wait_threads` observation with each target's latest cursor. Neither route may
