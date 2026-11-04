@@ -126,11 +126,12 @@ when the host requires an explicit user request.
 Codex MUST select a supported route that preserves every required setting and
 the existing ownership and safety boundaries. If authority is missing, it MUST
 request only the concrete missing authority; if the capability is unsupported,
-it MUST report the exact operation and host boundary to its owner, not ask the
-user to approve an unavailable capability. It MUST keep the affected operation
-pending, continue independent authorized work, and avoid repeating an unchanged
-setup request. A host-only change MUST be identified as such; skill prose or
-user acknowledgement MUST NOT override a higher-priority tool restriction.
+it MUST report the exact operation, host boundary, and concrete action needed
+from its owner, not ask the user to approve an unavailable capability. It MUST
+keep the affected operation pending, continue independent authorized work, and
+avoid repeating an unchanged setup request. A host-only change MUST be identified
+as such; skill prose or user acknowledgement MUST NOT override a higher-priority
+tool restriction.
 
 ### Classify and route
 
