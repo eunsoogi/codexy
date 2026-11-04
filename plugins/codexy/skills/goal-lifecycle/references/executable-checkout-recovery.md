@@ -80,6 +80,13 @@ archival.
 
 ## Ordered blocked-goal procedure
 
+The source remains the issue owner through preparation and until its archival
+is confirmed. The recovery owner coordinates the steps below; the continuation
+performs only its assigned recovery preparation until post-archive acceptance.
+An authenticated parent MAY coordinate and direct these actions under the
+existing assignment, but a message or child report MUST NOT replace a native
+goal, attachment, archive, or process readback.
+
 1. The recovery owner MUST confirm that the original assignment still authorizes
    the same objective and scope. It MUST NOT request confirmation solely because
    the goal is blocked. If the authorization or scope is absent, stopped,
@@ -91,7 +98,8 @@ archival.
    identify exactly one continuation, it MUST preserve the exact result and stop
    with the source as owner.
 
-3. The recovery owner MUST send the continuation the same authorized objective,
+3. The recovery owner or authenticated parent MUST send the continuation the
+   same authorized objective,
    a recovery-only instruction, and the source model and reasoning-effort values
    explicitly through `send_message_to_thread`'s `model` and `thinking` fields.
    It MUST use the authenticated source parent when one exists; otherwise, it

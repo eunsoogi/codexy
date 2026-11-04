@@ -180,9 +180,11 @@ preparation and native operations in the linked procedure, including necessary
 change preservation and checkout-association checks. The fork's first `get_goal`
 and any permitted fresh-goal creation stay inside that continuation and MUST NOT
 generate registration reports. The task MUST use the existing `$orchestration`
-receipt contracts. Issue work MUST resume only after source archival, one
-continuation owner, the exact authorized active objective, and a successful
-process at the preserved checkout are confirmed. This instruction-only behavior
+receipt contracts. For fork recovery, issue work MUST resume only after source
+archival, one continuation owner, the exact authorized active objective, and a
+successful process at the preserved checkout are confirmed. A supported
+same-task resume instead follows the separate acceptance checks in the linked
+procedure. This instruction-only behavior
 MUST NOT add a parser, validator, hook, workflow, schema, runtime service, or
 compatibility wrapper.
 
