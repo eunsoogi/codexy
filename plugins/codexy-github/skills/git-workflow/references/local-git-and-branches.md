@@ -29,6 +29,41 @@ For conflicts, inspect both sides and preserve their intended behavior. If the
 domain choice is ambiguous, stop for maintainer direction. After resolution,
 stage only resolved paths and rerun affected verification.
 
+## Unfinished Work Preservation
+
+For an explicitly authorized stop-and-preserve request, the issue owner MUST
+inspect the current worktree and relevant diffs before changing its files or
+branch. The inventory MUST identify the managed worktree, branch and exact head,
+staged and unstaged changes, untracked files, required ignored data, remaining
+obligations and proof, and a concrete resume location. Inspect ignored data only
+as needed to establish what continuation requires; credentials, private logs,
+and sensitive local configuration MUST NOT be copied into commits, pushed
+branches, or Draft PRs. Preserve required sensitive data only in an already
+authorized local or secure location, and report its availability without
+exposing its contents.
+
+The request's explicit scope governs each preservation action. Commit, push, or
+create/update a Draft PR only when that action is authorized. When authorized
+for publication, the owner MUST commit only owned, non-sensitive changes, push
+the issue branch, and create or update a Draft PR that clearly says the work is
+incomplete, lists remaining obligations, and gives a concrete resume point. It
+MUST report checks that remain unrun or failed without implying readiness. If
+publication is unauthorized or fails, retain the local branch and worktree and
+report the exact state; do not ask for unchanged confirmation when local
+preservation is sufficient.
+
+Worktree archival MUST NOT be treated as preservation of required ignored data;
+keep such data separately in an authorized location and verify its availability
+before archival. Before task or worktree archival, verify the authorized
+preserved location will remain accessible afterward; if that host behavior is
+unknown, retain the affected task and checkout and report the boundary. A stop
+or usage limit alone MUST NOT authorize remote publication, archival, or
+deletion. Before archival, the parent MUST verify recoverable work, remaining
+obligations, the resume location, and exactly one continuation owner. If
+preservation fails or remains unknown, defer archival only for the affected
+child and preserve its branch, worktree, and required ignored data. The
+accepted-child cleanup below MUST NOT be applied to unfinished work.
+
 ## Accepted Child Cleanup
 
 The parent Orchestrator MUST perform this sequence only for accepted completed

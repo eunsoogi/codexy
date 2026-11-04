@@ -137,11 +137,33 @@ before transitioning. It MUST carry the common bound fields above and show
 confirmed delivery on the Codex task/thread surface. When no goal operation
 represents the transition, evidence MUST identify the actual stop, archive,
 ownership release, or blocked action. A related terminal stop and ownership
-release MUST share the same receipt. A completed-phase handoff authorizes only
-its idle/stop outcome; archive or ownership release MUST require a separate
-confirmed terminal receipt. If delivery is unavailable, the child MUST emit one
-unavailable receipt, retain the lane, and MUST NOT retry or perform the
-stop/archive/blocked transition.
+release MUST share the same receipt. Archival or ownership release MUST be
+separately authorized and appear in the confirmed terminal receipt; a
+completed-phase handoff authorizes only its stated idle/stop outcome.
+
+For an unfinished phase, the terminal handoff MUST report
+`phase criteria=unsatisfied` and `issue state=not complete`; identify remaining
+obligations and proof, a concrete resume location, the actual preservation state
+and safe location (including required ignored data without exposing its
+contents), the observed write-cessation state, and the single continuation
+owner. It MUST state which commit, push, Draft PR, archive, or deletion actions
+were authorized, completed, failed, or remain unauthorized. It MUST report the
+actual goal and thread state and MUST NOT use completion-only values such as
+`phase criteria=satisfied` or `goal transition=complete` for unfinished work. A
+cooperative stop message or its delivery MUST NOT be represented as proof that
+an in-flight write ended. An explicit cease-write direction MUST still be
+honored by issuing no further implementation or worktree writes while the
+handoff or preservation is pending; this does not itself prove a goal, thread,
+archive, or ownership transition. The parent MUST verify recoverability and the
+continuation owner before separately authorized archival, following the
+[local Git preservation guidance](../../../../codexy-github/skills/git-workflow/references/local-git-and-branches.md#unfinished-work-preservation).
+
+If delivery is unavailable, the child MUST emit one unavailable receipt and
+retain the lane. It MUST NOT retry or claim a stop, archive, blocked-goal, or
+ownership-release transition that lacks supported readback. The child MUST honor
+an already-authorized cease-write direction, retain its existing work and
+checkout at the current authorized location, and leave archival pending until
+the terminal handoff can be confirmed.
 
 Blocked-goal recovery retains its ordered receipts. Whether a native blocked
 transition is permitted is owned by
