@@ -24,8 +24,12 @@ child's currently executable phase. The parent MUST state the phase objective
 once as `Assignment objective:`, with bounded scope, success criteria,
 verification, handoff, and a stop condition. Preparation, implementation, or
 verification MAY be separate phases only when explicitly assigned; the child
-MUST NOT invent a narrower phase to clear an unfinished goal. Parent merge,
-acknowledgement, or future instructions MUST NOT be phase completion criteria.
+MUST NOT invent a narrower phase to clear an unfinished goal. The phase criteria
+MUST cover the assigned deliverable, required proof, and any review or execution
+result required for that phase. The child MUST keep the phase unfinished while
+any such criterion is unmet; native goal status MUST follow the applicable
+lifecycle rules below. Parent merge, parent acceptance or acknowledgement, and
+future instructions MUST NOT be phase completion criteria.
 
 The child MUST use that exact phase objective for its finite goal. Assignment
 authority MUST NOT override the host's goal-creation rules. When the host
@@ -149,12 +153,13 @@ Parent-reported pauses MUST stay parent-sourced; only a direct user message or
 authenticated reference establishes intent. Parent direction stays scoped; child
 reports or message acceptance MUST NOT prove host state or justify a block.
 
-Ordinary CI, review, dependency, resource, and parent-coordination waits,
-retryable errors, and unfinished but actionable authorized work are nonterminal.
-While work remains, the task MUST retain ownership of the exact active
-objective, use the existing event-driven or same-turn wait route, and continue
-available work on re-entry. The task MUST NOT repeat model turns for unchanged
-waits or to reach a threshold.
+Ordinary CI, review, dependency, resource, and other producer waits are
+nonterminal while a required phase criterion remains unmet. Retryable errors and
+unfinished but actionable authorized work are also nonterminal. For an ordinary
+producer wait, while work remains, the task MUST retain ownership of the exact
+active objective, use the existing event-driven or same-turn wait route, and
+continue available work on re-entry. The task MUST NOT repeat model turns for
+unchanged waits or to reach a threshold.
 
 When parent action or an external event can advance an unmet phase, the task
 MUST keep its actual goal state and ownership. Use
@@ -164,7 +169,13 @@ for the readable table report and handoff, and
 supported wake route. Neither a wait nor unavailable monitoring changes the
 blocked-state criteria above. The task MUST NOT ask the user to clear the goal
 to resume the same assignment or fabricate a `complete`, `blocked`, or `paused`
-transition to make a wait disappear.
+transition to make a wait disappear. This ordinary wait route MUST NOT override
+a direct user stop, a pause explicitly requested by the user, or a
+host-permitted blocked transition under the lifecycle rules above.
+
+This ordinary wait route applies only while an assigned phase criterion remains
+unmet. Parent-owned work after a completed-phase handoff MUST NOT keep the
+child's goal active.
 
 ## Completion boundary
 
@@ -175,9 +186,14 @@ handoff follows
 [goal-transition-reporting](../orchestration/references/goal-transition-reporting.md).
 The host result controls the actual goal state. A completed goal ends only that
 finite phase; it MUST NOT imply issue closure, PR merge, release, or parent
-acceptance. Follow-up work MUST use the same owner's actual lifecycle readback;
-a different unfinished objective MUST stop, and blocked recovery MUST follow the
-ordered same-scope procedure.
+acceptance. After submitting the required handoff, the child MUST NOT keep this
+goal open for parent merge, acceptance or acknowledgement, or future
+instructions. The parent MUST continue its separate overall goal through the
+supported next action in
+[goal-transition-reporting](../orchestration/references/goal-transition-reporting.md).
+Follow-up work MUST use the same owner's actual lifecycle readback; a different
+unfinished objective MUST stop, and blocked recovery MUST follow the ordered
+same-scope procedure.
 
 Before fork recovery's post-archive acceptance, the task MAY perform only the
 recovery preparation and native operations in the linked procedure, including

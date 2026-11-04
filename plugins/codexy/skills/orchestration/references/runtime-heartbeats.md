@@ -5,6 +5,13 @@ event-driven `wait_threads` with each target's latest cursor. Reserve heartbeat
 scheduling for genuinely scheduled monitoring or when `wait_threads` is
 unavailable.
 
+A completed child-phase handoff returns control to the Orchestrator; it does not
+complete or suspend the parent's overall goal. The parent MUST consume the
+handoff and continue its own next supported action. Parent-owned merge,
+acceptance or acknowledgement, and future assignment MUST NOT be sent back as
+wait criteria for the completed child goal. The parent's observation route
+remains governed by [parent supervision](parent-supervision.md).
+
 ## Same-Turn Wait Handling
 
 - While authorized implementation, verification, coordination, or an assigned
@@ -33,11 +40,11 @@ unavailable.
   wait; applicable higher-priority instructions and actual host limits still
   govern every blocking call. MUST NOT bypass cursor waits.
 - Outside a route-required quiet wait, MUST provide concise progress commentary
-  at meaningful checkpoints during active work; commentary does not end the turn
-  or prove completion. A short wait result alone MUST NOT trigger a final status
-  or idle handoff. The
-  [goal and terminal lifecycle](#goal-and-terminal-lifecycle) below still
-  permits a finite idle handoff when its actual conditions are met.
+  at meaningful checkpoints during active work; report new evidence or an actual
+  change, not an unchanged wait. Commentary does not end the turn or prove
+  completion. A short wait result alone MUST NOT trigger a final status or idle
+  handoff. The [goal and terminal lifecycle](#goal-and-terminal-lifecycle) below
+  still permits a finite idle handoff when its actual conditions are met.
 - This default MUST NOT create rapid polling, busy loops, duplicate unchanged
   work, artificial token use, work beyond the authorized scope, or waits beyond
   host limits. MUST follow [parent supervision](parent-supervision.md) for
@@ -120,6 +127,15 @@ and terminal delivery, use [goal-lifecycle](../../goal-lifecycle/SKILL.md),
 [proof-driven-completion](../../proof-driven-completion/SKILL.md), and
 [goal-transition-reporting](goal-transition-reporting.md), respectively.
 Heartbeat state MUST NOT override or stand in for any of those contracts.
+
+While a required review or execution result for an unmet phase criterion is
+pending as an ordinary producer wait, the child MUST keep its goal active and
+follow the supported wait route. A direct user stop, a user-requested pause, or
+a host-permitted blocked transition remains governed by
+[goal-lifecycle](../../goal-lifecycle/SKILL.md). After the child submits its
+completed-phase handoff, remaining parent-owned work stays with the parent under
+its active goal; it MUST continue observation or execution through the supported
+route instead of extending the child's completed goal.
 
 The awakened owner MUST consume the event in the same turn and record the
 resulting lifecycle state in the compact lane delta. When no further observation
