@@ -117,21 +117,21 @@ complete existing `hard_work` category. When a blocker prevents a safe next
 action, the Orchestrator MUST retain the owner and follow that blocker's
 existing route.
 
-File count, long context, an unfamiliar library, model availability, and
-failure count alone MUST NOT justify elevation. Repeated repair attempts count
-only through their task-specific observations that satisfy one existing
-category; a count or threshold MUST NOT create another category. Three failures
-alone MUST NOT trigger model elevation. An intended initial TDD RED MUST NOT
-count as a failure event.
+File count, long context, an unfamiliar library, model availability, and failure
+count alone MUST NOT justify elevation. Repeated repair attempts count only
+through their task-specific observations that satisfy one existing category; a
+count or threshold MUST NOT create another category. Three failures alone MUST
+NOT trigger model elevation. An intended initial TDD RED MUST NOT count as a
+failure event.
 
 The existing Advisor triggers MUST remain in force: after the third actual
 failure in an open repair episode, consult before a fourth speculative repair;
 consult immediately for a newly reported blocker; and consult for an unclear
-cross-lane decision. The third-failure trigger requires Advisor consultation;
-it does not qualify the task for model elevation. The Orchestrator MUST be able
-to assess sufficient hard-work evidence without waiting for a failure count,
-and a clear application of this policy MUST NOT add an Advisor approval step.
-If a required consultation is unavailable, the outcome MUST remain waiting; the
+cross-lane decision. The third-failure trigger requires Advisor consultation; it
+does not qualify the task for model elevation. The Orchestrator MUST be able to
+assess sufficient hard-work evidence without waiting for a failure count, and a
+clear application of this policy MUST NOT add an Advisor approval step. If a
+required consultation is unavailable, the outcome MUST remain waiting; the
 Orchestrator MUST preserve the current owner and conditions and own the next
 action. Failure episodes, actionable review findings, and repair budgets MUST
 continue under their existing contracts through any later transition; they MUST

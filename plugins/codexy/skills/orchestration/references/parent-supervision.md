@@ -6,10 +6,9 @@ release goal. It is the canonical detailed source for delegated supervision,
 evidence, and authority boundaries; it does not create a scheduler, replace
 goal-lifecycle, or choose a repository's GitHub policy.
 
-At assignment, the parent MUST use
-[Worker routing](child-routing-policy.md) for ordinary versus hard-work
-selection; this reference MUST NOT define a separate difficulty rule. After
-work begins, the parent MUST use the
+At assignment, the parent MUST use [Worker routing](child-routing-policy.md) for
+ordinary versus hard-work selection; this reference MUST NOT define a separate
+difficulty rule. After work begins, the parent MUST use the
 [Worker elevation decision](worker-elevation.md) and classify each reported
 blocker by its cause before considering elevation. Permission, missing-input,
 host/environment, and resource failures follow their existing owner or
