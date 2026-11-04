@@ -42,15 +42,18 @@ branches, or Draft PRs. Preserve required sensitive data only in an already
 authorized local or secure location, and report its availability without
 exposing its contents.
 
-The request's explicit scope governs each preservation action. Commit, push, or
-create/update a Draft PR only when that action is authorized. When authorized
-for publication, the owner MUST commit only owned, non-sensitive changes, push
-the issue branch, and create or update a Draft PR that clearly says the work is
-incomplete, lists remaining obligations, and gives a concrete resume point. It
-MUST report checks that remain unrun or failed without implying readiness. If
-publication is unauthorized or fails, retain the local branch and worktree and
-report the exact state; do not ask for unchanged confirmation when local
-preservation is sufficient.
+The request's explicit scope governs each preservation action. The owner MUST
+assess authorization to commit, push, and create or update a Draft PR
+independently; authorization for one action MUST NOT imply another. When commit
+is authorized, the owner MUST commit only owned, non-sensitive changes. When
+push is authorized, the owner MUST push the issue branch. When Draft PR creation
+or update is authorized, the owner MUST create or update a Draft PR that clearly
+says the work is incomplete, lists remaining obligations, and gives a concrete
+resume point. The owner MUST report checks that remain unrun or failed without
+implying readiness. An unauthorized or failed action MUST be reported with its
+exact state without misclassifying the authority or result of other actions;
+retain the local branch and worktree when local preservation is sufficient, and
+do not ask for unchanged confirmation.
 
 Worktree archival MUST NOT be treated as preservation of required ignored data;
 keep such data separately in an authorized location and verify its availability

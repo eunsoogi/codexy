@@ -139,7 +139,10 @@ represents the transition, evidence MUST identify the actual stop, archive,
 ownership release, or blocked action. A related terminal stop and ownership
 release MUST share the same receipt. Archival or ownership release MUST be
 separately authorized and appear in the confirmed terminal receipt; a
-completed-phase handoff authorizes only its stated idle/stop outcome.
+completed-phase handoff authorizes only its stated idle/stop outcome. The
+terminal handoff MUST report the state observed before the transition and mark
+any authorized next action as pending; it MUST NOT claim that action's later
+result.
 
 For an unfinished phase, the terminal handoff MUST report
 `phase criteria=unsatisfied` and `issue state=not complete`; identify remaining
@@ -147,8 +150,10 @@ obligations and proof, a concrete resume location, the actual preservation state
 and safe location (including required ignored data without exposing its
 contents), the observed write-cessation state, and the single continuation
 owner. It MUST state which commit, push, Draft PR, archive, or deletion actions
-were authorized, completed, failed, or remain unauthorized. It MUST report the
-actual goal and thread state and MUST NOT use completion-only values such as
+were authorized, completed, failed, or remain unauthorized at the time of the
+handoff, and identify any authorized next action as pending. It MUST report the
+goal and thread state observed before the transition and MUST NOT use
+completion-only values such as
 `phase criteria=satisfied` or `goal transition=complete` for unfinished work. A
 cooperative stop message or its delivery MUST NOT be represented as proof that
 an in-flight write ended. An explicit cease-write direction MUST still be
@@ -157,6 +162,15 @@ handoff or preservation is pending; this does not itself prove a goal, thread,
 archive, or ownership transition. The parent MUST verify recoverability and the
 continuation owner before separately authorized archival, following the
 [local Git preservation guidance](../../../../codexy-github/skills/git-workflow/references/local-git-and-branches.md#unfinished-work-preservation).
+
+After a stop, archive, or ownership-release action, the terminal result MUST use
+a post-action host readback to report the exact action result and actual goal
+and thread state. The pre-transition handoff MUST NOT be used as proof of a
+later result. If post-action readback is unavailable, the result MUST remain
+unknown or unconfirmed, and any later archival or ownership release that depends
+on the unconfirmed state MUST remain pending until that state is verified. This
+requirement MUST NOT add a second pre-transition handoff or change the ordered
+blocked-goal receipts below.
 
 If delivery is unavailable, the child MUST emit one unavailable receipt and
 retain the lane. It MUST NOT retry or claim a stop, archive, blocked-goal, or
