@@ -28,7 +28,7 @@ Codexy는 Codex가 저장소 작업의 범위를 정하고 담당자를 지정�
 권장 설치 방법은 getcodexy CLI를 사용하는 것입니다.
 
 ```sh
-uv tool install getcodexy==2.2.0
+uv tool install getcodexy==2.2.1
 uv tool update-shell
 getcodexy install
 ```
@@ -53,7 +53,7 @@ github와 devtools를 설치하면 의존성인 core도 자동으로 포함됩�
 getcodexy status
 getcodexy doctor
 getcodexy update
-uv tool upgrade getcodexy==2.2.0
+uv tool upgrade getcodexy==2.2.1
 ```
 
 `getcodexy status`와 `getcodexy doctor`로 설치 상태를 확인하고,
@@ -77,7 +77,7 @@ getcodexy --codex /absolute/path/to/codex migrate
 개발 또는 통제된 복구에서만 사용하고 core부터 설치하세요.
 
 ```sh
-codex plugin marketplace add eunsoogi/codexy --ref v2.2.0
+codex plugin marketplace add eunsoogi/codexy --ref v2.2.1
 codex plugin add codexy@codexy
 codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
