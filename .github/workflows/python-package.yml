@@ -62,7 +62,8 @@ jobs:
           - platform: ubuntu
             runner: ubuntu-latest
           - platform: macos
-            runner: macos-14
+            # Pin package lifecycle tests to the supported macOS 15 runner.
+            runner: macos-15
     steps:
       - uses: actions/checkout@v7
         with:
