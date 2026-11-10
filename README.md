@@ -91,8 +91,13 @@ environment that starts Codex.
 
 - **Task coordination.** Set goals, plans, and clear ownership for issue-sized
   work, then carry relevant evidence through the handoff.
-- **Specialist roles.** Orchestrators assign work and check evidence, Workers
-  implement and verify assigned tasks, and Advisors provide bounded analysis.
+- **Task roles.** Each issue lane has a clear owner:
+  - **Orchestrator.** Owns the overall goal, delegates issue work to Workers,
+    checks evidence, directs corrections, and accepts the result.
+  - **Advisor.** Provides bounded, read-only analysis and advice under its role
+    instructions.
+  - **Worker.** Owns one assigned issue in its managed Codex task and worktree,
+    implementing and verifying it and returning evidence to the Orchestrator.
 - **Verification guidance.** Choose checks that match the result being claimed
   and keep unresolved limits visible.
 - **Source-backed Wiki.** Build a focused topic Wiki with citations and
@@ -102,6 +107,10 @@ environment that starts Codex.
 - **Developer tools.** Use Codegraph for repository relationships and change
   impact, and LSP for language-aware navigation when a compatible server is
   available. Check recommendations are advisory; they do not run checks.
+
+See the [orchestration guide](plugins/codexy/skills/orchestration/SKILL.md) and
+[Worker routing policy](plugins/codexy/skills/orchestration/references/child-routing-policy.md)
+for detailed ownership and routing rules.
 
 When an active task needs different expertise, Codexy guides the Orchestrator in
 deciding whether another Worker should take over. The Codex host determines who
