@@ -102,9 +102,9 @@ impl CandidateFixture {
         let repository = codexy_runtime::paths::repository_root();
         for source in [
             "packages/codexy-runtime/schemas/handoff-runtime.schema.json",
-            "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh",
-            "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd",
-            "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py",
+            "plugins/codexy/skills/self-improvement/scripts/resumable-context-capsule.sh",
+            "plugins/codexy/skills/self-improvement/scripts/resumable-context-capsule.cmd",
+            "plugins/codexy/skills/self-improvement/scripts/resumable_context_capsule.py",
             "scripts/handoff_runtime_contract.py",
         ] {
             let target = self.root().join(source);

@@ -1,9 +1,4 @@
----
-name: dreaming
-description: MUST use when an active Codex task resumes after context compaction, inherited summaries feel stale or overfull, resolved work keeps reappearing as active, or an agent MUST separate durable facts, active fixes, and stale details before continuing.
----
-
-# Dreaming
+# Current-state recovery
 
 MUST run a short recovery pass after compaction or a noisy handoff. It restores
 current constraints without creating another ledger, authority, or durable
@@ -31,7 +26,7 @@ memory. It MUST NOT mutate task, Git, GitHub, review, owner, or memory state.
    unchanged completed history without reloading whole references; refresh only
    missing current facts needed to choose the next permitted action. When a user
    correction arrived, MUST use the
-   [user-correction contract](../orchestration/references/parent-supervision.md#applying-user-corrections)
+   [user-correction contract](../../orchestration/references/parent-supervision.md#applying-user-corrections)
    to recover its recorded scope, owner, constraints, completion conditions, and
    next action from existing task records. This read-only pass MUST NOT send
    assignment updates or execute that next action; after recovery,
@@ -48,7 +43,7 @@ existing task or recovery record through model changes, handoffs, and
 compaction, including enough context to recover the observed failure sequence,
 affected original criteria, partial passes, and last consultation boundary. The
 canonical
-[Advisor consultation rule](../orchestration/references/advisor-consultation.md#repeated-and-chained-repair-failures)
+[Advisor consultation rule](../../orchestration/references/advisor-consultation.md#repeated-and-chained-repair-failures)
 owns episode boundaries, event counting, closure, and consultation criteria;
 MUST use it instead of defining those criteria here. If the record cannot
 establish the sequence or consultation boundary required by that rule, keep the
@@ -138,6 +133,31 @@ supported. Installed `scripts/resumable-context-capsule.sh` or `.cmd` launchers
 MUST validate a capsule through the native bridge with a separate trusted live
 authority document before it is consumed.
 
+The bridge recognizes the exact immediately preceding 2.2.1 policy digest and
+maps its historical recovery route to this skill for validation. The prior route
+token remains compatibility data, not a separately discoverable skill. Current
+HEAD, lane, owner, direction, integrity and replay checks still apply. Unknown
+historical policies MUST remain unverified; MUST NOT infer compatibility from a
+matching task name or bypass a failed live-authority check. Before rollback,
+MUST preserve the new bridge and its replay history. A prior bridge cannot be
+assumed to understand events created under a newer policy; MUST verify the
+rollback path and replay coverage rather than discard or reset history to make
+validation succeed.
+
+For an explicitly authorized rollback to the immediately preceding bridge, the
+current verified launcher can export a separate compatible replay:
+`python3 scripts/export_previous_replay.py --replay <source> --authority <trusted-live-authority> --output <new-file>`.
+MUST first stop competing writers and confirm one owner. The authority document
+MUST contain the previous canonical route and the current live lane, owner,
+worktree, HEAD and base. The bridge validates the complete source replay before
+creating the new file, preserves event identities and never overwrites the
+source or an existing destination. MUST record the returned source and output
+hashes, keep the original for provenance, and verify the source hash has not
+changed before switching. If a writer or source changed, MUST NOT use that
+export. After the switch, the exported replay becomes the active history; MUST
+retain later events there and carry that history forward during any upgrade. The
+exported projection is a rollback artifact, not the original event record.
+
 Before changing or removing a schema, launcher, or resolver, MUST inventory its
 direct, dynamic, package, and public consumers. If any consumer cannot be
 classified, stop with `BLOCKED_CONSUMER_UNKNOWN` and preserve the invocation.
@@ -145,7 +165,7 @@ classified, stop with `BLOCKED_CONSUMER_UNKNOWN` and preserve the invocation.
 ## Output
 
 MUST return only the refreshed current anchors, Remember, Fix, Forget or demote,
-and one next action. Fixes MUST cite current evidence. Dreaming MUST NOT close
+and one next action. Fixes MUST cite current evidence. Recovery MUST NOT close
 threads, edit branches, change owners, direct children, reset review counts,
 write memory, or replace orchestration, GitHub, reviewer, or completion
 authority.

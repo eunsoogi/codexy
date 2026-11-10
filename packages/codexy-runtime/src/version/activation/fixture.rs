@@ -77,7 +77,7 @@ impl Fixture {
         fs::create_dir_all(root.join(".agents/plugins"))?;
         fs::create_dir_all(root.join("plugins/codexy-devtools/.codex-plugin"))?;
         fs::create_dir_all(root.join("packages/codexy-runtime/schemas"))?;
-        fs::create_dir_all(root.join("plugins/codexy/skills/dreaming/scripts"))?;
+        fs::create_dir_all(root.join("plugins/codexy/skills/self-improvement/scripts"))?;
         fs::create_dir_all(&mcp)?;
         write(
             &root,
@@ -94,15 +94,15 @@ impl Fixture {
                 "{}",
             ),
             (
-                "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh",
+                "plugins/codexy/skills/self-improvement/scripts/resumable-context-capsule.sh",
                 "#!/bin/sh\n",
             ),
             (
-                "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd",
+                "plugins/codexy/skills/self-improvement/scripts/resumable-context-capsule.cmd",
                 "@echo off\n",
             ),
             (
-                "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py",
+                "plugins/codexy/skills/self-improvement/scripts/resumable_context_capsule.py",
                 "#!/usr/bin/env python3\n",
             ),
             (

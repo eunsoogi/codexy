@@ -1,5 +1,14 @@
 # Thread And Worktree Routing
 
+When preparing an issue worktree, MUST provide its local Wiki using
+[Wiki storage](../../self-improvement/references/wiki-storage.md) after
+validating write authority, destination and exclusion. If a required write is
+not authorized or a destination is unsafe, MUST report that prerequisite and
+MUST NOT overwrite existing content. At a later authorized retirement, MUST
+preserve needed local evidence before removal as that contract requires. This
+does not authorize creating a task, changing a personal installation, or writing
+memory during read-only recovery.
+
 ## Thread Tool Discovery Procedure
 
 MUST use this before declaring Codex thread/worktree tooling unavailable, before

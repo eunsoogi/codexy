@@ -125,9 +125,9 @@ fn prepare(repo: &Path) -> Result<String, Box<dyn std::error::Error>> {
     git(repo, &["checkout", "--detach", &pre_activation_revision])?;
     for relative in [
         "packages/codexy-runtime/schemas/handoff-runtime.schema.json",
-        "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh",
-        "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd",
-        "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py",
+        "plugins/codexy/skills/self-improvement/scripts/resumable-context-capsule.sh",
+        "plugins/codexy/skills/self-improvement/scripts/resumable-context-capsule.cmd",
+        "plugins/codexy/skills/self-improvement/scripts/resumable_context_capsule.py",
     ] {
         let path = repo.join(relative);
         if path.is_file() {

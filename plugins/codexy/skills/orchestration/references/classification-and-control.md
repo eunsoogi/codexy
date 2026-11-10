@@ -15,7 +15,7 @@ MUST treat loss of the active `@Codexy` or Codexy plugin workflow contract after
 context compaction, goal continuation, or resume as a dogfooding defect.
 
 Before editing after compaction or continuation, follow
-[Dreaming's current-state recovery](../../dreaming/SKILL.md#refresh-current-state)
+[Dreaming's current-state recovery](../../self-improvement/references/recovery.md#refresh-current-state)
 to decide whether a live external surface needs refresh and which one. This
 section MUST NOT add a second repository, PR, review, or release inventory. The
 canonical [goal-transition handoff contract](goal-transition-reporting.md) owns

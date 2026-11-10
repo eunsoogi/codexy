@@ -18,13 +18,18 @@ from packages.getcodexy.tests import component_distribution_support as support
 from packages.getcodexy.tests.component_inspection_host_cases import (
     register_after_lifecycle,
 )
+from packages.getcodexy.tests.component_distribution_unification_cases import (
+    ComponentDistributionUnificationCases,
+)
 
 
 EXECUTABLE_ENV = "GETCODEXY_DISTRIBUTION_EXECUTABLE"
 REPOSITORY = Path(__file__).parents[3]
 
 
-class ComponentDistributionTests(unittest.TestCase):
+class ComponentDistributionTests(
+    ComponentDistributionUnificationCases, unittest.TestCase
+):
     @classmethod
     def setUpClass(cls) -> None:
         value = os.environ.get(EXECUTABLE_ENV)
@@ -126,18 +131,6 @@ class ComponentDistributionTests(unittest.TestCase):
         (self.marketplace / "plugins/codexy-devtools/.mcp.json").unlink()
         doctor = self._run("doctor")
         self.assertEqual(support.health_states(doctor)["devtools"], "stale")
-
-    def test_installed_cli_rejects_incomplete_core_and_github_surfaces(self) -> None:
-        self._run("install", "core")
-        self.assertEqual(
-            support.health_states(self._run("doctor")), {"core": "healthy"}
-        )
-        (self.marketplace / "plugins/codexy/skills/wiki/SKILL.md").unlink()
-        self.assertEqual(support.health_states(self._run("doctor"))["core"], "stale")
-        (self.marketplace / "plugins/codexy/skills/wiki/SKILL.md").write_text("x")
-        self.assertEqual(
-            support.health_states(self._run("doctor"))["core"], "incompatible"
-        )
 
     def test_installed_cli_rejects_empty_specialist_and_hook(self) -> None:
         self._run("install", "github")
