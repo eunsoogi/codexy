@@ -144,8 +144,8 @@ and continue the same procedure from that current owner. Issue work MUST resume
 only after the continuation has the exact authorized active objective and a
 successful process at the preserved checkout. If an actual CWD process or
 checkout comparison fails, the owner MUST repair that observed failure when a
-supported operation permits it; otherwise it MUST stop issue work and report
-the exact host result.
+supported operation permits it; otherwise it MUST stop issue work and report the
+exact host result.
 
 ## Deciding Whether Work Is Blocked
 
@@ -234,14 +234,13 @@ recovery is available, the task MUST verify:
 - Necessary owned-work preservation; the actual same-directory fork, exact CWD
   and Git identity; successful lightweight processes before and after source
   archival; archived-source readback; and one continuation owner. An artifact
-  listing or lifetime guarantee MUST NOT be required when these checks pass.
-  The owner MUST continue recovery from the blocked fork under the original
-  assignment.
-  Requested and effective settings MUST remain separate; unavailable values
-  MUST remain unavailable;
+  listing or lifetime guarantee MUST NOT be required when these checks pass. The
+  owner MUST continue recovery from the blocked fork under the original
+  assignment. Requested and effective settings MUST remain separate; unavailable
+  values MUST remain unavailable;
 - Fork, archive, owner-readback, continuation, and fresh-goal creation failures
-  preserving the exact result and stopping issue work until the actual owner
-  and checkout permit recovery to continue from the current owner.
+  preserving the exact result and stopping issue work until the actual owner and
+  checkout permit recovery to continue from the current owner.
 
 Real app task and goal readbacks MUST be the evidence for recovery; the task
 MUST NOT use local fixtures, parser logic, or mock-only assertions as

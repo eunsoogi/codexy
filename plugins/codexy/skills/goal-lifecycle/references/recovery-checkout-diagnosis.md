@@ -10,23 +10,23 @@ transition and leave the cause unknown.
 
 ## Evidence boundaries
 
-| Evidence | Establishes | Does not establish |
-| --- | --- | --- |
-| Native goal readback | The reported task's goal state and objective | A usable checkout or successful process |
-| Saved task CWD | A path recorded for that task | A Git checkout association or process at that path |
-| `list_artifacts({})` result | Attachments returned for the calling chat | Another chat's checkout; an empty or PR-only result does not prove checkout absence |
-| Fork result plus exact CWD and Git identity | The continuation and checkout observed at that time | Execution after source-chat archival |
-| Native attachment result, when available | A host-reported association at read time | That the checkout survives archival or can execute |
-| Git directory and status | Checkout identity and current changes | A native task association or successful process |
-| Scoped commit or stash | Durable preservation of selected changes | Checkout lifetime, ignored-data preservation, or execution |
-| Exact-CWD process before archival | Execution in the pre-archive environment | Execution after archival |
-| Exact-CWD process after archival | Execution and checkout identity for the observed archived topology | A guarantee for other checkouts or attachment topologies |
+| Evidence                                    | Establishes                                                        | Does not establish                                                                  |
+| ------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Native goal readback                        | The reported task's goal state and objective                       | A usable checkout or successful process                                             |
+| Saved task CWD                              | A path recorded for that task                                      | A Git checkout association or process at that path                                  |
+| `list_artifacts({})` result                 | Attachments returned for the calling chat                          | Another chat's checkout; an empty or PR-only result does not prove checkout absence |
+| Fork result plus exact CWD and Git identity | The continuation and checkout observed at that time                | Execution after source-chat archival                                                |
+| Native attachment result, when available    | A host-reported association at read time                           | That the checkout survives archival or can execute                                  |
+| Git directory and status                    | Checkout identity and current changes                              | A native task association or successful process                                     |
+| Scoped commit or stash                      | Durable preservation of selected changes                           | Checkout lifetime, ignored-data preservation, or execution                          |
+| Exact-CWD process before archival           | Execution in the pre-archive environment                           | Execution after archival                                                            |
+| Exact-CWD process after archival            | Execution and checkout identity for the observed archived topology | A guarantee for other checkouts or attachment topologies                            |
 
 A task ID, saved path, attachment record, or written procedure MUST NOT be
 reported as successful execution evidence. An empty, unsupported, or failed
 artifact listing MUST NOT invalidate a successful process at the exact CWD. A
-completed-source diagnostic MUST NOT be described as an unfinished
-blocked-goal recovery.
+completed-source diagnostic MUST NOT be described as an unfinished blocked-goal
+recovery.
 
 ## Diagnostic sequence
 
@@ -34,9 +34,9 @@ blocked-goal recovery.
    results. It MUST capture only the state needed to continue assigned work; a
    full transcript inventory is not a substitute for current task, goal, Git,
    and process state.
-2. The owner MUST compare source and continuation task identities, exact CWD, canonical
-   repository root, absolute Git directory and common directory, HEAD, branch
-   state, status, and necessary owned changes. It MUST use attachment
+2. The owner MUST compare source and continuation task identities, exact CWD,
+   canonical repository root, absolute Git directory and common directory, HEAD,
+   branch state, status, and necessary owned changes. It MUST use attachment
    information only when it is available and useful to diagnose an actual
    checkout discrepancy.
 3. The owner MUST treat change preservation and checkout execution separately.
@@ -50,12 +50,11 @@ blocked-goal recovery.
    continuation owner, exact goal, Git identity, and successful process at the
    intended CWD.
 6. If an actual CWD or checkout check fails, the owner MUST report the exact
-   operation, native
-   result, and preserved state; repair that observed failure when a supported
-   operation permits it. An absent artifact result MUST NOT itself count as a
-   failure. If ownership remains ambiguous after an archive result, the owner
-   MUST stop issue work until the actual source and continuation states identify
-   one owner.
+   operation, native result, and preserved state; repair that observed failure
+   when a supported operation permits it. An absent artifact result MUST NOT
+   itself count as a failure. If ownership remains ambiguous after an archive
+   result, the owner MUST stop issue work until the actual source and
+   continuation states identify one owner.
 
 ## Reusable examples
 
@@ -64,8 +63,8 @@ blocked-goal recovery.
   checkout.
 - A successful attachment readback does not by itself prove post-archive
   execution.
-- A commit or stash can preserve changes while an associated managed checkout
-  is removed.
+- A commit or stash can preserve changes while an associated managed checkout is
+  removed.
 - A completed-source scenario can inform only the topology it actually checks;
   it cannot prove that an unfinished blocked source can be recovered.
 

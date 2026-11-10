@@ -47,9 +47,9 @@ Before preparing a continuation, the owner MUST capture:
 - The exact assigned CWD and a lightweight successful read-only process there:
   canonical repository root, absolute Git directory and common directory, HEAD,
   branch or detached state, and `git status --short --branch`.
-- Necessary owned changes and required ignored data, without disclosing
-  secrets. Preserve only in-scope work in its authorized location; resolve
-  unexpected data or unclear ownership before continuing.
+- Necessary owned changes and required ignored data, without disclosing secrets.
+  Preserve only in-scope work in its authorized location; resolve unexpected
+  data or unclear ownership before continuing.
 - Confirmation that no source or continuation process can write implementation
   changes during recovery preparation.
 
@@ -61,25 +61,25 @@ attachments for the calling chat and may return no worktree or only pull
 requests; that result MUST NOT be used to infer another chat's checkout state.
 
 A scoped commit or stash MAY preserve selected owned changes. The owner MUST
-preserve required ignored data separately. After any preservation write, it
-MUST recapture the exact-CWD Git state and use it as the continuation's
-baseline. It MUST NOT stage or disclose credentials. The owner MUST NOT treat a
-saved snapshot or unchanged HEAD alone as proof that a process can run at the
-intended checkout.
+preserve required ignored data separately. After any preservation write, it MUST
+recapture the exact-CWD Git state and use it as the continuation's baseline. It
+MUST NOT stage or disclose credentials. The owner MUST NOT treat a saved
+snapshot or unchanged HEAD alone as proof that a process can run at the intended
+checkout.
 
 ## Ordered blocked-goal procedure
 
 The source MUST remain the issue owner until its chat archival is confirmed. The
-recovery owner MUST coordinate the steps below; a continuation MUST perform
-only recovery preparation until the source is archived and post-archive
-acceptance succeeds. An authenticated parent MAY coordinate these actions
-under the existing assignment, but a message or child report MUST NOT replace
-native goal, fork, archive, or process readbacks.
+recovery owner MUST coordinate the steps below; a continuation MUST perform only
+recovery preparation until the source is archived and post-archive acceptance
+succeeds. An authenticated parent MAY coordinate these actions under the
+existing assignment, but a message or child report MUST NOT replace native goal,
+fork, archive, or process readbacks.
 
-1. The recovery owner MUST confirm that the original assignment still
-   authorizes the same objective and scope. It MUST NOT request confirmation
-   solely because the goal is blocked. If authority or scope is absent, stopped,
-   revoked, or changed, it MUST preserve the source and stop.
+1. The recovery owner MUST confirm that the original assignment still authorizes
+   the same objective and scope. It MUST NOT request confirmation solely because
+   the goal is blocked. If authority or scope is absent, stopped, revoked, or
+   changed, it MUST preserve the source and stop.
 
 2. The recovery owner MUST identify the source owner and any already prepared
    continuation. It MUST reuse an authenticated same-directory fork when its
@@ -89,21 +89,26 @@ native goal, fork, archive, or process readbacks.
 
 3. The recovery owner MUST preserve only necessary owned work and source
    settings. It MUST send the continuation the same authorized objective, scope,
-   and a recovery-only instruction. It MUST use the source's requested `model`
-   and `thinking` values explicitly when the host message surface requires
-   them; requested and host-exposed effective values MUST remain separate. If
-   the host cannot carry the required values, delivery fails, or the result is
-   ambiguous, the owner MUST preserve the exact result and stop before source
-   archival.
+   and a recovery-only instruction. It MUST read requested values from the
+   source assignment or creation record and keep host-exposed effective values
+   separate. For each field, it MUST use the effective source value when
+   observable and otherwise the exact requested value. If either field is
+   unavailable from both sources, it MUST keep the lane pending. The
+   continuation MUST use `send_message_to_thread` with explicit `model` and
+   `thinking` fields; it MUST NOT inherit sender or role defaults or reselect
+   the task role. A requested pair proves only what was requested. If effective
+   settings are not exposed, the owner MUST report them as unavailable/not
+   observed, not as preserved. If delivery fails or is ambiguous, the owner MUST
+   preserve the exact result and stop before source archival.
 
 4. The continuation's first task action MUST be native `get_goal`. It MUST NOT
    assume the fork starts with a particular goal state:
    - An exact active objective permits recovery preparation only.
    - Exact `null`, a response envelope whose top-level goal is `null`, or exact
      `status=complete` permits creating a fresh goal for the same authorized
-     objective when the host permits it; the continuation MUST read the new
-     goal back as active before continuing. It MUST NOT create a narrower
-     preparation objective.
+     objective when the host permits it; the continuation MUST read the new goal
+     back as active before continuing. It MUST NOT create a narrower preparation
+     objective.
    - A `blocked` result for the same objective MUST stay in recovery-only mode
      and proceed through checkout verification and source-chat archival.
    - A different active objective, an error, `unknown`, `missing`, malformed
@@ -112,22 +117,21 @@ native goal, fork, archive, or process readbacks.
 
 5. The recovery owner MUST verify the continuation's actual checkout using its
    fork result, exact CWD, canonical repository root, absolute Git directory and
-   common directory, HEAD, branch state, and a successful lightweight
-   read-only process. It MUST compare these with the source baseline and confirm
-   necessary owned changes and required ignored data remain available. A
-   matching CWD and process result establish the checkout at this observation
-   point; an artifact listing or separate host lifetime guarantee is not
-   required.
+   common directory, HEAD, branch state, and a successful lightweight read-only
+   process. It MUST compare these with the source baseline and confirm necessary
+   owned changes and required ignored data remain available. A matching CWD and
+   process result establish the checkout at this observation point; an artifact
+   listing or separate host lifetime guarantee is not required.
 
    If the CWD process fails or the Git checkout does not match, the recovery
    owner MUST use a supported operation to repair that observed failure before
-   archival. A missing, unsupported, or failed attachment listing alone is not
-   a checkout failure. If the actual checkout failure cannot be repaired, the
+   archival. A missing, unsupported, or failed attachment listing alone is not a
+   checkout failure. If the actual checkout failure cannot be repaired, the
    owner MUST preserve the source as owner and report the exact operation and
    host result.
 
-6. When the assignment binds an authenticated parent, the owner MUST send the single
-   `Terminal parent handoff` required for an archive transition by
+6. When the assignment binds an authenticated parent, the owner MUST send the
+   single `Terminal parent handoff` required for an archive transition by
    [goal-transition reporting](../../orchestration/references/goal-transition-reporting.md).
    It MUST include the continuation identity, preserved state, unresolved
    user-input gate, and requested/effective settings evidence. Confirmed
@@ -152,8 +156,8 @@ native goal, fork, archive, or process readbacks.
    through archive when the host exposes it; if that readback is unavailable, it
    MUST report that the source's blocked state through archival is unverified.
    It MUST read the continuation's goal and settings, then run a successful
-   lightweight process at the intended CWD and compare Git checkout identity
-   and necessary files with the preserved baseline. It MUST NOT require an
+   lightweight process at the intended CWD and compare Git checkout identity and
+   necessary files with the preserved baseline. It MUST NOT require an
    attachment artifact or lifetime guarantee when these checks succeed.
    - The exact authorized active objective plus matching checkout and process
      permit issue work, subject to any unresolved user-input gate.
@@ -161,8 +165,8 @@ native goal, fork, archive, or process readbacks.
      stopped and continue this procedure from that sole current owner, reusing a
      suitable continuation if one already exists.
    - A permitted fresh-goal result MUST be read back as active before issue
-     work. The recovery owner MUST preserve and report a different objective,
-     an error, or an ambiguous owner state, then stop.
+     work. The recovery owner MUST preserve and report a different objective, an
+     error, or an ambiguous owner state, then stop.
 
 9. If the post-archive process or checkout comparison shows an actual failure,
    the recovery owner MUST repair that failure with a supported operation while
@@ -184,22 +188,26 @@ recovery.
 
 A separately authorized, genuinely completed disposable source MAY be used to
 inspect checkout behavior. The owner MUST keep that result limited to the
-topology and process state actually observed. A completed-source result does
-not establish that an unfinished blocked source can be recovered or continue
-under its existing assignment. The owner MUST NOT fabricate a completed goal
-or blocked state or experiment on live tasks.
+topology and process state actually observed. A completed-source result does not
+establish that an unfinished blocked source can be recovered or continue under
+its existing assignment. The owner MUST NOT fabricate a completed goal or
+blocked state or experiment on live tasks.
 
 ## Native verification boundary
 
 An actual fork-recovery PASS requires an authorized real blocked source, proof
 that its goal remained blocked through chat archival, exactly one continuation
-owner, the same authorized objective and checkout, requested/effective settings
-kept separate, and a successful post-archive process at the intended CWD. It
-does not require a `list_artifacts` result, attachment identity, or separate
-lifetime guarantee when the actual process and Git identity checks pass. If no
-authorized real scenario covers these conditions, the owner MUST report native
-recovery as unverified. Repository checks, instructions, messages, task IDs,
-and completed-source diagnostics MUST NOT substitute for these readbacks.
+owner, the same authorized objective and checkout, effective/requested settings
+kept separate, and a sole continuation with the exact authorized active
+objective. It also requires observed post-archive resumption of the authorized
+issue work at the intended CWD. A successful lightweight process and matching
+Git identity are necessary checkout evidence but do not alone prove that work
+resumed. It does not require a `list_artifacts` result, attachment identity, or
+separate lifetime guarantee when the actual process and Git identity checks
+pass. If no authorized real scenario covers these conditions, the owner MUST
+report native recovery as unverified. Repository checks, instructions, messages,
+task IDs, and completed-source diagnostics MUST NOT substitute for these
+readbacks.
 
 An actual same-task recovery PASS requires a real supported native resumption
 and the same-task acceptance readbacks above. It MUST NOT imply fork/archive

@@ -173,10 +173,10 @@ same-directory fork, necessary work preservation, actual CWD and Git check,
 source-chat archive, and post-archive acceptance steps are owned by
 [goal-lifecycle](../../goal-lifecycle/SKILL.md) and its
 [executable-checkout recovery](../../goal-lifecycle/references/executable-checkout-recovery.md).
-An unavailable artifact listing or separate lifetime guarantee MUST NOT block
-a confirmed checkout. If a continuation remains blocked, the owner MUST apply
-the same sequence from that current owner. This routing clause MUST NOT be read
-as a separate recovery procedure.
+An unavailable artifact listing or separate lifetime guarantee MUST NOT block a
+confirmed checkout. If a continuation remains blocked, the owner MUST apply the
+same sequence from that current owner. This routing clause MUST NOT be read as a
+separate recovery procedure.
 
 Worker selection owns recipient and model routing, not verification policy. The
 closed route in [context tiers](context-tiers.md) selects profile, sequencing,
