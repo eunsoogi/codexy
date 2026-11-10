@@ -55,19 +55,21 @@ override them. Ordinary, bounded, and simple Worker assignments MUST default to
 the safety facts pass; only complete, verified hard-work facts can select
 Terra/Medium. A new general Worker with valid hard-work facts MUST be assigned
 `gpt-6.1-terra` / `medium` directly; the `general` classification alone MUST NOT
-select that pair. Existing Sol/Medium recipients remain eligible for
-authenticated follow-up delivery but MUST NOT be selected for new Worker
-creation. For general work, `fixed_scope`, `low_risk_reversible`, and
-`no_unresolved_decision` MUST be true; `deterministic_oracle` MUST be supplied
-but MAY be false. Missing safety facts, ambiguous scope or authority, missing
-inputs, and unresolved ownership MUST stay fail-closed. Difficulty evidence MUST
-NOT substitute for those decisions. Unsupported model or reasoning capabilities
-MUST keep the route pending with an explicit safe outcome. Codex MUST NOT ask
-the user to choose or reconfirm a defined pair. If the selected host or tool
-cannot honor it, Codex MUST report the exact limitation and keep the lane
-pending; it MUST NOT silently substitute a model, sender settings, parent
-implementation, or duplicate Worker. A specialist is a separate route only when
-its role matches the task, not a fallback for model unavailability.
+select that pair. Authenticated follow-up delivery accepts only Luna/Max and
+Terra/Medium, matching the Worker creation allowlist. Existing Sol/Medium
+recipients MUST be rejected under authenticated routing metadata; Codex MUST NOT
+silently reassign or migrate them. For general work, `fixed_scope`,
+`low_risk_reversible`, and `no_unresolved_decision` MUST be true;
+`deterministic_oracle` MUST be supplied but MAY be false. Missing safety facts,
+ambiguous scope or authority, missing inputs, and unresolved ownership MUST stay
+fail-closed. Difficulty evidence MUST NOT substitute for those decisions.
+Unsupported model or reasoning capabilities MUST keep the route pending with an
+explicit safe outcome. Codex MUST NOT ask the user to choose or reconfirm a
+defined pair. If the selected host or tool cannot honor it, Codex MUST report
+the exact limitation and keep the lane pending; it MUST NOT silently substitute
+a model, sender settings, parent implementation, or duplicate Worker. A
+specialist is a separate route only when its role matches the task, not a
+fallback for model unavailability.
 
 The native `create_thread` admission hook MUST enforce the selected Worker pair
 and the app-managed project worktree environment before mutation. Every Worker
@@ -106,19 +108,14 @@ MUST preserve the lane as pending and report the exact incompatibility. The
 existing host-envelope directions `root_to_child` and `child_to_parent` are
 serialized compatibility identifiers. `root_to_child` represents
 Orchestrator-to-Worker delivery using the authenticated recipient's assigned
-Worker pair (`gpt-6-luna` at `max`, `gpt-6.1-terra` at `medium`, or an existing
-`gpt-6.1-sol` at `medium`); ordinary Worker creation defaults to Luna/Max,
+Worker pair (`gpt-6-luna` at `max` or `gpt-6.1-terra` at `medium`), the same
+allowlist as new Worker creation. Ordinary Worker creation defaults to Luna/Max,
 including general implementation, and valid hard-work facts select Terra/Medium
-for a new Worker. Sol/Medium is delivery compatibility for existing recipients
-only. For a valid `root_to_child` `PreToolUse` delivery to an existing
-Sol/Medium recipient, the thread-delivery hook may add a deprecation notice to
-the sending Orchestrator's `additionalContext`. The Orchestrator MUST preserve
-the recipient, model, thinking, and prompt and MUST NOT switch, fork, or resend
-solely because of that advisory. The warning MUST NOT approve a denial from
-another hook, and `PermissionRequest` remains quiet. `child_to_parent`
-represents Worker-to-Orchestrator delivery using `gpt-6.1-sol` at `low` (Sol /
-Light), the requested main Orchestrator pair. Stale parent Luna/Max and
-Luna/Medium pairs MUST be rejected on this authenticated direction.
+for a new Worker. Existing Sol/Medium recipients MUST be rejected for
+authenticated follow-up delivery; Codex MUST NOT reassign or migrate them.
+`child_to_parent` represents Worker-to-Orchestrator delivery using `gpt-6.1-sol`
+at `low` (Sol / Light), the requested main Orchestrator pair. Stale parent
+Luna/Max and Luna/Medium pairs MUST be rejected on this authenticated direction.
 Authenticated direction and recipient identity MUST remain enforced; recognizing
 a model pair alone MUST NOT authorize delivery. The runtime request's serialized
 `parent_to_generic` and `child_to_root` directions remain unchanged for these

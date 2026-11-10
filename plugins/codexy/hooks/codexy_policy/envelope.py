@@ -29,15 +29,8 @@ class Diagnostic:
 
 
 @dataclass(frozen=True)
-class Advisory:
-    event: str
-    additional_context: str
-
-
-@dataclass(frozen=True)
 class PolicyResult:
-    # Keep policy admission separate from output bytes so advisory context is not
-    # misclassified as a denial by timing or other observers.
+    # Keep each allow or deny decision paired with the exact bytes observers receive.
     output: bytes
     decision: Literal["allow", "deny"]
 
@@ -77,7 +70,7 @@ def evaluate(
     payload: bytes,
     tools: frozenset[str],
     diagnostic: str,
-    forbidden: Callable[[Request], bool | str | Diagnostic | Advisory],
+    forbidden: Callable[[Request], bool | str | Diagnostic],
 ) -> bytes:
     # Preserve the bytes-only API used by the other core hooks.
     return evaluate_result(event, payload, tools, diagnostic, forbidden).output
@@ -88,7 +81,7 @@ def evaluate_result(
     payload: bytes,
     tools: frozenset[str],
     diagnostic: str,
-    forbidden: Callable[[Request], bool | str | Diagnostic | Advisory],
+    forbidden: Callable[[Request], bool | str | Diagnostic],
 ) -> PolicyResult:
     # Bound the request before decoding; hook input is host-provided and must fail closed when oversized.
     if event not in EVENTS or len(payload) > MAX_INPUT:
@@ -117,21 +110,6 @@ def evaluate_result(
         blocked = forbidden(request)
     except (OSError, TypeError, ValueError):
         return PolicyResult(deny(event, diagnostic, "RUNTIME"), "deny")
-    if isinstance(blocked, Advisory):
-        if event != "PreToolUse" or blocked.event != event:
-            return PolicyResult(
-                deny(event, diagnostic, "INVALID_ADVISORY_EVENT"), "deny"
-            )
-        output = {
-            "hookEventName": event,
-            "additionalContext": blocked.additional_context,
-        }
-        return PolicyResult(
-            (
-                json.dumps({"hookSpecificOutput": output}, separators=(",", ":")) + "\n"
-            ).encode(),
-            "allow",
-        )
     if isinstance(blocked, Diagnostic):
         return PolicyResult(
             deny(event, diagnostic, blocked.code, blocked.message), "deny"

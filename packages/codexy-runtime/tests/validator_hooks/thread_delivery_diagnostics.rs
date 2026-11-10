@@ -5,7 +5,7 @@ use serde_json::json;
 
 use super::thread_delivery_support::{
     CHILD as WORKER_ID, OTHER, PARENT as ORCHESTRATOR_ID, assert_admitted,
-    assert_deprecated_context, input, plugin_roots, reason, route, run,
+    input, plugin_roots, reason, route, run,
 };
 use crate::support::TestResult;
 const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
@@ -169,7 +169,7 @@ fn authenticated_worker_and_orchestrator_routes_remain_admitted_for_both_events(
                     "root_to_child",
                     ORCHESTRATOR_ID,
                     WORKER_ID,
-                    "gpt-6.1-sol",
+                    "gpt-6.1-terra",
                     "medium",
                 ),
             ] {
@@ -181,14 +181,7 @@ fn authenticated_worker_and_orchestrator_routes_remain_admitted_for_both_events(
                     input(recipient, model, thinking, "receipt"),
                     Some(route(direction, sender, recipient, model, thinking)),
                 )?;
-                if *event == "PreToolUse"
-                    && direction == "root_to_child"
-                    && (model, thinking) == ("gpt-6.1-sol", "medium")
-                {
-                    assert_deprecated_context(output, event, "existing Sol recipient")?;
-                } else {
-                    assert_admitted(output, event, direction)?;
-                }
+                assert_admitted(output, event, direction)?;
             }
         }
     }

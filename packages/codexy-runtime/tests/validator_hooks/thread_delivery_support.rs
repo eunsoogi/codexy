@@ -15,7 +15,6 @@ pub(super) const CHILD: &str = "01a03690-a037-7141-af1c-1d7cdb093087";
 pub(super) const PARENT: &str = "01a02ebc-804e-7702-a0ca-503c50741db8";
 pub(super) const OTHER: &str = "01a031f2-da35-7960-9686-502b7e373676";
 pub(super) const ROUTING_FIELD: &str = "codexy_thread_delivery";
-pub(super) const DEPRECATED_WORKER_WARNING: &str = "CODEXY_THREAD_DELIVERY_DEPRECATED_WORKER_ROUTE: The gpt-6.1-sol/medium Worker route is deprecated in codexy. Create new hard Workers with gpt-6.1-terra/medium and default Workers with gpt-6-luna/max. This delivery preserves the existing recipient assignment. Do not change its model or retry this delivery solely because of this warning.";
 
 pub(super) fn route(
     direction: &str,
@@ -118,7 +117,7 @@ pub(super) fn reason(output: std::process::Output, event: &str) -> TestResult<St
     assert_eq!(specific["hookEventName"], event);
     assert!(
         specific.get("additionalContext").is_none(),
-        "{event}: denial included advisory context"
+        "{event}: denial included additional context"
     );
     let reason = if event == "PermissionRequest" {
         specific["decision"]["message"].as_str().ok_or("permission message")?
@@ -140,28 +139,6 @@ pub(super) fn assert_admitted(
         String::from_utf8_lossy(&output.stdout)
     );
     assert!(output.stderr.is_empty(), "{event} {label}: hook wrote stderr");
-    Ok(())
-}
-
-pub(super) fn assert_deprecated_context(
-    output: std::process::Output,
-    event: &str,
-    label: &str,
-) -> TestResult {
-    assert!(output.status.success(), "{event} {label}: hook failed");
-    assert!(output.stderr.is_empty(), "{event} {label}: hook wrote stderr");
-    assert_eq!(event, "PreToolUse", "{label}: advisory event changed");
-    let actual: Value = serde_json::from_slice(&output.stdout)?;
-    assert_eq!(
-        actual,
-        json!({
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "additionalContext": DEPRECATED_WORKER_WARNING
-            }
-        }),
-        "{label}: unexpected advisory output"
-    );
     Ok(())
 }
 

@@ -163,8 +163,9 @@ a target acknowledgement transfers ownership.
    cursor according to native initial-observation rules and MUST NOT pass the
    source cursor as the target's `afterCursor`. It MUST keep other Worker and
    reviewer cursors unchanged. The parent MUST send target follow-ups to the
-   authenticated target pair. Existing Sol/Medium recipients MUST continue to
-   receive messages through their own assigned pair.
+   authenticated target pair. If that assignment is Sol/Medium, authenticated
+   delivery MUST be rejected and the lane MUST remain pending; the parent MUST
+   NOT silently change the pair or migrate the task.
 
 ## Duplicate, late, or ambiguous events
 

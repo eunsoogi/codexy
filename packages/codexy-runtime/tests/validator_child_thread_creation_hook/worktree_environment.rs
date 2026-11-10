@@ -67,7 +67,7 @@ fn legacy_sol_pair_is_not_admitted_for_new_worker_creation() -> TestResult {
             input["hook_event_name"] = json!(event);
             assert!(
                 hook_denied_for(&input, event)?,
-                "legacy Sol/Medium was admitted for {event}: {input}"
+                "unsupported Sol/Medium was admitted for {event}: {input}"
             );
         }
     }

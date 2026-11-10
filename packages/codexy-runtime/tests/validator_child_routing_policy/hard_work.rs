@@ -15,7 +15,7 @@ fn issue_1423_rejects_positional_hard_work_evidence() -> TestResult {
 }
 
 #[test]
-fn issue_1442_only_evidenced_hard_work_selects_terra() -> TestResult {
+fn only_evidenced_hard_work_selects_terra() -> TestResult {
     for facts in hard_work_cases()? {
         let mut hard = request("general", TERRA);
         hard["hard_work"] = facts;
@@ -29,7 +29,7 @@ fn issue_1442_only_evidenced_hard_work_selects_terra() -> TestResult {
         hard["codex_thread_capabilities"] =
             request("general", LUNA)["codex_thread_capabilities"].clone();
         check(hard.clone(), fallback())?;
-        // Existing Sol recipients remain deliverable, but Sol is never a new hard assignment.
+        // Authenticated follow-up delivery rejects Sol/Medium just as creation does.
         hard["codex_thread_capabilities"] =
             request("general", SOL)["codex_thread_capabilities"].clone();
         check(hard.clone(), fallback())?;

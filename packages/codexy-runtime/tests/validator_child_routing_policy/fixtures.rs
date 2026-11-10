@@ -6,7 +6,7 @@ use std::{path::PathBuf, process::Command};
 
 pub(super) const LUNA: (&str, &str) = ("gpt-6-luna", "max");
 pub(super) const TERRA: (&str, &str) = ("gpt-6.1-terra", "medium");
-// Sol/Medium remains a delivery route for Workers assigned before this policy change.
+// Retain the rejected pair as an explicit negative case in creation and delivery tests.
 pub(super) const SOL: (&str, &str) = ("gpt-6.1-sol", "medium");
 
 pub(super) fn hard_work_cases() -> TestResult<Vec<Value>> {

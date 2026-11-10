@@ -6,7 +6,7 @@ use crate::support::FixtureCommand as Command;
 use std::{io::Write as _, path::Path, process::Stdio};
 
 #[test]
-fn issue_1442_resolved_pairs_survive_creation_and_authenticated_delivery() -> TestResult {
+fn supported_worker_pairs_survive_creation_and_authenticated_delivery() -> TestResult {
     let primary = primary_checkout()?;
     let temp = tempfile::tempdir()?;
     let source = root();
