@@ -62,6 +62,9 @@ mod validator_review_control_lifecycle;
 #[path = "../validator_review_control_identity.rs"]
 mod validator_review_control_identity;
 
+#[path = "../validator_review_profile_classification.rs"]
+mod validator_review_profile_classification;
+
 #[path = "../validator_completion_handoff_review_identity.rs"]
 mod validator_completion_handoff_review_identity;
 

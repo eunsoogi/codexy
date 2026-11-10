@@ -35,11 +35,24 @@ fn strict_signals_are_complete_and_negation_aware() -> TestResult {
             true,
         )?;
     }
+    assert_profile_result(
+        "materially shared executable contracts require strict evidence",
+        "Workflow profile: light\nTask kind: materially shared executable-contract change",
+        false,
+    )?;
+    assert_profile_result(
+        "a negated shared-contract risk does not require strict evidence",
+        "Workflow profile: standard\nTask kind: no shared executable-contract change",
+        true,
+    )?;
     for task_kind in [
         "no security concerns",
         "non-security documentation",
         "not a release",
         "without secret material",
+        "no shared executable-contract changes",
+        "no materially shared executable-contract changes",
+        "not a materially shared executable-contract change",
     ] {
         assert_profile_result(
             "negated strict signal remains lightweight",

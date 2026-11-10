@@ -11,6 +11,14 @@ review. The invariant floor includes destructive-action safety, preservation of
 unrelated changes, no force push, current-head readiness proof, and a maximum of
 250 physical lines for every governed file.
 
+The structured classifier uses `codexy.workflow-profile-classification.v3` and
+requires an explicit decision for every material risk, including materially
+shared executable-contract changes and explicit strict requirements. It still
+accepts the legacy `durable_delegation` and `multi_lane_ownership` decisions
+when present, but ignores them when selecting review depth. Version 2 requests
+lack the complete risk contract and are rejected; missing, duplicate,
+malformed, or unknown decisions cannot produce a lower-risk profile.
+
 The GitHub surface does not by itself select review guidance. The route table
 selects it for review workflows and explicitly chosen review procedures.
 

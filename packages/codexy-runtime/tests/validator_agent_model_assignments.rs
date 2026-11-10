@@ -137,14 +137,16 @@ fn standard_review_routes_to_the_upgraded_inspector() -> TestResult {
         "high_consequence_external_state",
         "high_risk_guardrail",
         "merge_sensitive",
+        "materially_shared_executable_contract",
         "durable_delegation",
         "multi_lane_ownership",
         "explicit_audit_evidence",
+        "explicit_strict_requirement",
     ];
     let request = json!({
         "schema": "codexy.review-profile-request.v1",
         "classification": {
-            "schema": "codexy.workflow-profile-classification.v2",
+            "schema": "codexy.workflow-profile-classification.v3",
             "work_class": "middle", "low_risk_eligible": false,
             "strict_triggers": triggers.map(|kind| json!({"kind": kind, "applies": false})),
         },
