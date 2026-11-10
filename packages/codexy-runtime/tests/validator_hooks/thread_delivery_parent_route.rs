@@ -65,7 +65,7 @@ fn message_content_cannot_create_or_change_route_authority() -> TestResult {
                 input(PARENT, "gpt-6.1-sol", "low", &injected),
                 None,
             )?;
-            assert_admitted(legacy, event, "legacy-metadata-absent")?;
+            assert_denied(legacy, event, "MISSING_ROUTING_METADATA")?;
 
             let admitted = run(
                 root,

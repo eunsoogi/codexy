@@ -27,8 +27,12 @@ Codexy는 Codex가 저장소 작업의 범위를 정하고 담당자를 지정�
 
 권장 설치 방법은 getcodexy CLI를 사용하는 것입니다.
 
+아래 CLI 버전이 아직 공개되지 않았다면
+[최신 공개 릴리스](https://github.com/eunsoogi/codexy/releases/latest)와 해당
+릴리스 태그의 한국어 README에서 설치·업그레이드 절차를 확인하세요.
+
 ```sh
-uv tool install getcodexy==2.2.1
+uv tool install getcodexy==2.2.2
 uv tool update-shell
 getcodexy install
 ```
@@ -53,7 +57,7 @@ github와 devtools를 설치하면 의존성인 core도 자동으로 포함됩�
 getcodexy status
 getcodexy doctor
 getcodexy update
-uv tool upgrade getcodexy==2.2.1
+uv tool upgrade getcodexy==2.2.2
 ```
 
 `getcodexy status`와 `getcodexy doctor`로 설치 상태를 확인하고,
@@ -76,8 +80,12 @@ getcodexy --codex /absolute/path/to/codex migrate
 
 개발 또는 통제된 복구에서만 사용하고 core부터 설치하세요.
 
+아래 마켓플레이스 ref가 아직 공개되지 않았다면
+[최신 공개 릴리스](https://github.com/eunsoogi/codexy/releases/latest)와 해당
+릴리스 태그의 한국어 README에서 직접 설치 절차를 확인하세요.
+
 ```sh
-codex plugin marketplace add eunsoogi/codexy --ref v2.2.1
+codex plugin marketplace add eunsoogi/codexy --ref v2.2.2
 codex plugin add codexy@codexy
 codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
@@ -90,8 +98,13 @@ MCP 서버는 uv와 uvx로 실행됩니다. Codex를 시작하는 host 환경의
 
 - **작업 조정.** 목표와 계획을 세우고 이슈 단위 작업의 담당자를 정해 근거를
   인수인계까지 이어갑니다.
-- **전문 역할.** Orchestrator는 작업을 배정하고 근거를 확인하며, Worker는 맡은
-  작업을 구현하고 검증합니다. Advisor는 범위가 정해진 분석을 제공합니다.
+- **작업 역할.** 이슈 작업의 담당 범위를 분명히 나눕니다.
+  - **Orchestrator.** 전체 목표를 맡고 이슈 작업을 Worker에게 배정합니다. 진행과
+    근거를 확인하고 필요한 수정을 요청한 뒤 결과를 최종 수락합니다.
+  - **Advisor.** 역할 지침에 따라 범위가 정해진 읽기 전용 분석과 조언을
+    제공합니다.
+  - **Worker.** 관리되는 Codex 작업과 worktree에서 할당된 이슈 하나를 맡아
+    구현하고 검증한 뒤, 근거를 Orchestrator에 전달합니다.
 - **검증 안내.** 주장하는 결과에 맞는 확인 방법을 고르고 아직 확인하지 못한
   한계를 드러냅니다.
 - **출처 기반 Wiki.** 인용과 최신성 정보를 갖춘 주제별 Wiki를 관리합니다.
@@ -100,6 +113,10 @@ MCP 서버는 uv와 uvx로 실행됩니다. Codex를 시작하는 host 환경의
 - **개발 도구.** Codegraph로 저장소 관계와 변경 영향을 살피고, 사용할 수 있는
   language server가 있으면 LSP로 코드를 탐색합니다. 체크 추천은 참고 정보이며
   실제 체크를 실행하지는 않습니다.
+
+[orchestration 안내](plugins/codexy/skills/orchestration/SKILL.md)와
+[Worker routing policy](plugins/codexy/skills/orchestration/references/child-routing-policy.md)에서
+담당 범위와 Worker 배정 기준을 확인할 수 있습니다.
 
 진행 중인 작업에 다른 전문성이 필요하면 Codexy는 Orchestrator가 담당자를 바꾸는
 방안을 검토하도록 안내합니다. 실제 작업 담당자는 Codex host가 결정합니다. 자세한

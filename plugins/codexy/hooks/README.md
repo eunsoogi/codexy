@@ -22,19 +22,19 @@ POSIX uses ownership and mode checks; Windows uses the host-provided data root.
 The parent remains responsible for interpreting readbacks and performing
 cleanup.
 
-When the native host supplies a bounded, host-authenticated
-`codexy_thread_delivery` v2 envelope, the installed Codexy plugin validates it
-for thread-delivery admission. The envelope binds the current `session_id`, the
-requested `threadId`, the direction, and the target's explicit model/thinking
-pair. Its authenticated sender/target pair carries the native parent/child
-correlation without replaying a transcript. Root-to-child delivery requires
-`gpt-6-luna`/`max` or `gpt-6.1-terra`/`medium`; child-to-parent delivery
-requires `gpt-6.1-sol`/`low`. A legacy host that omits the top-level envelope
-retains the prior no-op admission path until host rollout; present but
-malformed, ambiguous, or mismatched v2 metadata fails closed. This hook never
-opens `transcript_path` and never uses a prompt, message body, or other
-conversation content as route authority. The native host owns production of the
-authenticated envelope.
+The native host must supply a bounded, host-authenticated
+`codexy_thread_delivery` v2 envelope for thread-delivery admission. If it is
+missing, the hook denies with `MISSING_ROUTING_METADATA` and requires a fresh
+host envelope; it does not fall back to unconditional admission. The envelope
+binds the current `session_id`, requested `threadId`, direction, and target's
+explicit model/thinking pair. Its authenticated sender/target pair carries the
+native parent/child correlation without replaying a transcript. Root-to-child
+delivery requires the assigned Worker pair: `gpt-6-luna`/`max` or
+`gpt-6.1-terra`/`medium`. Child-to-parent delivery requires `gpt-6.1-sol`/`low`.
+Present but malformed, ambiguous, or mismatched v2 metadata also fails closed.
+This hook never opens `transcript_path` and never uses a prompt, message body,
+or other conversation content as route authority. The native host owns
+production of the authenticated envelope.
 
 The child-thread-creation concern still requires native, non-empty `model` and
 `thinking` fields. The plugin admits `spawn_agent` only for exact packaged
