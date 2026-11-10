@@ -179,7 +179,7 @@ elif args[0] == 'api':
             sys.exit('public release query must paginate and exclude drafts and prereleases')
         print((root / 'public-release-tags').read_text(), end='')
     else:
-        print('plugins/codexy/skills/wiki/SKILL.md')
+        print('plugins/codexy/skills/self-improvement/SKILL.md')
 elif args[:2] == ['run', 'list']:
     print(json.dumps(state[value('--workflow')]))
 elif args[:2] == ['workflow', 'run']:

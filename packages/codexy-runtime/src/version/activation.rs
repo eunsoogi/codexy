@@ -1,3 +1,4 @@
+mod core_inventory;
 mod receipt;
 mod updates;
 

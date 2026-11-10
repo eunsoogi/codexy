@@ -159,7 +159,8 @@ pub use handoff_envelope::{
     BaseHeadSha, DirtyIndexState, HandoffAuthority, HandoffEnvelope, HandoffEvent, HandoffVolatile,
     IssuePrIdentity, LegacyContext, OmissionReason, OwnerWorktree, ReviewThread,
     StableClassification, StableHandoff, StructuredClassification, canonicalize_handoff,
-    migrate_legacy_handoff, stable_policy_digest, validate_handoff, validate_handoff_batch,
+    migrate_legacy_handoff, project_previous_replay, stable_policy_digest, validate_handoff,
+    validate_handoff_batch,
 };
 pub use review::*;
 

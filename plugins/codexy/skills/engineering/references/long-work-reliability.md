@@ -80,10 +80,11 @@ recovery does not establish a stable success rate. Missing context and verifier
 conflict remain evidence limits even if the final artifact looks correct.
 
 When recovery context is needed, consume the current authoritative state read by
-[dreaming](../../dreaming/SKILL.md). This summary MUST NOT restore native goals,
-transfer ownership, recreate lost state, change blocked policy, or decide
-completion. Existing dreaming and orchestration owners choose recovery actions.
-MUST NOT infer a current goal or owner from an old run summary.
+[current-state recovery](../../self-improvement/references/recovery.md). This
+summary MUST NOT restore native goals, transfer ownership, recreate lost state,
+change blocked policy, or decide completion. Self-improvement and orchestration
+choose recovery actions. MUST NOT infer a current goal or owner from an old run
+summary.
 
 Return the eight dimensions, denominators, relevant cohorts, unresolved
 evidence, and the next permitted observation if one is needed. If no actual

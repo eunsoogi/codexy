@@ -66,7 +66,7 @@ fn core_check_rejects_disabled_implicit_invocation_for_core_metadata() -> TestRe
         "agents/openai.yaml",
         "skills/orchestration/agents/openai.yaml",
         "skills/engineering/agents/openai.yaml",
-        "skills/wiki/agents/openai.yaml",
+        "skills/self-improvement/agents/openai.yaml",
     ] {
         let temp = tempfile::tempdir()?;
         let core = temp.path().join("plugins/codexy");

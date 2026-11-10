@@ -70,6 +70,11 @@ fn release_train_assembler_emits_a_reproducible_complete_bundle()
     assert!(!entries.contains("plugins/codexy/mcp/codexy-mcp-watcher.sh"));
     assert!(!entries.contains("plugins/codexy/mcp/codexy-mcp-watcher.cmd"));
     assert!(entries.contains("plugins/codexy-devtools/mcp/codexy_mcp_bootstrap.py"));
+    assert!(entries.contains("plugins/codexy/skills/self-improvement/SKILL.md"));
+    assert!(entries.contains("plugins/codexy/skills/self-improvement/scripts/resumable-context-capsule.sh"));
+    assert!(entries.contains("plugins/codexy/skills/self-improvement/scripts/export_previous_replay.py"));
+    assert!(!entries.contains("plugins/codexy/skills/dreaming/"));
+    assert!(!entries.contains("plugins/codexy/skills/wiki/"));
     Ok(())
 }
 

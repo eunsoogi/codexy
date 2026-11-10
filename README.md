@@ -147,7 +147,6 @@ The packaged plugins include these reusable skills. Each link opens its guide.
 | [agents-md-authoring](plugins/codexy/skills/agents-md-authoring/SKILL.md)         | Create and scope repository instructions. | `core`     |
 | [blind-read](plugins/codexy/skills/blind-read/SKILL.md)                           | Interpret one artifact for a reader.      | `core`     |
 | [decision-rationale](plugins/codexy/skills/decision-rationale/SKILL.md)           | Inspect a decision's rationale.           | `core`     |
-| [dreaming](plugins/codexy/skills/dreaming/SKILL.md)                               | Recover task context after compaction.    | `core`     |
 | [engineering](plugins/codexy/skills/engineering/SKILL.md)                         | Implement and verify one issue.           | `core`     |
 | [frame-alternatives](plugins/codexy/skills/frame-alternatives/SKILL.md)           | Compare credible options.                 | `core`     |
 | [goal-lifecycle](plugins/codexy/skills/goal-lifecycle/SKILL.md)                   | Manage authorized task goals.             | `core`     |
@@ -157,8 +156,7 @@ The packaged plugins include these reusable skills. Each link opens its guide.
 | [project-brief](plugins/codexy/skills/project-brief/SKILL.md)                     | Summarize recorded project state.         | `core`     |
 | [proof-driven-completion](plugins/codexy/skills/proof-driven-completion/SKILL.md) | Match outcome claims to proof.            | `core`     |
 | [prune-artifact-claims](plugins/codexy/skills/prune-artifact-claims/SKILL.md)     | Refresh claims against a source.          | `core`     |
-| [self-improvement](plugins/codexy/skills/self-improvement/SKILL.md)               | Improve responses to repeated failures.   | `core`     |
-| [wiki](plugins/codexy/skills/wiki/SKILL.md)                                       | Build source-backed topic knowledge.      | `core`     |
+| [self-improvement](plugins/codexy/skills/self-improvement/SKILL.md)               | Recover tasks and improve using evidence. | `core`     |
 | [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md)                | Manage GitHub issue and PR workflows.     | `github`   |
 | [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md)                    | Explore structure and dependencies.       | `devtools` |
 | [lsp](plugins/codexy-devtools/skills/lsp/SKILL.md)                                | Navigate code with language servers.      | `devtools` |
