@@ -11,6 +11,9 @@ for source in $current; do test ! -f "$source" || current_count=$((current_count
 for source in $previous; do test ! -f "$source" || previous_count=$((previous_count + 1)); done
 case "$schema_count:$current_count:$previous_count" in
 0:0:0) printf '0\n' ;;
-1:3:0|1:0:3) printf '1\n' ;;
-*) echo "core-handoff source inventory is partial or mixed" >&2; exit 1 ;;
+1:3:0 | 1:0:3) printf '1\n' ;;
+*)
+	echo "core-handoff source inventory is partial or mixed" >&2
+	exit 1
+	;;
 esac
