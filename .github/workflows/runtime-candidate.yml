@@ -52,9 +52,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Pin ARM64 candidate builds to the supported macOS 15 runner.
         include: [
           { platform: linux-x86_64, runner: ubuntu-latest },
-          { platform: darwin-arm64, runner: macos-14 },
+          { platform: darwin-arm64, runner: macos-15 },
           { platform: windows-x86_64, runner: windows-latest },
         ]
     steps:
