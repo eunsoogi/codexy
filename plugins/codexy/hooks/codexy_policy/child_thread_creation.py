@@ -124,7 +124,7 @@ def _missing_field_diagnostic(fields: list[str]) -> Diagnostic:
     code = "MISSING_ROUTE_FIELDS" if len(fields) > 1 else f"MISSING_{fields[0].upper()}"
     return Diagnostic(
         code,
-        f"Missing {names}; {_REQUIRED_ROUTE}. MUST correct the field and MUST retry once.",
+        f"Missing {names}; {_REQUIRED_ROUTE}. {_WORKER_SELECTION_GUIDANCE}",
     )
 
 
@@ -133,24 +133,39 @@ _REQUIRED_ROUTE = "Worker creation requires either " + " or ".join(
     f"model='{model}' and thinking='{thinking}'"
     for model, thinking in sorted(WORKER_CREATION_ROUTES)
 )
+# Denials repair decisions already delegated to the Orchestrator without broadening task authority.
+_WORKER_SELECTION_GUIDANCE = (
+    "For an already-authorized Worker assignment, the Orchestrator MUST select "
+    "default or hard from the task evidence, then follow the canonical "
+    "child-routing policy for the exact model/thinking pair and app-managed "
+    "project worktree. MUST NOT ask the user to select or reconfirm model, "
+    "thinking, or worktree. MUST correct the indicated fields in the original "
+    "create_thread request and continue creating and assigning the Worker. If "
+    "the host cannot accept the policy-selected route, MUST report the exact "
+    "host limitation without asking the user to choose a substitute. This "
+    "guidance does not create authority for a new task or override an explicit "
+    "no-new-task instruction."
+)
 _APP_WORKTREE_REQUIRED = (
     "Worker creation requires the Codex app-managed project worktree in the original "
     "create_thread call: target.type='project', a non-empty projectId, and "
-    "target.environment.type='worktree'. MUST correct the target and retry once. "
+    "target.environment.type='worktree'. "
     "MUST NOT create a local or projectless task and try to retrofit it with "
     "create_worktree, fork_thread, shell git worktree add, or another detached directory."
+    f" {_WORKER_SELECTION_GUIDANCE}"
 )
 _MISSING_FIELDS = (
-    f"Missing model and thinking; {_REQUIRED_ROUTE}. "
-    "MUST correct the fields and MUST retry once."
+    f"Missing model and thinking; {_REQUIRED_ROUTE}. {_WORKER_SELECTION_GUIDANCE}"
 )
 _UNSUPPORTED_MODEL = (
     f"Unsupported Worker creation model; {_REQUIRED_ROUTE}. "
-    "MUST NOT substitute another model or silently fall back."
+    "MUST NOT substitute another model or silently fall back. "
+    f"{_WORKER_SELECTION_GUIDANCE}"
 )
 _UNSUPPORTED_THINKING = (
     f"Unsupported Worker creation thinking; {_REQUIRED_ROUTE}. "
-    "MUST NOT substitute another reasoning setting or silently fall back."
+    "MUST NOT substitute another reasoning setting or silently fall back. "
+    f"{_WORKER_SELECTION_GUIDANCE}"
 )
 _PARENT_WORKTREE = (
     "Child task creation is blocked because the actual parent CWD is in a linked "
