@@ -21,6 +21,6 @@ existing authorized note. This record is not permission to persist a rule.
 - Permitted next action, or candidate-only stopping reason:
 
 Use [rule learning](../references/rule-learning.md) and
-[evaluation integrity](../references/evaluation-integrity.md) for evidence,
-holdout, and adoption decisions. Missing write authority MUST NOT turn a
-candidate into an adopted rule or authorize global memory mutation.
+[evaluation integrity](../../engineering/references/evaluation-integrity.md) for
+evidence, holdout, and adoption decisions. Missing write authority MUST NOT turn
+a candidate into an adopted rule or authorize global memory mutation.

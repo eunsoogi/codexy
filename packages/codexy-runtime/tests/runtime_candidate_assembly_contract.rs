@@ -4,6 +4,10 @@ use std::fs;
 mod fixture;
 #[path = "runtime_candidate_assembly_contract/heredoc.rs"]
 mod heredoc;
+#[path = "runtime_candidate_assembly_contract/cleanup.rs"]
+mod cleanup;
+#[path = "runtime_candidate_assembly_contract/legacy_layout.rs"]
+mod legacy_layout;
 
 use fixture::CandidateFixture;
 // Active wrapper declarations must change the projection without letting inert shell text rewrite protected payloads.
@@ -78,24 +82,7 @@ fn candidate_assembly_projects_target_version_without_mutating_protected_payload
     Ok(())
 }
 
-#[test]
-fn candidate_assembly_removes_stale_repository_only_skills() -> Result<(), Box<dyn std::error::Error>> {
-    let fixture = CandidateFixture::new(FIRST_DECLARATION)?;
-    let stale = ["plugin-marketplace-prep", "release-engineering"]
-        .map(|skill| fixture.root().join(format!("dist/candidate/plugins/codexy-devtools/skills/{skill}/SKILL.md")));
-    for path in &stale {
-        fs::create_dir_all(path.parent().ok_or("stale skill parent missing")?)?;
-        fs::write(path, "stale packaged skill\n")?;
-    }
 
-    let output = fixture.assemble();
-
-    assert!(output.status.success(), "candidate assembly failed: {}", String::from_utf8_lossy(&output.stderr));
-    for path in stale {
-        assert!(!path.exists(), "candidate archive payload retained {path:?}");
-    }
-    Ok(())
-}
 
 fn wrapper_platform_reads(declaration: &str) -> String {
     format!(

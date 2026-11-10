@@ -1,6 +1,6 @@
 ---
 name: self-improvement
-description: Use when repeated failure, uncertain premises, conflicting verification, or meaningful strategy comparison calls for bounded improvement; not for simple questions or small well-understood edits.
+description: Use when recovering a current task, consolidating authorized Wiki evidence, or improving a strategy; keep simple tasks lightweight.
 ---
 
 # Self-improvement
@@ -8,6 +8,25 @@ description: Use when repeated failure, uncertain premises, conflicting verifica
 Improve how the current task reaches and verifies its goal. This skill changes a
 supported strategy or evaluation method; it does not train model weights or
 grant permission for future work.
+
+## Select a mode
+
+Select only the needed mode. **Recover** after compaction or a noisy handoff
+using [current-state recovery](references/recovery.md); it is read-only and MUST
+NOT write memory. **Reflect** separates supported observations, hypotheses, and
+candidate lessons. **Consolidate** compares authorized candidates against
+existing Wiki evidence and records corrections with provenance. **Improve** uses
+the existing strategy and rule-learning contracts below. A simple task MUST NOT
+acquire a full learning loop. Recovery returns its next permitted action without
+waiting for consolidation.
+
+Use [Wiki storage and continuation](references/wiki-storage.md) for scope,
+checkpoint, promotion, migration, and cleanup boundaries. Wiki is context, not
+permission or live task authority. An explicit checkpoint or memory write is a
+separate scoped operation; it MUST NOT be inferred from recovery. For an
+explicitly requested source-backed topic Wiki, select its explicit root and use
+the [minimal contract](references/wiki-minimal-contract.md). A missing topic
+root MUST stop that topic operation; ordinary recovery MUST NOT require it.
 
 ## Shared improvement invariants
 
@@ -19,12 +38,12 @@ The existing orchestration and engineering owners retain those decisions.
 For a strategy, harness, evaluator, or proxy proposed for reuse,
 [evaluation integrity](../engineering/references/evaluation-integrity.md) owns
 product evaluation meaning, independent-evaluation criteria, and promotion
-conditions. [Rule learning](../engineering/references/rule-learning.md) owns
-rule scope and destination-owner adoption. Scores, candidate validity, and a
-scope-validated rule MUST NOT substitute for those decisions; budget exhaustion
-MUST NOT promote or adopt a candidate. Repository-only evaluation procedures,
-when selected, own execution and recording and MUST NOT redefine product
-evaluation meaning or independence.
+conditions. [Rule learning](references/rule-learning.md) owns rule scope and
+destination-owner adoption. Scores, candidate validity, and a scope-validated
+rule MUST NOT substitute for those decisions; budget exhaustion MUST NOT promote
+or adopt a candidate. Repository-only evaluation procedures, when selected, own
+execution and recording and MUST NOT redefine product evaluation meaning or
+independence.
 
 ## Select only useful steps
 
@@ -52,7 +71,7 @@ relevant contracts below; MUST NOT run every step as a fixed checklist.
 | Compatible strengths could outperform selection alone            | [Candidate fusion](../engineering/references/candidate-fusion.md) creates and freshly validates a distinct candidate, or declines fusion.                          |
 | A meaningful strategy/harness change is proposed for reuse       | [Evaluation integrity](../engineering/references/evaluation-integrity.md) separates development from independent private holdout evaluation.                       |
 | Scores may diverge from real goal quality                        | [Reward-hacking response](../engineering/references/reward-hacking.md) tests the signal and suspends affected optimization when supported.                         |
-| A reusable rule needs applicability evidence                     | [Rule learning](../engineering/references/rule-learning.md) tests scoped diagnostics and keeps adoption with the authorized destination owner.                     |
+| A reusable rule needs applicability evidence                     | [Rule learning](references/rule-learning.md) tests scoped diagnostics and keeps adoption with the authorized destination owner.                                    |
 | Continuing learning is authorized, or a next task is requested   | [Learning curriculum](../engineering/references/learning-curriculum.md) chooses an informative diagnostic or returns a proposal.                                   |
 | Multistep reliability needs assessment                           | [Long-work reliability](../engineering/references/long-work-reliability.md) preserves run denominators, failures, recovery, and unknown observations.              |
 
@@ -72,15 +91,14 @@ episode, or add to the existing budget.
 [`orchestration`](../orchestration/SKILL.md) owns classification, coordination,
 ownership, and budget; [`engineering`](../engineering/SKILL.md) owns an atomic
 implementation and its verification. They MUST NOT be replaced by this skill.
-Plan changes remain with [`planning`](../planning/SKILL.md), current-state
-recovery with [`dreaming`](../dreaming/SKILL.md), and final claims with
-[`proof-driven-completion`](../proof-driven-completion/SKILL.md).
+Plan changes remain with [`planning`](../planning/SKILL.md), and final claims
+with [`proof-driven-completion`](../proof-driven-completion/SKILL.md).
 
 MUST NOT create goals, app tasks, agents, scheduled jobs, or background learning
-merely because this skill was selected. MUST NOT automatically mutate global
-memory or stored rules. Existing authorization and destination proof govern any
-adoption. New goals and native goal-state transitions retain their own
-authority.
+merely because this skill was selected. MUST NOT mutate global memory or stored
+rules merely because recovery or reflection ran. Scoped authorized consolidation
+and destination proof govern any write or adoption. New goals and native
+goal-state transitions retain their own authority.
 
 [`frame-alternatives`](../frame-alternatives/SKILL.md),
 [`plan-stress-test`](../plan-stress-test/SKILL.md), and

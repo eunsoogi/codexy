@@ -146,7 +146,6 @@ Codex를 실행하는 환경에서 language server를 실행할 수 있어야 �
 | [agents-md-authoring](plugins/codexy/skills/agents-md-authoring/SKILL.md)         | 저장소 지침 작성과 범위 정하기.       | `core`     |
 | [blind-read](plugins/codexy/skills/blind-read/SKILL.md)                           | 지정한 artifact를 독자 관점에서 해석. | `core`     |
 | [decision-rationale](plugins/codexy/skills/decision-rationale/SKILL.md)           | 결정의 이유와 근거 살피기.            | `core`     |
-| [dreaming](plugins/codexy/skills/dreaming/SKILL.md)                               | 맥락 압축 뒤 작업 정보 복원.          | `core`     |
 | [engineering](plugins/codexy/skills/engineering/SKILL.md)                         | 이슈 하나를 구현하고 검증하기.        | `core`     |
 | [frame-alternatives](plugins/codexy/skills/frame-alternatives/SKILL.md)           | 신뢰할 수 있는 대안 비교.             | `core`     |
 | [goal-lifecycle](plugins/codexy/skills/goal-lifecycle/SKILL.md)                   | 승인된 작업 목표 관리.                | `core`     |
@@ -156,8 +155,7 @@ Codex를 실행하는 환경에서 language server를 실행할 수 있어야 �
 | [project-brief](plugins/codexy/skills/project-brief/SKILL.md)                     | 기록된 프로젝트 상태 요약.            | `core`     |
 | [proof-driven-completion](plugins/codexy/skills/proof-driven-completion/SKILL.md) | 결과 주장을 근거와 대조.              | `core`     |
 | [prune-artifact-claims](plugins/codexy/skills/prune-artifact-claims/SKILL.md)     | 기준 source에 맞춰 문서 주장 정리.    | `core`     |
-| [self-improvement](plugins/codexy/skills/self-improvement/SKILL.md)               | 반복 실패를 개선할 경로 선택.         | `core`     |
-| [wiki](plugins/codexy/skills/wiki/SKILL.md)                                       | 출처 기반 주제별 Wiki 만들기.         | `core`     |
+| [self-improvement](plugins/codexy/skills/self-improvement/SKILL.md)               | 작업 복구와 근거 기반 개선.           | `core`     |
 | [git-workflow](plugins/codexy-github/skills/git-workflow/SKILL.md)                | GitHub issue와 PR 흐름 관리.          | `github`   |
 | [codegraph](plugins/codexy-devtools/skills/codegraph/SKILL.md)                    | 저장소 구조와 의존 관계 탐색.         | `devtools` |
 | [lsp](plugins/codexy-devtools/skills/lsp/SKILL.md)                                | 언어 서버로 코드 탐색과 진단.         | `devtools` |

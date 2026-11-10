@@ -4,6 +4,8 @@ use crate::support::TestResult;
 use codexy_runtime::validation::*;
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, process::Command};
+#[path = "validator_handoff_runtime_bridge/legacy_policy.rs"]
+mod legacy_policy;
 #[path = "validator_handoff_runtime_bridge/readable.rs"]
 mod readable;
 

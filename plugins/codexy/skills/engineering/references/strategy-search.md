@@ -97,4 +97,5 @@ different retained alternative if available, observed evidence versus estimates,
 and the next permitted action or stopping reason. Candidate fusion is a separate
 decision and MUST NOT be implied by retaining multiple branches. A search result
 MUST NOT replace final validation or weaken the protected goal and success
-criteria. Permanent-rule adoption follows [rule learning](rule-learning.md).
+criteria. Permanent-rule adoption follows
+[rule learning](../../self-improvement/references/rule-learning.md).

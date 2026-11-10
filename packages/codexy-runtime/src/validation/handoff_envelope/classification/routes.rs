@@ -129,7 +129,7 @@ pub(super) fn surface_route(surface: &str) -> Option<Vec<String>> {
             "task_classification",
             "proof_completion",
         ],
-        "research/wiki" => &["dreaming"],
+        "research/wiki" => &["self-improvement"],
         "read-only/local" => &["task_classification"],
         _ => return None,
     }))

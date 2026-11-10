@@ -69,6 +69,12 @@ accepted-child cleanup below MUST NOT be applied to unfinished work.
 
 ## Accepted Child Cleanup
 
+When an issue worktree contains a local Wiki, MUST preserve needed evidence or
+verified durable source references before any authorized worktree removal,
+following the core
+[Wiki storage contract](../../../../codexy/skills/self-improvement/references/wiki-storage.md).
+Failed preservation blocks that removal; archival does not adopt knowledge.
+
 The parent Orchestrator MUST enter this sequence as its next action after
 accepting a child's completed work and completing the required merge,
 publication, follow-up, and delivery work. It MUST NOT wait for another

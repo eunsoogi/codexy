@@ -14,6 +14,9 @@ _lifecycle_support = importlib.import_module(
 )
 sys.modules.setdefault("component_lifecycle_support", _lifecycle_support)
 fixture = _lifecycle_support.fixture
+_invalid_cases = importlib.import_module(
+    "packages.getcodexy.tests.component_inspection_invalid_cases"
+)
 _host_cases = importlib.import_module(
     "packages.getcodexy.tests.component_inspection_host_cases"
 )
@@ -153,27 +156,7 @@ class ComponentInspectionTests(
     def test_doctor_rejects_noncanonical_catalog_hook_mcp_and_launcher_bindings(
         self,
     ) -> None:
-        cases = (
-            (
-                "core",
-                "agents/catalog.toml",
-                'catalog_kind = "plugin-packaged-specialist-agent-files"\n',
-            ),
-            ("core", "hooks/hooks.json", json.dumps({"hooks": {"PreToolUse": []}})),
-            (
-                "devtools",
-                ".mcp.json",
-                json.dumps(
-                    {
-                        "lsp": {"command": "./mcp/unrelated"},
-                        "codegraph": {"command": "./mcp/unrelated"},
-                    }
-                ),
-            ),
-            ("core", "skills/wiki/SKILL.md", "---\nname: wiki\n"),
-            ("core", "hooks/codexy-thread-delivery.sh", "#!/definitely-missing\n"),
-            ("core", "skills/dreaming/scripts/resumable_context_capsule.py", ""),
-        )
+        cases = _invalid_cases.CASES
         plugins = {"core": "codexy", "devtools": "codexy-devtools"}
         for component, relative, contents in cases:
             with (
