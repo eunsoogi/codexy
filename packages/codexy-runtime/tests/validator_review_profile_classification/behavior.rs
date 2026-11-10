@@ -86,16 +86,27 @@ fn structured_and_markdown_routes_agree_on_collaboration_and_shared_contract_ris
         None,
     ))?;
     assert_eq!(shared_contract["profile"], "strict");
-    for requested in ["light", "standard"] {
-        let text = format!(
-            "Workflow profile: {requested}\nTask kind: materially shared executable-contract change\n{}",
-            formal_classification()
-        );
-        assert_profile_result(
-            "a weaker Markdown choice cannot override shared executable-contract risk",
-            &text,
-            false,
-        )?;
+    for (risk_text, description) in [
+        (
+            "materially shared executable-contract change",
+            "singular shared executable-contract risk",
+        ),
+        (
+            "materially shared executable contracts",
+            "plural shared executable-contract risk",
+        ),
+    ] {
+        for requested in ["light", "standard"] {
+            let text = format!(
+                "Workflow profile: {requested}\nTask kind: {risk_text}\n{}",
+                formal_classification()
+            );
+            assert_profile_result(
+                &format!("a weaker Markdown choice cannot override {description}"),
+                &text,
+                false,
+            )?;
+        }
     }
 
     let negated = format!(
@@ -117,7 +128,7 @@ fn structured_and_markdown_routes_agree_on_collaboration_and_shared_contract_ris
         true,
     )?;
     let quoted = format!(
-        "Workflow profile: standard\nTask kind: ordinary single-owner mutation\nQuoted example: `materially shared executable-contract change`\n{}",
+        "Workflow profile: standard\nTask kind: ordinary single-owner mutation\nQuoted example: `materially shared executable contracts`\n{}",
         formal_classification()
     );
     assert_profile_result(

@@ -64,6 +64,35 @@ fn strict_signals_are_complete_and_negation_aware() -> TestResult {
 }
 
 #[test]
+fn plural_shared_contract_risk_respects_negation_and_quotation() -> TestResult {
+    for risk in [
+        "materially shared executable contracts",
+        "shared executable contracts",
+    ] {
+        assert_profile_result(
+            "plural shared-contract risk cannot be downgraded to light",
+            &format!("Workflow profile: light\nTask kind: {risk}"),
+            false,
+        )?;
+    }
+    for negated_risk in [
+        "no materially shared executable contracts",
+        "no shared executable contracts",
+    ] {
+        assert_profile_result(
+            "negated plural shared-contract risk remains standard",
+            &format!("Workflow profile: standard\nTask kind: {negated_risk}"),
+            true,
+        )?;
+    }
+    assert_profile_result(
+        "quoted plural shared-contract wording does not assert risk",
+        "Workflow profile: standard\nTask kind: ordinary mutation\nQuoted example: `materially shared executable contracts`",
+        true,
+    )
+}
+
+#[test]
 fn strict_signal_negation_is_category_local() -> TestResult {
     for task_kind in [
         "no security but release work",

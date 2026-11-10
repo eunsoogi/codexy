@@ -109,9 +109,14 @@ fn compound_signal(tokens: &[Token], index: usize) -> Option<usize> {
         .map(|token| token.text.as_str());
     match (token, next, third, fourth) {
         ("high", Some("risk"), _, _) | ("merge", Some("sensitive"), _, _) => Some(2),
-        ("materially", Some("shared"), Some("executable"), Some("contract")) => Some(4),
-        // Material shared contracts are strict by their cross-owner interface risk, even without merge wording.
-        ("shared", Some("executable"), Some("contract"), _) if previous != Some("materially") => {
+        // Singular and plural noun forms describe the same cross-owner interface risk.
+        ("materially", Some("shared"), Some("executable"), Some("contract" | "contracts")) => {
+            Some(4)
+        }
+        // Shared contracts remain strict by their cross-owner interface risk, even without merge wording.
+        ("shared", Some("executable"), Some("contract" | "contracts"), _)
+            if previous != Some("materially") =>
+        {
             Some(3)
         }
         ("high", Some("consequence"), Some("external"), Some("state")) => Some(4),
