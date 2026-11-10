@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[3]
 PLUGIN = ROOT / "plugins/codexy"
 MAX_BYTES = 1024 * 1024
 FIELDS = {"event", "concern", "elapsed", "decision"}
+# The admitted spawn case carries the explicit no-history request expected by policy.
 CASES = (
     (
         "codexy-thread-delivery",
@@ -39,7 +40,11 @@ CASES = (
     (
         "codexy-subagent-ownership",
         "multi_agent_v1__spawn_agent",
-        {"agent_type": "codexy-cartographer", "message": "Map files only."},
+        {
+            "agent_type": "codexy-cartographer",
+            "message": "Map files only.",
+            "fork_turns": "none",
+        },
         "subagent-ownership",
     ),
 )

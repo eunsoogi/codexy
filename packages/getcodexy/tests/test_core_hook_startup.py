@@ -56,6 +56,7 @@ class CoreHookStartupTests(unittest.TestCase):
 
     @unittest.skipUnless(os.name != "nt", "POSIX launcher coverage")
     def test_allowed_paths_remain_zero_bytes_and_denials_keep_event_shapes(self):
+        # This allowed spawn models the required explicit fresh-child history boundary.
         allowed = (
             (
                 "codexy-thread-delivery.sh",
@@ -70,7 +71,11 @@ class CoreHookStartupTests(unittest.TestCase):
             (
                 "codexy-subagent-ownership.sh",
                 "multi_agent_v1__spawn_agent",
-                {"agent_type": "codexy-cartographer", "message": "Map files only."},
+                {
+                    "agent_type": "codexy-cartographer",
+                    "message": "Map files only.",
+                    "fork_turns": "none",
+                },
             ),
         )
         with temporary_primary_checkout() as primary_cwd:
