@@ -234,7 +234,7 @@ recovery is available, the task MUST verify:
 - Necessary owned-work preservation; the actual same-directory fork, exact CWD
   and Git identity; successful lightweight processes before and after source
   archival; archived-source readback; and one continuation owner. An artifact
-  listing or lifetime guarantee MUST NOT be required when these checks pass. A
+  listing or lifetime guarantee MUST NOT be required when these checks pass.
   The owner MUST continue recovery from the blocked fork under the original
   assignment.
   Requested and effective settings MUST remain separate; unavailable values
