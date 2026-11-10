@@ -152,8 +152,11 @@ before transitioning. It MUST carry the common bound fields above and show
 confirmed delivery on the Codex task/thread surface. When no goal operation
 represents the transition, evidence MUST identify the actual stop, archive,
 ownership release, or blocked action. A related terminal stop and ownership
-release MUST share the same receipt. Archival or ownership release MUST be
-separately authorized and appear in the confirmed terminal receipt; a
+release MUST share the same receipt. Archival or ownership release MUST have
+explicit authority covering that transition and appear in the confirmed
+terminal receipt. For same-scope blocked-goal recovery, the child MUST reuse the
+original assignment's authority when it covers the source-chat archive; it
+MUST NOT ask for a new approval solely because the goal is blocked. A
 completed-phase handoff authorizes only its stated idle/stop outcome. The
 terminal handoff MUST report the state observed before the transition and mark
 any authorized next action as pending; it MUST NOT claim that action's later

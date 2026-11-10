@@ -126,19 +126,26 @@ only when separately authorized. It MUST NOT set the source goal to `blocked` or
 MUST preserve its source-pair rules and MUST NOT be repurposed for model
 elevation.
 
-Before any fork or source archival, the owner MUST follow the linked procedure.
-It owns the fork-goal readback, supported checkout association,
-topology-specific lifetime-preservation route, pre-archive checks, source
-archival, post-archive acceptance, and failure containment. A task ID, matching
-CWD, attachment record, or saved snapshot MUST NOT substitute for a successful
-process at the intended checkout after archival. The absence of a direct
-goal-resume operation alone MUST NOT be treated as proof that the fork route is
-unavailable. If the exact topology's lifetime-preservation route or another
-required pre-archive check cannot be established, the owner MUST stop before
-archival and report the exact unsupported transition and responsible host
-boundary. If post-archive acceptance fails, the owner MUST keep issue work
-stopped and report the exact host operation and observed owner state. A result
-for one attachment topology MUST NOT be generalized to all checkouts.
+Before any fork or source archival, the owner MUST follow the linked
+same-directory recovery procedure. The owner MUST verify the native fork result
+and run a lightweight read-only process at the exact CWD with matching Git
+checkout identity. `list_artifacts` and separate host lifetime guarantees MAY
+help diagnose an actual checkout failure; `attach_worktree` MAY repair an
+observed association failure when its ownership rules permit. These steps MUST
+NOT be blanket prerequisites for a confirmed same-directory checkout. An empty,
+PR-only, unsupported, or failed artifact listing MUST NOT invalidate a
+successful exact-CWD process or imply that another task lacks a checkout.
+
+The owner MUST archive the source chat after the continuation's actual checkout
+and process checks succeed, then read back the archive, sole owner, goal, and
+process at the same checkout. If the continuation still has the same blocked
+goal after the source is archived, the owner MUST keep it in recovery-only mode
+and continue the same procedure from that current owner. Issue work MUST resume
+only after the continuation has the exact authorized active objective and a
+successful process at the preserved checkout. If an actual CWD process or
+checkout comparison fails, the owner MUST repair that observed failure when a
+supported operation permits it; otherwise it MUST stop issue work and report
+the exact host result.
 
 ## Deciding Whether Work Is Blocked
 
@@ -224,14 +231,17 @@ recovery is available, the task MUST verify:
 - Existing assignment authority for the same objective and scope, while honoring
   user stops, revoked authority, scope changes, host denials, and unresolved
   material user-input gates that remain in force until their specific answers;
-- Necessary owned-work preservation, one same-directory fork, the actual fork
-  goal-state branch, supported checkout association and lifetime-preservation
-  route for the exact topology, pre-archive checks, source archival, and
-  post-archive owner, active-objective, and process acceptance before issue
-  work. Requested model/effort and host-exposed effective settings MUST remain
-  separate, with unexposed values reported as unavailable;
+- Necessary owned-work preservation; the actual same-directory fork, exact CWD
+  and Git identity; successful lightweight processes before and after source
+  archival; archived-source readback; and one continuation owner. An artifact
+  listing or lifetime guarantee MUST NOT be required when these checks pass. A
+  The owner MUST continue recovery from the blocked fork under the original
+  assignment.
+  Requested and effective settings MUST remain separate; unavailable values
+  MUST remain unavailable;
 - Fork, archive, owner-readback, continuation, and fresh-goal creation failures
-  preserving the exact result and stopping task work without another fork.
+  preserving the exact result and stopping issue work until the actual owner
+  and checkout permit recovery to continue from the current owner.
 
 Real app task and goal readbacks MUST be the evidence for recovery; the task
 MUST NOT use local fixtures, parser logic, or mock-only assertions as
