@@ -28,7 +28,7 @@ guides.
 The recommended installation uses the getcodexy CLI:
 
 ```sh
-uv tool install getcodexy==2.2.1
+uv tool install getcodexy==2.2.2
 uv tool update-shell
 getcodexy install
 ```
@@ -53,7 +53,7 @@ The github and devtools components include core automatically.
 getcodexy status
 getcodexy doctor
 getcodexy update
-uv tool upgrade getcodexy==2.2.1
+uv tool upgrade getcodexy==2.2.2
 ```
 
 Use `getcodexy status` and `getcodexy doctor` to inspect the installation,
@@ -78,7 +78,7 @@ Direct marketplace installation is intended for development or controlled
 recovery. Install core first:
 
 ```sh
-codex plugin marketplace add eunsoogi/codexy --ref v2.2.1
+codex plugin marketplace add eunsoogi/codexy --ref v2.2.2
 codex plugin add codexy@codexy
 codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
