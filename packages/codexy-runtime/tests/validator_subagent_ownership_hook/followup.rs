@@ -4,6 +4,7 @@ use serde_json::json;
 
 #[test]
 fn followups_apply_classifier_without_target_role_claims() -> TestResult {
+    // Existing-helper calls intentionally omit fork_turns because they do not create a child.
     for event in EVENTS {
         for prefix in ["", "agents__", "multi_agent_v1__"] {
             for name in ["send_message", "followup_task"] {

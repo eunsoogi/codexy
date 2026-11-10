@@ -13,6 +13,8 @@ mod catalog_admission;
 mod followup;
 #[path = "validator_subagent_ownership_hook/action_admission.rs"]
 mod action_admission;
+#[path = "validator_subagent_ownership_hook/history_policy.rs"]
+mod history_policy;
 
 pub(crate) type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -188,7 +190,8 @@ pub(crate) fn assert_denied(agent_type: Option<&str>, message: &str, code: &str)
 }
 
 pub(crate) fn payload(tool: &str, event: &str, agent_type: Option<&str>, message: &str) -> Value {
-    let mut tool_input = json!({"task_name": "bounded_task", "message": message});
+    // Ordinary admission fixtures model the required explicit no-history request.
+    let mut tool_input = json!({"task_name": "bounded_task", "message": message, "fork_turns": "none"});
     if let Some(agent_type) = agent_type {
         tool_input["agent_type"] = json!(agent_type);
     }

@@ -59,6 +59,28 @@ files and directories mutated by the attempt. This is not process-crash or
 power-loss atomicity, and a hostile writer can still race the final portable
 filesystem operation after its immediate revalidation.
 
+Every new native `spawn_agent` request for a permitted role MUST explicitly set
+`fork_turns="none"`. This applies equally to `explorer` and every registered
+specialist; omitted, null, history-copying, bounded-positive, and other values
+are denied before execution. A `send_message` or `followup_task` to an existing
+permitted helper reuses that helper and is not a new spawn, so it does not need
+a new `fork_turns` field or create a new-context gate. When correcting a
+history-setting denial, MUST keep already-authorized task and model choices;
+MUST NOT ask the user to restate them.
+
+Each new child assignment MUST be bounded and self-contained. It MUST carry the
+objective, latest relevant user corrections, owned scope, authority and
+restrictions, relevant owner/head/artifact identities, completion criteria,
+unresolved findings, and required verification. Include only the necessary facts
+and precise source or artifact references, then retrieve further authorized
+evidence selectively. MUST NOT paste the full parent transcript, unchanged full
+tool bodies, or the full agent tree. Keep unavailable sources and missing
+required evidence explicit rather than dropping them to meet a size target. The
+explicit request value proves only what was requested; claim that a child
+received no inherited turns only when the host exposes authoritative evidence
+for that behavior. This changes what a new child receives; it does not delete or
+rewrite parent history or alter source-retention and privacy policy.
+
 Before claiming a specialist is callable, MUST run the registration script with
 `--diagnose` and treat its rows independently:
 
@@ -66,9 +88,8 @@ Before claiming a specialist is callable, MUST run the registration script with
 - `tool-schema` reports host settings only from the real
   `[features.multi_agent_v2]` table and MUST still require observing
   `agent_type` in a fresh task.
-- An explicit custom `agent_type` MUST use `fork_turns="none"` or a positive
-  bounded count. MultiAgent V2 full-history `fork_turns="all"` is incompatible
-  with role, model, or reasoning overrides.
+- An explicit custom `agent_type` MUST use the registered role, model, and
+  reasoning contract. Its native spawn MUST also use the no-history value above.
 
 Codexy MUST NOT manage `features.multi_agent_v2`. Upstream host compatibility
 settings such as tool namespace and metadata visibility are diagnostic evidence
