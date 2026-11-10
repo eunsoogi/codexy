@@ -27,6 +27,10 @@ guides.
 
 The recommended installation uses the getcodexy CLI:
 
+If the pinned CLI version below has not been published, use the
+[latest published release](https://github.com/eunsoogi/codexy/releases/latest)
+and its tagged English README for the install and upgrade steps.
+
 ```sh
 uv tool install getcodexy==2.2.2
 uv tool update-shell
@@ -76,6 +80,10 @@ for details.
 
 Direct marketplace installation is intended for development or controlled
 recovery. Install core first:
+
+If the marketplace ref below has not been published, use the
+[latest published release](https://github.com/eunsoogi/codexy/releases/latest)
+and its tagged English README for the direct-install steps.
 
 ```sh
 codex plugin marketplace add eunsoogi/codexy --ref v2.2.2
