@@ -1,4 +1,4 @@
-//! Checks that installed hook matchers stay exact and the Windows denial fallback remains valid JSON.
+//! Checks installed hook contracts, including actionable delegated-route diagnostics.
 
 use super::*;
 
@@ -44,9 +44,19 @@ fn installed_matcher_covers_both_canonical_create_thread_tool_names() -> TestRes
 }
 
 #[test]
-fn worker_creation_diagnostics_describe_both_supported_pairs() -> TestResult {
+fn worker_creation_diagnostics_describe_both_supported_pairs_and_orchestrator_repair() -> TestResult {
     let cases = [
         ("missing settings", json!({}), "MISSING_ROUTE_FIELDS"),
+        (
+            "missing model",
+            json!({"thinking":"max"}),
+            "MISSING_MODEL",
+        ),
+        (
+            "missing thinking",
+            json!({"model":"gpt-6-luna"}),
+            "MISSING_THINKING",
+        ),
         (
             "unsupported model",
             json!({"model":"gpt-5.6-sol","thinking":"medium"}),
@@ -67,21 +77,87 @@ fn worker_creation_diagnostics_describe_both_supported_pairs() -> TestResult {
     for (label, settings, diagnostic) in cases {
         let tool_input = worktree_environment::with_project_worktree(settings);
         for tool in TOOLS {
-            let input = pre_tool_input(tool, tool_input.clone());
-            let output = hook_output(&input, "PreToolUse")?;
-            let reason = output["hookSpecificOutput"]["permissionDecisionReason"]
-                .as_str()
+            for event in ["PreToolUse", "PermissionRequest"] {
+                let mut input = pre_tool_input(tool, tool_input.clone());
+                input["hook_event_name"] = json!(event);
+                let output = hook_output(&input, event)?;
+                let reason = if event == "PermissionRequest" {
+                    output["hookSpecificOutput"]["decision"]["message"].as_str()
+                } else {
+                    output["hookSpecificOutput"]["permissionDecisionReason"].as_str()
+                }
                 .ok_or("Worker creation diagnostic")?;
-            assert!(reason.contains(diagnostic), "{label}: {reason}");
-            for pair in [
-                "model='gpt-6-luna' and thinking='max'",
-                "model='gpt-6.1-terra' and thinking='medium'",
-            ] {
-                assert!(reason.contains(pair), "{label} omitted {pair}: {reason}");
+                assert!(reason.contains(diagnostic), "{label} {event}: {reason}");
+                for pair in [
+                    "model='gpt-6-luna' and thinking='max'",
+                    "model='gpt-6.1-terra' and thinking='medium'",
+                ] {
+                    assert!(
+                        reason.contains(pair),
+                        "{label} {event} omitted {pair}: {reason}"
+                    );
+                }
+                assert_worker_selection_guidance(reason, &format!("{label} {event}"));
             }
         }
     }
     Ok(())
+}
+
+#[test]
+fn invalid_worktree_diagnostic_assigns_the_project_target_to_the_orchestrator() -> TestResult {
+    for tool in TOOLS {
+        for event in ["PreToolUse", "PermissionRequest"] {
+            let mut input = pre_tool_input(
+                tool,
+                json!({"model":"gpt-6-luna","thinking":"max"}),
+            );
+            input["hook_event_name"] = json!(event);
+            let output = hook_output(&input, event)?;
+            let reason = if event == "PermissionRequest" {
+                output["hookSpecificOutput"]["decision"]["message"].as_str()
+            } else {
+                output["hookSpecificOutput"]["permissionDecisionReason"].as_str()
+            }
+            .ok_or("worktree creation diagnostic")?;
+            assert!(reason.contains("APP_WORKTREE_REQUIRED"), "{event}: {reason}");
+            assert!(reason.contains("target.environment.type='worktree'"), "{event}: {reason}");
+            assert_worker_selection_guidance(reason, event);
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn malformed_creation_input_keeps_the_same_orchestrator_repair_guidance() -> TestResult {
+    for tool in TOOLS {
+        let input = pre_tool_input(tool, Value::Null);
+        let output = hook_output(&input, "PreToolUse")?;
+        let reason = output["hookSpecificOutput"]["permissionDecisionReason"]
+            .as_str()
+            .ok_or("malformed creation diagnostic")?;
+        assert!(reason.contains("MISSING_ROUTE_FIELDS"), "{reason}");
+        assert_worker_selection_guidance(reason, "malformed creation input");
+    }
+    Ok(())
+}
+
+fn assert_worker_selection_guidance(reason: &str, label: &str) {
+    for requirement in [
+        "already-authorized Worker assignment",
+        "default or hard from the task evidence",
+        "canonical child-routing policy",
+        "MUST NOT ask the user to select or reconfirm model, thinking, or worktree",
+        "correct the indicated fields in the original create_thread request",
+        "continue creating and assigning the Worker",
+        "report the exact host limitation",
+        "does not create authority for a new task",
+    ] {
+        assert!(
+            reason.contains(requirement),
+            "{label} omitted {requirement}: {reason}"
+        );
+    }
 }
 
 #[test]
