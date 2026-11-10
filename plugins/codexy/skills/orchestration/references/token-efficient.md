@@ -59,7 +59,7 @@ For implementation recovery, retain the current owner, worktree, branch, HEAD,
 and open obligations. Refresh checks, review, verification, PR, or release state
 only when an active obligation depends on that surface. Plan-only recovery MUST
 NOT require unrelated PR or release proof. Use
-[Dreaming's current-state recovery](../../dreaming/SKILL.md#refresh-current-state)
+[Dreaming's current-state recovery](../../self-improvement/references/recovery.md#refresh-current-state)
 to select what to refresh, and [context retention](context-tiers.md) for typed
 omissions in the runtime envelope. The
 [goal-transition handoff contract](goal-transition-reporting.md) owns terminal
@@ -153,7 +153,7 @@ gate points to them.
 ## Compaction Budget
 
 After compaction, MUST follow
-[Dreaming's current-state recovery](../../dreaming/SKILL.md#refresh-current-state)
+[Dreaming's current-state recovery](../../self-improvement/references/recovery.md#refresh-current-state)
 to select the live facts needed for the next permitted action. MUST reuse prior
 commands only while they prove a relevant gate. MUST NOT reload unchanged
 references, old review/command output, resolved feedback, or closed lanes unless

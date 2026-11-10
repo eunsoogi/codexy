@@ -83,15 +83,8 @@ cp -R staged-runtime "$root/runtime"
 mv "$root/runtime/codexy-mcp-devtools-windows-x86_64.exe" "$root/mcp/codexy-mcp-devtools.exe"
 python3 scripts/inspect-release-archive-contract.py candidate-assembly "$root"
 
-core_sources="packages/codexy-runtime/schemas/handoff-runtime.schema.json plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py"
-core_count=0
 # Validate both inventories before candidate assembly can chmod or hash their runtime inputs.
-for source in $core_sources; do test -f "$source" && core_count=$((core_count + 1)); done
-case "$core_count" in 0) core_aware=0 ;; 4) core_aware=1 ;; *)
-	echo "core-handoff source inventory is partial" >&2
-	exit 1
-	;;
-esac
+core_aware="$(sh scripts/resolve-handoff-source-layout.sh)"
 watcher_count=0
 for watcher_path in "$root"/runtime/codexy-mcp-watcher-*; do
 	if ! test -e "$watcher_path" && ! test -L "$watcher_path"; then continue; fi

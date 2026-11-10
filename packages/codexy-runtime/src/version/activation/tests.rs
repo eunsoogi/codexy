@@ -9,6 +9,8 @@ use super::{activate, apply_with, canonical, prepare};
 
 #[path = "fixture.rs"]
 mod fixture;
+#[path = "layout_tests.rs"]
+mod layout_tests;
 #[path = "strict_json_tests.rs"]
 mod strict_json_tests;
 
@@ -166,7 +168,9 @@ fn mismatched_staging_run_attempt_leaves_targets_byte_identical() -> Result<()> 
 fn partial_core_aware_tree_is_rejected_before_mutation() -> Result<()> {
     reject_activation(candidate_version(), |fixture| {
         fs::remove_file(
-            fixture.path("plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd"),
+            fixture.path(
+                "plugins/codexy/skills/self-improvement/scripts/resumable-context-capsule.cmd",
+            ),
         )?;
         Ok(())
     })

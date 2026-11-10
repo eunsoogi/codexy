@@ -11,14 +11,7 @@ use serde_json::Value;
 use sha2::{Digest as _, Sha256};
 use tempfile::NamedTempFile;
 
-use super::{canonical, receipt};
-
-const CORE_HANDOFF_SOURCES: [&str; 4] = [
-    "packages/codexy-runtime/schemas/handoff-runtime.schema.json",
-    "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.sh",
-    "plugins/codexy/skills/dreaming/scripts/resumable-context-capsule.cmd",
-    "plugins/codexy/skills/dreaming/scripts/resumable_context_capsule.py",
-];
+use super::{canonical, core_inventory::validate_core_aware_tree, receipt};
 // Runtime activation updates only the current Devtools wrapper; core no longer ships Watcher launchers.
 const WRAPPERS: [&str; 1] = ["plugins/codexy-devtools/mcp/codexy-mcp-devtools"];
 
@@ -75,30 +68,6 @@ pub(super) fn prepare(
         delete: true,
     });
     Ok(updates)
-}
-
-fn validate_core_aware_tree(repo_root: &Path) -> Result<bool> {
-    let present = CORE_HANDOFF_SOURCES
-        .iter()
-        .filter(|relative| repo_root.join(relative).is_file())
-        .count();
-    if present == CORE_HANDOFF_SOURCES.len() {
-        return Ok(true);
-    }
-    if present != 0 {
-        bail!("core-handoff source inventory is partial before activation");
-    }
-    // Absence is accepted only for an authenticated pre-core-handoff source tree.
-    let output = std::process::Command::new("git")
-        .args(["rev-list", "-1", "HEAD", "--"])
-        .args(CORE_HANDOFF_SOURCES)
-        .current_dir(repo_root)
-        .output()
-        .context("proving pre-#671 Git tree")?;
-    if !output.status.success() || !output.stdout.iter().all(u8::is_ascii_whitespace) {
-        bail!("core-handoff sources may both be absent only on a proven pre-#671 Git tree");
-    }
-    Ok(false)
 }
 
 fn publish_contract_update(root: &Path, version: &str, release_tag: &str) -> Result<Update> {

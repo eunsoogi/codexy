@@ -65,6 +65,7 @@ pub(super) fn candidate_fixture_seed() -> Result<PathBuf, Box<dyn std::error::Er
         let repository = codexy_runtime::paths::repository_root();
         for name in [
             "assemble-runtime-candidate",
+            "resolve-handoff-source-layout.sh",
             "inspect-release-archive-contract.py",
             "inspect_release_archive_helpers.py",
             "inspect_release_archive_shell.py",

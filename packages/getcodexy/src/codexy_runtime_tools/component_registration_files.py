@@ -38,7 +38,7 @@ def _skill(plugin: Path, component: str) -> bool:
     if component == "core":
         # MCP files are validated from the selected package contract separately.
         required += CORE_HOOK_DEPENDENCIES
-    name = "wiki" if component == "core" else "git-workflow"
+    name = "self-improvement" if component == "core" else "git-workflow"
     contents = _text(plugin / f"skills/{name}/SKILL.md", plugin)
     return all(_regular(plugin / path, plugin) for path in required) and (
         contents.startswith(f"---\nname: {name}\n") and "\n---\n" in contents

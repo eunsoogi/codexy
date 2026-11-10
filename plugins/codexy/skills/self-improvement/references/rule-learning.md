@@ -2,16 +2,25 @@
 
 Use this guide to test a reusable rule candidate after an attempt supplies
 evidence of a useful process. MUST prefer evidence-supported good processes
-under [attempt validation](attempt-validation.md). A lucky outcome from a bad
-process, one success, or repeated success on the same example MUST NOT establish
-a reusable rule.
+under [attempt validation](../../engineering/references/attempt-validation.md).
+A lucky outcome from a bad process, one success, or repeated success on the same
+example MUST NOT establish a reusable rule.
 
 This method MUST follow the
 [shared improvement invariants](../../self-improvement/SKILL.md#shared-improvement-invariants).
-[Strategy search](strategy-search.md) supplies competing hypotheses;
-[feedback evidence](feedback-evidence.md) supplies confidence and provenance.
-This guide does not choose a future learning curriculum or authorize background
-learning, weight training, scheduling, or global memory writes.
+[Strategy search](../../engineering/references/strategy-search.md) supplies
+competing hypotheses;
+[feedback evidence](../../engineering/references/feedback-evidence.md) supplies
+confidence and provenance. This guide does not choose a future learning
+curriculum or authorize background learning, weight training, scheduling, or
+global memory writes.
+
+Experience produces factual observations with source and revision first, then
+scoped behavioral candidates. A candidate stored in the issue-worktree Wiki is
+not an adopted rule. Validated repository lessons may be promoted to the shared
+Wiki; global promotion additionally requires verified general applicability,
+privacy checks, and the destination owner's existing adoption contract. Use
+[Wiki revisions](wiki-transactions.md) for scoped storage and conflict handling.
 
 ## State the rule before testing
 
@@ -44,10 +53,12 @@ reliability beyond the observed sample. MUST keep unsuccessful diagnostics and
 uncertainty visible alongside successful ones.
 
 For a meaningful strategy or harness change, MUST follow
-[evaluation integrity](evaluation-integrity.md), which owns independent-holdout
-and promotion criteria. Apply [reward-hacking checks](reward-hacking.md) when
+[evaluation integrity](../../engineering/references/evaluation-integrity.md),
+which owns independent-holdout and promotion criteria. Apply
+[reward-hacking checks](../../engineering/references/reward-hacking.md) when
 evidence supports them. A single weak feedback item MUST NOT justify adoption;
-assess it under [feedback evidence](feedback-evidence.md).
+assess it under
+[feedback evidence](../../engineering/references/feedback-evidence.md).
 
 ## Track evidence state and disposition
 
@@ -85,7 +96,9 @@ Authorization alone is not an observed adoption. Before calling a stored rule
 adopted, MUST confirm the owner-accepted change at the destination through the
 existing proof contract; an intended or proposed write is not a completed one.
 
-MUST NOT automatically write global memory, project instructions, user settings,
+MUST NOT write global memory merely because a rule was proposed or validated. An
+authorized global disposition still requires the applicability and privacy
+checks above. MUST NOT automatically change project instructions, user settings,
 or model policies. If evidence requires withdrawing an already adopted rule,
 MUST record the limit and route the change through that destination's owner and
 existing contract. This guide does not itself authorize modifying protected

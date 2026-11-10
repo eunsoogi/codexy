@@ -7,10 +7,10 @@ follow the
 Selection can finish with a proposal; it does not authorize execution.
 
 Consume current [strategy evidence](strategy-search.md) and
-[rule applicability evidence](rule-learning.md). MUST NOT infer capability from
-an unsupported self-rating or treat an adopted rule as universally valid. The
-observed successes, failures, uncertainty, and available feedback define the
-current learning boundary.
+[rule applicability evidence](../../self-improvement/references/rule-learning.md).
+MUST NOT infer capability from an unsupported self-rating or treat an adopted
+rule as universally valid. The observed successes, failures, uncertainty, and
+available feedback define the current learning boundary.
 
 ## Choose for information value
 

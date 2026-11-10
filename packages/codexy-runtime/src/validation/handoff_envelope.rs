@@ -1,5 +1,6 @@
 mod classification;
 mod legacy;
+mod policy_compat;
 mod replay;
 mod schema;
 use anyhow::{Result, bail, ensure};
@@ -117,6 +118,27 @@ pub fn validate_handoff_batch(
 ) -> Result<Vec<HandoffEnvelope>> {
     replay::validate_batch(texts, authority)
 }
+
+/// Validate an entire replay against live authority and project it to the
+/// immediately preceding policy. Callers must preserve the original replay and
+/// quiesce writers before using the returned, separate rollback artifact.
+///
+/// # Errors
+/// Returns an error on any authority, integrity, replay, or route mismatch.
+pub fn project_previous_replay(
+    texts: &[&str],
+    authority: &HandoffAuthority,
+) -> Result<Vec<String>> {
+    let stable = authority
+        .stable
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("trusted stable body required"))?;
+    policy_compat::requires_previous_route(stable)?;
+    validate_handoff_batch(texts, authority)?
+        .into_iter()
+        .map(|envelope| policy_compat::project_previous(envelope)?.canonical_json())
+        .collect()
+}
 pub fn migrate_legacy_handoff(text: &str, context: &LegacyContext) -> Result<String> {
     let envelope = legacy::migrate(text, context)?;
     validate_intrinsic(&envelope)?;
@@ -132,14 +154,7 @@ fn parse_envelope(text: &str, cached_stable: Option<&StableHandoff>) -> Result<H
     let Some(cached_stable) = cached_stable else {
         bail!("compact handoff requires the referenced stable body");
     };
-    let stable = StableHandoff {
-        policy_digest: stable_policy_digest(),
-        ..cached_stable.clone()
-    };
-    ensure!(
-        compact.stable_identity == schema::digest_value(&stable, STABLE_PREFIX),
-        "handoff stable identity conflicts with the referenced stable body"
-    );
+    let stable = policy_compat::resolve_stable(cached_stable, &compact.stable_identity)?;
     Ok(HandoffEnvelope {
         schema: compact.schema,
         stable,
@@ -150,10 +165,6 @@ fn parse_envelope(text: &str, cached_stable: Option<&StableHandoff>) -> Result<H
 }
 fn validate_intrinsic(envelope: &HandoffEnvelope) -> Result<()> {
     ensure!(envelope.schema == "codexy.handoff-envelope.v1", "schema");
-    ensure!(
-        envelope.stable.policy_digest == stable_policy_digest(),
-        "policy digest"
-    );
     validate_stable(&envelope.stable)?;
     schema::validate_volatile(&envelope.volatile)?;
     ensure!(
@@ -178,10 +189,7 @@ fn validate_stable(stable: &StableHandoff) -> Result<()> {
         .selected_references
         .iter()
         .try_for_each(|item| schema::token(item, "selected reference"))?;
-    ensure!(
-        stable.selected_references == route.references,
-        "handoff selected references disagree with the canonical route"
-    );
+    policy_compat::validate_policy(stable)?;
     if route.fail_closed {
         ensure!(
             stable.workflow_profile == "strict",

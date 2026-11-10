@@ -18,7 +18,7 @@ SURFACE_PATHS = {
     "core": (
         "agents/catalog.toml",
         "hooks/hooks.json",
-        "skills/wiki/SKILL.md",
+        "skills/self-improvement/SKILL.md",
     ),
     "github": ("agents/catalog.toml", "hooks/hooks.json"),
     "devtools": (),

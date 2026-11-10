@@ -195,7 +195,7 @@ class ResumableContextCapsuleTests(unittest.TestCase):
     def _run(self, capsule: Path, *arguments: str, environment=None):
         suffix = "cmd" if os.name == "nt" else "sh"
         name = f"resumable-context-capsule.{suffix}"
-        launcher = self.plugin / f"skills/dreaming/scripts/{name}"
+        launcher = self.plugin / f"skills/self-improvement/scripts/{name}"
         command = [str(launcher)]
         if os.name == "nt":
             command = [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/c", str(launcher)]
