@@ -33,7 +33,8 @@ def git(directory: Path, *args: str) -> str:
 
 class WikiPathsTest(unittest.TestCase):
     def test_platform_defaults_and_explicit_absolute_override(self):
-        home = Path("/synthetic/home")
+        home = Path(tempfile.gettempdir()).resolve() / "synthetic-home"
+        data, app, custom = (home / name for name in ("data", "app", "custom"))
         self.assertEqual(
             wiki_paths.global_wiki({}, "Darwin", home),
             home / "Library/Application Support/Codexy/wiki",
@@ -42,16 +43,16 @@ class WikiPathsTest(unittest.TestCase):
             wiki_paths.global_wiki({}, "Linux", home), home / ".local/share/codexy/wiki"
         )
         self.assertEqual(
-            wiki_paths.global_wiki({"XDG_DATA_HOME": "/data"}, "Linux", home),
-            Path("/data/codexy/wiki"),
+            wiki_paths.global_wiki({"XDG_DATA_HOME": str(data)}, "Linux", home),
+            data / "codexy/wiki",
         )
         self.assertEqual(
-            wiki_paths.global_wiki({"LOCALAPPDATA": "/app"}, "Windows", home),
-            Path("/app/Codexy/wiki"),
+            wiki_paths.global_wiki({"LOCALAPPDATA": str(app)}, "Windows", home),
+            app / "Codexy/wiki",
         )
         self.assertEqual(
-            wiki_paths.global_wiki({"CODEXY_DATA_HOME": "/custom"}, "Linux", home),
-            Path("/custom/wiki"),
+            wiki_paths.global_wiki({"CODEXY_DATA_HOME": str(custom)}, "Linux", home),
+            custom / "wiki",
         )
         with self.assertRaises(ValueError):
             wiki_paths.global_wiki({"CODEXY_DATA_HOME": "relative"}, "Linux", home)
