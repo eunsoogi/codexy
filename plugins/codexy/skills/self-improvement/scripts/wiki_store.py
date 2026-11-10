@@ -86,7 +86,9 @@ def publish(control: Path, revision: str, directory: str) -> None:
 def initialize(root: Path) -> str:
     """Import one explicitly selected existing Wiki without changing its files."""
     unlinked(root, directory=True)
-    files = initial_files(root)
+    original = initial_files(root)
+    files = dict(original)
+    files["log.md"] += b"\n- Imported existing Wiki into revision storage.\n"
     control = root / ".codexy"
     if control.exists() or control.is_symlink():
         raise ValueError("Wiki revision destination already exists")
@@ -101,7 +103,7 @@ def initialize(root: Path) -> str:
         (staged / "lock").write_bytes(b"0")
         revision, directory = write_revision(staged, files, {})
         publish(staged, revision, directory)
-        if initial_files(root) != files:
+        if initial_files(root) != original:
             raise ValueError("source Wiki changed during import")
         rename_new(staged, control)
         sync_directory(root)
@@ -196,8 +198,12 @@ def commit(root: Path, expected: str, candidate: dict) -> str:
                 raise ValueError("brief budget must be a positive integer")
             current_brief = validate(changes[brief_name].encode("utf-8"), budget)
             if brief_name in metadata["files"]:
+                # The new limit constrains the replacement, not the already
+                # accepted checkpoint needed to verify retained state.
+                prior_budget = max(1, (previous / brief_name).stat().st_size)
                 prior = validate(
-                    read_selected(previous, metadata, brief_name, budget), budget
+                    read_selected(previous, metadata, brief_name, prior_budget),
+                    prior_budget,
                 )
                 validate_transition(prior, current_brief)
         files: dict[str, bytes | Path] = {

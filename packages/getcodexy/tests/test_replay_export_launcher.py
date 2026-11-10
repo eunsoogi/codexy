@@ -20,12 +20,24 @@ class ReplayExportLauncherTest(unittest.TestCase):
         before = replay.read_bytes()
         authority = capsule.parent / "authority" / capsule.name
         output = fixture.plugins.parent / "previous-replay.json"
-        script = fixture.plugin / "skills/self-improvement/scripts/export_previous_replay.py"
-        command = [sys.executable, str(script), "--replay", str(replay), "--authority",
-                   str(authority), "--output", str(output)]
+        script = (
+            fixture.plugin / "skills/self-improvement/scripts/export_previous_replay.py"
+        )
+        command = [
+            sys.executable,
+            str(script),
+            "--replay",
+            str(replay),
+            "--authority",
+            str(authority),
+            "--output",
+            str(output),
+        ]
         result = subprocess.run(command, text=True, capture_output=True, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(json.loads(result.stdout)["schema"], "codexy.previous-replay-export.v1")
+        self.assertEqual(
+            json.loads(result.stdout)["schema"], "codexy.previous-replay-export.v1"
+        )
         self.assertEqual(replay.read_bytes(), before)
         self.assertEqual(len(json.loads(output.read_text())), 1)
 

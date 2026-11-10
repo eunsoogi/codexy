@@ -53,7 +53,7 @@ remain deliberately outside the Codexy plugin payload.
 
 ## Skill path-consumer map
 
-All 15 stable core packaged `skills/<name>/SKILL.md` paths in the inventory
+All 13 stable core packaged `skills/<name>/SKILL.md` paths in the inventory
 above have a matching `skills/<name>/agents/openai.yaml`. The repository-only
 skills use the equivalent `.agents/skills/<name>/` paths. The planning bundle's
 optional `references/**` resources use the existing Skill resources consumer.

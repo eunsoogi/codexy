@@ -40,7 +40,10 @@ def global_wiki(env: Mapping[str, str], system: str, home: Path) -> Path:
         result = absolute(data, "LOCALAPPDATA") / "Codexy/wiki"
     else:
         raise ValueError("unsupported platform: configure CODEXY_DATA_HOME")
-    if result.resolve().is_relative_to(Path(__file__).resolve().parents[3]):
+    resolved = result.resolve()
+    if resolved.is_relative_to(Path(__file__).resolve().parents[3]) or any(
+        (parent / ".codex-plugin/plugin.json").is_file() for parent in resolved.parents
+    ):
         raise ValueError("global Wiki must be outside the plugin distribution")
     return result
 

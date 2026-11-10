@@ -11,14 +11,14 @@ grant permission for future work.
 
 ## Select a mode
 
-Select only the needed mode. **Recover** after compaction or a noisy handoff
-using [current-state recovery](references/recovery.md); it is read-only and MUST
-NOT write memory. **Reflect** separates supported observations, hypotheses, and
-candidate lessons. **Consolidate** compares authorized candidates against
-existing Wiki evidence and records corrections with provenance. **Improve** uses
-the existing strategy and rule-learning contracts below. A simple task MUST NOT
-acquire a full learning loop. Recovery returns its next permitted action without
-waiting for consolidation.
+Select only the needed mode. MUST select **Recover** after compaction or a noisy
+handoff using [current-state recovery](references/recovery.md); it is read-only
+and MUST NOT write memory. **Reflect** separates supported observations,
+hypotheses, and candidate lessons. **Consolidate** compares authorized
+candidates against existing Wiki evidence and records corrections with
+provenance. **Improve** uses the existing strategy and rule-learning contracts
+below. A simple task MUST NOT acquire a full learning loop. Recovery returns its
+next permitted action without waiting for consolidation.
 
 Use [Wiki storage and continuation](references/wiki-storage.md) for scope,
 checkpoint, promotion, migration, and cleanup boundaries. Wiki is context, not

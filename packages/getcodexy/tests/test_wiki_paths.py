@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,6 +15,7 @@ SCRIPT = (
     Path(__file__).resolve().parents[3] / "plugins/codexy/skills/"
     "self-improvement/scripts/wiki_paths.py"
 )
+sys.path.insert(0, str(SCRIPT.parent))
 spec = importlib.util.spec_from_file_location("wiki_paths", SCRIPT)
 wiki_paths = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(wiki_paths)
@@ -115,6 +117,15 @@ class WikiPathsTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 wiki_paths.standalone_scopes(Path("relative"))
             self.assertEqual(os.listdir(tmp), [])
+
+    def test_global_scope_cannot_point_inside_another_plugin_installation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            plugin = root / "other-plugin"
+            (plugin / ".codex-plugin").mkdir(parents=True)
+            (plugin / ".codex-plugin/plugin.json").write_text("{}")
+            with self.assertRaises(ValueError):
+                wiki_paths.global_wiki({"CODEXY_DATA_HOME": str(plugin)}, "Linux", root)
 
 
 if __name__ == "__main__":

@@ -81,7 +81,9 @@ removed unresolved condition or retired failure needs an entry in
 `resolved_conditions` or `retired_failures`, respectively, with `item` and a
 `source` also present in `sources`. A cited resolution remains a claim that MUST
 be verified against the authorized source; structural validation does not prove
-that resolution.
+that resolution. The new budget applies to the replacement. The previous
+checkpoint is read within its own existing byte size so a lower budget can
+actually compress it.
 
 Search an index, read bounded context, and verify sources before use. Report
 unavailable evidence rather than guessing. Verify capsule integrity and live

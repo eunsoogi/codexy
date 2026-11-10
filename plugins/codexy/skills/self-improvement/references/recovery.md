@@ -144,8 +144,8 @@ assumed to understand events created under a newer policy; MUST verify the
 rollback path and replay coverage rather than discard or reset history to make
 validation succeed.
 
-For an explicitly authorized rollback to the immediately preceding bridge,
-the current verified launcher can export a separate compatible replay:
+For an explicitly authorized rollback to the immediately preceding bridge, the
+current verified launcher can export a separate compatible replay:
 `python3 scripts/export_previous_replay.py --replay <source> --authority <trusted-live-authority> --output <new-file>`.
 MUST first stop competing writers and confirm one owner. The authority document
 MUST contain the previous canonical route and the current live lane, owner,
@@ -155,8 +155,8 @@ source or an existing destination. MUST record the returned source and output
 hashes, keep the original for provenance, and verify the source hash has not
 changed before switching. If a writer or source changed, MUST NOT use that
 export. After the switch, the exported replay becomes the active history; MUST
-retain later events there and carry that history forward during any upgrade.
-The exported projection is a rollback artifact, not the original event record.
+retain later events there and carry that history forward during any upgrade. The
+exported projection is a rollback artifact, not the original event record.
 
 Before changing or removing a schema, launcher, or resolver, MUST inventory its
 direct, dynamic, package, and public consumers. If any consumer cannot be

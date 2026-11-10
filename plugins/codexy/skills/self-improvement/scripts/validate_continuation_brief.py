@@ -110,7 +110,10 @@ def main() -> None:
         # Bound the read itself; a huge input must not fill the active context.
         current = read_bounded(args.brief, args.budget_bytes)
         if args.previous is not None:
-            validate_transition(read_bounded(args.previous, args.budget_bytes), current)
+            # Bound the old read to its own size so a smaller new budget does
+            # not erase the evidence needed for the retention comparison.
+            prior_budget = max(1, args.previous.stat().st_size)
+            validate_transition(read_bounded(args.previous, prior_budget), current)
     except (OSError, UnicodeError, ValueError) as error:
         print(f"brief invalid: {error}", file=sys.stderr)
         raise SystemExit(1) from error
