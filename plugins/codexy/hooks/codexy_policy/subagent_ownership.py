@@ -53,9 +53,10 @@ def forbidden(request: Request) -> bool | str:
     message = _message_from_input(tool_input)
     if message is None:
         return "ENVELOPE"
+    operation = request.tool.rsplit("__", 1)[-1]
     # Follow-up targets have no authenticated role metadata in the hook envelope.
-    # Apply the same message policy to every target rather than trusting a role claim.
-    if request.tool.rsplit("__", 1)[-1] in {"send_message", "followup_task"}:
+    # They reuse an existing helper, so they do not create a fresh history boundary.
+    if operation in {"send_message", "followup_task"}:
         target = tool_input.get("target")
         if not isinstance(target, str) or not target.strip():
             return "ENVELOPE"
@@ -63,6 +64,12 @@ def forbidden(request: Request) -> bool | str:
     agent_type = tool_input.get("agent_type")
     if not _is_bounded_role(agent_type):
         return _role_denial(agent_type)
+    # JSON types stay intact, so only the exact string value can satisfy this contract.
+    fork_turns = tool_input.get("fork_turns")
+    if operation == "spawn_agent" and (
+        not isinstance(fork_turns, str) or fork_turns != "none"
+    ):
+        return "FORK_TURNS"
     if durable_owner_requested(message):
         return "DURABLE_OWNER"
     return delegated_work_reason(message) or False
@@ -73,6 +80,17 @@ _DENIAL_GUIDANCE = (
     "This hook does not create or dispatch chats. "
     "구현이나 실행 검증은 Codex 자식 채팅에서 진행하세요. "
     "이 훅은 채팅을 자동 생성하거나 실행하지 않습니다."
+)
+_FORK_TURNS_GUIDANCE = (
+    "This new native-spawn request is missing or has an invalid fork_turns value. "
+    'Set fork_turns="none" explicitly, then correct the request with a bounded, '
+    "self-contained assignment. Preserve already-authorized task and model choices; "
+    "do not ask the user to restate them. Preserve the objective, "
+    "latest relevant corrections, owned scope, authority and restrictions, relevant "
+    "owner/head/artifact identities, completion criteria, unresolved findings, and "
+    "required verification. Include only needed facts and precise source or artifact "
+    "references; do not paste the full parent transcript, unchanged tool bodies, or "
+    "full agent tree. Keep unavailable or missing required evidence explicit."
 )
 _GUIDED_REASONS = frozenset(
     {
@@ -88,6 +106,8 @@ _GUIDED_REASONS = frozenset(
 def forbidden_with_guidance(request: Request) -> bool | str | Diagnostic:
     """Add the child-chat route at the hook boundary without changing classifier callers."""
     result = forbidden(request)
+    if isinstance(result, str) and result == "FORK_TURNS":
+        return Diagnostic(result, _FORK_TURNS_GUIDANCE)
     if isinstance(result, str) and result in _GUIDED_REASONS:
         return Diagnostic(result, _DENIAL_GUIDANCE)
     return result
