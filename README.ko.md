@@ -90,8 +90,13 @@ MCP 서버는 uv와 uvx로 실행됩니다. Codex를 시작하는 host 환경의
 
 - **작업 조정.** 목표와 계획을 세우고 이슈 단위 작업의 담당자를 정해 근거를
   인수인계까지 이어갑니다.
-- **전문 역할.** Orchestrator는 작업을 배정하고 근거를 확인하며, Worker는 맡은
-  작업을 구현하고 검증합니다. Advisor는 범위가 정해진 분석을 제공합니다.
+- **작업 역할.** 이슈 작업의 담당 범위를 분명히 나눕니다.
+  - **Orchestrator.** 전체 목표를 맡고 이슈 작업을 Worker에게 배정합니다. 진행과
+    근거를 확인하고 필요한 수정을 요청한 뒤 결과를 최종 수락합니다.
+  - **Advisor.** 역할 지침에 따라 범위가 정해진 읽기 전용 분석과 조언을
+    제공합니다.
+  - **Worker.** 관리되는 Codex 작업과 worktree에서 할당된 이슈 하나를 맡아
+    구현하고 검증한 뒤, 근거를 Orchestrator에 전달합니다.
 - **검증 안내.** 주장하는 결과에 맞는 확인 방법을 고르고 아직 확인하지 못한
   한계를 드러냅니다.
 - **출처 기반 Wiki.** 인용과 최신성 정보를 갖춘 주제별 Wiki를 관리합니다.
@@ -100,6 +105,10 @@ MCP 서버는 uv와 uvx로 실행됩니다. Codex를 시작하는 host 환경의
 - **개발 도구.** Codegraph로 저장소 관계와 변경 영향을 살피고, 사용할 수 있는
   language server가 있으면 LSP로 코드를 탐색합니다. 체크 추천은 참고 정보이며
   실제 체크를 실행하지는 않습니다.
+
+[orchestration 안내](plugins/codexy/skills/orchestration/SKILL.md)와
+[Worker routing policy](plugins/codexy/skills/orchestration/references/child-routing-policy.md)에서
+담당 범위와 Worker 배정 기준을 확인할 수 있습니다.
 
 진행 중인 작업에 다른 전문성이 필요하면 Codexy는 Orchestrator가 담당자를 바꾸는
 방안을 검토하도록 안내합니다. 실제 작업 담당자는 Codex host가 결정합니다. 자세한
