@@ -99,13 +99,6 @@ environment that starts Codex.
 
 - **Task coordination.** Set goals, plans, and clear ownership for issue-sized
   work, then carry relevant evidence through the handoff.
-- **Task roles.** Each issue lane has a clear owner:
-  - **Orchestrator.** Owns the overall goal, delegates issue work to Workers,
-    checks evidence, directs corrections, and accepts the result.
-  - **Advisor.** Provides bounded, read-only analysis and advice under its role
-    instructions.
-  - **Worker.** Owns one assigned issue in its managed Codex task and worktree,
-    implementing and verifying it and returning evidence to the Orchestrator.
 - **Verification guidance.** Choose checks that match the result being claimed
   and keep unresolved limits visible.
 - **Source-backed Wiki.** Build a focused topic Wiki with citations and
@@ -116,9 +109,22 @@ environment that starts Codex.
   impact, and LSP for language-aware navigation when a compatible server is
   available. Check recommendations are advisory; they do not run checks.
 
+### Model roles and reasoning effort
+
+Codexy separates issue-task ownership from packaged specialist agents. These
+model/effort pairs are requested routing settings; effective host values remain
+unknown when the host does not expose them.
+
+| Role                         | Model           | Reasoning effort | Responsibility                                                                                                                                                                                           |
+| ---------------------------- | --------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Orchestrator / parent        | `gpt-6.1-sol`   | `low`            | Owns the overall goal, delegates and coordinates Worker assignments, verifies evidence, directs corrections, and accepts results.                                                                        |
+| Advisor / `codexy-advisor`   | `gpt-6-astra`   | `medium`         | Provides bounded, instruction-based read-only analysis and advice. It does not edit, delegate, change ownership, or grant final approval; this instruction boundary does not enforce host permissions.   |
+| Worker / default             | `gpt-6-luna`    | `max`            | Owns one assigned issue in its managed Codex task/worktree, implements and verifies it, then returns evidence. This is the default for ordinary, simple, bounded, and general implementation work.       |
+| Worker / evidenced hard work | `gpt-6.1-terra` | `medium`         | A new general Worker receives this pair only when valid hard-work facts show coupled contract changes, algorithm design, or cross-boundary diagnosis; the general classification alone does not qualify. |
+
 See the [orchestration guide](plugins/codexy/skills/orchestration/SKILL.md) and
 [Worker routing policy](plugins/codexy/skills/orchestration/references/child-routing-policy.md)
-for detailed ownership and routing rules.
+for detailed role ownership and routing rules.
 
 When an active task needs different expertise, Codexy guides the Orchestrator in
 deciding whether another Worker should take over. The Codex host determines who
