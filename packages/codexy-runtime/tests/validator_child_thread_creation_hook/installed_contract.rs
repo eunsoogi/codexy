@@ -68,7 +68,7 @@ fn worker_creation_diagnostics_describe_both_supported_pairs_and_orchestrator_re
             "UNSUPPORTED_THINKING",
         ),
         (
-            "legacy Sol delivery pair",
+            "unsupported Sol/Medium Worker pair",
             json!({"model":"gpt-6.1-sol","thinking":"medium"}),
             "UNSUPPORTED_MODEL",
         ),

@@ -6,18 +6,12 @@ use super::{
     thread_capabilities::{self, RecipientAssignment, ThreadCapabilities},
 };
 
-// New creation excludes the legacy Sol pair, while delivery must preserve existing recipients.
-const LEGACY_WORKER_MODEL: &str = "gpt-6.1-sol";
-const LEGACY_WORKER_THINKING: &str = "medium";
 pub(super) const WORKER_CREATION_ROUTES: [(&str, &str); 2] = [
     (SIMPLE_WORKER_MODEL, SIMPLE_WORKER_THINKING),
     (HARD_WORKER_MODEL, HARD_WORKER_THINKING),
 ];
-pub(super) const WORKER_DELIVERY_ROUTES: [(&str, &str); 3] = [
-    (SIMPLE_WORKER_MODEL, SIMPLE_WORKER_THINKING),
-    (HARD_WORKER_MODEL, HARD_WORKER_THINKING),
-    (LEGACY_WORKER_MODEL, LEGACY_WORKER_THINKING),
-];
+// Authenticated delivery uses the creation allowlist; existing assignments get no exception.
+pub(super) const WORKER_DELIVERY_ROUTES: [(&str, &str); 2] = WORKER_CREATION_ROUTES;
 
 pub(super) fn deserialize_bounds<'de, D>(
     deserializer: D,
