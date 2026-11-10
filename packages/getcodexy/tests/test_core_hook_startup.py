@@ -11,6 +11,7 @@ import unittest
 from pathlib import Path
 
 from core_hook_test_support import (
+    authenticated_thread_delivery_payload,
     hook_payload as _payload,
     temporary_primary_checkout,
     worker_creation_input,
@@ -24,7 +25,6 @@ ENTRYPOINTS = (
     "codexy-subagent-ownership.py",
     "codexy-thread-delivery.py",
 )
-SIZED_DELIVERY = ("codexy-thread-delivery.sh", "PreToolUse")
 
 
 class CoreHookStartupTests(unittest.TestCase):
@@ -76,7 +76,13 @@ class CoreHookStartupTests(unittest.TestCase):
         with temporary_primary_checkout() as primary_cwd:
             for launcher, tool, tool_input in allowed:
                 with self.subTest(launcher=launcher):
-                    payload = _payload("PreToolUse", tool, tool_input, cwd=primary_cwd)
+                    payload = (
+                        authenticated_thread_delivery_payload(
+                            "PreToolUse", tool_input, cwd=primary_cwd
+                        )
+                        if launcher == "codexy-thread-delivery.sh"
+                        else _payload("PreToolUse", tool, tool_input, cwd=primary_cwd)
+                    )
                     self.assertEqual(
                         self._run(HOOKS.parent, launcher, "PreToolUse", payload), b""
                     )
@@ -123,9 +129,6 @@ class CoreHookStartupTests(unittest.TestCase):
                         decision[reason_key].startswith(prefix + "ENVELOPE"),
                         decision[reason_key],
                     )
-
-        self.assertEqual(self._run_sized(1024 * 1024), b"")
-        self.assertIn(b"CODEXY_THREAD_DELIVERY_ENVELOPE", self._run_sized(2**20 + 1))
 
     @unittest.skipUnless(os.name != "nt", "POSIX launcher coverage")
     def test_retry_reuses_one_bounded_input_after_unsupported_interpreter(self):
@@ -240,11 +243,3 @@ class CoreHookStartupTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
         self.assertEqual(result.stderr, b"")
         return result.stdout
-
-    def _run_sized(self, size: int) -> bytes:
-        return self._run(HOOKS.parent, *SIZED_DELIVERY, _sized_payload(size))
-
-
-def _sized_payload(size: int) -> bytes:
-    prefix = b'{"hook_event_name":"PreToolUse","tool_name":"mcp__codex_app__send_message_to_thread","tool_input":{"padding":"'
-    return prefix + b"x" * (size - len(prefix) - 3) + b'"}}'

@@ -44,22 +44,16 @@ DIRECTIONS = frozenset({"root_to_child", "child_to_parent"})
 
 
 def forbidden(request: Request) -> bool | str | Diagnostic | Advisory:
-    # Hosts that do not yet emit the v2 envelope keep the legacy no-op
-    # admission path. Once the field is present, every v2 check below remains
-    # fail-closed; absence never promotes transcript or message content to
-    # routing authority.
+    # Without the host envelope, request fields cannot establish route authority.
     if not request.routing_metadata_present:
-        return False
+        return Diagnostic("MISSING_ROUTING_METADATA", _MISSING_ROUTING)
     session = request.session_id
     if not _non_empty_string(session):
         return Diagnostic("MISSING_IDENTITY", _MISSING_IDENTITY)
     # The host-authenticated sender/target pair is the bounded replacement for
     # native create_thread provenance; this consumer never reconstructs it from
     # transcript records or handoff prose.
-    metadata = _routing_metadata(
-        request.routing_metadata,
-        request.routing_metadata_present,
-    )
+    metadata = _routing_metadata(request.routing_metadata)
     if isinstance(metadata, Diagnostic):
         return metadata
     metadata = cast(dict[str, object], metadata)
@@ -112,9 +106,7 @@ def forbidden(request: Request) -> bool | str | Diagnostic | Advisory:
     return False
 
 
-def _routing_metadata(value: object, present: bool) -> dict[str, object] | Diagnostic:
-    if not present:
-        return Diagnostic("MISSING_ROUTING_METADATA", _MISSING_ROUTING)
+def _routing_metadata(value: object) -> dict[str, object] | Diagnostic:
     if not isinstance(value, dict):
         return Diagnostic("MALFORMED_ROUTING_METADATA", _MALFORMED_ROUTING)
     metadata = cast(dict[str, object], value)

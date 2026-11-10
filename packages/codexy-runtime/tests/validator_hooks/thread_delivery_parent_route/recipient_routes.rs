@@ -160,25 +160,27 @@ fn terra_followup_cannot_elevate_a_luna_assigned_fork() -> TestResult {
 }
 
 #[test]
-fn metadata_absence_keeps_the_legacy_noop_separate() -> TestResult {
+fn metadata_absence_is_denied_on_both_hooks() -> TestResult {
     let temp = tempfile::tempdir()?;
     let transcript = temp.path().join("ignored.jsonl");
     std::fs::write(&transcript, b"not-json\n")?;
     let roots = plugin_roots(temp.path())?;
 
-    for root in &roots {
-        assert_admitted(
-            run(
-                root,
-                "PreToolUse",
-                &transcript,
-                Some(ORCHESTRATOR_ID),
-                input(WORKER_ID, "gpt-6.1-sol", "medium", "legacy"),
-                None,
-            )?,
-            "PreToolUse",
-            "legacy-metadata-absent",
-        )?;
+    for event in EVENTS {
+        for root in &roots {
+            assert_denied(
+                run(
+                    root,
+                    event,
+                    &transcript,
+                    Some(ORCHESTRATOR_ID),
+                    input(WORKER_ID, "gpt-6.1-sol", "medium", "legacy"),
+                    None,
+                )?,
+                event,
+                "MISSING_ROUTING_METADATA",
+            )?;
+        }
     }
     Ok(())
 }

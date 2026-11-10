@@ -80,7 +80,7 @@ fn field_denials_are_actionable_on_authoritative_and_installed_hooks() -> TestRe
 }
 
 #[test]
-fn identity_and_present_routing_denials_are_distinct_and_non_leaking() -> TestResult {
+fn identity_and_routing_denials_are_distinct_and_non_leaking() -> TestResult {
     let temp = tempfile::tempdir()?;
     let transcript = temp.path().join("ignored.jsonl");
     std::fs::write(&transcript, b"not-json\n")?;
@@ -113,15 +113,26 @@ fn identity_and_present_routing_denials_are_distinct_and_non_leaking() -> TestRe
             assert!(missing_identity.contains("MUST NOT retry blindly"));
             assert!(!missing_identity.contains(ORCHESTRATOR_ID));
 
-            let legacy = run(
-                root,
+            let missing_metadata = reason(
+                run(
+                    root,
+                    event,
+                    &transcript,
+                    Some(WORKER_ID),
+                    json!({
+                        "threadId":OTHER,
+                        "model":"gpt-6.1-luna",
+                        "thinking":"max",
+                        "prompt":"untrusted route text"
+                    }),
+                    None,
+                )?,
                 event,
-                &transcript,
-                Some(WORKER_ID),
-                input.clone(),
-                None,
             )?;
-            assert_admitted(legacy, event, "legacy-metadata-absent")?;
+            assert!(missing_metadata.contains("MISSING_ROUTING_METADATA"));
+            assert!(missing_metadata.contains("MUST NOT retry blindly"));
+            assert!(!missing_metadata.contains(WORKER_ID));
+            assert!(!missing_metadata.contains(ORCHESTRATOR_ID));
 
             let malformed = reason(
                 run(
