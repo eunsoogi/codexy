@@ -35,11 +35,24 @@ fn strict_signals_are_complete_and_negation_aware() -> TestResult {
             true,
         )?;
     }
+    assert_profile_result(
+        "materially shared executable contracts require strict evidence",
+        "Workflow profile: light\nTask kind: materially shared executable-contract change",
+        false,
+    )?;
+    assert_profile_result(
+        "a negated shared-contract risk does not require strict evidence",
+        "Workflow profile: standard\nTask kind: no shared executable-contract change",
+        true,
+    )?;
     for task_kind in [
         "no security concerns",
         "non-security documentation",
         "not a release",
         "without secret material",
+        "no shared executable-contract changes",
+        "no materially shared executable-contract changes",
+        "not a materially shared executable-contract change",
     ] {
         assert_profile_result(
             "negated strict signal remains lightweight",
@@ -48,6 +61,35 @@ fn strict_signals_are_complete_and_negation_aware() -> TestResult {
         )?;
     }
     Ok(())
+}
+
+#[test]
+fn plural_shared_contract_risk_respects_negation_and_quotation() -> TestResult {
+    for risk in [
+        "materially shared executable contracts",
+        "shared executable contracts",
+    ] {
+        assert_profile_result(
+            "plural shared-contract risk cannot be downgraded to light",
+            &format!("Workflow profile: light\nTask kind: {risk}"),
+            false,
+        )?;
+    }
+    for negated_risk in [
+        "no materially shared executable contracts",
+        "no shared executable contracts",
+    ] {
+        assert_profile_result(
+            "negated plural shared-contract risk remains standard",
+            &format!("Workflow profile: standard\nTask kind: {negated_risk}"),
+            true,
+        )?;
+    }
+    assert_profile_result(
+        "quoted plural shared-contract wording does not assert risk",
+        "Workflow profile: standard\nTask kind: ordinary mutation\nQuoted example: `materially shared executable contracts`",
+        true,
+    )
 }
 
 #[test]
