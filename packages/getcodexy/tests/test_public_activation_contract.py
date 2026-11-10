@@ -109,7 +109,7 @@ class PublicActivationContractTests(unittest.TestCase):
     def test_ordinary_source_edits_do_not_require_repinning(self) -> None:
         repository = Path(__file__).resolve().parents[3]
         edits = {
-            "codexy": "skills/wiki/SKILL.md",
+            "codexy": "skills/self-improvement/SKILL.md",
             "codexy-github": "skills/git-workflow/SKILL.md",
         }
         for component, relative in edits.items():

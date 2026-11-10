@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from contextlib import contextmanager
 import importlib.util
 import json
@@ -10,12 +11,16 @@ import threading
 import unittest
 from pathlib import Path
 
-from core_hook_test_support import temporary_primary_checkout, worker_creation_input
+from core_hook_test_support import (
+    TIMING_ENV,
+    run_timed_core_hook_case,
+    temporary_primary_checkout,
+    worker_creation_input,
+)
 
 
 ROOT = Path(__file__).resolve().parents[3]
 PLUGIN = ROOT / "plugins/codexy"
-TIMING_ENV = "CODEXY_CORE_HOOK_TIMING_FILE"
 MAX_BYTES = 1024 * 1024
 FIELDS = {"event", "concern", "elapsed", "decision"}
 CASES = (
@@ -214,36 +219,15 @@ class CoreHookTimingTests(unittest.TestCase):
             (result.returncode, result.stdout, result.stderr), (0, b"", b"")
         )
 
-    def _run_case(self, plugin, stem, tool, tool_input, timing_file=None):
-        environment = os.environ.copy()
-        environment["PLUGIN_ROOT"] = str(plugin)
-        environment.pop(TIMING_ENV, None)
-        if timing_file is not None:
-            environment[TIMING_ENV] = str(timing_file)
-        path = plugin / "hooks" / f"{stem}.{'cmd' if os.name == 'nt' else 'sh'}"
-        command = [str(path), "PreToolUse"]
-        if os.name == "nt":
-            command = [
-                os.environ.get("COMSPEC", "cmd.exe"),
-                "/d",
-                "/c",
-                "call",
-                *command,
-            ]
-        return subprocess.run(
-            command,
-            input=json.dumps(
-                {
-                    "cwd": str(plugin.parent.resolve()),
-                    "hook_event_name": "PreToolUse",
-                    "tool_name": tool,
-                    "tool_input": tool_input,
-                }
-            ).encode(),
-            capture_output=True,
-            env=environment,
-            check=False,
-        )
+    def _run_case(
+        self,
+        plugin: Path,
+        stem: str,
+        tool: str,
+        tool_input: Mapping[str, object],
+        timing_file: Path | None = None,
+    ) -> subprocess.CompletedProcess[bytes]:
+        return run_timed_core_hook_case(plugin, stem, tool, tool_input, timing_file)
 
 
 if __name__ == "__main__":

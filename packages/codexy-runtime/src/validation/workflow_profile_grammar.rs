@@ -101,23 +101,27 @@ fn signal_end(tokens: &[Token], index: usize) -> Option<usize> {
 fn compound_signal(tokens: &[Token], index: usize) -> Option<usize> {
     let token = tokens[index].text.as_str();
     let next = tokens.get(index + 1).map(|token| token.text.as_str());
-    matches!(
-        (token, next),
-        ("high", Some("risk")) | ("merge", Some("sensitive"))
-    )
-    .then_some(2)
-    .or_else(|| {
-        matches!(
-            (
-                token,
-                next,
-                tokens.get(index + 2).map(|token| token.text.as_str()),
-                tokens.get(index + 3).map(|token| token.text.as_str()),
-            ),
-            ("high", Some("consequence"), Some("external"), Some("state"))
-        )
-        .then_some(4)
-    })
+    let third = tokens.get(index + 2).map(|token| token.text.as_str());
+    let fourth = tokens.get(index + 3).map(|token| token.text.as_str());
+    let previous = index
+        .checked_sub(1)
+        .and_then(|previous| tokens.get(previous))
+        .map(|token| token.text.as_str());
+    match (token, next, third, fourth) {
+        ("high", Some("risk"), _, _) | ("merge", Some("sensitive"), _, _) => Some(2),
+        // Singular and plural noun forms describe the same cross-owner interface risk.
+        ("materially", Some("shared"), Some("executable"), Some("contract" | "contracts")) => {
+            Some(4)
+        }
+        // Shared contracts remain strict by their cross-owner interface risk, even without merge wording.
+        ("shared", Some("executable"), Some("contract" | "contracts"), _)
+            if previous != Some("materially") =>
+        {
+            Some(3)
+        }
+        ("high", Some("consequence"), Some("external"), Some("state")) => Some(4),
+        _ => None,
+    }
 }
 
 fn category_negated(tokens: &[Token], index: usize) -> bool {

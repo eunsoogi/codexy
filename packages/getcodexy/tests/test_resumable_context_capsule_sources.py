@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[3]
 PLUGIN_FILES = tuple(
-    "skills/dreaming/scripts/resumable-context-capsule.sh skills/dreaming/scripts/resumable-context-capsule.cmd skills/dreaming/scripts/resumable_context_capsule.py".split()
+    "skills/self-improvement/scripts/resumable-context-capsule.sh skills/self-improvement/scripts/resumable-context-capsule.cmd skills/self-improvement/scripts/resumable_context_capsule.py".split()
 )
 RUNTIME_SCHEMA = ROOT / "packages/codexy-runtime/schemas/handoff-runtime.schema.json"
 

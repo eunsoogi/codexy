@@ -5,7 +5,7 @@ NOT delete, overwrite, or rename existing topic data.
 
 1. Read the complete topic tree and snapshot its bytes.
 2. Before any write, validate provenance and freshness using
-   [Minimal Contract](minimal-contract.md). Any contract failure MUST stop
+   [Minimal Contract](wiki-minimal-contract.md). Any contract failure MUST stop
    migration, report the gap, and leave all topic bytes unchanged.
 3. Apply the minimal contract's raw-history rules to every source change.
 4. Stage derived changes and the contract-required operation record outside the

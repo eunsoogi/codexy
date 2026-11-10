@@ -5,7 +5,7 @@ owner and worktree, base and head, dirty-index state, checks, unresolved review
 threads, selected reviewer state, verification, external gates, and the next
 action. This describes transported state; it does not require refreshing every
 listed surface during recovery. Use
-[Dreaming's current-state procedure](../../dreaming/SKILL.md#refresh-current-state)
+[Self-improvement's current-state procedure](../../self-improvement/references/recovery.md#refresh-current-state)
 to select relevant live facts. Omitted safety state is typed and never treated
 as proof of absence.
 
@@ -83,7 +83,7 @@ The routes are:
   `proof_completion`
 - `spreadsheets/data`: `workflow_profiles` → `task_classification` →
   `proof_completion`
-- `research/wiki`: `dreaming`
+- `research/wiki`: `self-improvement`
 - `read-only/local`: `task_classification`
 
 The GitHub surface alone selects general completion and public-extension

@@ -72,5 +72,6 @@ Return either the distinct fused candidate and its validation status, or the
 no-fusion decision, with provenance, compatibility/benefit reasons, and limits.
 Required changes to the goal or authority go to the orchestrator rather than
 being silently adopted. Reusable-rule adoption belongs to
-[rule learning](rule-learning.md). Fusion MUST NOT choose future learning tasks
-or replace review, completion, merge, or publication gates.
+[rule learning](../../self-improvement/references/rule-learning.md). Fusion MUST
+NOT choose future learning tasks or replace review, completion, merge, or
+publication gates.

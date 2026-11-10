@@ -45,10 +45,12 @@ Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
 New-role thread creation and delivery MUST use the explicit model/effort pair
 from the [child-routing policy](child-routing-policy.md). Recovery of the same
 objective MUST use its source values under that policy, with requested values
-kept separate from host-exposed effective settings. The ordered fork, checkout
-association, topology-specific preservation, archive, and acceptance sequence is
-owned by [goal-lifecycle](../../goal-lifecycle/SKILL.md); role defaults and
-sender settings MUST NOT override the source pair.
+kept separate from host-exposed effective settings. The same-directory fork,
+actual CWD and Git check, source-chat archive, and post-archive acceptance
+sequence is owned by [goal-lifecycle](../../goal-lifecycle/SKILL.md). Artifact
+listings and separate lifetime guarantees MUST NOT become gates when the exact
+checkout runs successfully; role defaults and sender settings MUST NOT override
+the source pair.
 
 ## Message visibility and style
 
