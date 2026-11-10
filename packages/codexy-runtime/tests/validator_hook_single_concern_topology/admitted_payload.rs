@@ -20,7 +20,8 @@ pub(super) fn admitted_payload(concern: &Concern, event: &str) -> TestResult<Val
                 "environment":{"type":"worktree"}
             }
         }),
-        "subagent-ownership" => json!({"agent_type":"explorer","message":"Bounded read-only inspection."}),
+        // Valid native spawn fixtures request the required no-history setting.
+        "subagent-ownership" => json!({"agent_type":"explorer","message":"Bounded read-only inspection.","fork_turns":"none"}),
         _ => unreachable!(),
     };
     let cwd = if concern.id == "child-thread-creation" {
