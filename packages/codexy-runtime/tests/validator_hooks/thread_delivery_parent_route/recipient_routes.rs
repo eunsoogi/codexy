@@ -4,14 +4,14 @@ use serde_json::json;
 
 use super::super::thread_delivery_support::{
     CHILD as WORKER_ID, OTHER, PARENT as ORCHESTRATOR_ID, assert_admitted,
-    assert_deprecated_context, assert_denied, input, plugin_roots, route, run,
+    assert_denied, input, plugin_roots, route, run,
 };
 use crate::support::TestResult;
 
 const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
 
 #[test]
-fn assigned_and_legacy_worker_pairs_admit_on_both_hooks() -> TestResult {
+fn assigned_worker_pairs_admit_on_both_hooks() -> TestResult {
     let temp = tempfile::tempdir()?;
     let transcript = temp.path().join("ignored.jsonl");
     std::fs::write(&transcript, b"not-json\n")?;
@@ -19,7 +19,6 @@ fn assigned_and_legacy_worker_pairs_admit_on_both_hooks() -> TestResult {
     let pairs = [
         ("gpt-6-luna", "max"),
         ("gpt-6.1-terra", "medium"),
-        ("gpt-6.1-sol", "medium"),
     ];
 
     for event in EVENTS {
@@ -39,11 +38,7 @@ fn assigned_and_legacy_worker_pairs_admit_on_both_hooks() -> TestResult {
                         thinking,
                     )),
                 )?;
-                if *event == "PreToolUse" && (model, thinking) == ("gpt-6.1-sol", "medium") {
-                    assert_deprecated_context(output, event, "legacy Worker route")?;
-                } else {
-                    assert_admitted(output, event, "Orchestrator-to-Worker")?;
-                }
+                assert_admitted(output, event, "Orchestrator-to-Worker")?;
             }
         }
     }
@@ -59,7 +54,10 @@ fn recipient_pair_rejects_crossed_settings_and_argument_mismatch() -> TestResult
 
     for event in EVENTS {
         for root in &roots {
-            for (model, thinking) in [("gpt-6-luna", "medium"), ("gpt-6.1-sol", "max")] {
+            for (model, thinking) in [
+                ("gpt-6-luna", "medium"),
+                ("gpt-6.1-terra", "max"),
+            ] {
                 assert_denied(
                     run(
                         root,
@@ -85,13 +83,13 @@ fn recipient_pair_rejects_crossed_settings_and_argument_mismatch() -> TestResult
                     event,
                     &transcript,
                     Some(ORCHESTRATOR_ID),
-                    input(WORKER_ID, "gpt-6-luna", "max", "receipt"),
+                    input(WORKER_ID, "gpt-6.1-terra", "medium", "receipt"),
                     Some(route(
                         "root_to_child",
                         ORCHESTRATOR_ID,
                         WORKER_ID,
-                        "gpt-6.1-sol",
-                        "medium",
+                        "gpt-6-luna",
+                        "max",
                     )),
                 )?,
                 event,
@@ -103,13 +101,31 @@ fn recipient_pair_rejects_crossed_settings_and_argument_mismatch() -> TestResult
                     event,
                     &transcript,
                     Some(ORCHESTRATOR_ID),
-                    input(OTHER, "gpt-6.1-sol", "medium", "receipt"),
+                    input(WORKER_ID, "gpt-6-luna", "high", "receipt"),
                     Some(route(
                         "root_to_child",
                         ORCHESTRATOR_ID,
                         WORKER_ID,
-                        "gpt-6.1-sol",
-                        "medium",
+                        "gpt-6-luna",
+                        "max",
+                    )),
+                )?,
+                event,
+                "UNSUPPORTED_THINKING",
+            )?;
+            assert_denied(
+                run(
+                    root,
+                    event,
+                    &transcript,
+                    Some(ORCHESTRATOR_ID),
+                    input(OTHER, "gpt-6-luna", "max", "receipt"),
+                    Some(route(
+                        "root_to_child",
+                        ORCHESTRATOR_ID,
+                        WORKER_ID,
+                        "gpt-6-luna",
+                        "max",
                     )),
                 )?,
                 event,
@@ -200,13 +216,13 @@ fn recipient_route_rejects_wrong_senders_and_malformed_envelopes() -> TestResult
                     event,
                     &transcript,
                     Some(ORCHESTRATOR_ID),
-                    input(WORKER_ID, "gpt-6.1-sol", "medium", "receipt"),
+                    input(WORKER_ID, "gpt-6-luna", "max", "receipt"),
                     Some(route(
                         "root_to_child",
                         OTHER,
                         WORKER_ID,
-                        "gpt-6.1-sol",
-                        "medium",
+                        "gpt-6-luna",
+                        "max",
                     )),
                 )?,
                 event,
@@ -218,7 +234,7 @@ fn recipient_route_rejects_wrong_senders_and_malformed_envelopes() -> TestResult
                     event,
                     &transcript,
                     Some(ORCHESTRATOR_ID),
-                    input(WORKER_ID, "gpt-6.1-sol", "medium", "receipt"),
+                    input(WORKER_ID, "gpt-6-luna", "max", "receipt"),
                     Some(json!({"authenticated":true})),
                 )?,
                 event,

@@ -60,12 +60,13 @@ fn recipient_follow_ups_require_assignment_and_advertised_capabilities() -> Test
             "Recipient-bound follow-up routing requires recipient_assignment in schema v2; sender settings are not a substitute.",
         ),
         (
+            // Keep the assignment supported so this case isolates advertised-capability rejection.
             json!({
                 "schema":"codexy.child-routing-request.v2",
                 "classification":"general",
                 "codex_thread_operation":"send_message_to_thread",
                 "codex_thread_direction":"parent_to_generic",
-                "recipient_assignment":{"model":"gpt-6.1-sol","thinking":"medium"},
+                "recipient_assignment":{"model":"gpt-6.1-terra","thinking":"medium"},
                 "codex_thread_capabilities":{"models":[{"model":"gpt-6-luna","thinking":["max"]}]}
             }),
             "Assigned recipient model and thinking are not supported by declared thread capabilities.",

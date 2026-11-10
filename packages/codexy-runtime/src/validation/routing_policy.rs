@@ -187,7 +187,7 @@ fn contract() -> Policy {
             .collect(),
         fallback: "root_or_named_specialist".to_owned(),
         delivery: Delivery {
-            // Keep existing-recipient delivery independent from new creation admission.
+            // Keep delivery's allowlist aligned with new Worker creation admission.
             parent_to_generic: WORKER_DELIVERY_ROUTES
                 .iter()
                 .map(|(model, thinking)| Route {

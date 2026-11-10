@@ -6,7 +6,7 @@ use super::*;
 const PARENT: (&str, &str) = ("gpt-6.1-sol", "low");
 
 #[test]
-fn resolver_keeps_recipient_settings_for_all_worker_delivery_pairs() -> TestResult {
+fn resolver_allows_only_creation_pairs_for_worker_delivery() -> TestResult {
     for pair in [
         LUNA,
         TERRA,
@@ -23,7 +23,7 @@ fn resolver_keeps_recipient_settings_for_all_worker_delivery_pairs() -> TestResu
         followup["recipient_assignment"] = json!({"model":pair.0,"thinking":pair.1});
         followup["codex_thread_capabilities"] =
             request("general", pair)["codex_thread_capabilities"].clone();
-        let expected = if [LUNA, TERRA, SOL].contains(&pair) {
+        let expected = if [LUNA, TERRA].contains(&pair) {
             selected("parent_to_generic", "send_message_to_thread", pair)
         } else {
             json!({"route":"root_or_named_specialist","reason":"Assigned recipient model and thinking do not form a supported Worker pair."})
@@ -34,7 +34,7 @@ fn resolver_keeps_recipient_settings_for_all_worker_delivery_pairs() -> TestResu
     crossed["schema"] = json!("codexy.child-routing-request.v2");
     crossed["codex_thread_operation"] = json!("send_message_to_thread");
     crossed["codex_thread_direction"] = json!("parent_to_generic");
-    crossed["recipient_assignment"] = json!({"model":SOL.0,"thinking":SOL.1});
+    crossed["recipient_assignment"] = json!({"model":TERRA.0,"thinking":TERRA.1});
     check(
         crossed,
         json!({"route":"root_or_named_specialist","reason":"Assigned recipient model and thinking are not supported by declared thread capabilities."}),
@@ -82,7 +82,7 @@ fn resolver_keeps_recipient_settings_for_all_worker_delivery_pairs() -> TestResu
 }
 
 #[test]
-fn issue_1442_creation_selection_is_preserved_in_recipient_followup() -> TestResult {
+fn creation_selection_is_preserved_in_recipient_followup() -> TestResult {
     let mut assignments = vec![
         request("general", LUNA),
         request("simple", LUNA),
