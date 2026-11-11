@@ -105,7 +105,7 @@ pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
         .as_deref()
         .filter(|value| !value.trim().is_empty())
     {
-        if !known_specialist(plugin_root, &policy, &agent_type)? {
+        if !known_specialist(plugin_root, &policy, agent_type)? {
             bail!("Worker routing request names an unknown packaged specialist");
         }
         return Ok(json!({"route":"named_specialist","agent_type":agent_type}));
