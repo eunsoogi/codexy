@@ -104,6 +104,10 @@ fn local_projectless_and_incomplete_targets_are_rejected() -> TestResult {
             json!({"target":{"type":"project","projectId":"","environment":{"type":"worktree"}}}),
         ),
         (
+            "project identity with surrounding whitespace",
+            json!({"target":{"type":"project","projectId":" local-test-project ","environment":{"type":"worktree"}}}),
+        ),
+        (
             "worktree without project target",
             json!({"target":{"environment":{"type":"worktree"}}}),
         ),
