@@ -161,6 +161,9 @@ new ledger or record format.
 
 ## Waiting and direct correction
 
+For a denied or uncertain Worker creation call, Codex MUST follow
+[Worker creation denial recovery](parent-supervision/worker-creation-denial-recovery.md).
+
 - A new child blocked report MUST follow the
   [Advisor consultation procedure](advisor-consultation.md#a-new-child-blocked-report)
   before disposition, without waiting for three failures. The Orchestrator MUST
