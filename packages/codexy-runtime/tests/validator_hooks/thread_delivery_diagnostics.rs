@@ -27,6 +27,13 @@ fn unsupported_models_and_crossed_pairs_have_actionable_corrections() -> TestRes
             "model",
         ),
         (
+            "unsupported effort",
+            "gpt-6-luna",
+            "ultra",
+            "UNSUPPORTED_THINKING",
+            "thinking",
+        ),
+        (
             "Sol crossed with max",
             "gpt-6.1-sol",
             "max",
