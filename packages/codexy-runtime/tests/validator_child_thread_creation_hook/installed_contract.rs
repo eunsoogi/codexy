@@ -2,6 +2,9 @@
 
 use super::*;
 
+#[path = "model_feedback.rs"]
+mod model_feedback;
+
 #[test]
 fn windows_permission_request_runtime_failure_fallback_is_valid_json() -> TestResult {
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy");
@@ -145,12 +148,16 @@ fn malformed_creation_input_keeps_the_same_orchestrator_repair_guidance() -> Tes
 fn assert_worker_selection_guidance(reason: &str, label: &str) {
     for requirement in [
         "already-authorized Worker assignment",
-        "default or hard from the task evidence",
+        "reuse any already-selected Worker pair",
+        "if none is selected, classify the task evidence",
         "canonical child-routing policy",
+        "ordinary work uses model='gpt-6-luna' and thinking='max'",
+        "only when the task evidence meets the hard-work criteria",
         "MUST NOT ask the user to select or reconfirm model, thinking, or worktree",
-        "correct the indicated fields in the original create_thread request",
+        "MUST correct only the identified fields in the original create_thread request",
         "continue creating and assigning the Worker",
-        "report the exact host limitation",
+        "inspect that exact result to distinguish a newly identified input error",
+        "For a host restriction, report the exact limitation",
         "does not create authority for a new task",
     ] {
         assert!(
