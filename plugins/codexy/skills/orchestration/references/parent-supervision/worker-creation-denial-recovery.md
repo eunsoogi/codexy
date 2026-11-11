@@ -51,15 +51,25 @@ occurred MUST remain uncertain. A denial label alone MUST NOT prove that no
 child was created or that the host rejected the operation for a permission
 reason.
 
-## Correct only the original authorized request
+## Retry after a verified correction
 
-Codex MUST retry a denied creation only when the original assignment remains
-authorized, the feedback identifies a correctable field, and an authoritative
-source provides the corrected value. Codex MUST change only the identified
-fields in the original request while preserving the issue, owner, saved project,
-app-managed worktree, and selected model pair. A retry MUST materially correct
-the failing request; repeating the same arguments or asking the user to choose
-routine model, thinking, or worktree settings is not a correction.
+Codex MUST retry a denied creation only while the original assignment remains
+authorized and one of these verified corrections applies:
+
+- For a request-field denial, the feedback identifies a correctable field and
+  an authoritative source provides its corrected value. Codex MUST change only
+  the identified fields in the original request.
+- For `PARENT_WORKTREE` or `PARENT_CHECKOUT_UNVERIFIED`, another controlling
+  task completes the supported handoff and authoritative task readback confirms
+  that this caller's actual CWD is the saved project's primary checkout. This
+  corrects a caller-side execution precondition; Codex MUST keep every field in
+  the original creation request unchanged.
+
+Both routes MUST preserve the issue, owner, saved project, app-managed worktree,
+and selected model pair. Verified checkout recovery is a meaningful correction
+even though the request fields remain unchanged. Codex MUST NOT retry while the
+same failed request field or caller-checkout precondition remains unresolved, or
+ask the user to choose routine model, thinking, or worktree settings.
 
 If a required value is missing from every authoritative source, Codex MUST keep
 only that creation operation pending and report the missing source. It MUST NOT
@@ -98,11 +108,11 @@ was not created.
   report the exact ambiguity to the controlling Orchestrator. Codex MUST NOT
   choose an owner arbitrarily or create another child.
 - Codex MUST retry only after authoritative readback establishes that no child
-  was created, the original assignment still authorizes creation, and the
-  request can be meaningfully corrected. It MUST reconcile the supervised child
-  reservation before reusing capacity; one uncertain attempt MUST NOT allocate a
-  second slot.
-- After a corrected creation succeeds, Codex MUST continue the original issue
+  was created, the original assignment still authorizes creation, a verified
+  correction above applies, and the supervised child reservation is reconciled.
+  An empty, truncated, or unrelated task listing MUST NOT establish these
+  conditions; one uncertain attempt MUST NOT allocate a second slot.
+- After a permitted retry succeeds, Codex MUST continue the original issue
   handoff with the returned child as its owner. If the cause is resolved by a
   supported continuation, Codex MUST preserve the existing implementation
   owner's goal, branch, and worktree. If the creation caller itself must move to
