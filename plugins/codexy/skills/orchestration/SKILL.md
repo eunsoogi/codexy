@@ -70,7 +70,8 @@ references define role, model, report and wait routing, plus deduplication,
 capacity, interruption, cancellation, drift, and evaluation.
 
 When consuming a Worker creation denial or uncertain creation outcome, Codex
-MUST follow [Worker creation denial recovery](references/parent-supervision/worker-creation-denial-recovery.md).
+MUST follow
+[Worker creation denial recovery](references/parent-supervision/worker-creation-denial-recovery.md).
 
 The task-classification contract selects the owner and classifies dependencies,
 resource reservations, and integration conflicts. After that decision, MUST

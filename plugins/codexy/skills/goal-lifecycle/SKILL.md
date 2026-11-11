@@ -110,10 +110,10 @@ below remains unchanged.
 The task MUST NOT call `update_goal` to mark an unfinished blocked objective
 complete or otherwise clear it for recovery. The original assignment authorizes
 recovery only while the same objective and scope remain in force; blocked status
-alone MUST NOT trigger a new approval request. Worker-creation denial recovery
-MUST follow [Worker creation denial recovery](../orchestration/references/parent-supervision/worker-creation-denial-recovery.md).
-A user stop, revoked or missing assignment, scope change, or actual host permission denial MUST stop the sequence.
-For fork recovery, before post-archive acceptance, the task MUST NOT perform issue implementation or ordinary issue verification. It MAY perform only
+alone MUST NOT trigger a new approval request. A user stop, revoked or missing
+assignment, scope change, or actual host permission denial MUST stop the
+sequence. For fork recovery, before post-archive acceptance, the task MUST NOT
+perform issue implementation or ordinary issue verification. It MAY perform only
 the bounded read-only preflight, necessary preservation of owned work, and other
 recovery operations specified in
 [executable-checkout recovery](references/executable-checkout-recovery.md).
