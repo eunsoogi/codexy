@@ -56,9 +56,9 @@ reason.
 Codex MUST retry a denied creation only while the original assignment remains
 authorized and one of these verified corrections applies:
 
-- For a request-field denial, the feedback identifies a correctable field and
-  an authoritative source provides its corrected value. Codex MUST change only
-  the identified fields in the original request.
+- For a request-field denial, the feedback identifies a correctable field and an
+  authoritative source provides its corrected value. Codex MUST change only the
+  identified fields in the original request.
 - For `PARENT_WORKTREE` or `PARENT_CHECKOUT_UNVERIFIED`, another controlling
   task completes the supported handoff. Authoritative task readback MUST confirm
   this same caller thread remains bound to the saved project selected for this
