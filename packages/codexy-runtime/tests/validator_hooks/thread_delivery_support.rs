@@ -66,7 +66,7 @@ pub(super) fn run_with_tool(
 
 pub(super) fn run_with_unregistered_event(root: &Path, event: &str) -> TestResult<std::process::Output> {
     // Rejection happens before payload parsing, so avoid racing a writer against the early exit.
-    let mut child = launcher(root)
+    let child = launcher(root)
         .arg(event)
         .env("PLUGIN_ROOT", root)
         .stdin(Stdio::null())

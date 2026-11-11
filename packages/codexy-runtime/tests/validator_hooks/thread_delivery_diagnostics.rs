@@ -3,7 +3,7 @@
 use serde_json::json;
 
 use super::thread_delivery_support::{
-    assert_denied, input, plugin_roots, reason, run_with_tool,
+    assert_denied, input, plugin_roots, reason, run_with_tool, run_with_unregistered_event,
 };
 use crate::support::TestResult;
 
