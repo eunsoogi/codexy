@@ -73,17 +73,24 @@ For an authorized child-owned lane, the Orchestrator MUST select the assigned
 recipient model and effort automatically and MUST NOT ask the user to choose or
 reconfirm them. Every Worker `create_thread` call MUST include the assigned
 `model` and `thinking` pair and request `target.type="project"` with a non-empty
-`projectId` and `target.environment.type="worktree"` in that same call. Local or
-projectless Worker tasks MUST be denied before mutation; a later
-`create_worktree`, `fork_thread`, shell `git worktree add`, or detached
-directory MUST NOT substitute for the initial app-managed task environment.
-Read-only Git inspection and supported app-managed worktree cleanup remain
-valid. If the host cannot accept the worktree environment or assigned pair, the
-lane MUST remain pending and the exact incompatibility MUST be reported. The
-Orchestrator MUST NOT switch models, implement in the parent, or create a
-duplicate Worker. A separate Orchestrator task is distinct from Worker-only
-admission and MUST use its own assigned pair when explicitly requested. Model
-routing does not grant authority to create a separate task.
+`projectId` without surrounding whitespace and
+`target.environment.type="worktree"` in that same call. Local or projectless
+Worker tasks MUST be denied before mutation; a later `create_worktree`,
+`fork_thread`, shell `git worktree add`, or detached directory MUST NOT
+substitute for the initial app-managed task environment. Read-only Git
+inspection and supported app-managed worktree cleanup remain valid. If the host
+cannot accept the worktree environment or assigned pair, the lane MUST remain
+pending and the exact incompatibility MUST be reported. The Orchestrator MUST
+NOT switch models, implement in the parent, or create a duplicate Worker. A
+separate Orchestrator task is distinct from Worker-only admission and MUST use
+its own assigned pair when explicitly requested. Model routing does not grant
+authority to create a separate task.
+
+After ownership readback authorizes a new Worker, MUST resolve the creation
+request and pass its complete `tool_input` directly to `create_thread`; this
+keeps the assignment prompt, selected pair, and managed project target together.
+If the resolver returns a fallback or lacks a complete creation input, MUST
+leave the lane pending rather than reconstructing omitted fields.
 
 When task classification and the required owner/tool readbacks authorize a new
 app task, the Orchestrator MUST use the actual `create_thread` tool and read

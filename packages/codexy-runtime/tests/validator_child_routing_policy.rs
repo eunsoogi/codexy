@@ -9,6 +9,8 @@ use serde_json::{Value, json};
 mod authorized_dispatch;
 #[path = "validator_child_routing_policy/bounded.rs"]
 mod bounded;
+#[path = "validator_child_routing_policy/creation_request.rs"]
+mod creation_request;
 #[path = "validator_child_routing_policy/delivery.rs"]
 mod delivery;
 #[path = "validator_child_routing_policy/fixtures.rs"]
