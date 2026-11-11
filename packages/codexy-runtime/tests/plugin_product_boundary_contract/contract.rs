@@ -168,6 +168,7 @@ pub(super) fn validate_records(root: &Path, records: &[SurfaceRecord]) -> TestRe
             return Err(format!("record matrix mismatch: {id}").into());
         }
     }
+    // Keep the separately packaged denial-feedback helper inside core hook ownership.
     assert_sources(
         records,
         "hooks.policy-core",
@@ -177,6 +178,7 @@ pub(super) fn validate_records(root: &Path, records: &[SurfaceRecord]) -> TestRe
             "plugins/codexy/hooks/codexy_policy/cleanup_progress.py",
             "plugins/codexy/hooks/codexy_policy/thread_delivery.py",
             "plugins/codexy/hooks/codexy_policy/child_thread_creation.py",
+            "plugins/codexy/hooks/codexy_policy/child_thread_creation_feedback.py",
             "plugins/codexy/hooks/codexy_policy/subagent_ownership.py",
             "plugins/codexy/hooks/codexy_policy/subagent_ownership_action.py",
             "plugins/codexy/hooks/codexy_policy/subagent_ownership_message.py",

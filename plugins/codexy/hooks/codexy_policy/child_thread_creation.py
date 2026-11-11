@@ -6,6 +6,15 @@ import subprocess
 from pathlib import Path
 from typing import cast
 
+from .child_thread_creation_feedback import (
+    app_worktree_denial,
+    missing_field_denial,
+    missing_route_denial,
+    parent_checkout_denial,
+    parent_worktree_denial,
+    unsupported_model_denial,
+    unsupported_thinking_denial,
+)
 from .envelope import Diagnostic, Request
 from .thread_delivery import FIELDS, WORKER_CREATION_ROUTES
 
@@ -17,20 +26,20 @@ def forbidden(request: Request) -> bool | Diagnostic:
 
     tool_input = request.tool_input
     if not isinstance(tool_input, dict):
-        return Diagnostic("MISSING_ROUTE_FIELDS", _MISSING_FIELDS)
+        return missing_route_denial()
     data = cast(dict[str, object], tool_input)
     if not _is_app_worktree_target(data.get("target")):
-        return Diagnostic("APP_WORKTREE_REQUIRED", _APP_WORKTREE_REQUIRED)
+        return app_worktree_denial()
     missing = [field for field in FIELDS if not _non_empty_string(data.get(field))]
     if missing:
-        return _missing_field_diagnostic(missing)
+        return missing_field_denial(missing, data)
     model = cast(str, data["model"])
     thinking = cast(str, data["thinking"])
     # Match the shared allowlist as pairs, so a model cannot borrow another pair's setting.
     if not any(model == route_model for route_model, _ in WORKER_CREATION_ROUTES):
-        return Diagnostic("UNSUPPORTED_MODEL", _UNSUPPORTED_MODEL)
+        return unsupported_model_denial()
     if (model, thinking) not in WORKER_CREATION_ROUTES:
-        return Diagnostic("UNSUPPORTED_THINKING", _UNSUPPORTED_THINKING)
+        return unsupported_thinking_denial(data)
     return False
 
 
@@ -52,14 +61,14 @@ def _is_app_worktree_target(target: object) -> bool:
 
 def _parent_checkout_diagnostic(cwd: object) -> Diagnostic | None:
     if not isinstance(cwd, str) or not cwd.strip():
-        return Diagnostic("PARENT_CHECKOUT_UNVERIFIED", _UNVERIFIED_PARENT)
+        return parent_checkout_denial()
 
     try:
         actual = Path(cwd).resolve(strict=True)
     except (OSError, RuntimeError, ValueError):
-        return Diagnostic("PARENT_CHECKOUT_UNVERIFIED", _UNVERIFIED_PARENT)
+        return parent_checkout_denial()
     if not actual.is_dir():
-        return Diagnostic("PARENT_CHECKOUT_UNVERIFIED", _UNVERIFIED_PARENT)
+        return parent_checkout_denial()
 
     try:
         checkout = subprocess.run(
@@ -85,18 +94,18 @@ def _parent_checkout_diagnostic(cwd: object) -> Diagnostic | None:
             timeout=3,
         )
     except (OSError, subprocess.SubprocessError, ValueError):
-        return Diagnostic("PARENT_CHECKOUT_UNVERIFIED", _UNVERIFIED_PARENT)
+        return parent_checkout_denial()
     if checkout.returncode != 0 or result.returncode != 0:
-        return Diagnostic("PARENT_CHECKOUT_UNVERIFIED", _UNVERIFIED_PARENT)
+        return parent_checkout_denial()
 
     blocks = [block for block in result.stdout.split("\n\n") if block.strip()]
     if not blocks or "bare" in blocks[0].splitlines():
-        return Diagnostic("PARENT_CHECKOUT_UNVERIFIED", _UNVERIFIED_PARENT)
+        return parent_checkout_denial()
 
     try:
         checkout_root = Path(checkout.stdout.strip()).resolve(strict=True)
     except (OSError, RuntimeError, ValueError):
-        return Diagnostic("PARENT_CHECKOUT_UNVERIFIED", _UNVERIFIED_PARENT)
+        return parent_checkout_denial()
 
     worktrees = [
         Path(line.removeprefix("worktree ")).resolve(strict=False)
@@ -104,80 +113,16 @@ def _parent_checkout_diagnostic(cwd: object) -> Diagnostic | None:
         if line.startswith("worktree ")
     ]
     if not worktrees:
-        return Diagnostic("PARENT_CHECKOUT_UNVERIFIED", _UNVERIFIED_PARENT)
+        return parent_checkout_denial()
 
     # Git lists the primary checkout first; linked worktree CWDs are blocked before child creation.
     primary, *linked = worktrees
     if checkout_root == primary:
         return None
     if checkout_root in linked:
-        return Diagnostic("PARENT_WORKTREE", _PARENT_WORKTREE)
-    return Diagnostic("PARENT_CHECKOUT_UNVERIFIED", _UNVERIFIED_PARENT)
+        return parent_worktree_denial()
+    return parent_checkout_denial()
 
 
 def _non_empty_string(value: object) -> bool:
     return isinstance(value, str) and bool(value.strip()) and value == value.strip()
-
-
-def _missing_field_diagnostic(fields: list[str]) -> Diagnostic:
-    names = " and ".join(fields)
-    code = "MISSING_ROUTE_FIELDS" if len(fields) > 1 else f"MISSING_{fields[0].upper()}"
-    return Diagnostic(
-        code,
-        f"Missing {names}; {_REQUIRED_ROUTE}. {_WORKER_SELECTION_GUIDANCE}",
-    )
-
-
-# Build denials from the creation allowlist so existing-recipient routes cannot leak into admission.
-_REQUIRED_ROUTE = "Worker creation requires either " + " or ".join(
-    f"model='{model}' and thinking='{thinking}'"
-    for model, thinking in sorted(WORKER_CREATION_ROUTES)
-)
-# Denials repair decisions already delegated to the Orchestrator without broadening task authority.
-_WORKER_SELECTION_GUIDANCE = (
-    "For an already-authorized Worker assignment, the Orchestrator MUST select "
-    "default or hard from the task evidence, then follow the canonical "
-    "child-routing policy for the exact model/thinking pair and app-managed "
-    "project worktree. MUST NOT ask the user to select or reconfirm model, "
-    "thinking, or worktree. MUST correct the indicated fields in the original "
-    "create_thread request and continue creating and assigning the Worker. If "
-    "the host cannot accept the policy-selected route, MUST report the exact "
-    "host limitation without asking the user to choose a substitute. This "
-    "guidance does not create authority for a new task or override an explicit "
-    "no-new-task instruction."
-)
-_APP_WORKTREE_REQUIRED = (
-    "Worker creation requires the Codex app-managed project worktree in the original "
-    "create_thread call: target.type='project', a non-empty projectId, and "
-    "target.environment.type='worktree'. "
-    "MUST NOT create a local or projectless task and try to retrofit it with "
-    "create_worktree, fork_thread, shell git worktree add, or another detached directory."
-    f" {_WORKER_SELECTION_GUIDANCE}"
-)
-_MISSING_FIELDS = (
-    f"Missing model and thinking; {_REQUIRED_ROUTE}. {_WORKER_SELECTION_GUIDANCE}"
-)
-_UNSUPPORTED_MODEL = (
-    f"Unsupported Worker creation model; {_REQUIRED_ROUTE}. "
-    "MUST NOT substitute another model or silently fall back. "
-    f"{_WORKER_SELECTION_GUIDANCE}"
-)
-_UNSUPPORTED_THINKING = (
-    f"Unsupported Worker creation thinking; {_REQUIRED_ROUTE}. "
-    "MUST NOT substitute another reasoning setting or silently fall back. "
-    f"{_WORKER_SELECTION_GUIDANCE}"
-)
-_PARENT_WORKTREE = (
-    "Child task creation is blocked because the actual parent CWD is in a linked "
-    "Git worktree. Use a supported handoff to move the Orchestrator to the saved "
-    "project's primary repository, then verify the destination CWD is inside the "
-    "primary checkout before retrying. `handoff_thread` cannot move its own caller; "
-    "a different controlling task MUST perform the handoff."
-)
-_UNVERIFIED_PARENT = (
-    "Child task creation is blocked because the actual parent CWD could not be "
-    "verified inside the saved project's primary Git checkout. Use a supported "
-    "handoff to the primary repository, verify the destination CWD and checkout, "
-    "then retry. `handoff_thread` cannot move its own caller; a different "
-    "controlling task MUST perform the handoff."
-)

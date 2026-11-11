@@ -22,6 +22,8 @@ class Request:
 class Diagnostic:
     code: str
     message: str
+    # Some denials need an explicit model-context channel in addition to the host reason.
+    model_context: str | None = None
 
 
 @dataclass(frozen=True)
@@ -41,7 +43,13 @@ def _pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
-def deny(event: str, diagnostic: str, code: str, message: str | None = None) -> bytes:
+def deny(
+    event: str,
+    diagnostic: str,
+    code: str,
+    message: str | None = None,
+    model_context: str | None = None,
+) -> bytes:
     event = event if event in EVENTS else "PreToolUse"
     detail = message or "Codexy policy MUST NOT execute this operation."
     reason = f"{diagnostic}{code}: {detail}"
@@ -56,6 +64,9 @@ def deny(event: str, diagnostic: str, code: str, message: str | None = None) -> 
             "permissionDecision": "deny",
             "permissionDecisionReason": reason,
         }
+        # Keep actionable feedback in the model context when a denial reason alone is insufficient.
+        if model_context:
+            output["additionalContext"] = model_context
     return (
         json.dumps({"hookSpecificOutput": output}, separators=(",", ":")) + "\n"
     ).encode()
@@ -104,7 +115,14 @@ def evaluate_result(
         return PolicyResult(deny(event, diagnostic, "RUNTIME"), "deny")
     if isinstance(blocked, Diagnostic):
         return PolicyResult(
-            deny(event, diagnostic, blocked.code, blocked.message), "deny"
+            deny(
+                event,
+                diagnostic,
+                blocked.code,
+                blocked.message,
+                blocked.model_context,
+            ),
+            "deny",
         )
     if isinstance(blocked, str):
         return PolicyResult(deny(event, diagnostic, blocked), "deny")
