@@ -1,4 +1,4 @@
-"""Verify authenticated Worker model routing through the installed hook."""
+"""Validate installed thread-delivery admission without asserting host authorization."""
 
 from collections.abc import Generator, Mapping
 from contextlib import contextmanager
@@ -19,30 +19,20 @@ from core_hook_test_support import (  # pyright: ignore[reportImplicitRelativeIm
 ROOT = Path(__file__).resolve().parents[3]
 PLUGIN = ROOT / "plugins/codexy"
 TIMING_ENV = "CODEXY_CORE_HOOK_TIMING_FILE"
-PARENT = "sender-thread"
-WORKER = "recipient-thread"
 TOOL = "codex_app__send_message_to_thread"
-ROUTING = {
-    "schema": "codexy.thread-delivery.v2",
-    "authenticated": True,
-    "direction": "root_to_child",
-    "sender_thread_id": PARENT,
-    "target_thread_id": WORKER,
-    "target_model": "gpt-6-luna",
-    "target_thinking": "max",
-}
+LEGACY_METADATA = "codexy_thread_delivery"
+ALLOWED_PAIRS = (
+    ("gpt-6.1-sol", "low"),
+    ("gpt-6-luna", "max"),
+    ("gpt-6.1-terra", "medium"),
+)
 TOOL_INPUT = {
-    "threadId": WORKER,
+    "threadId": "known-worker",
     "model": "gpt-6-luna",
     "thinking": "max",
     "prompt": "Continue the existing lane.",
 }
-SOL_ROUTING = {
-    **ROUTING,
-    "target_model": "gpt-6.1-sol",
-    "target_thinking": "medium",
-}
-SOL_TOOL_INPUT = {
+CROSSED_TOOL_INPUT = {
     **TOOL_INPUT,
     "model": "gpt-6.1-sol",
     "thinking": "medium",
@@ -50,54 +40,58 @@ SOL_TOOL_INPUT = {
 
 
 class CoreHookWorkerRoutingTests(unittest.TestCase):
-    def test_valid_worker_route_stays_admitted_when_timing_disabled_or_fails(
+    def test_valid_worker_request_stays_admitted_when_timing_disabled_or_fails(
         self,
     ) -> None:
         with self._candidate() as plugin:
             target = plugin.parent / "timing.jsonl"
             quiet = self._run(plugin, "PreToolUse")
-            self.assertEqual(
-                (quiet.returncode, quiet.stdout, quiet.stderr), (0, b"", b"")
-            )
+            self._assert_admitted(quiet)
             self.assertFalse(target.exists())
 
             measured = self._run(plugin, "PreToolUse", target)
-            self.assertEqual((measured.returncode, measured.stderr), (0, b""))
-            self.assertEqual(measured.stdout, quiet.stdout)
+            self._assert_admitted(measured)
             self._assert_record(target, "PreToolUse", "allow")
 
             failure_target = plugin.parent / "timing-directory"
             failure_target.mkdir()
             failed_recording = self._run(plugin, "PreToolUse", failure_target)
-            self.assertEqual(
-                (failed_recording.returncode, failed_recording.stderr), (0, b"")
-            )
-            self.assertEqual(failed_recording.stdout, quiet.stdout)
+            self._assert_admitted(failed_recording)
             self.assertEqual(list(failure_target.iterdir()), [])
 
-    def test_existing_sol_medium_worker_is_denied_and_timing_preserves_deny(
-        self,
-    ) -> None:
+    def test_each_allowed_pair_is_admitted_for_both_hook_events(self) -> None:
+        with self._candidate() as plugin:
+            for event in ("PermissionRequest", "PreToolUse"):
+                for model, thinking in ALLOWED_PAIRS:
+                    with self.subTest(event=event, model=model, thinking=thinking):
+                        tool_input = {
+                            **TOOL_INPUT,
+                            "model": model,
+                            "thinking": thinking,
+                        }
+                        self._assert_admitted(
+                            self._run(plugin, event, tool_input=tool_input)
+                        )
+
+    def test_crossed_pair_is_denied_and_timing_preserves_deny(self) -> None:
         with self._candidate() as plugin:
             for event in ("PermissionRequest", "PreToolUse"):
                 target = plugin.parent / f"{event}.jsonl"
-                baseline = self._run(
-                    plugin,
-                    event,
-                    tool_input=SOL_TOOL_INPUT,
-                    routing=SOL_ROUTING,
+                baseline = self._run(plugin, event, tool_input=CROSSED_TOOL_INPUT)
+                self._assert_denied(
+                    baseline, event, "CODEXY_THREAD_DELIVERY_UNSUPPORTED_THINKING"
                 )
-                self._assert_denied(baseline, event, "MISMATCHED_ROUTING_METADATA")
                 self.assertFalse(target.exists())
 
                 measured = self._run(
                     plugin,
                     event,
                     target,
-                    tool_input=SOL_TOOL_INPUT,
-                    routing=SOL_ROUTING,
+                    tool_input=CROSSED_TOOL_INPUT,
                 )
-                self._assert_denied(measured, event, "MISMATCHED_ROUTING_METADATA")
+                self._assert_denied(
+                    measured, event, "CODEXY_THREAD_DELIVERY_UNSUPPORTED_THINKING"
+                )
                 self.assertEqual(measured.stdout, baseline.stdout)
                 self._assert_record(target, event, "deny")
 
@@ -107,43 +101,54 @@ class CoreHookWorkerRoutingTests(unittest.TestCase):
                     plugin,
                     event,
                     failure_target,
-                    tool_input=SOL_TOOL_INPUT,
-                    routing=SOL_ROUTING,
+                    tool_input=CROSSED_TOOL_INPUT,
                 )
                 self._assert_denied(
-                    failed_recording, event, "MISMATCHED_ROUTING_METADATA"
+                    failed_recording,
+                    event,
+                    "CODEXY_THREAD_DELIVERY_UNSUPPORTED_THINKING",
                 )
                 self.assertEqual(failed_recording.stdout, baseline.stdout)
                 self.assertEqual(list(failure_target.iterdir()), [])
 
-    def test_invalid_recipient_stays_denied_and_records_deny(self) -> None:
+    def test_empty_recipient_is_denied_but_another_nonempty_value_is_admitted(
+        self,
+    ) -> None:
         with self._candidate() as plugin:
-            target = plugin.parent / "denial-timing.jsonl"
-            invalid_input = {**TOOL_INPUT, "threadId": "other-recipient"}
-            result = self._run(
-                plugin,
-                "PreToolUse",
-                target,
-                tool_input=invalid_input,
+            empty = {**TOOL_INPUT, "threadId": ""}
+            denied = self._run(plugin, "PreToolUse", tool_input=empty)
+            self._assert_denied(
+                denied, "PreToolUse", "CODEXY_THREAD_DELIVERY_MISSING_RECIPIENT"
             )
-            self._assert_denied(result, "PreToolUse", "WRONG_RECIPIENT")
-            self._assert_record(target, "PreToolUse", "deny")
 
-    def test_duplicate_routing_key_is_denied_without_extra_context(self) -> None:
+            alternate = {**TOOL_INPUT, "threadId": "another-known-thread"}
+            self._assert_admitted(self._run(plugin, "PreToolUse", tool_input=alternate))
+
+    def test_duplicate_legacy_metadata_key_stays_an_envelope_error_for_both_events(
+        self,
+    ) -> None:
         with self._candidate() as plugin:
-            target = plugin.parent / "duplicate-timing.jsonl"
-            metadata = json.dumps(ROUTING, separators=(",", ":"))
-            payload = (
-                '{"hook_event_name":"PreToolUse",'
-                '"tool_name":"codex_app__send_message_to_thread",'
-                f'"tool_input":{json.dumps(TOOL_INPUT)},'
-                f'"session_id":{json.dumps(PARENT)},'
-                f'"codexy_thread_delivery":{metadata},'
-                f'"codexy_thread_delivery":{metadata}}}'
-            ).encode()
-            result = self._run_payload(plugin, "PreToolUse", payload, target)
-            self._assert_denied(result, "PreToolUse", "CODEXY_THREAD_DELIVERY_ENVELOPE")
-            self._assert_record(target, "PreToolUse", "deny")
+            for event in ("PermissionRequest", "PreToolUse"):
+                target = plugin.parent / f"duplicate-{event}.jsonl"
+                metadata = json.dumps({"authenticated": True}, separators=(",", ":"))
+                payload = (
+                    f'{{"hook_event_name":{json.dumps(event)},'
+                    '"tool_name":"codex_app__send_message_to_thread",'
+                    f'"tool_input":{json.dumps(TOOL_INPUT)},'
+                    f'"{LEGACY_METADATA}":{metadata},'
+                    f'"{LEGACY_METADATA}":{metadata}}}'
+                ).encode()
+                result = self._run_payload(plugin, event, payload, target)
+                self._assert_denied(result, event, "CODEXY_THREAD_DELIVERY_ENVELOPE")
+                self._assert_record(target, event, "deny")
+
+    def test_malformed_json_stays_an_envelope_error_for_both_events(self) -> None:
+        with self._candidate() as plugin:
+            for event in ("PermissionRequest", "PreToolUse"):
+                target = plugin.parent / f"malformed-{event}.jsonl"
+                result = self._run_payload(plugin, event, b"{not-json", target)
+                self._assert_denied(result, event, "CODEXY_THREAD_DELIVERY_ENVELOPE")
+                self._assert_record(target, event, "deny")
 
     @contextmanager
     def _candidate(self) -> Generator[Path, None, None]:
@@ -158,14 +163,11 @@ class CoreHookWorkerRoutingTests(unittest.TestCase):
         timing_target: Path | None = None,
         *,
         tool_input: Mapping[str, object] | None = None,
-        routing: Mapping[str, object] | None = None,
     ) -> subprocess.CompletedProcess[bytes]:
         payload: dict[str, object] = {
             "hook_event_name": event,
             "tool_name": TOOL,
             "tool_input": TOOL_INPUT if tool_input is None else tool_input,
-            "session_id": PARENT,
-            "codexy_thread_delivery": ROUTING if routing is None else routing,
         }
         return self._run_payload(
             plugin, event, json.dumps(payload).encode(), timing_target
@@ -203,6 +205,11 @@ class CoreHookWorkerRoutingTests(unittest.TestCase):
             capture_output=True,
             env=environment,
             check=False,
+        )
+
+    def _assert_admitted(self, result: subprocess.CompletedProcess[bytes]) -> None:
+        self.assertEqual(
+            (result.returncode, result.stdout, result.stderr), (0, b"", b"")
         )
 
     def _assert_denied(

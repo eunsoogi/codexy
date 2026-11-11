@@ -11,7 +11,6 @@ import unittest
 from pathlib import Path
 
 from core_hook_test_support import (
-    authenticated_thread_delivery_payload,
     hook_payload as _payload,
     temporary_primary_checkout,
     worker_creation_input,
@@ -81,13 +80,7 @@ class CoreHookStartupTests(unittest.TestCase):
         with temporary_primary_checkout() as primary_cwd:
             for launcher, tool, tool_input in allowed:
                 with self.subTest(launcher=launcher):
-                    payload = (
-                        authenticated_thread_delivery_payload(
-                            "PreToolUse", tool_input, cwd=primary_cwd
-                        )
-                        if launcher == "codexy-thread-delivery.sh"
-                        else _payload("PreToolUse", tool, tool_input, cwd=primary_cwd)
-                    )
+                    payload = _payload("PreToolUse", tool, tool_input, cwd=primary_cwd)
                     self.assertEqual(
                         self._run(HOOKS.parent, launcher, "PreToolUse", payload), b""
                     )

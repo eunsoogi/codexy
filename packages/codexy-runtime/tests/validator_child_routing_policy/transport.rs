@@ -6,7 +6,7 @@ use crate::support::FixtureCommand as Command;
 use std::{io::Write as _, path::Path, process::Stdio};
 
 #[test]
-fn supported_worker_pairs_survive_creation_and_authenticated_delivery() -> TestResult {
+fn supported_worker_pairs_survive_creation_and_request_level_delivery() -> TestResult {
     let primary = primary_checkout()?;
     let temp = tempfile::tempdir()?;
     let source = root();
@@ -67,19 +67,19 @@ fn supported_worker_pairs_survive_creation_and_authenticated_delivery() -> TestR
                     delivered,
                     selected("parent_to_generic", "send_message_to_thread", expected)
                 );
-                let envelope = delivery_envelope(event, &delivered, &primary);
-                assert!(!denied(plugin_root, "codexy-thread-delivery.sh", event, &envelope)?);
-                let mut crossed = envelope.clone();
-                crossed["tool_input"]["model"] =
-                    json!(if expected == LUNA { TERRA.0 } else { LUNA.0 });
+                let delivery = delivery_request(event, &delivered, &primary);
+                assert!(!denied(plugin_root, "codexy-thread-delivery.sh", event, &delivery)?);
+                let mut crossed = delivery.clone();
+                crossed["tool_input"]["thinking"] =
+                    json!(if expected == LUNA { "medium" } else { "max" });
                 assert!(denied(plugin_root, "codexy-thread-delivery.sh", event, &crossed)?);
-                let mut wrong_recipient = envelope;
-                wrong_recipient["tool_input"]["threadId"] = json!("another-worker");
-                assert!(denied(
+                let mut alternate_recipient = delivery;
+                alternate_recipient["tool_input"]["threadId"] = json!("another-known-thread");
+                assert!(!denied(
                     plugin_root,
                     "codexy-thread-delivery.sh",
                     event,
-                    &wrong_recipient
+                    &alternate_recipient
                 )?);
             }
         }
@@ -87,19 +87,13 @@ fn supported_worker_pairs_survive_creation_and_authenticated_delivery() -> TestR
     Ok(())
 }
 
-fn delivery_envelope(event: &str, chosen: &Value, cwd: &Path) -> Value {
-    // Host-authenticated metadata is fixture input; caller prompt text never supplies identity.
+fn delivery_request(event: &str, chosen: &Value, cwd: &Path) -> Value {
+    // Request admission checks field shape and the pair; the host authorizes the target.
     json!({
         "hook_event_name":event, "tool_name":"mcp__codex_app__send_message_to_thread",
-        "cwd":cwd, "session_id":"orchestrator-proof",
+        "cwd":cwd,
         "tool_input":{"threadId":"worker-proof", "model":chosen["model"],
-            "thinking":chosen["thinking"], "prompt":"Continue the assigned Worker scope."},
-        "codexy_thread_delivery":{
-            "schema":"codexy.thread-delivery.v2", "authenticated":true,
-            "direction":"root_to_child", "sender_thread_id":"orchestrator-proof",
-            "target_thread_id":"worker-proof", "target_model":chosen["model"],
-            "target_thinking":chosen["thinking"]
-        }
+            "thinking":chosen["thinking"], "prompt":"Continue the assigned Worker scope."}
     })
 }
 

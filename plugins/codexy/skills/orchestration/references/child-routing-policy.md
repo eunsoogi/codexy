@@ -55,10 +55,11 @@ override them. Ordinary, bounded, and simple Worker assignments MUST default to
 the safety facts pass; only complete, verified hard-work facts can select
 Terra/Medium. A new general Worker with valid hard-work facts MUST be assigned
 `gpt-6.1-terra` / `medium` directly; the `general` classification alone MUST NOT
-select that pair. Authenticated follow-up delivery accepts only Luna/Max and
-Terra/Medium, matching the Worker creation allowlist. Existing Sol/Medium
-recipients MUST be rejected under authenticated routing metadata; Codex MUST NOT
-silently reassign or migrate them. For general work, `fixed_scope`,
+select that pair. Parent-to-Worker follow-ups MUST preserve the known Worker's
+assigned pair and MUST NOT copy sender settings or silently reassign the Worker.
+The thread-delivery hook accepts only the exact pairs Sol/Low, Luna/Max, and
+Terra/Medium; this is request-shape validation and does not verify who the
+recipient is or which pair was assigned. For general work, `fixed_scope`,
 `low_risk_reversible`, and `no_unresolved_decision` MUST be true;
 `deterministic_oracle` MUST be supplied but MAY be false. Missing safety facts,
 ambiguous scope or authority, missing inputs, and unresolved ownership MUST stay
@@ -100,30 +101,22 @@ route and MUST NOT be confused with Worker observation. See
 [observation evidence](observation-evidence.md) for absence claims.
 
 When creating a Worker, Codex MUST bind the selected model and effort to the
-authenticated recipient. For existing tasks, Codex MUST send to the
-authenticated `threadId` with the recipient's assigned model and effort; it MUST
-NOT copy sender settings. If the actual message-tool contract cannot accept that
-pair, Codex MUST NOT send an omitted or partial call or rely on defaults; it
-MUST preserve the lane as pending and report the exact incompatibility. The
-existing host-envelope directions `root_to_child` and `child_to_parent` are
-serialized compatibility identifiers. `root_to_child` represents
-Orchestrator-to-Worker delivery using the authenticated recipient's assigned
-Worker pair (`gpt-6-luna` at `max` or `gpt-6.1-terra` at `medium`), the same
-allowlist as new Worker creation. Ordinary Worker creation defaults to Luna/Max,
-including general implementation, and valid hard-work facts select Terra/Medium
-for a new Worker. Existing Sol/Medium recipients MUST be rejected for
-authenticated follow-up delivery; Codex MUST NOT reassign or migrate them.
-`child_to_parent` represents Worker-to-Orchestrator delivery using `gpt-6.1-sol`
-at `low` (Sol / Light), the requested main Orchestrator pair. Stale parent
-Luna/Max and Luna/Medium pairs MUST be rejected on this authenticated direction.
-Authenticated direction and recipient identity MUST remain enforced; recognizing
-a model pair alone MUST NOT authorize delivery. The runtime request's serialized
-`parent_to_generic` and `child_to_root` directions remain unchanged for these
-delivery routes. These serialized identifiers do not authorize parameters that
-the actual tool contract forbids. Unsupported or mismatched recipient settings
-MUST leave the lane pending with the exact limitation. Missing observations MUST
-be reported as unavailable/not observed. Codex MUST NOT fall back to the sender
-route.
+recipient. For existing tasks, Codex MUST send to the known `threadId` with the
+recipient's assigned model and effort; it MUST NOT copy sender settings. If the
+actual message-tool contract cannot accept that pair, Codex MUST NOT send an
+omitted or partial call or rely on defaults; it MUST preserve the lane as
+pending and report the exact incompatibility. Ordinary Worker creation defaults
+to Luna/Max, including general implementation, and valid hard-work facts select
+Terra/Medium for a new Worker. Worker-to-Orchestrator delivery uses the main
+Orchestrator's assigned Sol/Low pair. The thread-delivery hook validates a
+non-empty `threadId` and an explicit supported model/thinking pair
+(`gpt-6.1-sol`/`low`, `gpt-6-luna`/`max`, or `gpt-6.1-terra`/`medium`) for both
+directions. It does not infer the recipient's role or verify recipient identity,
+existence, or assignment. Orchestration MUST select the known recipient and its
+assigned pair; the host authorizes the actual message delivery. Unsupported or
+mismatched recipient settings MUST leave the lane pending with the exact
+limitation. Missing observations MUST be reported as unavailable/not observed.
+Codex MUST NOT fall back to sender settings.
 
 The runtime keeps `codexy.child-routing-request.v1` for thread creation,
 Worker-to-Orchestrator delivery, and other existing routing requests. A v1
@@ -134,9 +127,10 @@ Version 2 is reserved for `send_message_to_thread` requests in the
 `model`/`thinking` pair under `recipient_assignment`; both values MUST be an
 allowed Worker pair and MUST be advertised by the declared thread capabilities.
 Top-level sender `model`/`thinking` fields MUST be rejected. The resolver's
-selected pair MUST be used for that authenticated recipient, and the delivery
-hook MUST independently reject crossed, unsupported, or mismatched arguments.
-The selected pair MUST pass through follow-up routing unchanged.
+selected pair MUST be used for the known recipient and pass through follow-up
+routing unchanged. The delivery hook independently rejects crossed or
+unsupported request pairs, but it cannot verify that the pair matches a
+recipient assignment.
 
 ### Bounded evidence summaries
 

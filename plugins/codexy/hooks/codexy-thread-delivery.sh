@@ -2,7 +2,10 @@
 event=${1-}
 case "$event" in
 PreToolUse | PermissionRequest) ;;
-*) event=PreToolUse ;;
+*)
+	# Never reinterpret an unregistered event as PreToolUse.
+	exit 1
+	;;
 esac
 plugin_root=${PLUGIN_ROOT-}
 [ -n "$plugin_root" ] || plugin_root=${0%/hooks/codexy-thread-delivery.sh}

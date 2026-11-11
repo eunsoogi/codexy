@@ -20,14 +20,12 @@ mod shell_context_regressions;
 mod shell_redirection_regressions;
 #[path = "validator_hooks/shell_negation_regressions.rs"]
 mod shell_negation_regressions;
-#[path = "validator_hooks/thread_delivery_parent_route.rs"]
-mod thread_delivery_parent_route;
+#[path = "validator_hooks/thread_delivery_allowed_pairs.rs"]
+mod thread_delivery_allowed_pairs;
 #[path = "validator_hooks/thread_delivery_support.rs"]
 mod thread_delivery_support;
 #[path = "validator_hooks/thread_delivery_diagnostics.rs"]
 mod thread_delivery_diagnostics;
-#[path = "validator_hooks/thread_delivery_worker_pairs.rs"]
-mod thread_delivery_worker_pairs;
 #[path = "validator_hooks/thread_delivery_missing_fields.rs"]
 mod thread_delivery_missing_fields;
 #[path = "structured_contract_artifacts.rs"]

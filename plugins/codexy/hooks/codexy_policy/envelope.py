@@ -16,10 +16,6 @@ class Request:
     tool: str
     tool_input: object
     cwd: object
-    session_id: object
-    transcript_path: object
-    routing_metadata: object = None
-    routing_metadata_present: bool = False
 
 
 @dataclass(frozen=True)
@@ -36,7 +32,7 @@ class PolicyResult:
 
 
 def _pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
-    # Reject duplicate routing or tool keys so an input cannot have conflicting meanings.
+    # Reject duplicate keys so one hook request cannot have conflicting meanings.
     result: dict[str, Any] = {}
     for key, value in items:
         if key in result:
@@ -101,10 +97,6 @@ def evaluate_result(
         data["tool_name"],
         data.get("tool_input"),
         data.get("cwd"),
-        data.get("session_id"),
-        data.get("transcript_path"),
-        data.get("codexy_thread_delivery"),
-        "codexy_thread_delivery" in data,
     )
     try:
         blocked = forbidden(request)

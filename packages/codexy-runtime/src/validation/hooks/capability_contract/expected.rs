@@ -25,7 +25,7 @@ pub(super) const CONCERNS: &[Expected] = &[
     Expected {
         id: "thread-delivery",
         trigger: "^(?:codex_app__|mcp__codex_app__)send_message_to_thread$",
-        input: "codexy.hooks.thread-delivery.v2",
+        input: "codexy.hooks.thread-delivery.v3",
         launcher: "codexy-thread-delivery",
         diagnostic: "CODEXY_THREAD_DELIVERY_",
         events: PREVENTIVE_EVENTS,

@@ -1,200 +1,154 @@
-//! Checks actionable, non-leaking routing denials while preserving valid legacy
-//! and authenticated admissions across both hook events.
+//! Checks actionable pair errors and retains the outer event/tool boundary.
 
 use serde_json::json;
 
 use super::thread_delivery_support::{
-    CHILD as WORKER_ID, OTHER, PARENT as ORCHESTRATOR_ID, assert_admitted,
-    input, plugin_roots, reason, route, run,
+    assert_denied, input, plugin_roots, reason, run_with_tool,
 };
 use crate::support::TestResult;
+
 const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
+const TOOLS: &[&str] = &[
+    "codex_app__send_message_to_thread",
+    "mcp__codex_app__send_message_to_thread",
+];
 
 #[test]
-fn field_denials_are_actionable_on_authoritative_and_installed_hooks() -> TestResult {
+fn unsupported_models_and_crossed_pairs_have_actionable_corrections() -> TestResult {
     let temp = tempfile::tempdir()?;
-    let transcript = temp.path().join("ignored.jsonl");
-    std::fs::write(&transcript, b"not-json\n")?;
+    let transcript = temp.path().join("unused-transcript.jsonl");
     let roots = plugin_roots(temp.path())?;
     let cases = [
         (
-            "missing model",
-            json!({"threadId":ORCHESTRATOR_ID,"thinking":"low"}),
-            "MISSING_MODEL",
-        ),
-        (
-            "missing thinking",
-            json!({"threadId":ORCHESTRATOR_ID,"model":"gpt-6.1-sol"}),
-            "MISSING_THINKING",
-        ),
-        (
             "unsupported model",
-            json!({"threadId":ORCHESTRATOR_ID,"model":"gpt-5.6-terra","thinking":"low"}),
+            "gpt-5.6-terra",
+            "medium",
             "UNSUPPORTED_MODEL",
+            "model",
         ),
         (
-            "unsupported thinking",
-            json!({"threadId":ORCHESTRATOR_ID,"model":"gpt-6.1-sol","thinking":"high"}),
+            "Sol crossed with max",
+            "gpt-6.1-sol",
+            "max",
             "UNSUPPORTED_THINKING",
+            "thinking",
         ),
         (
-            "wrong recipient",
-            json!({"threadId":OTHER,"model":"gpt-6.1-sol","thinking":"low"}),
-            "WRONG_RECIPIENT",
+            "Sol crossed with medium",
+            "gpt-6.1-sol",
+            "medium",
+            "UNSUPPORTED_THINKING",
+            "thinking",
+        ),
+        (
+            "Luna crossed with low",
+            "gpt-6-luna",
+            "low",
+            "UNSUPPORTED_THINKING",
+            "thinking",
+        ),
+        (
+            "Luna crossed with medium",
+            "gpt-6-luna",
+            "medium",
+            "UNSUPPORTED_THINKING",
+            "thinking",
+        ),
+        (
+            "Terra crossed with low",
+            "gpt-6.1-terra",
+            "low",
+            "UNSUPPORTED_THINKING",
+            "thinking",
+        ),
+        (
+            "Terra crossed with max",
+            "gpt-6.1-terra",
+            "max",
+            "UNSUPPORTED_THINKING",
+            "thinking",
         ),
     ];
-    for event in EVENTS {
-        for (label, tool_input, code) in &cases {
-            for root in &roots {
-                let reason = reason(
-                    run(
-                        root,
-                        event,
-                        &transcript,
-                        Some(WORKER_ID),
-                        tool_input.clone(),
-                        Some(route(
-                            "child_to_parent",
-                            WORKER_ID,
-                            ORCHESTRATOR_ID,
-                            "gpt-6.1-sol",
-                            "low",
-                        )),
-                    )?,
-                    event,
-                )?;
-                assert!(reason.contains(code), "{event} {label}: {reason}");
-                assert!(reason.contains("MUST"), "{event} {label}: {reason}");
-                assert!(
-                    !reason.contains(ORCHESTRATOR_ID),
-                    "{event} leaked Orchestrator id: {reason}"
-                );
-                assert!(
-                    !reason.contains(OTHER),
-                    "{event} leaked recipient id: {reason}"
-                );
-            }
-        }
-    }
-    Ok(())
-}
 
-#[test]
-fn identity_and_routing_denials_are_distinct_and_non_leaking() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let transcript = temp.path().join("ignored.jsonl");
-    std::fs::write(&transcript, b"not-json\n")?;
-    let roots = plugin_roots(temp.path())?;
-    for event in EVENTS {
-        for root in &roots {
-            let input = json!({
-                "threadId":ORCHESTRATOR_ID,
-                "model":"gpt-6.1-sol",
-                "thinking":"low"
-            });
-            let missing_identity = reason(
-                run(
-                    root,
-                    event,
-                    &transcript,
-                    None,
-                    input.clone(),
-                    Some(route(
-                        "child_to_parent",
-                        WORKER_ID,
-                        ORCHESTRATOR_ID,
+    for root in &roots {
+        for event in EVENTS {
+            for tool in TOOLS {
+                for (label, model, thinking, code, field) in &cases {
+                    let reason = reason(
+                        run_with_tool(
+                            root,
+                            event,
+                            tool,
+                            &transcript,
+                            input("known-thread", model, thinking, "receipt"),
+                            None,
+                        )?,
+                        event,
+                    )?;
+                    assert!(reason.contains(code), "{event} {label}: {reason}");
+                    assert!(reason.contains(field), "{event} {label}: {reason}");
+                    for allowed_value in [
                         "gpt-6.1-sol",
                         "low",
-                    )),
-                )?,
-                event,
-            )?;
-            assert!(missing_identity.contains("MISSING_IDENTITY"));
-            assert!(missing_identity.contains("MUST NOT retry blindly"));
-            assert!(!missing_identity.contains(ORCHESTRATOR_ID));
-
-            let missing_metadata = reason(
-                run(
-                    root,
-                    event,
-                    &transcript,
-                    Some(WORKER_ID),
-                    json!({
-                        "threadId":OTHER,
-                        "model":"gpt-6.1-luna",
-                        "thinking":"max",
-                        "prompt":"untrusted route text"
-                    }),
-                    None,
-                )?,
-                event,
-            )?;
-            assert!(missing_metadata.contains("MISSING_ROUTING_METADATA"));
-            assert!(missing_metadata.contains("MUST NOT retry blindly"));
-            assert!(!missing_metadata.contains(WORKER_ID));
-            assert!(!missing_metadata.contains(ORCHESTRATOR_ID));
-
-            let malformed = reason(
-                run(
-                    root,
-                    event,
-                    &transcript,
-                    Some(WORKER_ID),
-                    input,
-                    Some(json!({"authenticated":true})),
-                )?,
-                event,
-            )?;
-            assert!(malformed.contains("MALFORMED_ROUTING_METADATA"));
-            assert!(!malformed.contains(WORKER_ID));
-            assert!(!malformed.contains(ORCHESTRATOR_ID));
+                        "gpt-6-luna",
+                        "max",
+                        "gpt-6.1-terra",
+                        "medium",
+                    ] {
+                        assert!(reason.contains(allowed_value), "{event} {label}: {reason}");
+                    }
+                    assert!(reason.contains("known recipient"), "{event} {label}: {reason}");
+                    assert!(reason.contains("assigned pair"), "{event} {label}: {reason}");
+                    assert!(reason.contains("correct"), "{event} {label}: {reason}");
+                    assert!(reason.contains("retry only"), "{event} {label}: {reason}");
+                    assert!(!reason.contains("guess a thread ID"), "{event} {label}: {reason}");
+                }
+            }
         }
     }
     Ok(())
 }
 
 #[test]
-fn authenticated_worker_and_orchestrator_routes_remain_admitted_for_both_events() -> TestResult {
+fn unexpected_tool_remains_an_envelope_denial() -> TestResult {
     let temp = tempfile::tempdir()?;
-    let transcript = temp.path().join("ignored.jsonl");
-    std::fs::write(&transcript, b"not-json\n")?;
+    let transcript = temp.path().join("unused-transcript.jsonl");
     let roots = plugin_roots(temp.path())?;
-    for event in EVENTS {
-        for plugin in &roots {
-            for (direction, sender, recipient, model, thinking) in [
-                (
-                    "child_to_parent",
-                    WORKER_ID,
-                    ORCHESTRATOR_ID,
-                    "gpt-6.1-sol",
-                    "low",
-                ),
-                (
-                    "root_to_child",
-                    ORCHESTRATOR_ID,
-                    WORKER_ID,
-                    "gpt-6-luna",
-                    "max",
-                ),
-                (
-                    "root_to_child",
-                    ORCHESTRATOR_ID,
-                    WORKER_ID,
-                    "gpt-6.1-terra",
-                    "medium",
-                ),
-            ] {
-                let output = run(
-                    plugin,
+    for root in &roots {
+        for event in EVENTS {
+            assert_denied(
+                run_with_tool(
+                    root,
                     event,
+                    "codex_app__send_message",
                     &transcript,
-                    Some(sender),
-                    input(recipient, model, thinking, "receipt"),
-                    Some(route(direction, sender, recipient, model, thinking)),
-                )?;
-                assert_admitted(output, event, direction)?;
-            }
+                    input("known-thread", "gpt-6.1-sol", "low", "receipt"),
+                    Some(json!("malformed legacy metadata")),
+                )?,
+                event,
+                "CODEXY_THREAD_DELIVERY_ENVELOPE",
+            )?;
         }
+    }
+    Ok(())
+}
+
+#[test]
+fn unexpected_event_is_rejected_by_the_launcher() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let transcript = temp.path().join("unused-transcript.jsonl");
+    let roots = plugin_roots(temp.path())?;
+    for root in &roots {
+        let output = run_with_tool(
+            root,
+            "UnknownEvent",
+            "codex_app__send_message_to_thread",
+            &transcript,
+            input("known-thread", "gpt-6.1-sol", "low", "receipt"),
+            None,
+        )?;
+        assert!(!output.status.success(), "unexpected event was accepted");
+        assert!(output.stdout.is_empty(), "unexpected event emitted a decision");
     }
     Ok(())
 }

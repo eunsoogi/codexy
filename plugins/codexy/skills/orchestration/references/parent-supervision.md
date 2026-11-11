@@ -39,7 +39,7 @@ Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
 - Orchestrator and Worker-to-Orchestrator: `gpt-6.1-sol` / `low` (Sol / Light).
 - Worker creation MUST use [routing](child-routing-policy.md), including its
   ordinary default and verified hard-work facts; parent-to-Worker follow-ups
-  MUST preserve the authenticated recipient's pair.
+  MUST preserve the known recipient's assigned pair.
 - Inspector: `gpt-6.1-sol` / `medium`.
 
 New-role thread creation and delivery MUST use the explicit model/effort pair

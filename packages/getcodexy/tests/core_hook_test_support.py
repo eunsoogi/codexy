@@ -47,42 +47,23 @@ def worker_creation_input() -> dict[str, object]:
     }
 
 
-def authenticated_thread_delivery_context(
-    recipient: str, model: str, thinking: str
-) -> dict[str, object]:
-    """Add required host route fields to an allowed-path test fixture."""
-    sender = "test-orchestrator"
-    return {
-        "session_id": sender,
-        "codexy_thread_delivery": {
-            "schema": "codexy.thread-delivery.v2",
-            "authenticated": True,
-            "direction": "root_to_child",
-            "sender_thread_id": sender,
-            "target_thread_id": recipient,
-            "target_model": model,
-            "target_thinking": thinking,
-        },
-    }
-
-
-def authenticated_thread_delivery_payload(
+def thread_delivery_payload(
     event: str,
     tool_input: Mapping[str, object],
     *,
     cwd: Path | None = None,
 ) -> bytes:
-    """Encode a test-only host envelope for an allowed-delivery fixture."""
-    payload = _authenticated_thread_delivery_payload_data(event, tool_input, cwd)
+    """Encode the ordinary request used to validate a delivery pair."""
+    payload = _thread_delivery_payload_data(event, tool_input, cwd)
     return json.dumps(payload).encode()
 
 
-def _authenticated_thread_delivery_payload_data(
+def _thread_delivery_payload_data(
     event: str,
     tool_input: Mapping[str, object],
     cwd: Path | None,
 ) -> dict[str, object]:
-    """Assemble one synthetic host payload so fixture metadata stays consistent."""
+    """Assemble one request without host identity or recipient metadata."""
     recipient = tool_input.get("threadId")
     model = tool_input.get("model")
     thinking = tool_input.get("thinking")
@@ -104,7 +85,6 @@ def _authenticated_thread_delivery_payload_data(
     }
     if cwd is not None:
         payload["cwd"] = str(cwd)
-    payload.update(authenticated_thread_delivery_context(recipient, model, thinking))
     return payload
 
 
@@ -114,14 +94,14 @@ def hook_invocation_payload(
     tool: str,
     tool_input: Mapping[str, object],
 ) -> bytes:
-    """Build a hook fixture, adding route authority only for a valid delivery."""
+    """Build the standard core-hook invocation envelope."""
     event = "PreToolUse"
     cwd = plugin.parent.resolve()
     if (
         stem == "codexy-thread-delivery"
         and tool == "mcp__codex_app__send_message_to_thread"
     ):
-        return authenticated_thread_delivery_payload(event, tool_input, cwd=cwd)
+        return thread_delivery_payload(event, tool_input, cwd=cwd)
     return hook_payload(event, tool, tool_input, cwd=cwd)
 
 
@@ -158,7 +138,7 @@ def run_timed_core_hook_case(
     )
 
 
-def sized_authenticated_thread_delivery_payload(size: int) -> bytes:
+def sized_thread_delivery_payload(size: int, event: str = "PreToolUse") -> bytes:
     """Build a valid delivery fixture at an exact size for the launcher limit test."""
     tool_input = {
         "threadId": "test-worker",
@@ -166,9 +146,7 @@ def sized_authenticated_thread_delivery_payload(size: int) -> bytes:
         "thinking": "max",
         "padding": "",
     }
-    payload = _authenticated_thread_delivery_payload_data(
-        "PreToolUse", tool_input, None
-    )
+    payload = _thread_delivery_payload_data(event, tool_input, None)
     padding_size = size - len(json.dumps(payload).encode())
     if padding_size < 0:
         raise ValueError(
