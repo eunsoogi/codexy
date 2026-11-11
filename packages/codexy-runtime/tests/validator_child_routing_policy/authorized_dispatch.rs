@@ -48,7 +48,7 @@ fn canonical_guidance_preserves_scoped_authority_and_parallel_dispatch() -> Test
         ),
         (
             "goal-lifecycle/SKILL.md",
-            "MUST NOT be mistaken for host goal-tool permission",
+            "neither the parent assignment nor scoped orchestration authority for child tasks or messages supplies it",
             "",
         ),
     ] {
@@ -93,6 +93,29 @@ fn canonical_guidance_preserves_scoped_authority_and_parallel_dispatch() -> Test
             prose.contains(invariant),
             "missing preserved boundary: {invariant}"
         );
+    }
+    Ok(())
+}
+
+#[test]
+fn goal_start_contract_links_resolve_for_assignment_consumers() -> TestResult {
+    let skills_root = codexy_runtime::paths::repository_root().join("plugins/codexy/skills");
+    // Consumer references must continue to resolve to the shared startup contract.
+    for (consumer, target) in [
+        (
+            "orchestration/SKILL.md",
+            "../goal-lifecycle/SKILL.md#goal-start-contract",
+        ),
+        (
+            "orchestration/references/child-routing-policy.md",
+            "../../goal-lifecycle/SKILL.md#goal-start-contract",
+        ),
+        (
+            "orchestration/references/parent-supervision/message-visibility.md",
+            "../../../goal-lifecycle/SKILL.md#goal-start-contract",
+        ),
+    ] {
+        assert_authority_link_resolves(&skills_root, consumer, target)?;
     }
     Ok(())
 }
