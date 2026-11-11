@@ -78,20 +78,32 @@ fallback for model unavailability.
 The native `create_thread` admission hook MUST enforce the selected Worker pair
 and the app-managed project worktree environment before mutation. Every Worker
 call MUST include the selected `model` and `thinking` values and set
-`target.type="project"`, a non-empty `projectId`, and
-`target.environment.type="worktree"` in the original call. Local or projectless
-Worker requests MUST be denied. A later `create_worktree`, `fork_thread`, shell
-`git worktree add`, or detached directory MUST NOT be used as a substitute for
-the initial task environment. If the actual host contract cannot accept the pair
-or worktree environment, Codex MUST keep the lane pending and report the exact
-incompatibility; it MUST NOT omit a field or rely on defaults. The installed
-concern and launcher retain their `child_thread_creation` identifiers for
-compatibility. Native specialists remain a separate catalogued route with their
-assigned settings; a caller-written role or prompt MUST NOT authorize a Worker
-override. Requested settings and source-level admission do not prove effective
-host state; unexposed settings MUST remain unavailable. A policy or installed
-update MUST NOT imply that a running task changed or prove comparative
-performance.
+`target.type="project"`, a non-empty `projectId` without surrounding whitespace,
+and `target.environment.type="worktree"` in the original call. Local or
+projectless Worker requests MUST be denied. A later `create_worktree`,
+`fork_thread`, shell `git worktree add`, or detached directory MUST NOT be used
+as a substitute for the initial task environment. If the actual host contract
+cannot accept the pair or worktree environment, Codex MUST keep the lane pending
+and report the exact incompatibility; it MUST NOT omit a field or rely on
+defaults. The installed concern and launcher retain their
+`child_thread_creation` identifiers for compatibility. Native specialists remain
+a separate catalogued route with their assigned settings; a caller-written role
+or prompt MUST NOT authorize a Worker override. Requested settings and
+source-level admission do not prove effective host state; unexposed settings
+MUST remain unavailable. A policy or installed update MUST NOT imply that a
+running task changed or prove comparative performance.
+
+Before constructing a new Worker request, MUST read the active issue owner and
+reuse a suitable existing Worker; MUST NOT create a duplicate Worker. For a new
+Worker `create_thread` route, the v1 routing input MUST include a non-empty
+`creation_prompt` and a `creation_target` with a non-empty `projectId` without
+surrounding whitespace and a worktree environment. When the resolver selects
+`generic`, its `tool_input` contains the prompt, exact model/thinking pair, and
+unchanged target. MUST pass this object directly to the original `create_thread`
+call so the selected pair and managed worktree survive construction. Missing
+creation input or an unsupported target MUST return the safe fallback with a
+reason; MUST NOT reconstruct fields from sender settings or rely on app
+defaults.
 
 For ordinary observation of assigned Codex Workers, the Orchestrator MUST use
 the native event-driven `wait_threads` route with each task's latest cursor.

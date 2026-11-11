@@ -6,8 +6,17 @@ use std::{path::PathBuf, process::Command};
 
 pub(super) const LUNA: (&str, &str) = ("gpt-6-luna", "max");
 pub(super) const TERRA: (&str, &str) = ("gpt-6.1-terra", "medium");
+pub(super) const CREATION_PROMPT: &str = "Implement the assigned issue in its managed worktree.";
 // Retain the rejected pair as an explicit negative case in creation and delivery tests.
 pub(super) const SOL: (&str, &str) = ("gpt-6.1-sol", "medium");
+
+pub(super) fn creation_target() -> Value {
+    json!({
+        "type":"project",
+        "projectId":"saved-codexy-project",
+        "environment":{"type":"worktree"}
+    })
+}
 
 pub(super) fn hard_work_cases() -> TestResult<Vec<Value>> {
     [
@@ -23,6 +32,8 @@ pub(super) fn request(classification: &str, pair: (&str, &str)) -> Value {
         "simple_predicates":{"fixed_scope":true,"deterministic_oracle":true,
             "low_risk_reversible":true,"no_unresolved_decision":true},
         "codex_thread_operation":"create_thread",
+        "creation_prompt":CREATION_PROMPT,
+        "creation_target":creation_target(),
         "codex_thread_capabilities":{"models":[{"model":pair.0,"thinking":[pair.1]}]}
     })
 }
@@ -42,7 +53,21 @@ pub(super) fn fallback() -> Value {
 }
 
 pub(super) fn selected(route: &str, operation: &str, pair: (&str, &str)) -> Value {
-    json!({"route":route,"codex_thread_operation":operation,"model":pair.0,"thinking":pair.1})
+    let mut selected = json!({
+        "route":route,
+        "codex_thread_operation":operation,
+        "model":pair.0,
+        "thinking":pair.1
+    });
+    if operation == "create_thread" {
+        selected["tool_input"] = json!({
+            "prompt":CREATION_PROMPT,
+            "model":pair.0,
+            "thinking":pair.1,
+            "target":creation_target()
+        });
+    }
+    selected
 }
 
 pub(super) fn root() -> PathBuf {
