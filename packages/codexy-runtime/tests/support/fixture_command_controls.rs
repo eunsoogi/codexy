@@ -113,7 +113,7 @@ fn windows_static_python_fixture_requires_the_supported_paired_dispatch_contract
     );
     let annotated = std::fs::read_to_string(&command)?.replace("\r\n", "\n");
     let mutated_comment = annotated.replace(
-        "@rem Accept configured events; unknown input defaults to PreToolUse.",
+        "@rem Reject unregistered events instead of reinterpreting them as PreToolUse.",
         "@rem Accept configured events.",
     );
     assert_ne!(
@@ -121,6 +121,13 @@ fn windows_static_python_fixture_requires_the_supported_paired_dispatch_contract
         "production template must carry the required comment"
     );
     std::fs::write(&command, mutated_comment)?;
+    assert_eq!(windows_static_python_fixture(&shell), None);
+    let mutated_event_fallback = annotated.replace("exit /b 1", "set \"event=PreToolUse\"");
+    assert_ne!(
+        mutated_event_fallback, annotated,
+        "production template must reject unknown events"
+    );
+    std::fs::write(&command, mutated_event_fallback)?;
     assert_eq!(windows_static_python_fixture(&shell), None);
     for source in [
         "python -I -B \"%~dp0codexy-thread-delivery.py\" --event \"%event%\"\n",

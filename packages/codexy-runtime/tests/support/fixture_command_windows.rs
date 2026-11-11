@@ -65,6 +65,18 @@ fn is_absolute_python_fixture(stem: &str, python_stem: &str, command: &str) -> b
         "codexy-thread-delivery" => "CODEXY_THREAD_DELIVERY_RUNTIME",
         _ => return false,
     };
+    // Child creation retains its compatibility fallback; delivery rejects unknown events.
+    let (event_comment, unknown_event) = match stem {
+        "codexy-child-thread-creation" => (
+            "@rem Accept configured events; unknown input defaults to PreToolUse.",
+            "set \"event=PreToolUse\"",
+        ),
+        "codexy-thread-delivery" => (
+            "@rem Reject unregistered events instead of reinterpreting them as PreToolUse.",
+            "exit /b 1",
+        ),
+        _ => return false,
+    };
     let reason = format!("{diagnostic}: Codexy policy MUST NOT execute this operation.");
     let pre_tool_denial = [
         r#"echo {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":""#,
@@ -83,10 +95,10 @@ fn is_absolute_python_fixture(stem: &str, python_stem: &str, command: &str) -> b
         "@echo off",
         "setlocal EnableExtensions DisableDelayedExpansion",
         "set \"event=%~1\"",
-        "@rem Accept configured events; unknown input defaults to PreToolUse.",
+        event_comment,
         "if /I \"%event%\"==\"PreToolUse\" goto evaluate",
         "if /I \"%event%\"==\"PermissionRequest\" goto evaluate",
-        "set \"event=PreToolUse\"",
+        unknown_event,
         ":evaluate",
         "@rem Use the system Python launcher instead of a PATH-selected interpreter.",
         "set \"runtime=%SystemRoot%\\py.exe\"",

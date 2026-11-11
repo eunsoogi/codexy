@@ -143,17 +143,9 @@ fn unexpected_tool_remains_an_envelope_denial() -> TestResult {
 #[test]
 fn unexpected_event_is_rejected_by_the_launcher() -> TestResult {
     let temp = tempfile::tempdir()?;
-    let transcript = temp.path().join("unused-transcript.jsonl");
     let roots = plugin_roots(temp.path())?;
     for root in &roots {
-        let output = run_with_tool(
-            root,
-            "UnknownEvent",
-            "codex_app__send_message_to_thread",
-            &transcript,
-            input("known-thread", "gpt-6.1-sol", "low", "receipt"),
-            None,
-        )?;
+        let output = run_with_unregistered_event(root, "UnknownEvent")?;
         assert!(!output.status.success(), "unexpected event was accepted");
         assert!(output.stdout.is_empty(), "unexpected event emitted a decision");
     }

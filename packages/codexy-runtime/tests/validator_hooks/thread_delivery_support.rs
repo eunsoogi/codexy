@@ -64,6 +64,18 @@ pub(super) fn run_with_tool(
     Ok(child.wait_with_output()?)
 }
 
+pub(super) fn run_with_unregistered_event(root: &Path, event: &str) -> TestResult<std::process::Output> {
+    // Rejection happens before payload parsing, so avoid racing a writer against the early exit.
+    let mut child = launcher(root)
+        .arg(event)
+        .env("PLUGIN_ROOT", root)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    Ok(child.wait_with_output()?)
+}
+
 pub(super) fn reason(output: std::process::Output, event: &str) -> TestResult<String> {
     assert!(output.status.success(), "hook failed");
     assert!(output.stderr.is_empty(), "hook wrote stderr");
