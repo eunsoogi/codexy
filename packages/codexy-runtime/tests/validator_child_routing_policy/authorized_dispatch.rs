@@ -81,6 +81,21 @@ fn canonical_guidance_preserves_scoped_authority_and_parallel_dispatch() -> Test
     ] {
         assert_authority_link_resolves(&root, consumer, target)?;
     }
+    // Existing-owner admission remains authoritative before any new request is constructed.
+    let ownership = std::fs::read_to_string(
+        root.join("orchestration/references/task-classification.md"),
+    )?;
+    let ownership = ownership.split_whitespace().collect::<Vec<_>>().join(" ");
+    for invariant in [
+        "Before dispatch, the parent MUST read back the active owner",
+        "reuse a suitable existing owner",
+        "MUST keep exactly one implementation owner",
+    ] {
+        assert!(
+            ownership.contains(invariant),
+            "missing existing-owner boundary: {invariant}"
+        );
+    }
     let worktree = std::fs::read_to_string(
         root.join("orchestration/references/thread-and-worktree-routing.md"),
     )?;

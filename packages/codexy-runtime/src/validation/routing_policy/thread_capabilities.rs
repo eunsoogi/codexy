@@ -23,6 +23,11 @@ pub(super) struct Request {
     #[serde(default)]
     pub(super) simple_predicates: Option<Predicates>,
     pub(super) codex_thread_operation: String,
+    // Creation routes carry the assignment inputs through to one complete host request.
+    #[serde(default)]
+    pub(super) creation_prompt: Option<String>,
+    #[serde(default)]
+    pub(super) creation_target: Option<Value>,
     #[serde(default)]
     pub(super) codex_thread_direction: Option<ThreadDirection>,
     #[serde(default)]

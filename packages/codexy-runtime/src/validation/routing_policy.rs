@@ -5,13 +5,13 @@ use std::path::Path;
 
 use super::routing_json;
 
+mod creation_request;
 mod routes;
 mod thread_capabilities;
 use routes::{
-    WORKER_CREATION_ROUTES, WORKER_DELIVERY_ROUTES, bounded_evidence_is_complete,
-    child_to_root_route, parent_to_generic_route, selected_general_route, simple_route,
+    WORKER_CREATION_ROUTES, WORKER_DELIVERY_ROUTES, child_to_root_route, parent_to_generic_route,
 };
-use thread_capabilities::{ThreadDirection, simple_is_complete, worker_scope_is_complete};
+use thread_capabilities::ThreadDirection;
 
 // The schema string, policy field names, and route labels are serialized
 // compatibility identifiers; product-role terminology is standardized in
@@ -102,6 +102,7 @@ pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
     }
     if let Some(agent_type) = request
         .named_specialist
+        .as_deref()
         .filter(|value| !value.trim().is_empty())
     {
         if !known_specialist(plugin_root, &policy, &agent_type)? {
@@ -116,32 +117,7 @@ pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
             &request.codex_thread_operation,
         ));
     }
-    match request.classification.as_str() {
-        "bounded_evidence" if bounded_evidence_is_complete(request.simple_predicates.as_ref()) => {
-            Ok(simple_route(
-                &policy,
-                request.codex_thread_capabilities.as_ref(),
-                &request.codex_thread_operation,
-            ))
-        }
-        "simple" if simple_is_complete(request.simple_predicates.as_ref()) => Ok(simple_route(
-            &policy,
-            request.codex_thread_capabilities.as_ref(),
-            &request.codex_thread_operation,
-        )),
-        "general" if worker_scope_is_complete(request.simple_predicates.as_ref()) => {
-            Ok(selected_general_route(
-                &policy,
-                request.codex_thread_capabilities.as_ref(),
-                &request.codex_thread_operation,
-                request.hard_work.is_some(),
-            ))
-        }
-        "general" | "simple" | "bounded_evidence" | "ambiguous" | "high_risk" | "incomplete" => {
-            Ok(json!({"route":policy.fallback}))
-        }
-        _ => bail!("Worker routing request classification is not recognized"),
-    }
+    creation_request::resolve(&policy, &request)
 }
 
 fn known_specialist(plugin_root: &Path, policy: &Policy, agent_type: &str) -> Result<bool> {
