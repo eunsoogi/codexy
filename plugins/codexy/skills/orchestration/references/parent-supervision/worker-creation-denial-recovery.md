@@ -60,10 +60,11 @@ authorized and one of these verified corrections applies:
   an authoritative source provides its corrected value. Codex MUST change only
   the identified fields in the original request.
 - For `PARENT_WORKTREE` or `PARENT_CHECKOUT_UNVERIFIED`, another controlling
-  task completes the supported handoff and authoritative task readback confirms
-  that this caller's actual CWD is the saved project's primary checkout. This
-  corrects a caller-side execution precondition; Codex MUST keep every field in
-  the original creation request unchanged.
+  task completes the supported handoff. Authoritative task readback MUST confirm
+  this same caller thread remains bound to the saved project selected for this
+  task and its actual CWD is that project's primary checkout. This corrects a
+  caller-side execution precondition; Codex MUST keep every field in the
+  original creation request unchanged.
 
 Both routes MUST preserve the issue, owner, saved project, app-managed worktree,
 and selected model pair. Verified checkout recovery is a meaningful correction
