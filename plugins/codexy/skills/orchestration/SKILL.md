@@ -129,8 +129,8 @@ appears to conflict with the active host, Codex MUST briefly identify the
 required setting, the applicable user authorization, and the actual tool
 contract. Native goal startup and state transitions MUST follow the canonical
 [goal-start contract](../goal-lifecycle/SKILL.md#goal-start-contract); this
-entrypoint MUST NOT add another goal-specific authorization gate or override
-the host's actual goal-tool restrictions.
+entrypoint MUST NOT add another goal-specific authorization gate or override the
+host's actual goal-tool restrictions.
 
 Codex MUST inspect the callable tools, their current argument and permission
 contracts, and applicable documented routes for the operation. It MUST select an

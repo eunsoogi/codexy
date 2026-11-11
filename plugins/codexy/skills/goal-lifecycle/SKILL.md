@@ -36,16 +36,16 @@ requires an explicit user or system request, neither the parent assignment nor
 scoped orchestration authority for child tasks or messages supplies it. An
 applicable explicit user request covering the parent goal and multiple Worker
 goals MUST be reused for every covered goal; the task MUST NOT require a
-separate unchanged confirmation for each Worker or another opt-in merely
-because a covered goal is assigned its own phase. The parent MUST
-include the request's source and scope in the child context or provide an
-authenticated reference when the original request is not visible to the child.
-A later user stop or revocation MUST override that authority for its stated
-scope. Plan-only or question-only requests and unassigned suggestions MUST NOT
-create execution goals. The task MUST preserve the native `get_goal` readback
-and report genuinely missing authority before task work. If the host cannot
-support the required operation, it MUST identify that host boundary accurately;
-it MUST NOT infer permission or call a forbidden `create_goal`.
+separate unchanged confirmation for each Worker or another opt-in merely because
+a covered goal is assigned its own phase. The parent MUST include the request's
+source and scope in the child context or provide an authenticated reference when
+the original request is not visible to the child. A later user stop or
+revocation MUST override that authority for its stated scope. Plan-only or
+question-only requests and unassigned suggestions MUST NOT create execution
+goals. The task MUST preserve the native `get_goal` readback and report
+genuinely missing authority before task work. If the host cannot support the
+required operation, it MUST identify that host boundary accurately; it MUST NOT
+infer permission or call a forbidden `create_goal`.
 
 For an Orchestrator/Worker arrangement, the Orchestrator MUST establish or
 continue its exact overall goal before its task work and before Worker dispatch.

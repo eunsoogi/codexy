@@ -27,13 +27,13 @@ NOT prove execution.
 Every app-managed child assignment governed by a native goal MUST link to the
 [canonical goal-start contract](../../goal-lifecycle/SKILL.md#goal-start-contract)
 and direct the child to call native `get_goal` before any task-specific work,
-then complete the contract's required first transition. The assignment MUST
-make clear that `get_goal` precedes issue or repository reads, commands,
-verification, delegation, and edits; later goal activation MUST NOT satisfy
-that ordering. When an explicit user request covers the parent and child goals,
-the parent MUST preserve its source and scope in the child's context or an
-authenticated reference and MUST NOT ask each Worker to renew it. The
-assignment itself MUST NOT be treated as host goal-tool permission.
+then complete the contract's required first transition. The assignment MUST make
+clear that `get_goal` precedes issue or repository reads, commands,
+verification, delegation, and edits; later goal activation MUST NOT satisfy that
+ordering. When an explicit user request covers the parent and child goals, the
+parent MUST preserve its source and scope in the child's context or an
+authenticated reference and MUST NOT ask each Worker to renew it. The assignment
+itself MUST NOT be treated as host goal-tool permission.
 
 After classification selects an owner and route, MUST follow the
 [thread/worktree rules](thread-and-worktree-routing.md). Before child creation
