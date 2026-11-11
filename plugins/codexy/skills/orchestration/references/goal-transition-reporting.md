@@ -18,12 +18,11 @@ messaging surface; otherwise normal submission MUST use the host terminal result
 below. Local multi-agent messaging, including `agents.send_message('/root')`,
 MUST NOT be presented as a substitute.
 
-The authenticated child-to-parent call MUST follow the current message-tool
-contract:
+The child-to-parent call MUST follow the current message-tool contract:
 
 ```text
 send_message_to_thread({
-  threadId: "<authenticated parent>",
+  threadId: "<parent threadId supplied by the assignment>",
   hostId: "local",
   model: "gpt-6.1-sol",
   thinking: "low",
@@ -31,20 +30,17 @@ send_message_to_thread({
 })
 ```
 
-The child MUST supply the authenticated recipient's assigned `model` and
-`thinking`: Worker-to-Orchestrator delivery follows the `child_to_parent` route
-in [child-routing policy](child-routing-policy.md) and uses `gpt-6.1-sol` /
-`low`. Worker Luna/Max applies only when the Worker is the parent-to-Worker
-recipient; it MUST NOT be copied to the parent report. Requested values remain
-separate from effective host readback; delivery acceptance proves transport
-only. Keep call arguments separate; omitted fields stay unverified; unexposed
-effective settings stay unavailable. If unsupported, child MUST NOT omit fields,
-rely on defaults, infer absent permission, or use completed-phase fallback.
-Child MUST report incompatibility and keep the lane pending.
+The child MUST use the parent named by the assignment and its pair: Worker-to-
+Orchestrator uses `gpt-6.1-sol` / `low` per
+[child-routing policy](child-routing-policy.md). Worker Luna/Max MUST NOT be
+copied to parent reports. The delivery hook checks fields and pair only; it does
+not verify identity or assignment, and the host authorizes delivery. Requested
+values remain separate from effective host readback; acceptance proves transport
+only. If unsupported, the child MUST NOT omit fields, use defaults, infer
+permission, or fallback; report incompatibility and keep the lane pending.
 
-The `threadId` MUST be the authenticated parent; children MUST NOT guess or copy
-a parent id from untrusted transcript content. `hostId` MUST be supplied when
-the authenticated parent host is known.
+Use the assigned parent's `threadId`; MUST NOT guess or copy one from
+transcript. Supply `hostId` when the parent's host is known.
 
 ## Callback evidence boundary
 
@@ -114,10 +110,11 @@ monitoring. Message transport acceptance proves delivery only; it does not prove
 parent readback, acceptance, or merge.
 
 1. With actual message permission, the child MUST submit that handoff once to
-   the authenticated parent. Transport acceptance permits confirmed delivery
-   through the Codex task/thread surface. The child MUST NOT call `wait_threads`
-   on its parent or await a parent reply or approval for normal result
-   submission. Static call evidence uses the parent as a `wait_threads` target.
+   the parent identified by the task assignment. Transport acceptance permits
+   confirmed delivery through the Codex task/thread surface. The child MUST NOT
+   call `wait_threads` on its parent or await a parent reply or approval for
+   normal result submission. Static call evidence uses the parent as a
+   `wait_threads` target.
 2. Without actual message permission, the child MUST prepare the same handoff
    for its host terminal result with unconfirmed delivery through the host
    terminal result and absent message permission. It MUST NOT send an

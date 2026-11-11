@@ -1,149 +1,104 @@
-//! Selects model and effort remedies from the authenticated route direction,
-//! and requires malformed metadata to fail with non-retry diagnostics.
+//! Checks field-specific, model-visible corrections without assigning a role.
 
 use serde_json::json;
 
-use super::thread_delivery_support::{
-    CHILD as WORKER_ID, PARENT as ORCHESTRATOR_ID, plugin_roots, reason, route, run,
-};
+use super::thread_delivery_support::{plugin_roots, reason, run_with_tool};
 use crate::support::TestResult;
 
 const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
+const TOOLS: &[&str] = &[
+    "codex_app__send_message_to_thread",
+    "mcp__codex_app__send_message_to_thread",
+];
 
 #[test]
-fn orchestrator_missing_fields_use_worker_remedy() -> TestResult {
+fn missing_or_empty_fields_name_the_edit_and_preserve_assignment_context() -> TestResult {
     let temp = tempfile::tempdir()?;
-    let transcript = temp.path().join("ignored.jsonl");
-    std::fs::write(&transcript, b"not-json\n")?;
+    let transcript = temp.path().join("unused-transcript.jsonl");
     let roots = plugin_roots(temp.path())?;
     let cases = [
         (
+            "missing recipient",
+            json!({"model":"gpt-6-luna","thinking":"max"}),
+            "MISSING_RECIPIENT",
+            "threadId",
+        ),
+        (
+            "empty recipient",
+            json!({"threadId":" ","model":"gpt-6-luna","thinking":"max"}),
+            "MISSING_RECIPIENT",
+            "threadId",
+        ),
+        (
             "missing model",
-            json!({"threadId":WORKER_ID,"thinking":"max"}),
+            json!({"threadId":"known-thread","thinking":"max"}),
             "MISSING_MODEL",
             "model",
         ),
         (
             "missing thinking",
-            json!({"threadId":WORKER_ID,"model":"gpt-6-luna"}),
+            json!({"threadId":"known-thread","model":"gpt-6-luna"}),
             "MISSING_THINKING",
             "thinking",
         ),
+        (
+            "missing pair",
+            json!({"threadId":"known-thread"}),
+            "MISSING_ROUTE_FIELDS",
+            "model and thinking",
+        ),
+        ("non-object input", json!(null), "MISSING_DELIVERY_FIELDS", "threadId"),
     ];
-    for event in EVENTS {
-        for (label, input, code, field) in &cases {
-            for root in &roots {
-                let reason = reason(
-                    run(
-                        root,
-                        event,
-                        &transcript,
-                        Some(ORCHESTRATOR_ID),
-                        input.clone(),
-                        Some(route(
-                            "root_to_child",
-                            ORCHESTRATOR_ID,
-                            WORKER_ID,
-                            "gpt-6-luna",
-                            "max",
-                        )),
-                    )?,
-                    event,
-                )?;
-                assert!(reason.contains(code), "{event} {label}: {reason}");
-                assert!(reason.contains(field), "{event} {label}: {reason}");
-                assert!(
-                    reason.contains("Orchestrator-to-Worker"),
-                    "{event} {label}: {reason}"
-                );
-                assert!(reason.contains("gpt-6-luna"), "{event} {label}: {reason}");
-                assert!(reason.contains("max"), "{event} {label}: {reason}");
-                assert!(reason.contains("gpt-6.1-terra"), "{event} {label}: {reason}");
-                assert!(
-                    !reason.contains("gpt-6.1-sol"),
-                    "{event} {label}: {reason}"
-                );
-                assert!(reason.contains("medium"), "{event} {label}: {reason}");
-                assert!(reason.contains("MUST"), "{event} {label}: {reason}");
-                assert!(
-                    !reason.contains("Worker-to-Orchestrator"),
-                    "{event} {label}: {reason}"
-                );
-                assert!(!reason.contains("gpt-6-astra"), "{event} {label}: {reason}");
-            }
-        }
-    }
-    Ok(())
-}
 
-#[test]
-fn worker_missing_fields_use_orchestrator_remedy() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let transcript = temp.path().join("ignored.jsonl");
-    std::fs::write(&transcript, b"not-json\n")?;
-    let roots = plugin_roots(temp.path())?;
-    for event in EVENTS {
-        for root in &roots {
-            for input in [
-                json!({"threadId":ORCHESTRATOR_ID,"thinking":"low"}),
-                json!({"threadId":ORCHESTRATOR_ID,"model":"gpt-6.1-sol"}),
-            ] {
-                let reason = reason(
-                    run(
-                        root,
+    for root in &roots {
+        for event in EVENTS {
+            for tool in TOOLS {
+                for (label, tool_input, code, field) in &cases {
+                    let reason = reason(
+                        run_with_tool(
+                            root,
+                            event,
+                            tool,
+                            &transcript,
+                            tool_input.clone(),
+                            None,
+                        )?,
                         event,
-                        &transcript,
-                        Some(WORKER_ID),
-                        input,
-                        Some(route(
-                            "child_to_parent",
-                            WORKER_ID,
-                            ORCHESTRATOR_ID,
-                            "gpt-6.1-sol",
-                            "low",
-                        )),
-                    )?,
-                    event,
-                )?;
-                assert!(reason.contains("MISSING_"), "{event}: {reason}");
-                assert!(reason.contains("Worker-to-Orchestrator"), "{event}: {reason}");
-                assert!(reason.contains("gpt-6.1-sol"), "{event}: {reason}");
-                assert!(reason.contains("low"), "{event}: {reason}");
-                assert!(reason.contains("MUST"), "{event}: {reason}");
+                    )?;
+                    assert!(reason.contains(code), "{event} {label}: {reason}");
+                    assert!(reason.contains(field), "{event} {label}: {reason}");
+                    for allowed_value in [
+                        "gpt-6.1-sol",
+                        "low",
+                        "gpt-6-luna",
+                        "max",
+                        "gpt-6.1-terra",
+                        "medium",
+                    ] {
+                        assert!(reason.contains(allowed_value), "{event} {label}: {reason}");
+                    }
+                    assert!(reason.contains("known recipient"), "{event} {label}: {reason}");
+                    assert!(reason.contains("assigned pair"), "{event} {label}: {reason}");
+                    assert!(reason.contains("correct"), "{event} {label}: {reason}");
+                    assert!(reason.contains("retry only"), "{event} {label}: {reason}");
+                    if *field == "threadId" {
+                        assert!(
+                            reason.contains("threadId from the assignment"),
+                            "{event} {label}: {reason}"
+                        );
+                        assert!(reason.contains("do not guess"), "{event} {label}: {reason}");
+                        assert!(
+                            reason.contains("correct only the missing"),
+                            "{event} {label}: {reason}"
+                        );
+                    }
+                    assert!(!reason.contains("routing metadata"), "{event} {label}: {reason}");
+                    assert!(
+                        !reason.contains("CODEXY_THREAD_DELIVERY_MISSING_ROUTING_METADATA"),
+                        "{event} {label}: {reason}"
+                    );
+                }
             }
-        }
-    }
-    Ok(())
-}
-
-#[test]
-fn malformed_metadata_uses_mandatory_non_retry_wording() -> TestResult {
-    let temp = tempfile::tempdir()?;
-    let transcript = temp.path().join("ignored.jsonl");
-    std::fs::write(&transcript, b"not-json\n")?;
-    let roots = plugin_roots(temp.path())?;
-    for event in EVENTS {
-        for root in &roots {
-            let reason = reason(
-                run(
-                    root,
-                    event,
-                    &transcript,
-                    Some(WORKER_ID),
-                    json!({
-                        "threadId":ORCHESTRATOR_ID,
-                        "model":"gpt-6.1-sol",
-                        "thinking":"low"
-                    }),
-                    Some(json!({"authenticated":true})),
-                )?,
-                event,
-            )?;
-            assert!(reason.contains("MALFORMED_ROUTING_METADATA"));
-            assert!(reason.contains("MUST NOT retry blindly"));
-            assert!(reason.contains("MUST obtain"));
-            assert!(!reason.contains(WORKER_ID));
-            assert!(!reason.contains(ORCHESTRATOR_ID));
         }
     }
     Ok(())

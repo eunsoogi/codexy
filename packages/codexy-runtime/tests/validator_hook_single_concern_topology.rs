@@ -118,7 +118,7 @@ fn capability_contract_accounts_for_every_concern_once() -> TestResult {
         assert_eq!(actual["diagnosticFamily"], expected.diagnostic);
         assert_eq!(actual["events"], serde_json::json!(EVENTS));
         let input_contract = match id {
-            "thread-delivery" => "codexy.hooks.thread-delivery.v2",
+            "thread-delivery" => "codexy.hooks.thread-delivery.v3",
             "subagent-ownership" => "codexy.hooks.subagent-ownership.v1",
             _ => "codexy.hooks.child-thread-creation.v1",
         };

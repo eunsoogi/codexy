@@ -44,20 +44,7 @@ pub(super) fn admitted_payload(concern: &Concern, event: &str) -> TestResult<Val
             .display()
             .to_string()
     };
-    let mut payload = json!({"hook_event_name": event, "tool_name": concern.tool, "tool_input": tool_input,
+    let payload = json!({"hook_event_name": event, "tool_name": concern.tool, "tool_input": tool_input,
         "cwd": cwd});
-    if concern.id == "thread-delivery" {
-        // Valid delivery fixtures model the host route that admission now requires.
-        payload["session_id"] = json!("test-orchestrator");
-        payload["codexy_thread_delivery"] = json!({
-            "schema":"codexy.thread-delivery.v2",
-            "authenticated":true,
-            "direction":"root_to_child",
-            "sender_thread_id":"test-orchestrator",
-            "target_thread_id":"test-worker",
-            "target_model":"gpt-6-luna",
-            "target_thinking":"max"
-        });
-    }
     Ok(payload)
 }

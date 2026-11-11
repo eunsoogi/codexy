@@ -1,5 +1,4 @@
-//! Builds authoritative and installed hook fixtures, injects optional routing
-//! metadata, and normalizes event-specific admission or denial results.
+//! Builds ordinary request fixtures and runs source or installed hook launchers.
 
 use std::{
     io::Write,
@@ -11,28 +10,7 @@ use serde_json::{Value, json};
 
 use crate::support::TestResult;
 
-pub(super) const CHILD: &str = "01a03690-a037-7141-af1c-1d7cdb093087";
-pub(super) const PARENT: &str = "01a02ebc-804e-7702-a0ca-503c50741db8";
-pub(super) const OTHER: &str = "01a031f2-da35-7960-9686-502b7e373676";
-pub(super) const ROUTING_FIELD: &str = "codexy_thread_delivery";
-
-pub(super) fn route(
-    direction: &str,
-    sender: &str,
-    recipient: &str,
-    model: &str,
-    thinking: &str,
-) -> Value {
-    json!({
-        "schema":"codexy.thread-delivery.v2",
-        "authenticated":true,
-        "direction":direction,
-        "sender_thread_id":sender,
-        "target_thread_id":recipient,
-        "target_model":model,
-        "target_thinking":thinking
-    })
-}
+pub(super) const LEGACY_METADATA_FIELD: &str = "codexy_thread_delivery";
 
 pub(super) fn input(recipient: &str, model: &str, thinking: &str, prompt: &str) -> Value {
     json!({
@@ -55,46 +33,23 @@ pub(super) fn plugin_roots(temp: &Path) -> TestResult<[PathBuf; 2]> {
     ])
 }
 
-pub(super) fn run(
-    root: &Path,
-    event: &str,
-    transcript: &Path,
-    session: Option<&str>,
-    tool_input: Value,
-    routing: Option<Value>,
-) -> TestResult<std::process::Output> {
-    run_with_tool(
-        root,
-        event,
-        "codex_app__send_message_to_thread",
-        transcript,
-        session,
-        tool_input,
-        routing,
-    )
-}
-
 pub(super) fn run_with_tool(
     root: &Path,
     event: &str,
     tool_name: &str,
     transcript: &Path,
-    session: Option<&str>,
     tool_input: Value,
-    routing: Option<Value>,
+    legacy_metadata: Option<Value>,
 ) -> TestResult<std::process::Output> {
-    // Keep the tool alias selectable while exercising the real source or copied launcher.
+    // Legacy metadata is included only to prove it cannot change request admission.
     let mut payload = json!({
         "hook_event_name":event,
         "tool_name":tool_name,
         "tool_input":tool_input,
         "transcript_path":transcript
     });
-    if let Some(session) = session {
-        payload["session_id"] = json!(session);
-    }
-    if let Some(routing) = routing {
-        payload[ROUTING_FIELD] = routing;
+    if let Some(metadata) = legacy_metadata {
+        payload[LEGACY_METADATA_FIELD] = metadata;
     }
     let payload = serde_json::to_vec(&payload)?;
     let mut command = launcher(root);
@@ -106,6 +61,18 @@ pub(super) fn run_with_tool(
         .stderr(Stdio::piped())
         .spawn()?;
     child.stdin.take().ok_or("hook stdin")?.write_all(&payload)?;
+    Ok(child.wait_with_output()?)
+}
+
+pub(super) fn run_with_unregistered_event(root: &Path, event: &str) -> TestResult<std::process::Output> {
+    // Rejection happens before payload parsing, so avoid racing a writer against the early exit.
+    let child = launcher(root)
+        .arg(event)
+        .env("PLUGIN_ROOT", root)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
     Ok(child.wait_with_output()?)
 }
 

@@ -1,10 +1,10 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
 set "event=%~1"
-@rem Accept configured events; unknown input defaults to PreToolUse.
+@rem Reject unregistered events instead of reinterpreting them as PreToolUse.
 if /I "%event%"=="PreToolUse" goto evaluate
 if /I "%event%"=="PermissionRequest" goto evaluate
-set "event=PreToolUse"
+exit /b 1
 :evaluate
 @rem Use the system Python launcher instead of a PATH-selected interpreter.
 set "runtime=%SystemRoot%\py.exe"

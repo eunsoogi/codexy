@@ -20,7 +20,7 @@ pub(super) fn creation_target() -> Value {
 
 pub(super) fn hard_work_cases() -> TestResult<Vec<Value>> {
     [
-        r#"{"criterion":"coupled_contracts","boundaries":["request parser","admission hook","delivery hook"],"coupling":"All three must enforce the same authenticated assignment"}"#,
+        r#"{"criterion":"coupled_contracts","boundaries":["request parser","admission hook","delivery hook"],"coupling":"Each boundary must preserve the selected model pair under its own contract"}"#,
         r#"{"criterion":"algorithm_design","problem":"Design a dependency scheduler","constraints":["Cycles must be reported","Ready nodes must preserve capacity"],"correctness_obligation":"Prove each node executes once after dependencies finish"}"#,
         r#"{"criterion":"cross_boundary_diagnosis","boundaries":["host","hook"],"competing_hypotheses":["Host dropped the field","Hook interpreted a stale envelope"],"observations":["Request includes assigned model","Delivery trace reports another model"]}"#,
     ].into_iter().map(|text| Ok(serde_json::from_str(text)?)).collect()

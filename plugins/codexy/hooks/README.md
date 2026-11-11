@@ -22,19 +22,17 @@ POSIX uses ownership and mode checks; Windows uses the host-provided data root.
 The parent remains responsible for interpreting readbacks and performing
 cleanup.
 
-The native host must supply a bounded, host-authenticated
-`codexy_thread_delivery` v2 envelope for thread-delivery admission. If it is
-missing, the hook denies with `MISSING_ROUTING_METADATA` and requires a fresh
-host envelope; it does not fall back to unconditional admission. The envelope
-binds the current `session_id`, requested `threadId`, direction, and target's
-explicit model/thinking pair. Its authenticated sender/target pair carries the
-native parent/child correlation without replaying a transcript. Root-to-child
-delivery requires the assigned Worker pair: `gpt-6-luna`/`max` or
-`gpt-6.1-terra`/`medium`. Child-to-parent delivery requires `gpt-6.1-sol`/`low`.
-Present but malformed, ambiguous, or mismatched v2 metadata also fails closed.
-This hook never opens `transcript_path` and never uses a prompt, message body,
-or other conversation content as route authority. The native host owns
-production of the authenticated envelope.
+Thread-delivery admission validates a non-empty `threadId`, explicit `model` and
+`thinking` fields, and one exact supported pair: `gpt-6.1-sol`/`low`,
+`gpt-6-luna`/`max`, or `gpt-6.1-terra`/`medium`. The same request-level check
+applies to both hook events and both tool-name aliases. Optional legacy
+`codexy_thread_delivery` data does not change the decision. The hook does not
+infer a recipient role or verify parent/child identity, target existence, or
+recipient assignment. Orchestration selects the known recipient and its assigned
+pair; the host authorizes the actual delivery. This hook never opens
+`transcript_path` or uses a prompt, message body, or other conversation content
+as route authority. Bounded JSON, event, and tool validation remain in force,
+including duplicate-key rejection.
 
 The child-thread-creation concern still requires native, non-empty `model` and
 `thinking` fields. The plugin admits `spawn_agent` only for exact packaged

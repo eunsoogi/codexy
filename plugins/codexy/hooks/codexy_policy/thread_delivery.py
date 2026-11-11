@@ -1,4 +1,4 @@
-"""Thread-delivery admission from an authenticated host routing envelope."""
+"""Validate thread-delivery request fields and the selected model pair."""
 
 from __future__ import annotations
 
@@ -6,181 +6,107 @@ from typing import cast
 
 from .envelope import Diagnostic, Request
 
-FIELDS = ("model", "thinking")
 WORKER_ROUTE = ("gpt-6-luna", "max")
 HARD_WORKER_ROUTE = ("gpt-6.1-terra", "medium")
-# Worker selection stays independent from the parent request; authenticated
-# direction and target identity remain mandatory even when a pair is recognized.
+# Creation still requires an explicit pair; delivery also requires the recipient.
+FIELDS = ("model", "thinking")
 WORKER_CREATION_ROUTES = frozenset({WORKER_ROUTE, HARD_WORKER_ROUTE})
-# Existing assignments receive no delivery exception from the creation allowlist.
-WORKER_DELIVERY_ROUTES = WORKER_CREATION_ROUTES
 ORCHESTRATOR_ROUTE = ("gpt-6.1-sol", "low")
-ROUTING_SCHEMA = "codexy.thread-delivery.v2"
-ROUTING_FIELDS = frozenset(
-    {
-        "schema",
-        "authenticated",
-        "direction",
-        "sender_thread_id",
-        "target_thread_id",
-        "target_model",
-        "target_thinking",
-    }
+ALLOWED_PAIRS = (
+    ORCHESTRATOR_ROUTE,
+    WORKER_ROUTE,
+    HARD_WORKER_ROUTE,
 )
-# These direction values are serialized host-envelope identifiers. Their
-# product roles are Orchestrator-to-Worker and Worker-to-Orchestrator.
-DIRECTIONS = frozenset({"root_to_child", "child_to_parent"})
+_ALLOWED_MODELS = frozenset(model for model, _thinking in ALLOWED_PAIRS)
+_REQUIRED_FIELDS = ("threadId", "model", "thinking")
+_SUPPORTED_PAIRS = ", ".join(f"{model}/{thinking}" for model, thinking in ALLOWED_PAIRS)
 
 
 def forbidden(request: Request) -> bool | str | Diagnostic:
-    # Without the authenticated host envelope, request fields cannot establish route authority.
-    if not request.routing_metadata_present:
-        return Diagnostic("MISSING_ROUTING_METADATA", _MISSING_ROUTING)
-    session = request.session_id
-    if not _non_empty_string(session):
-        return Diagnostic("MISSING_IDENTITY", _MISSING_IDENTITY)
-    # The host-authenticated sender/target pair is the bounded replacement for
-    # native create_thread provenance; this consumer never reconstructs it from
-    # transcript records or handoff prose.
-    metadata = _routing_metadata(request.routing_metadata)
-    if isinstance(metadata, Diagnostic):
-        return metadata
-    metadata = cast(dict[str, object], metadata)
-    direction = cast(str, metadata["direction"])
-
+    """Reject malformed requests and model/effort combinations the product supports."""
     data = request.tool_input
     if not isinstance(data, dict):
-        return _missing_field_diagnostic(list(FIELDS), direction)
-    data = cast(dict[str, object], data)
-    missing = _missing_fields(data)
+        return _missing_field_diagnostic(list(_REQUIRED_FIELDS))
+
+    fields = cast(dict[str, object], data)
+    missing = [
+        field for field in _REQUIRED_FIELDS if not _non_empty_string(fields.get(field))
+    ]
     if missing:
-        return _missing_field_diagnostic(missing, direction)
+        return _missing_field_diagnostic(missing)
 
-    recipient = data.get("threadId")
-    if not _non_empty_string(recipient):
-        return Diagnostic("MISSING_RECIPIENT", _MISSING_RECIPIENT)
-    if metadata["sender_thread_id"] != session:
-        return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
-    if metadata["target_thread_id"] != recipient:
-        return Diagnostic("WRONG_RECIPIENT", _WRONG_RECIPIENT)
-    if metadata["target_thread_id"] == metadata["sender_thread_id"]:
-        return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
-
-    target_route = (
-        cast(str, metadata["target_model"]),
-        cast(str, metadata["target_thinking"]),
-    )
-    if direction == "child_to_parent":
-        expected = ORCHESTRATOR_ROUTE
-        if target_route != expected:
-            return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
-    else:
-        expected = target_route
-        if expected not in WORKER_DELIVERY_ROUTES:
-            return Diagnostic("MISMATCHED_ROUTING_METADATA", _MISMATCHED_ROUTING)
-    if data["model"] != expected[0]:
-        return Diagnostic("UNSUPPORTED_MODEL", _unsupported_model(direction))
-    if data["thinking"] != expected[1]:
-        return Diagnostic("UNSUPPORTED_THINKING", _unsupported_thinking(direction))
+    model = cast(str, fields["model"])
+    thinking = cast(str, fields["thinking"])
+    if model not in _ALLOWED_MODELS:
+        return Diagnostic("UNSUPPORTED_MODEL", _unsupported_model())
+    if (model, thinking) not in ALLOWED_PAIRS:
+        return Diagnostic("UNSUPPORTED_THINKING", _unsupported_thinking())
     return False
-
-
-def _routing_metadata(value: object) -> dict[str, object] | Diagnostic:
-    if not isinstance(value, dict):
-        return Diagnostic("MALFORMED_ROUTING_METADATA", _MALFORMED_ROUTING)
-    metadata = cast(dict[str, object], value)
-    if set(metadata) != ROUTING_FIELDS:
-        return Diagnostic("MALFORMED_ROUTING_METADATA", _MALFORMED_ROUTING)
-    if metadata["schema"] != ROUTING_SCHEMA or metadata["authenticated"] is not True:
-        return Diagnostic("MALFORMED_ROUTING_METADATA", _MALFORMED_ROUTING)
-    if (
-        not isinstance(metadata["direction"], str)
-        or metadata["direction"] not in DIRECTIONS
-    ):
-        return Diagnostic("MALFORMED_ROUTING_METADATA", _MALFORMED_ROUTING)
-    for field in (
-        "direction",
-        "sender_thread_id",
-        "target_thread_id",
-        "target_model",
-        "target_thinking",
-    ):
-        if not _non_empty_string(metadata[field]):
-            return Diagnostic("MALFORMED_ROUTING_METADATA", _MALFORMED_ROUTING)
-    return metadata
 
 
 def _non_empty_string(value: object) -> bool:
     return isinstance(value, str) and bool(value.strip()) and value == value.strip()
 
 
-def _missing_fields(data: dict[str, object]) -> list[str]:
-    return [field for field in FIELDS if not _non_empty_string(data.get(field))]
+def _missing_field_diagnostic(fields: list[str]) -> Diagnostic:
+    if fields == ["threadId"]:
+        code = "MISSING_RECIPIENT"
+    elif fields == ["model"]:
+        code = "MISSING_MODEL"
+    elif fields == ["thinking"]:
+        code = "MISSING_THINKING"
+    elif set(fields) == {"model", "thinking"}:
+        code = "MISSING_ROUTE_FIELDS"
+    else:
+        code = "MISSING_DELIVERY_FIELDS"
 
-
-def _missing_field_diagnostic(fields: list[str], direction: str | None) -> Diagnostic:
-    names = " and ".join(fields)
-    code = "MISSING_ROUTE_FIELDS" if len(fields) > 1 else f"MISSING_{fields[0].upper()}"
-    route = _route(direction)
+    names = _field_names(fields)
     return Diagnostic(
         code,
-        f"Missing {names}; {route}. MUST correct the field and MUST retry once.",
+        f"Missing or empty {names}; required fields are threadId, model, and thinking. "
+        + f"Allowed model/thinking pairs: {_SUPPORTED_PAIRS}. "
+        + _missing_field_correction(fields),
     )
 
 
-def _route(direction: str | None) -> str:
-    if direction == "child_to_parent":
-        return f"Worker-to-Orchestrator delivery requires {_ORCHESTRATOR_ROUTE}"
-    if direction == "root_to_child":
-        return f"Orchestrator-to-Worker delivery requires {_WORKER_ROUTE}"
-    return "thread delivery requires explicit authenticated host routing metadata"
+def _field_names(fields: list[str]) -> str:
+    if len(fields) == 1:
+        return fields[0]
+    if len(fields) == 2:
+        return f"{fields[0]} and {fields[1]}"
+    return ", ".join(fields[:-1]) + f", and {fields[-1]}"
 
 
-_ORCHESTRATOR_ROUTE = (
-    f"threadId=<authenticated Orchestrator>, model='{ORCHESTRATOR_ROUTE[0]}', "
-    f"and thinking='{ORCHESTRATOR_ROUTE[1]}'"
-)
-_WORKER_ROUTE = (
-    "threadId=<authenticated Worker> with its assigned pair: "
-    "model='gpt-6-luna' and thinking='max', "
-    "or model='gpt-6.1-terra' and thinking='medium'"
-)
-_MISSING_IDENTITY = (
-    "Missing authenticated session_id; MUST NOT retry blindly. "
-    "MUST retry only after Codex supplies it."
-)
-_MISSING_RECIPIENT = (
-    "Missing recipient threadId; MUST NOT retry blindly. "
-    "MUST provide the recipient from the authenticated host route."
-)
-_MISSING_ROUTING = (
-    "Missing authenticated host routing metadata; MUST NOT retry blindly. "
-    "MUST retry only after Codex supplies a bounded codexy_thread_delivery envelope."
-)
-_MALFORMED_ROUTING = (
-    "Malformed or ambiguous authenticated host routing metadata; "
-    "MUST NOT retry blindly. MUST obtain a fresh host envelope."
-)
-_MISMATCHED_ROUTING = (
-    "Mismatched authenticated host routing metadata; MUST NOT retry blindly. "
-    "MUST stop and obtain a fresh host envelope."
-)
-_WRONG_RECIPIENT = (
-    "Wrong recipient route; MUST set threadId to the authenticated host target "
-    f"and MUST use {_ORCHESTRATOR_ROUTE} or {_WORKER_ROUTE}, then MUST correct the route "
-    "and MUST retry once. MUST NOT guess a thread ID."
-)
+# Recipient recovery must use the assignment; pair-only edits cannot recreate
+# a missing thread ID.
+def _missing_field_correction(fields: list[str]) -> str:
+    if "threadId" not in fields:
+        return _CORRECTION
 
-
-def _unsupported_model(direction: str) -> str:
+    names = _field_names(fields)
+    field_word = "field" if len(fields) == 1 else "fields"
     return (
-        f"Unsupported delivery model; {_route(direction)}, then MUST correct the "
-        "model and MUST retry once."
+        "Use the known recipient's threadId from the assignment; do not guess. "
+        "Keep the recipient's assigned pair; "
+        f"correct only the missing {field_word} {names}, then retry only the corrected request."
     )
 
 
-def _unsupported_thinking(direction: str) -> str:
+_CORRECTION = (
+    "Keep the known recipient and orchestration-assigned pair; correct only the "
+    "editable model/thinking fields, then retry only the corrected request."
+)
+
+
+def _unsupported_model() -> str:
     return (
-        f"Unsupported delivery thinking; {_route(direction)}, then MUST correct "
-        "the thinking and MUST retry once."
+        f"Unsupported model field. Allowed model/thinking pairs: {_SUPPORTED_PAIRS}. "
+        f"{_CORRECTION}"
+    )
+
+
+def _unsupported_thinking() -> str:
+    return (
+        "Unsupported thinking field for the selected model. "
+        f"Allowed model/thinking pairs: {_SUPPORTED_PAIRS}. {_CORRECTION}"
     )
