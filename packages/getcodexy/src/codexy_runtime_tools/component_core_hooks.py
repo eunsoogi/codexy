@@ -24,6 +24,8 @@ DEPENDENCIES = (
     "hooks/codexy_policy/thread_delivery.py",
     "hooks/codexy-child-thread-creation.py",
     "hooks/codexy_policy/child_thread_creation.py",
+    # The admission module imports this helper when constructing denial feedback.
+    "hooks/codexy_policy/child_thread_creation_feedback.py",
     "hooks/codexy-subagent-ownership.py",
     "hooks/codexy_policy/subagent_ownership.py",
     # Spawn admission delegates action intent to this separately packaged helper.

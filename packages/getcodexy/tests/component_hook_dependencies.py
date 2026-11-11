@@ -10,6 +10,7 @@ CORE_HOOK_DEPENDENCIES = (
     "hooks/codexy-child-thread-creation.cmd",
     "hooks/codexy-child-thread-creation.py",
     "hooks/codexy_policy/child_thread_creation.py",
+    "hooks/codexy_policy/child_thread_creation_feedback.py",
     "hooks/codexy-subagent-ownership.sh",
     "hooks/codexy-subagent-ownership.cmd",
     "hooks/codexy-subagent-ownership.py",
