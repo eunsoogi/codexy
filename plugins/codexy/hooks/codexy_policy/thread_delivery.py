@@ -64,7 +64,8 @@ def _missing_field_diagnostic(fields: list[str]) -> Diagnostic:
     return Diagnostic(
         code,
         f"Missing or empty {names}; required fields are threadId, model, and thinking. "
-        + f"Allowed model/thinking pairs: {_SUPPORTED_PAIRS}. {_CORRECTION}",
+        + f"Allowed model/thinking pairs: {_SUPPORTED_PAIRS}. "
+        + _missing_field_correction(fields),
     )
 
 
@@ -74,6 +75,21 @@ def _field_names(fields: list[str]) -> str:
     if len(fields) == 2:
         return f"{fields[0]} and {fields[1]}"
     return ", ".join(fields[:-1]) + f", and {fields[-1]}"
+
+
+# Recipient recovery must use the assignment; pair-only edits cannot recreate
+# a missing thread ID.
+def _missing_field_correction(fields: list[str]) -> str:
+    if "threadId" not in fields:
+        return _CORRECTION
+
+    names = _field_names(fields)
+    field_word = "field" if len(fields) == 1 else "fields"
+    return (
+        "Use the known recipient's threadId from the assignment; do not guess. "
+        "Keep the recipient's assigned pair; "
+        f"correct only the missing {field_word} {names}, then retry only the corrected request."
+    )
 
 
 _CORRECTION = (

@@ -81,6 +81,17 @@ fn missing_or_empty_fields_name_the_edit_and_preserve_assignment_context() -> Te
                     assert!(reason.contains("assigned pair"), "{event} {label}: {reason}");
                     assert!(reason.contains("correct"), "{event} {label}: {reason}");
                     assert!(reason.contains("retry only"), "{event} {label}: {reason}");
+                    if *field == "threadId" {
+                        assert!(
+                            reason.contains("threadId from the assignment"),
+                            "{event} {label}: {reason}"
+                        );
+                        assert!(reason.contains("do not guess"), "{event} {label}: {reason}");
+                        assert!(
+                            reason.contains("correct only the missing"),
+                            "{event} {label}: {reason}"
+                        );
+                    }
                     assert!(!reason.contains("routing metadata"), "{event} {label}: {reason}");
                     assert!(
                         !reason.contains("CODEXY_THREAD_DELIVERY_MISSING_ROUTING_METADATA"),
