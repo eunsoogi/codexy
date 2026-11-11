@@ -1,4 +1,4 @@
-//! Drives resolved Worker pairs through source and installed-copy hook launchers.
+//! Passes the resolver's exact tool input through source and installed-copy hook launchers.
 //! These subprocesses prove local admission, not an app task or effective host settings.
 
 use super::*;
@@ -35,11 +35,7 @@ fn supported_worker_pairs_survive_creation_and_authenticated_delivery() -> TestR
             for event in ["PreToolUse", "PermissionRequest"] {
                 let creation = json!({
                     "hook_event_name":event, "tool_name":"mcp__codex_app__create_thread", "cwd":primary,
-                    "tool_input":{
-                        "model":chosen["model"], "thinking":chosen["thinking"],
-                        "target":{"type":"project", "projectId":"routing-proof",
-                            "environment":{"type":"worktree"}}
-                    }
+                    "tool_input":chosen["tool_input"].clone()
                 });
                 assert!(!denied(
                     plugin_root,
