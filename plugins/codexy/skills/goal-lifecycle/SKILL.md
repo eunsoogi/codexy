@@ -17,7 +17,7 @@ It MUST NOT change host goal state, issue ownership, branch, or worktree to
 simulate completion. Fork recovery changes only the active task thread through a
 same-directory fork and archive; a supported same-task resume retains it.
 
-## Delegated assignment authorization
+## Goal-start contract
 
 A delegated assignment MUST distinguish the overall issue outcome from the
 child's currently executable phase. The parent MUST state the phase objective
@@ -31,20 +31,21 @@ any such criterion is unmet; native goal status MUST follow the applicable
 lifecycle rules below. Parent merge, parent acceptance or acknowledgement, and
 future instructions MUST NOT be phase completion criteria.
 
-The child MUST use that exact phase objective for its finite goal. Assignment
-authority MUST NOT override the host's goal-creation rules. When the host
-requires an explicit user or system goal request, the task MUST NOT infer that
-authority from delegation alone or require a forbidden `create_goal` call. An
-applicable explicit user request covering multiple Worker goals MUST be reused;
-the task MUST NOT require a separate unchanged confirmation for each Worker. It
-MUST preserve the readback and report genuinely missing authority before task
-work. When the host cannot support the required operation, it MUST identify the
-host boundary rather than describe it as missing authorization. Scoped
-orchestration authority covers necessary child tasks and bounded task messages
-under [child routing](../orchestration/references/child-routing-policy.md); it
-MUST NOT be mistaken for host goal-tool permission. When creation is authorized,
-Codex MUST NOT require another opt-in for the same phase. Ordinary questions and
-unassigned suggestions MUST NOT create a goal.
+The child MUST use that exact phase objective for its finite goal. When the host
+requires an explicit user or system request, neither the parent assignment nor
+scoped orchestration authority for child tasks or messages supplies it. An
+applicable explicit user request covering the parent goal and multiple Worker
+goals MUST be reused for every covered goal; the task MUST NOT require a
+separate unchanged confirmation for each Worker or another opt-in merely
+because a covered goal is assigned its own phase. The parent MUST
+include the request's source and scope in the child context or provide an
+authenticated reference when the original request is not visible to the child.
+A later user stop or revocation MUST override that authority for its stated
+scope. Plan-only or question-only requests and unassigned suggestions MUST NOT
+create execution goals. The task MUST preserve the native `get_goal` readback
+and report genuinely missing authority before task work. If the host cannot
+support the required operation, it MUST identify that host boundary accurately;
+it MUST NOT infer permission or call a forbidden `create_goal`.
 
 For an Orchestrator/Worker arrangement, the Orchestrator MUST establish or
 continue its exact overall goal before its task work and before Worker dispatch.
