@@ -32,7 +32,7 @@ Codexy는 Codex가 저장소 작업의 범위를 정하고 담당자를 지정�
 릴리스 태그의 한국어 README에서 설치·업그레이드 절차를 확인하세요.
 
 ```sh
-uv tool install getcodexy==2.2.3
+uv tool install getcodexy==2.2.4
 uv tool update-shell
 getcodexy install
 ```
@@ -57,7 +57,7 @@ github와 devtools를 설치하면 의존성인 core도 자동으로 포함됩�
 getcodexy status
 getcodexy doctor
 getcodexy update
-uv tool upgrade getcodexy==2.2.3
+uv tool upgrade getcodexy==2.2.4
 ```
 
 `getcodexy status`와 `getcodexy doctor`로 설치 상태를 확인하고,
@@ -85,7 +85,7 @@ getcodexy --codex /absolute/path/to/codex migrate
 릴리스 태그의 한국어 README에서 직접 설치 절차를 확인하세요.
 
 ```sh
-codex plugin marketplace add eunsoogi/codexy --ref v2.2.3
+codex plugin marketplace add eunsoogi/codexy --ref v2.2.4
 codex plugin add codexy@codexy
 codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy
