@@ -22,11 +22,11 @@ authorize the same-issue transition and use the
 handling, before changing the existing owner record.
 
 Work identified as hard before assignment MUST continue to use the direct
-Terra/Medium route in
+Sol/Medium route in
 [Worker routing](child-routing-policy.md#evidenced-hard-work). This reference
-MUST be used only when a general Luna/Max Worker discovers qualifying evidence
-after work has begun. Specialists and Workers already assigned to the hard lane
-MUST NOT use this path.
+MUST be used only when a general Terra/Medium Worker discovers qualifying
+evidence after work has begun. Specialists and Workers already assigned to the
+hard lane MUST NOT use this path.
 
 ## Eligibility conditions
 
@@ -34,7 +34,7 @@ The Orchestrator MUST require all of these conditions before considering
 elevation:
 
 - The source MUST be the authenticated current owner of the issue, and its
-  assignment record MUST identify it as a `gpt-6-luna` / `max` Worker. The
+  assignment record MUST identify it as a `gpt-6.1-terra` / `medium` Worker. The
   Orchestrator MUST keep any host-effective model observation separate; if it is
   not exposed, it remains unknown.
 - The source's actual native goal MUST be active and its objective MUST exactly

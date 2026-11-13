@@ -68,8 +68,8 @@ fn primary_subdirectories_allow_but_nested_worktrees_are_rejected() -> TestResul
             let mut primary_input = pre_tool_input_at(
                 tool,
                 json!({
-                    "model":"gpt-6-luna",
-                    "thinking":"max",
+                    "model":"gpt-6.1-terra",
+                    "thinking":"medium",
                     "target":{
                         "type":"project",
                         "projectId":"local-test-project",
@@ -86,7 +86,7 @@ fn primary_subdirectories_allow_but_nested_worktrees_are_rejected() -> TestResul
 
             for cwd in [&nested_worktree, &nested_subdirectory] {
                 let mut input =
-                    pre_tool_input_at(tool, json!({"model":"gpt-6-luna","thinking":"max"}), cwd);
+                    pre_tool_input_at(tool, json!({"model":"gpt-6.1-terra","thinking":"medium"}), cwd);
                 input["hook_event_name"] = json!(event);
                 let output = hook_output(&input, event)?;
                 let reason = if event == "PermissionRequest" {
@@ -109,7 +109,7 @@ fn unverifiable_parent_checkout_is_rejected_before_worker_creation() -> TestResu
             let input = json!({
                 "hook_event_name":event,
                 "tool_name":tool,
-                "tool_input":{"model":"gpt-6-luna","thinking":"max"}
+                "tool_input":{"model":"gpt-6.1-terra","thinking":"medium"}
             });
             let output = hook_output(&input, event)?;
             let reason = if event == "PermissionRequest" {
@@ -133,8 +133,8 @@ fn tool_input_cannot_claim_primary_cwd_for_a_worktree_parent() -> TestResult {
         "tool_name":TOOLS[0],
         "cwd":worktree,
         "tool_input":{
-            "model":"gpt-6-luna",
-            "thinking":"max",
+            "model":"gpt-6.1-terra",
+            "thinking":"medium",
             "cwd":primary,
         }
     });

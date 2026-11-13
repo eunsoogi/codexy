@@ -23,19 +23,19 @@ TOOL = "codex_app__send_message_to_thread"
 LEGACY_METADATA = "codexy_thread_delivery"
 ALLOWED_PAIRS = (
     ("gpt-6.1-sol", "low"),
-    ("gpt-6-luna", "max"),
+    ("gpt-6.1-sol", "medium"),
     ("gpt-6.1-terra", "medium"),
 )
 TOOL_INPUT = {
     "threadId": "known-worker",
-    "model": "gpt-6-luna",
-    "thinking": "max",
+    "model": "gpt-6.1-terra",
+    "thinking": "medium",
     "prompt": "Continue the existing lane.",
 }
 CROSSED_TOOL_INPUT = {
     **TOOL_INPUT,
-    "model": "gpt-6.1-sol",
-    "thinking": "medium",
+    "model": "gpt-6.1-terra",
+    "thinking": "low",
 }
 
 

@@ -16,9 +16,9 @@ use thread_capabilities::ThreadDirection;
 // The schema string, policy field names, and route labels are serialized
 // compatibility identifiers; product-role terminology is standardized in
 // diagnostics and model constants below.
-const SIMPLE_WORKER_MODEL: &str = "gpt-6-luna";
-const SIMPLE_WORKER_THINKING: &str = "max";
-const HARD_WORKER_MODEL: &str = "gpt-6.1-terra";
+const SIMPLE_WORKER_MODEL: &str = "gpt-6.1-terra";
+const SIMPLE_WORKER_THINKING: &str = "medium";
+const HARD_WORKER_MODEL: &str = "gpt-6.1-sol";
 const HARD_WORKER_THINKING: &str = "medium";
 // Parent requests use Sol/Light; Worker selection and authenticated directions stay distinct.
 const ORCHESTRATOR_MODEL: &str = "gpt-6.1-sol";

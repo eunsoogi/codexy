@@ -5,7 +5,7 @@ use super::*;
 
 // Keep expected routes explicit so subprocess cases catch creation/delivery drift.
 pub(super) const SUPPORTED_WORKER_PAIRS: &[(&str, &str)] =
-    &[("gpt-6-luna", "max"), ("gpt-6.1-terra", "medium")];
+    &[("gpt-6.1-terra", "medium"), ("gpt-6.1-sol", "medium")];
 
 #[test]
 fn app_project_worktree_is_admitted_for_both_supported_worker_pairs() -> TestResult {
@@ -30,8 +30,8 @@ fn app_project_worktree_is_admitted_for_both_supported_worker_pairs() -> TestRes
 fn crossed_worker_model_and_thinking_pairs_are_rejected() -> TestResult {
     let cwd = primary_checkout();
     let cases = [
-        ("Luna with medium", "gpt-6-luna", "medium"),
         ("Terra with max", "gpt-6.1-terra", "max"),
+        ("Sol with max", "gpt-6.1-sol", "max"),
     ];
 
     for (label, model, thinking) in cases {
@@ -56,10 +56,10 @@ fn crossed_worker_model_and_thinking_pairs_are_rejected() -> TestResult {
 }
 
 #[test]
-fn legacy_sol_pair_is_not_admitted_for_new_worker_creation() -> TestResult {
+fn legacy_luna_pair_is_not_admitted_for_new_worker_creation() -> TestResult {
     let cwd = primary_checkout();
     let tool_input = with_project_worktree(
-        json!({"model":"gpt-6.1-sol","thinking":"medium"}),
+        json!({"model":"gpt-6-luna","thinking":"max"}),
     );
     for tool in TOOLS {
         for event in ["PreToolUse", "PermissionRequest"] {
@@ -67,7 +67,7 @@ fn legacy_sol_pair_is_not_admitted_for_new_worker_creation() -> TestResult {
             input["hook_event_name"] = json!(event);
             assert!(
                 hook_denied_for(&input, event)?,
-                "unsupported Sol/Medium was admitted for {event}: {input}"
+                "legacy Luna/Max was admitted for {event}: {input}"
             );
         }
     }

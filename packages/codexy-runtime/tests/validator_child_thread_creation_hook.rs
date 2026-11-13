@@ -48,7 +48,7 @@ fn default_worker_pair_is_admitted_and_arbitrary_pairs_are_rejected() -> TestRes
     let cases = [
         (
             "Worker default",
-            json!({"model":"gpt-6-luna","thinking":"max"}),
+            json!({"model":"gpt-6.1-terra","thinking":"medium"}),
             false,
         ),
         ("stale Orchestrator pair", json!({"model":"gpt-6-astra","thinking":"medium"}), true),
@@ -86,14 +86,14 @@ fn forged_caller_route_metadata_cannot_grant_a_model_exception() -> TestResult {
 fn required_fields_reject_partial_and_empty_pairs() -> TestResult {
     for tool_input in [
         json!({"thinking":"medium"}),
-        json!({"model":"gpt-6-luna"}),
+        json!({"model":"gpt-6.1-terra"}),
         json!({"model":"","thinking":"max"}),
-        json!({"model":"gpt-6-luna","thinking":""}),
-        json!({"model":"gpt-6-luna","thinking":"high"}),
+        json!({"model":"gpt-6.1-terra","thinking":""}),
+        json!({"model":"gpt-6.1-terra","thinking":"high"}),
         json!({"model":"does-not-exist","thinking":"banana"}),
-        json!({"model":" gpt-6-luna","thinking":"max"}),
+        json!({"model":" gpt-6.1-terra","thinking":"medium"}),
         json!({"model":null,"thinking":"max"}),
-        json!({"model":"gpt-6-luna","thinking":null}),
+        json!({"model":"gpt-6.1-terra","thinking":null}),
         json!({"model":true,"thinking":"high"}),
         json!({"model":"gpt-5.6-terra","thinking":42}),
     ] {

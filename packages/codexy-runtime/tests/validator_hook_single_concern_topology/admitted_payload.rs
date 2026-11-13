@@ -8,12 +8,12 @@ pub(super) fn admitted_payload(concern: &Concern, event: &str) -> TestResult<Val
     let tool_input = match concern.id {
         "thread-delivery" => json!({
             "threadId":"test-worker",
-            "model":"gpt-6-luna",
-            "thinking":"max"
+            "model":"gpt-6.1-terra",
+            "thinking":"medium"
         }),
         "child-thread-creation" => json!({
-            "model":"gpt-6-luna",
-            "thinking":"max",
+            "model":"gpt-6.1-terra",
+            "thinking":"medium",
             "target":{
                 "type":"project",
                 "projectId":"local-test-project",
