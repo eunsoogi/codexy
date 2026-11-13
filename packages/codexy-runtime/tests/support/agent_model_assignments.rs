@@ -1,4 +1,5 @@
 //! Provides mutable agent fixtures and exact-artifact privacy checks for role-contract validation.
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
@@ -133,25 +134,51 @@ pub(crate) fn public_contract_import_check() -> TestResult<Output> {
         &source,
         "use codexy_runtime::validation::agent_model_contract::SPECIALIST_MODEL_CONTRACTS;\nfn main() { let _ = SPECIALIST_MODEL_CONTRACTS; }\n",
     )?;
-    Ok(
-        Command::new(std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into()))
-            .args(["--edition=2024", "--emit=metadata", "--extern"])
-            .arg(format!("codexy_runtime={}", library.display()))
-            .arg("-L")
-            .arg(format!(
-                "dependency={}",
-                library
-                    .parent()
-                    .ok_or("rlib parent")?
-                    .join("deps")
-                    .display()
-            ))
-            .arg(source)
-            .arg("--out-dir")
-            .arg(temp.path())
-            .current_dir(&runtime_root)
-            .output()?,
-    )
+    let dependency_dir = library.parent().ok_or("rlib parent")?.join("deps");
+    let compiler = std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into());
+    let arguments = [
+        OsStr::new("--edition=2024").to_owned(),
+        OsStr::new("--emit=metadata").to_owned(),
+        OsStr::new("--extern").to_owned(),
+        format!("codexy_runtime={}", library.display()).into(),
+        OsStr::new("-L").to_owned(),
+        format!("dependency={}", dependency_dir.display()).into(),
+        source.as_os_str().to_owned(),
+        OsStr::new("--out-dir").to_owned(),
+        temp.path().as_os_str().to_owned(),
+    ];
+    let mut output = Command::new(&compiler)
+        .args(&arguments)
+        .current_dir(&runtime_root)
+        .output()?;
+    if !output.status.success() {
+        // Keep Windows-only compiler and artifact details beside the failed privacy oracle.
+        let artifact_size = std::fs::metadata(library)?.len();
+        let artifact_hash = super::sha256_file(library)?;
+        let details = format!(
+            "\nprivacy probe inputs:\n  rustc: {compiler:?}\n  rustc -vV:\n{}\n  rustc --print cfg (implicit target):\n{}\n  test executable: {}\n  profile: {}\n  selected rlib: {}\n  rlib bytes: {artifact_size}\n  rlib sha256: {artifact_hash}\n  dependency search: {}\n  rustc args: {arguments:?}\n",
+            compiler_report(&compiler, &["-vV"]),
+            compiler_report(&compiler, &["--print", "cfg"]),
+            executable.display(),
+            profile.display(),
+            library.display(),
+            dependency_dir.display(),
+        );
+        output.stderr.extend_from_slice(details.as_bytes());
+    }
+    Ok(output)
+}
+
+fn compiler_report(compiler: &OsStr, arguments: &[&str]) -> String {
+    match Command::new(compiler).args(arguments).output() {
+        Ok(output) => format!(
+            "status: {:?}\n{}{}",
+            output.status,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ),
+        Err(error) => format!("failed to run {compiler:?}: {error}"),
+    }
 }
 
 pub(crate) fn public_contract_target_dir() -> PathBuf {
