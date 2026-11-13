@@ -29,7 +29,7 @@
     {
       "id": "core",
       "plugin": "codexy",
-      "version": "2.2.2",
+      "version": "2.2.3",
       "dependencies": [],
       "asset": {
         "pluginId": "codexy@codexy",
@@ -71,7 +71,7 @@
     {
       "id": "github",
       "plugin": "codexy-github",
-      "version": "2.2.2",
+      "version": "2.2.3",
       "dependencies": [
         "core"
       ],
@@ -87,7 +87,7 @@
     {
       "id": "devtools",
       "plugin": "codexy-devtools",
-      "version": "2.2.2",
+      "version": "2.2.3",
       "dependencies": [
         "core"
       ],
@@ -105,27 +105,27 @@
   "compatibleCombinations": [
     {
       "components": [],
-      "version": "2.2.2"
+      "version": "2.2.3"
     },
     {
       "components": [
         "core"
       ],
-      "version": "2.2.2"
+      "version": "2.2.3"
     },
     {
       "components": [
         "core",
         "github"
       ],
-      "version": "2.2.2"
+      "version": "2.2.3"
     },
     {
       "components": [
         "core",
         "devtools"
       ],
-      "version": "2.2.2"
+      "version": "2.2.3"
     },
     {
       "components": [
@@ -133,7 +133,7 @@
         "github",
         "devtools"
       ],
-      "version": "2.2.2"
+      "version": "2.2.3"
     }
   ]
 }
