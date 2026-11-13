@@ -122,7 +122,10 @@ pub(crate) fn public_contract_import_check() -> TestResult<Output> {
     let [library] = libraries.as_slice() else {
         return Err("privacy check requires exactly one current runtime rlib".into());
     };
-    if library.parent() != std::env::current_exe()?.parent().and_then(Path::parent) {
+    let executable = std::env::current_exe()?;
+    let profile =
+        cargo_test_profile_dir(&executable).ok_or("Cargo test executable profile directory")?;
+    if library.parent() != Some(profile.as_path()) {
         return Err("privacy artifact must belong to the running test profile".into());
     }
     let source = temp.path().join("main.rs");
@@ -152,17 +155,29 @@ pub(crate) fn public_contract_import_check() -> TestResult<Output> {
 }
 
 pub(crate) fn public_contract_target_dir() -> PathBuf {
-    // Integration tests run from <target>/<profile>/deps. Reuse that target,
-    // including an explicit CARGO_TARGET_DIR, instead of creating another tree.
-    std::env::current_exe()
-        .expect("integration test executable")
+    let executable = std::env::current_exe().expect("integration test executable");
+    let profile = cargo_test_profile_dir(&executable).expect("Cargo test profile directory");
+    profile
         .parent()
-        .expect("test dependency directory")
-        .parent()
-        .expect("test profile directory")
-        .parent()
-        .expect("test target directory")
+        .expect("Cargo target directory")
         .to_path_buf()
+}
+
+pub(crate) fn cargo_test_profile_dir(executable: &Path) -> Option<PathBuf> {
+    // Cargo uses profile/deps for ordinary tests and profile/build/.../out for generated suites.
+    let output_dir = executable.parent()?;
+    match output_dir.file_name()?.to_str()? {
+        "deps" => output_dir.parent().map(Path::to_path_buf),
+        "out" => {
+            let build_dir = output_dir.parent()?.parent()?.parent()?;
+            if build_dir.file_name()?.to_str()? == "build" {
+                build_dir.parent().map(Path::to_path_buf)
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
 }
 
 pub(crate) fn assert_privacy_diagnostic(output: &Output) -> TestResult {

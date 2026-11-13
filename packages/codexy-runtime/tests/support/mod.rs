@@ -49,7 +49,7 @@ pub(crate) mod wrapper_platform;
 mod wrapper_process;
 
 pub(crate) use agent_model_assignments::{
-    TestResult, agent_fixture, assert_privacy_diagnostic, catalog_fixture,
+    TestResult, agent_fixture, assert_privacy_diagnostic, cargo_test_profile_dir, catalog_fixture,
     public_contract_import_check, public_contract_target_dir, validate_agent_replacement,
     validate_catalog_replacement,
 };
