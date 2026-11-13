@@ -29,7 +29,7 @@ fn top_level_agent_contract_keeps_closed_names_and_model_declarations() -> TestR
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy/agents");
     let catalog: toml::Value = toml::from_str(&fs::read_to_string(root.join("catalog.toml"))?)?;
     let files = catalog["agent_files"].as_array().ok_or("agent_files")?;
-    assert_eq!(files.len(), 8);
+    assert_eq!(files.len(), 7);
     for file in files {
         let filename = file.as_str().ok_or("agent filename")?;
         let agent: toml::Value = toml::from_str(&fs::read_to_string(root.join(filename))?)?;
@@ -42,8 +42,8 @@ fn top_level_agent_contract_keeps_closed_names_and_model_declarations() -> TestR
     let sentinel: toml::Value = toml::from_str(&fs::read_to_string(
         root.join("codexy-sentinel.toml"),
     )?)?;
-    assert_eq!(sentinel["model"].as_str(), Some("gpt-6-astra"));
-    assert_eq!(sentinel["model_reasoning_effort"].as_str(), Some("xhigh"));
+    assert_eq!(sentinel["model"].as_str(), Some("gpt-6.1-sol"));
+    assert_eq!(sentinel["model_reasoning_effort"].as_str(), Some("high"));
     Ok(())
 }
 

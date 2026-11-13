@@ -6,17 +6,12 @@ use serde_json::{Value, json};
 
 use super::classification;
 
-const REQUEST_SCHEMA: &str = "codexy.review-profile-request.v1";
+const REQUEST_SCHEMA: &str = "codexy.review-selection-request.v2";
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Profile {
     pub(super) reviewer: Option<Reviewer>,
-    pub(super) full_review_limit: u8,
-    pub(super) delta_recheck_limit: u8,
-    pub(super) terminal_review_limit: u8,
-    pub(super) post_cap_re_review_limit: u8,
-    pub(super) max_blocking_findings: u8,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -31,9 +26,8 @@ pub(super) struct Reviewer {
 #[serde(deny_unknown_fields)]
 struct Request {
     schema: String,
-    classification: classification::Input,
-    #[serde(default)]
-    prior_profile: Option<String>,
+    risk_assessment: classification::Input,
+    review_requested: bool,
 }
 
 pub(super) fn load(plugin_root: &Path) -> Result<BTreeMap<String, Profile>> {
@@ -46,79 +40,49 @@ pub(super) fn resolve(plugin_root: &Path, text: &str) -> Result<Value> {
     if request.schema != REQUEST_SCHEMA {
         bail!("review-profile request has an unsupported schema");
     }
-    let profiles = profiles();
-    let selected = classification::select(plugin_root, request.classification)?;
-    let profile = profiles
-        .get(&selected)
-        .ok_or_else(|| anyhow::anyhow!("review-profile request names an unknown profile"))?;
-    let mut route = json!({
-        "profile": selected,
-        "reviewer": profile.reviewer,
-        "full_review_limit": profile.full_review_limit,
-        "delta_recheck_limit": profile.delta_recheck_limit,
-        "terminal_review_limit": profile.terminal_review_limit,
-        "post_cap_re_review_limit": profile.post_cap_re_review_limit,
-    });
-    if let Some(prior) = request.prior_profile {
-        // A reclassification may discard a lower profile only when the newly selected profile is strictly higher.
-        if rank(&prior) >= rank(route["profile"].as_str().unwrap_or_default()) {
-            bail!("review-profile escalation must select a strictly higher profile");
-        }
-        route["discarded_lower_profile"] = Value::String(prior);
+    // Preserve complete risk-assessment validation; review selection is independent.
+    let required = classification::select(plugin_root, request.risk_assessment)?;
+    if required && !request.review_requested {
+        bail!("an explicit review requirement must not be skipped");
     }
-    Ok(route)
+    Ok(json!({
+        "review_requested": request.review_requested,
+        "reviewer": request.review_requested.then(sentinel),
+        "stage": "final",
+    }))
 }
 
-fn rank(profile: &str) -> u8 {
-    match profile {
-        "light" => 0,
-        "standard" => 1,
-        "strict" => 2,
-        _ => u8::MAX,
+pub(super) fn sentinel() -> Reviewer {
+    Reviewer {
+        name: "codexy-sentinel".into(),
+        model: "gpt-6.1-sol".into(),
+        reasoning_effort: "high".into(),
     }
 }
 
+// Read-only compatibility for historical v1 controls, not new-work selection.
+// Never reinterpret an old review as evidence from the new reviewer identity.
 fn profiles() -> BTreeMap<String, Profile> {
     BTreeMap::from([
+        ("light".into(), Profile { reviewer: None }),
         (
-            "light".to_owned(),
-            Profile {
-                reviewer: None,
-                full_review_limit: 0,
-                delta_recheck_limit: 0,
-                terminal_review_limit: 0,
-                post_cap_re_review_limit: 0,
-                max_blocking_findings: 0,
-            },
-        ),
-        (
-            "standard".to_owned(),
+            "standard".into(),
             Profile {
                 reviewer: Some(Reviewer {
                     name: "codexy-inspector".into(),
                     model: "gpt-6.1-sol".into(),
                     reasoning_effort: "medium".into(),
                 }),
-                full_review_limit: 1,
-                delta_recheck_limit: 1,
-                terminal_review_limit: 3,
-                post_cap_re_review_limit: 1,
-                max_blocking_findings: 3,
             },
         ),
         (
-            "strict".to_owned(),
+            "strict".into(),
             Profile {
                 reviewer: Some(Reviewer {
                     name: "codexy-sentinel".into(),
                     model: "gpt-6-astra".into(),
                     reasoning_effort: "xhigh".into(),
                 }),
-                full_review_limit: 1,
-                delta_recheck_limit: 1,
-                terminal_review_limit: 3,
-                post_cap_re_review_limit: 1,
-                max_blocking_findings: u8::MAX,
             },
         ),
     ])

@@ -1,7 +1,7 @@
 name = "codexy-warden"
 description = "Use for workflows, shell commands, credentials, remote MCP endpoints, untrusted input, and repository permissions."
 model = "gpt-6-astra"
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "high"
 developer_instructions = """
 MUST act as the active task's Security Reviewer specialist.
 

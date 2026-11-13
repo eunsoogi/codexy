@@ -37,7 +37,7 @@ above, follow the user's format or, if none was supplied, offer a concise
 `Summary` and `Verification` example. A free-form description with renamed,
 omitted, or reordered headings, or in another language MUST NOT be blocked,
 rewritten, or sent for extra approval by the distributed default when no
-selected template or body contract applies. Review follows the selected profile,
+selected template or body contract applies. Final Sentinel review is optional,
 and the installed plugin alone does not add a reviewer or approval phrase.
 Source presence or replay is not proof that a host invoked a check or consumed
 its denial; without request-correlated evidence, host enforcement MUST remain
@@ -66,10 +66,11 @@ validated value before claiming success.
 
 The normal review path uses the current change as its evidence boundary. Read
 the current PR head, relevant checks, selected reviewer result, and actual
-unresolved findings. One proportionate independent reviewer is enough when the
-selected profile or concrete risk calls for one. `PASS` with no actionable
-findings supports the review gate; `BLOCK`, `UNOBSERVABLE`, `PENDING`,
-`RUNNING`, a stale head, a failed relevant check, or an actual finding does not.
+unresolved findings. When final independent review is selected, use Sentinel
+after implementation and applicable checks rather than a profile-based gate.
+`PASS` with no actionable findings supports the review gate; `BLOCK`,
+`UNOBSERVABLE`, `PENDING`, `RUNNING`, a stale head, a failed relevant check, or
+an actual finding does not.
 
 Missing historical transcripts, genesis/import records, invocation telemetry,
 quota bookkeeping, and optional evaluator or connector output MUST NOT block
@@ -78,12 +79,12 @@ rerun relevant verification, and read the new head back. Additional reviewers,
 broad rechecks, semantic evaluators, or evidence artifacts require an explicit
 user or repository requirement or a concrete unresolved risk.
 
-For a child-owned implementation lane, the owning child owns the
-profile-selected reviewer when that reviewer is required and repairs findings on
-the child branch. The parent consumes current-head evidence and retains merge or
-publication authority. The parent MUST NOT replace the child reviewer or patch
-its branch. A separately required connector review remains parent-owned and
-follows the documented connector procedure.
+For a child-owned implementation lane, the owning child owns the optional final
+reviewer when selected and repairs findings on the child branch. The parent
+consumes current-head evidence and retains merge or publication authority. The
+parent MUST NOT replace the child reviewer or patch its branch. A separately
+required connector review remains parent-owned and follows the documented
+connector procedure.
 
 After opening a PR, read back the remote PR number, URL, title, body, state,
 draft state, base, head branch, exact head SHA, labels, and linked issue when

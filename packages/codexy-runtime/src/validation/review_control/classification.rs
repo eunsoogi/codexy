@@ -6,8 +6,8 @@ use std::{
 use anyhow::{Result, bail};
 use serde::Deserialize;
 
-// v3 adds decisions for shared-contract risk and explicit strict requirements.
-const SCHEMA: &str = "codexy.workflow-profile-classification.v3";
+// Complete risk decisions remain independent of optional reviewer selection.
+const SCHEMA: &str = "codexy.risk-assessment.v1";
 const MATERIAL_RISK_TRIGGERS: [&str; 11] = [
     "destructive",
     "security",
@@ -19,7 +19,7 @@ const MATERIAL_RISK_TRIGGERS: [&str; 11] = [
     "merge_sensitive",
     "materially_shared_executable_contract",
     "explicit_audit_evidence",
-    "explicit_strict_requirement",
+    "explicit_review_requirement",
 ];
 const LEGACY_COLLABORATION_TRIGGERS: [&str; 2] = ["durable_delegation", "multi_lane_ownership"];
 
@@ -27,9 +27,7 @@ const LEGACY_COLLABORATION_TRIGGERS: [&str; 2] = ["durable_delegation", "multi_l
 #[serde(deny_unknown_fields)]
 pub(super) struct Input {
     schema: String,
-    work_class: String,
-    low_risk_eligible: bool,
-    strict_triggers: Vec<TriggerDecision>,
+    risk_decisions: Vec<TriggerDecision>,
 }
 
 #[derive(Deserialize)]
@@ -43,7 +41,7 @@ pub(super) fn check(_plugin_root: &Path) -> Result<()> {
     Ok(())
 }
 
-pub(super) fn select(_plugin_root: &Path, input: Input) -> Result<String> {
+pub(super) fn select(_plugin_root: &Path, input: Input) -> Result<bool> {
     if input.schema != SCHEMA {
         bail!("workflow classification has an unsupported schema");
     }
@@ -53,7 +51,7 @@ pub(super) fn select(_plugin_root: &Path, input: Input) -> Result<String> {
         .map(ToString::to_string)
         .collect::<BTreeSet<_>>();
     let mut decisions = BTreeMap::new();
-    for decision in input.strict_triggers {
+    for decision in input.risk_decisions {
         if !known.contains(&decision.kind) {
             bail!("workflow classification has an unknown trigger decision");
         }
@@ -68,20 +66,9 @@ pub(super) fn select(_plugin_root: &Path, input: Input) -> Result<String> {
     if !required.is_subset(&decisions.keys().cloned().collect()) {
         bail!("workflow classification must decide every material-risk trigger");
     }
-    let non_strict = match (input.work_class.as_str(), input.low_risk_eligible) {
-        ("low_risk", true) => "light",
-        ("middle", false) => "standard",
-        _ => bail!("workflow classification has no eligible non-strict review route"),
-    };
-    // Legacy collaboration flags remain parseable, but only material risk can promote review depth.
-    Ok(
-        if MATERIAL_RISK_TRIGGERS
-            .iter()
-            .any(|kind| decisions.get(*kind).is_some_and(|applies| *applies))
-        {
-            "strict".into()
-        } else {
-            non_strict.into()
-        },
-    )
+    // Only an explicit review obligation requires review; risk alone selects no tier.
+    Ok(decisions
+        .get("explicit_review_requirement")
+        .copied()
+        .unwrap_or(false))
 }

@@ -7,8 +7,8 @@ use crate::support::TestResult;
 
 #[test]
 fn sentinel_handoff_keeps_direct_state_without_legacy_artifacts() -> TestResult {
-    let path = codexy_runtime::paths::repository_root()
-        .join("plugins/codexy/agents/codexy-sentinel.toml");
+    let path =
+        codexy_runtime::paths::repository_root().join("plugins/codexy/agents/codexy-sentinel.toml");
     let text = fs::read_to_string(path)?;
     let compact = text
         .split_once("Compact terminal handoff:")
@@ -27,8 +27,7 @@ fn sentinel_handoff_keeps_direct_state_without_legacy_artifacts() -> TestResult 
         );
     }
     for required in [
-        "selected profile",
-        "policy reviewer",
+        "reviewer",
         "exact current head",
         "PASS",
         "BLOCK",
@@ -36,7 +35,9 @@ fn sentinel_handoff_keeps_direct_state_without_legacy_artifacts() -> TestResult 
         "unresolved finding",
     ] {
         assert!(
-            compact.to_ascii_lowercase().contains(&required.to_ascii_lowercase()),
+            compact
+                .to_ascii_lowercase()
+                .contains(&required.to_ascii_lowercase()),
             "compact handoff must retain current-head field {required}"
         );
     }
@@ -47,7 +48,9 @@ fn sentinel_handoff_keeps_direct_state_without_legacy_artifacts() -> TestResult 
         "finding-disposition CI",
     ] {
         assert!(
-            !text.to_ascii_lowercase().contains(&forbidden.to_ascii_lowercase()),
+            !text
+                .to_ascii_lowercase()
+                .contains(&forbidden.to_ascii_lowercase()),
             "active sentinel handoff must not retain retired guidance {forbidden}"
         );
     }

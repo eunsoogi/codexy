@@ -41,7 +41,7 @@ class ComponentInspectionHostCases:
                 entry = result["component_health"][0]
                 registration = entry["observed"]["registration"]
                 self.assertTrue(registration["observed"])
-                self.assertEqual(registration["expected_count"], 8)
+                self.assertEqual(registration["expected_count"], 7)
                 capabilities = entry["observed"]["capabilities"]
                 if expected == "exact":
                     # The current no-MCP core excludes Watcher from direct capability results.

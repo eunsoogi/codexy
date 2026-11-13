@@ -10,9 +10,8 @@ use super::{BASE_OID, HEAD_OID, direct_state};
 
 #[test]
 fn review_control_producer_validates_connector_snapshot_provenance() -> TestResult {
-    let current = direct_state::connector_pr_snapshot_without_derived(
-        17, 11, BASE_OID, HEAD_OID, None,
-    );
+    let current =
+        direct_state::connector_pr_snapshot_without_derived(17, 11, BASE_OID, HEAD_OID, None);
     let previous = direct_state::connector_pr_snapshot_without_derived(
         17,
         11,
@@ -36,9 +35,8 @@ fn review_control_producer_validates_connector_snapshot_provenance() -> TestResu
 
 #[test]
 fn review_control_producer_rejects_connector_derived_field_contradiction() -> TestResult {
-    let mut current = direct_state::connector_pr_snapshot_without_derived(
-        17, 11, BASE_OID, HEAD_OID, None,
-    );
+    let mut current =
+        direct_state::connector_pr_snapshot_without_derived(17, 11, BASE_OID, HEAD_OID, None);
     current["number"] = json!(18);
     let previous = direct_state::connector_pr_snapshot_without_derived(
         17,

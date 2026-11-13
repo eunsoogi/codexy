@@ -16,6 +16,7 @@ _SPECIALISTS = frozenset(
         "codexy-advisor",
         "codexy-auditor",
         "codexy-cartographer",
+        # Preserve recognition of existing retired Inspector sessions; never register new ones.
         "codexy-inspector",
         "codexy-sentinel",
         "codexy-shipwright",

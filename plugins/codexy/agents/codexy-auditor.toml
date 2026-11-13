@@ -1,6 +1,6 @@
 name = "codexy-auditor"
 description = "Use after implementation to turn acceptance criteria into observable verification across CLI, config, GitHub, browser, app, or plugin surfaces."
-# Auditor verification uses a distinct model assignment from Inspector review.
+# Auditor verification uses a distinct model assignment from optional Sentinel final review.
 model = "gpt-6.1-terra"
 model_reasoning_effort = "medium"
 developer_instructions = """

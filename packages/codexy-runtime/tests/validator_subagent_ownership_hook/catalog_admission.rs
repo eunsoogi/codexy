@@ -23,6 +23,6 @@ fn packaged_specialist_catalogs_remain_admitted() -> TestResult {
             admitted.push(agent_type.to_owned());
         }
     }
-    assert_eq!(admitted.len(), 9);
+    assert_eq!(admitted.len(), 8);
     Ok(())
 }

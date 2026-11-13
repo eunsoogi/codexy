@@ -11,14 +11,14 @@ pub(super) const MATERIAL_RISK_TRIGGERS: [&str; 11] = [
     "merge_sensitive",
     "materially_shared_executable_contract",
     "explicit_audit_evidence",
-    "explicit_strict_requirement",
+    "explicit_review_requirement",
 ];
 
 pub(super) type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 pub(super) fn classification_request(
-    work_class: &str,
-    low_risk_eligible: bool,
+    _work_class: &str,
+    _low_risk_eligible: bool,
     applicable_risks: &[&str],
     collaboration: &[(&str, bool)],
     prior_profile: Option<&str>,
@@ -33,12 +33,11 @@ pub(super) fn classification_request(
             .map(|(kind, applies)| json!({"kind":kind, "applies":applies})),
     );
     let mut request = json!({
-        "schema": "codexy.review-profile-request.v1",
-        "classification": {
-            "schema": "codexy.workflow-profile-classification.v3",
-            "work_class": work_class,
-            "low_risk_eligible": low_risk_eligible,
-            "strict_triggers": strict_triggers,
+        "schema": "codexy.review-selection-request.v2",
+        "review_requested": true,
+        "risk_assessment": {
+            "schema": "codexy.risk-assessment.v1",
+            "risk_decisions": strict_triggers,
         },
     });
     if let Some(prior_profile) = prior_profile {
@@ -64,25 +63,12 @@ pub(super) fn assert_rejected(request: &Value, expected: &str) {
 }
 
 pub(super) fn remove_trigger(request: &mut Value, kind: &str) {
-    request["classification"]["strict_triggers"]
+    request["risk_assessment"]["risk_decisions"]
         .as_array_mut()
         .expect("trigger array")
         .retain(|item| item["kind"] != kind);
 }
 
-pub(super) fn expected_reviewer(profile: &str) -> Value {
-    match profile {
-        "light" => Value::Null,
-        "standard" => json!({
-            "name": "codexy-inspector",
-            "model": "gpt-6.1-sol",
-            "reasoning_effort": "medium",
-        }),
-        "strict" => json!({
-            "name": "codexy-sentinel",
-            "model": "gpt-6-astra",
-            "reasoning_effort": "xhigh",
-        }),
-        _ => unreachable!("only the closed profile set is expected"),
-    }
+pub(super) fn expected_reviewer() -> Value {
+    json!({"name": "codexy-sentinel", "model": "gpt-6.1-sol", "reasoning_effort": "high"})
 }

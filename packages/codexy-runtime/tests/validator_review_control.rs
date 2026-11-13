@@ -6,10 +6,10 @@ use std::{fs, process::Command};
 use crate::support::{FixtureCommand, TestResult};
 use serde_json::json;
 
-#[path = "support/review_control_direct_state.rs"]
-mod direct_state;
 #[path = "validator_review_control/connector.rs"]
 mod connector;
+#[path = "support/review_control_direct_state.rs"]
+mod direct_state;
 #[path = "validator_review_control/retired.rs"]
 mod retired;
 
@@ -40,7 +40,10 @@ fn review_control_producer_writes_only_direct_state() -> TestResult {
         .args(["--output"])
         .arg(&output)
         .status()?;
-    assert!(result.success(), "direct producer must not require ceremony outputs");
+    assert!(
+        result.success(),
+        "direct producer must not require ceremony outputs"
+    );
     let produced: serde_json::Value = serde_json::from_slice(&fs::read(&output)?)?;
     assert_eq!(produced["schema"], "codexy.review-control-state.v1");
     assert!(produced.get("control_state").is_none());
@@ -170,6 +173,68 @@ fn build_pr_state_skips_review_transition_for_light_controls() -> TestResult {
         );
         let state: serde_json::Value = serde_json::from_slice(&fs::read(output)?)?;
         assert_eq!(state["reviewControl"], control);
+    }
+    Ok(())
+}
+
+#[test]
+fn explicit_final_review_controls_preserve_evidence_without_tiers_or_counts() -> TestResult {
+    let final_control = json!({
+        "schema": "codexy.review-control-state.v2", "review_requested": true,
+        "stage": "final", "reviewed_head": HEAD_OID,
+        "reviewer": {"name":"codexy-sentinel", "model":"gpt-6.1-sol", "reasoning_effort":"high"},
+        "terminal_result": "BLOCK", "unresolved_findings": ["unresolved security defect"]
+    });
+    // BLOCK is valid evidence, not a PASS. Production must preserve it verbatim.
+    for control in [
+        final_control.clone(),
+        json!({"schema":"codexy.review-control-state.v2", "review_requested":false}),
+    ] {
+        let temporary = tempfile::tempdir()?;
+        let input = temporary.path().join("control-input.json");
+        let output = temporary.path().join("control-output.json");
+        fs::write(&input, serde_json::to_vec(&control)?)?;
+        let result = Command::new(env!("CARGO_BIN_EXE_codexy-review-control"))
+            .args(["--produce-review-control", "--input"])
+            .arg(&input)
+            .arg("--output")
+            .arg(&output)
+            .output()?;
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(
+            serde_json::from_slice::<serde_json::Value>(&fs::read(output)?)?,
+            control
+        );
+    }
+    for (key, value) in [
+        ("stage", json!("intermediate")),
+        ("profile", json!("light")),
+        ("review_requested", json!(false)),
+        ("reviewed_head", json!("")),
+        (
+            "reviewer",
+            json!({"name":"codexy-sentinel", "model":"gpt-6-astra", "reasoning_effort":"xhigh"}),
+        ),
+    ] {
+        let mut control = final_control.clone();
+        control[key] = value;
+        let temporary = tempfile::tempdir()?;
+        let input = temporary.path().join("invalid-input.json");
+        let output = temporary.path().join("unchanged-output.json");
+        fs::write(&input, serde_json::to_vec(&control)?)?;
+        fs::write(&output, b"unchanged")?;
+        let result = Command::new(env!("CARGO_BIN_EXE_codexy-review-control"))
+            .args(["--produce-review-control", "--input"])
+            .arg(&input)
+            .arg("--output")
+            .arg(&output)
+            .output()?;
+        assert!(!result.status.success(), "invalid {key} was accepted");
+        assert_eq!(fs::read(output)?, b"unchanged");
     }
     Ok(())
 }

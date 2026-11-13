@@ -185,20 +185,23 @@ same sequence from that current owner. This routing clause MUST NOT be read as a
 separate recovery procedure.
 
 Worker selection owns recipient and model routing, not verification policy. The
-closed route in [context tiers](context-tiers.md) selects profile, sequencing,
-finite-work, review, and final-proof references only when applicable.
-Collaboration shape requires ownership metadata where the contract says so, but
-MUST NOT by itself select a strict profile or historical-review path.
+closed route in [context tiers](context-tiers.md) selects verification,
+sequencing, finite-work, review, and final-proof references only when
+applicable. Collaboration shape requires ownership metadata where the contract
+says so, but MUST NOT by itself require a final reviewer or historical-review
+path.
 
 Child titles MUST follow the [title policy](child-thread-titles.md).
 
 ## Review routing
 
-For a Worker-owned implementation lane, the owning Worker MUST delegate the
-profile-selected internal reviewer after local proof when the selected profile
-requires one. The Orchestrator MUST consume that evidence and MUST NOT invoke
-the internal reviewer or tell the Worker not to invoke it. This is distinct from
-a repository-required external `@codex review`, which the Orchestrator requests
+For a Worker-owned implementation lane, optional final review belongs to the
+owning Worker. When selected, the Worker MUST delegate Sentinel after local
+proof, following [optional final review](review-profiles.md), including its
+instruction-only three-assessment limit. The Orchestrator MUST consume that
+evidence rather than launch a duplicate reviewer. Skipping optional review MUST
+NOT fabricate a PASS or hide known findings. This is distinct from a
+repository-required external `@codex review`, which the Orchestrator requests
 when applicable; the Worker MUST NOT request that external review.
 
 Author self-review is forbidden, but delegating the independent packaged
@@ -207,7 +210,7 @@ reviewer
 (`MUST NOT spawn, delegate to, or create any additional agent, helper,
 reviewer, task, or thread.`)
 applies to that recipient and MUST NOT be copied into a Worker assignment as a
-ban on the Worker's required review.
+ban on the Worker's selected final review.
 
 Assignments and corrections MUST use readable Markdown tables that convey the
 purpose, scope, completion criteria, and any relevant ownership or direction.

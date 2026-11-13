@@ -198,7 +198,12 @@ fn bootstrap_and_checker_ignore_hostile_path_dirname() -> TestResult {
         .env("CODEX_HOME", &codex_home)
         .env("PATH", &hostile_path)
         .output()?;
-    assert!(checker.status.success(), "stderr:\n{}", stderr(&checker));
+    assert!(
+        checker.status.success(),
+        "stdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&checker.stdout),
+        stderr(&checker)
+    );
 
     assert!(!marker.exists(), "hostile PATH dirname was executed");
     Ok(())

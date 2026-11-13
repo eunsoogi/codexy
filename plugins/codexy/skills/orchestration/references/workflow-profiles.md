@@ -1,31 +1,26 @@
-# Workflow profiles
+# Risk-based verification
 
-Codexy uses three profiles: `light`, `standard`, and `strict`. Light is the
-default for proportionate low-risk work. Standard covers non-trivial
-single-owner work. Strict is required for high-risk, security, release, explicit
-audit, materially shared executable-contract changes, and merge-sensitive work.
-Delegation and lane count alone do not select the strict profile.
+Codexy does not classify work into light, standard, or strict profiles. MUST
+choose checks from the changed behavior, acceptance criteria, and concrete
+material risks, not a profile label, delegation count, or number of lanes.
 
-Strict work requires formal current-head proof and the applicable Sentinel
-review. The invariant floor includes destructive-action safety, preservation of
-unrelated changes, no force push, current-head readiness proof, and a maximum of
-250 physical lines for every governed file.
+Security, permission, destructive-action, release, and shared-contract risks
+still require their applicable checks and honest evidence. MUST preserve
+unrelated changes, avoid force push, bind readiness claims to the current head,
+and keep every governed file within 250 physical lines. Removing profile tiers
+MUST NOT waive these safety and evidence obligations.
 
-The structured classifier uses `codexy.workflow-profile-classification.v3` and
-requires an explicit decision for every material risk, including materially
-shared executable-contract changes and explicit strict requirements. It still
-accepts the legacy `durable_delegation` and `multi_lane_ownership` decisions
-when present, but ignores them when selecting review depth. Version 2 requests
-lack the complete risk contract and are rejected; missing, duplicate, malformed,
-or unknown decisions cannot produce a lower-risk profile.
+LLM final review is optional. MUST use [final review](review-profiles.md) when
+choosing whether Sentinel adds useful independent scrutiny. Warden's targeted
+security review and Auditor's observable QA are separate responsibilities; they
+MUST NOT become an automatic reviewer stack.
 
-The GitHub surface does not by itself select review guidance. The route table
-selects it for review workflows and explicitly chosen review procedures.
+The GitHub surface does not by itself select review guidance. Legacy profile
+records remain historical evidence, not a new review decision or a current-head
+PASS. MUST NOT silently relabel a historical reviewer result.
 
 An unavailable optional source diagnostic is not an unsupported primary
 operation. When the primary operation is otherwise authorized, the agent MUST
-continue it and MUST preserve the diagnostic as `unsupported` or `unknown`, and
-MUST NOT turn it into `PASS` or a permission barrier. Fail-closed routing for an
-unsupported primary request or missing required contract remains unchanged.
-
-The executable profile contract is maintained by the packaged runtime validator.
+continue it and preserve the diagnostic as `unsupported` or `unknown`. It MUST
+NOT turn it into `PASS` or a permission barrier. An unsupported primary request
+or missing required safety contract remains blocked on that specific boundary.

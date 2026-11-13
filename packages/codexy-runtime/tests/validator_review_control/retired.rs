@@ -33,7 +33,11 @@ fn retired_cli_modes_fail_before_reading_or_writing() -> TestResult {
             "retired mode {flag} must explain the unsupported boundary: {}",
             String::from_utf8_lossy(&result.stderr)
         );
-        assert_eq!(fs::read(&output)?, sentinel, "retired mode {flag} overwrote output");
+        assert_eq!(
+            fs::read(&output)?,
+            sentinel,
+            "retired mode {flag} overwrote output"
+        );
     }
     Ok(())
 }
@@ -52,12 +56,8 @@ fn retired_public_review_control_apis_return_explicit_errors() -> TestResult {
             "{}",
         )
         .map(|_| ()),
-        codexy_runtime::validation::check_review_economics(
-            &plugin_root,
-            &repository_root,
-            "{}",
-        )
-        .map(|_| ()),
+        codexy_runtime::validation::check_review_economics(&plugin_root, &repository_root, "{}")
+            .map(|_| ()),
         codexy_runtime::validation::import_pre_pr_review_history(
             &plugin_root,
             &repository_root,
@@ -65,9 +65,8 @@ fn retired_public_review_control_apis_return_explicit_errors() -> TestResult {
             "{}",
         )
         .map(|_| ()),
-        codexy_runtime::validation::recover_native_review_history(&plugin_root, "{}", "{}").map(
-            |_| (),
-        ),
+        codexy_runtime::validation::recover_native_review_history(&plugin_root, "{}", "{}")
+            .map(|_| ()),
         codexy_runtime::validation::check_next_review_eligibility(
             &plugin_root,
             &repository_root,

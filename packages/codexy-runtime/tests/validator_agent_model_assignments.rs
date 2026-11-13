@@ -36,10 +36,9 @@ const EXPECTED_AGENTS: &[ExpectedAgent] = &[
     expected_agent!("codexy-advisor", "gpt-6-astra", "medium"),
     expected_agent!("codexy-auditor", "gpt-6.1-terra", "medium"),
     expected_agent!("codexy-cartographer", "gpt-6-luna", "low"),
-    expected_agent!("codexy-inspector", "gpt-6.1-sol", "medium"),
-    expected_agent!("codexy-sentinel", "gpt-6-astra", "xhigh"),
+    expected_agent!("codexy-sentinel", "gpt-6.1-sol", "high"),
     expected_agent!("codexy-shipwright", "gpt-6.1-sol", "high"),
-    expected_agent!("codexy-warden", "gpt-6-astra", "xhigh"),
+    expected_agent!("codexy-warden", "gpt-6-astra", "high"),
 ];
 
 #[test]
@@ -126,7 +125,7 @@ fn validator_rejects_the_previous_auditor_model() -> TestResult {
 }
 
 #[test]
-fn standard_review_routes_to_the_upgraded_inspector() -> TestResult {
+fn optional_final_review_routes_to_sentinel_sol_high() -> TestResult {
     use serde_json::json;
     let triggers = [
         "destructive",
@@ -141,23 +140,23 @@ fn standard_review_routes_to_the_upgraded_inspector() -> TestResult {
         "durable_delegation",
         "multi_lane_ownership",
         "explicit_audit_evidence",
-        "explicit_strict_requirement",
+        "explicit_review_requirement",
     ];
     let request = json!({
-        "schema": "codexy.review-profile-request.v1",
-        "classification": {
-            "schema": "codexy.workflow-profile-classification.v3",
-            "work_class": "middle", "low_risk_eligible": false,
-            "strict_triggers": triggers.map(|kind| json!({"kind": kind, "applies": false})),
+        "schema": "codexy.review-selection-request.v2",
+        "review_requested": true,
+        "risk_assessment": {
+            "schema": "codexy.risk-assessment.v1",
+            "risk_decisions": triggers.map(|kind| json!({"kind": kind, "applies": false})),
         },
     });
     let root = codexy_runtime::paths::repository_root().join("plugins/codexy");
     let route = codexy_runtime::validation::resolve_review_profile(&root, &request.to_string())?;
-    assert_eq!(route["profile"], "standard");
+    assert!(route.get("profile").is_none());
     assert_eq!(
         route["reviewer"],
         json!({
-            "name": "codexy-inspector", "model": "gpt-6.1-sol", "reasoning_effort": "medium",
+            "name": "codexy-sentinel", "model": "gpt-6.1-sol", "reasoning_effort": "high",
         })
     );
     Ok(())
