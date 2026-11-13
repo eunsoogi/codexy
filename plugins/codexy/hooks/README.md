@@ -24,8 +24,8 @@ cleanup.
 
 Thread-delivery admission validates a non-empty `threadId`, explicit `model` and
 `thinking` fields, and one exact supported pair: `gpt-6.1-sol`/`low`,
-`gpt-6.1-terra`/`medium`, or `gpt-6.1-sol`/`medium`. The same request-level check
-applies to both hook events and both tool-name aliases. Optional legacy
+`gpt-6.1-terra`/`medium`, or `gpt-6.1-sol`/`medium`. The same request-level
+check applies to both hook events and both tool-name aliases. Optional legacy
 `codexy_thread_delivery` data does not change the decision. The hook does not
 infer a recipient role or verify parent/child identity, target existence, or
 recipient assignment. Orchestration selects the known recipient and its assigned

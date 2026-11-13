@@ -3,8 +3,8 @@
 ## Purpose and boundary
 
 This procedure transfers one active Terra/Medium issue lane to a same-issue
-Sol/Medium Worker after the Orchestrator records **Elevation may proceed**
-under [the elevation decision](../worker-elevation.md) and confirms the
+Sol/Medium Worker after the Orchestrator records **Elevation may proceed** under
+[the elevation decision](../worker-elevation.md) and confirms the
 [source checkpoint](checkpoint.md). The existing source remains the sole
 implementation owner until the target's read-only setup, identity, goal, model
 assignment, parent route, and same-checkout state are confirmed and the source
@@ -81,20 +81,20 @@ target is absent from a list.
 
 ### 2. Request Sol/Medium and start read-only setup
 
-Before the target's first inference, select `gpt-6.1-sol` / `medium` through
-the Codex desktop model and reasoning control beneath the composer when that
-pair is available. The official control documents model and effort selection; a
-visible selection is only a request, not proof of authenticated assignment. If
+Before the target's first inference, select `gpt-6.1-sol` / `medium` through the
+Codex desktop model and reasoning control beneath the composer when that pair is
+available. The official control documents model and effort selection; a visible
+selection is only a request, not proof of authenticated assignment. If
 Sol/Medium is unavailable, stop with the source still owning the issue.
 
 The callable `send_message_to_thread` also accepts `model` and `thinking`, but
 it starts a turn. The first target turn MAY be used only for the read-only setup
 below, with the explicit pair and a prompt that prohibits implementation and
-checkout writes. MUST NOT send Sol/Medium to a target that remains
-authenticated as Terra, override the live source, rely on the sender's pair or a
-host default, or substitute raw App Server or CLI task creation. Tool acceptance
-establishes transport only; record requested, accepted, authenticated, effective
-settings, and actual execution separately.
+checkout writes. MUST NOT send Sol/Medium to a target that remains authenticated
+as Terra, override the live source, rely on the sender's pair or a host default,
+or substitute raw App Server or CLI task creation. Tool acceptance establishes
+transport only; record requested, accepted, authenticated, effective settings,
+and actual execution separately.
 
 ### 3. Complete target read-only setup and parent-route checks
 
@@ -215,7 +215,7 @@ actual next tool call, diff, or result.
 | Source state, permissions, checkpoint, parent instructions, or capacity changed                                             | MUST NOT fork. Keep the source owner and reconcile with the Orchestrator.                                                                                                                                              |
 | Fork errors, times out, or returns an ambiguous identity                                                                    | MUST inspect actual source and target records. MUST NOT fork again based on an absent list entry. MUST retain all reservations.                                                                                        |
 | Target model request is unavailable or rejected, or its authenticated assignment is missing, unauthenticated, or mismatched | MUST NOT retire the source or implement. Preserve both IDs and reservations; report requested, accepted, authenticated, effective, and actual-execution evidence separately.                                           |
-| Effective settings are not exposed                                                                                          | Record them as unavailable and do not infer their value. Continue only when the authenticated target assignment is confirmed as Sol/Medium.                                                                          |
+| Effective settings are not exposed                                                                                          | Record them as unavailable and do not infer their value. Continue only when the authenticated target assignment is confirmed as Sol/Medium.                                                                            |
 | An explicitly observed effective pair is wrong                                                                              | MUST NOT retire the source or implement. Preserve both IDs and reservations and report the observed mismatch.                                                                                                          |
 | Target goal is blocked, different, malformed, or unknown                                                                    | MUST stop before further setup or implementation. MUST NOT fabricate or replace a goal.                                                                                                                                |
 | Parent route or parent active-goal evidence is missing                                                                      | MUST NOT retire the source or implement. Preserve the target and checkout; route the exact gap to the parent.                                                                                                          |

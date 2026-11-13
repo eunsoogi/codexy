@@ -64,13 +64,13 @@ unassigned or out-of-scope edits.
   packaging, version, marketplace, manifest, tag, or rollback work; the optional
   `codexy-github` plugin's `codexy-weaver` for GitHub integration when
   installed; and optional final Sentinel review only under `review-profiles.md`.
-  Sentinel MUST NOT be used for intermediate review. `$planning` owns plan creation, updates, and plan-file
-  rules; orchestration owns classification, ownership, assignment, worktree,
-  dispatch, execution coordination, and merge. Generic owning children use the
-  engineering workflow for technical design, diagnosis, TDD, QA, refactoring,
-  implementation, and verification of one atomic issue, and directly own scoped
-  documentation and handoff. They MUST NOT recreate removed specialists as
-  aliases.
+  Sentinel MUST NOT be used for intermediate review. `$planning` owns plan
+  creation, updates, and plan-file rules; orchestration owns classification,
+  ownership, assignment, worktree, dispatch, execution coordination, and merge.
+  Generic owning children use the engineering workflow for technical design,
+  diagnosis, TDD, QA, refactoring, implementation, and verification of one
+  atomic issue, and directly own scoped documentation and handoff. They MUST NOT
+  recreate removed specialists as aliases.
 - If multi-agent tooling is available, "not useful" is acceptable only with a
   concrete rationale tied to atomicity, tiny scope, or the absence of separable
   work.
@@ -107,10 +107,9 @@ gates, and a ready PR are not authorization.
 
 ## Direct Review-State Handoff
 
-Direct review-state handoffs MUST use the existing runtime-validated
-current review-control contract and follow
-[optional final review](review-profiles.md) and
-[review lifecycle](review-lifecycle.md). Outcome claims MUST also follow
+Direct review-state handoffs MUST use the existing runtime-validated current
+review-control contract and follow [optional final review](review-profiles.md)
+and [review lifecycle](review-lifecycle.md). Outcome claims MUST also follow
 [proof-driven completion](../../proof-driven-completion/SKILL.md). The compact
 consumer instructions MUST NOT redefine schema fields, reviewer status meanings,
 or current-head binding.

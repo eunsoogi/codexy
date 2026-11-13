@@ -8,27 +8,27 @@ actual result arrives.
 
 ## Current-head path
 
-The current review control is deliberately compact. It
-binds the explicit `review_requested` decision, Sentinel when selected,
-`reviewed_head`, one actual `terminal_result` or non-terminal `status`, and
-`unresolved_findings`. It MUST match the authenticated current PR head and the
-selected review decision. It MUST NOT require a genesis record, prior snapshot,
-transcript import, quota counter, invocation telemetry, or disposition ledger.
-The compact producer does not require `issue_number` or a prior control state;
-when supplied, `previous_control_state` MUST be rejected. Absence of a prior
-control remains valid.
+The current review control is deliberately compact. It binds the explicit
+`review_requested` decision, Sentinel when selected, `reviewed_head`, one actual
+`terminal_result` or non-terminal `status`, and `unresolved_findings`. It MUST
+match the authenticated current PR head and the selected review decision. It
+MUST NOT require a genesis record, prior snapshot, transcript import, quota
+counter, invocation telemetry, or disposition ledger. The compact producer does
+not require `issue_number` or a prior control state; when supplied,
+`previous_control_state` MUST be rejected. Absence of a prior control remains
+valid.
 
 Legacy v1 review records remain historical and are validated separately. MUST
-NOT rewrite their profile or reviewer fields to resemble current v2 records,
-or infer a current review requirement from a historical profile. Current v2
-records use optional review rather than profile tiers or a review quota.
+NOT rewrite their profile or reviewer fields to resemble current v2 records, or
+infer a current review requirement from a historical profile. Current v2 records
+use optional review rather than profile tiers or a review quota.
 
 The normal sequence is:
 
 1. Capture the current PR state and exact head.
 2. Decide whether to use [optional final review](review-profiles.md). When
-   selected, run Sentinel only after implementation and applicable checks.
-   When not selected, record no review rather than fabricating a reviewer PASS.
+   selected, run Sentinel only after implementation and applicable checks. When
+   not selected, record no review rather than fabricating a reviewer PASS.
 3. Keep that reviewer and its current-head binding while it is pending.
 4. Treat `PASS` with no unresolved findings as review evidence. `BLOCK`,
    `UNOBSERVABLE`, a stale head, or an actual unresolved finding is not a

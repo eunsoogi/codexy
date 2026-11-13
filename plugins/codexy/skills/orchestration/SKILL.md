@@ -200,7 +200,7 @@ MUST NOT override a higher-priority tool restriction.
 
 ### Review and communicate
 
-- MUST read [optional final review](references/review-profiles.md) when selecting a
-  optional final current-head reviewer.
+- MUST read [optional final review](references/review-profiles.md) when
+  selecting a optional final current-head reviewer.
 - MUST read [review lifecycle](references/review-lifecycle.md) when waiting for,
   repairing from, or handing off a current-head reviewer result.

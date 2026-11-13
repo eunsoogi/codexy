@@ -119,8 +119,8 @@ unknown when the host does not expose them.
 | ---------------------------- | --------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Orchestrator / parent        | `gpt-6.1-sol`   | `low`            | Owns the overall goal, delegates and coordinates Worker assignments, verifies evidence, directs corrections, and accepts results.                                                                        |
 | Advisor / `codexy-advisor`   | `gpt-6-astra`   | `medium`         | Provides bounded, instruction-based read-only analysis and advice. It does not edit, delegate, change ownership, or grant final approval; this instruction boundary does not enforce host permissions.   |
-| Worker / default             | `gpt-6.1-terra` | `medium`            | Owns one assigned issue in its managed Codex task/worktree, implements and verifies it, then returns evidence. This is the default for ordinary, simple, bounded, and general implementation work.       |
-| Worker / evidenced hard work | `gpt-6.1-sol` | `medium`         | A new general Worker receives this pair only when valid hard-work facts show coupled contract changes, algorithm design, or cross-boundary diagnosis; the general classification alone does not qualify. |
+| Worker / default             | `gpt-6.1-terra` | `medium`         | Owns one assigned issue in its managed Codex task/worktree, implements and verifies it, then returns evidence. This is the default for ordinary, simple, bounded, and general implementation work.       |
+| Worker / evidenced hard work | `gpt-6.1-sol`   | `medium`         | A new general Worker receives this pair only when valid hard-work facts show coupled contract changes, algorithm design, or cross-boundary diagnosis; the general classification alone does not qualify. |
 
 See the [orchestration guide](plugins/codexy/skills/orchestration/SKILL.md) and
 [Worker routing policy](plugins/codexy/skills/orchestration/references/child-routing-policy.md)

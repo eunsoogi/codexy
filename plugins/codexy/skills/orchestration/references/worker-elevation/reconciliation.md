@@ -23,16 +23,16 @@ readback, the transition MUST remain pending with the source as owner.
 
 ## Entry and record ownership
 
-The Orchestrator MAY use this procedure only after the current general Terra/Medium
-Worker satisfies the elevation decision and the parent separately authorizes the
-same-issue transition. Before advancing, it MUST verify that each required
-operation and readback is exposed in the current task. This manual procedure
-does not imply an automatic entrypoint. If eligibility, the source checkpoint,
-target read-only setup, authenticated assignment or parent binding, source-only
-retirement, or ownership transfer cannot be established through supported
-routes, the parent MUST keep the current owner and report the exact unsupported
-step. A missing capability MUST NOT be inferred from a prompt or replaced by a
-new API.
+The Orchestrator MAY use this procedure only after the current general
+Terra/Medium Worker satisfies the elevation decision and the parent separately
+authorizes the same-issue transition. Before advancing, it MUST verify that each
+required operation and readback is exposed in the current task. This manual
+procedure does not imply an automatic entrypoint. If eligibility, the source
+checkpoint, target read-only setup, authenticated assignment or parent binding,
+source-only retirement, or ownership transfer cannot be established through
+supported routes, the parent MUST keep the current owner and report the exact
+unsupported step. A missing capability MUST NOT be inferred from a prompt or
+replaced by a new API.
 
 The Orchestrator MUST keep one existing issue-owner record authoritative through
 the transition. It MUST preserve the issue and PR, original objective, source

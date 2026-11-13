@@ -73,11 +73,11 @@ codexy/
   concrete risk explicitly requires it; automatic connector review MUST remain
   disabled. Current-head work MAY use `codexy-sentinel` for optional final
   review after implementation and applicable verification. MUST NOT use
-  intermediate Sentinel review or profile-based mandatory reviewer selection. The compact current-head path MUST NOT require
-  imported transcripts, genesis records, quota counters, invocation telemetry,
-  or disposition ledgers. If a manual connector review is explicitly required,
-  the parent/orchestrator MUST request exactly one on the frozen head, following
-  the canonical procedure in
+  intermediate Sentinel review or profile-based mandatory reviewer selection.
+  The compact current-head path MUST NOT require imported transcripts, genesis
+  records, quota counters, invocation telemetry, or disposition ledgers. If a
+  manual connector review is explicitly required, the parent/orchestrator MUST
+  request exactly one on the frozen head, following the canonical procedure in
   `plugins/codexy-github/skills/git-workflow/references/codex-connector-review.md`.
   Any already-requested review's actual actionable findings MUST remain
   applicable.

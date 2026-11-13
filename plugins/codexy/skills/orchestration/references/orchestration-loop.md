@@ -39,9 +39,8 @@
      remains authoritative for the plan content and file state. An
      execution-authorized atomic issue MUST NOT receive a new plan solely for
      this handoff.
-   - Keep plan state when the task scope or lane contract requires it.
-     Work MUST NOT require a visible goal/plan receipt from
-     this loop alone.
+   - Keep plan state when the task scope or lane contract requires it. Work MUST
+     NOT require a visible goal/plan receipt from this loop alone.
    - For delegated outcomes, MUST record one Worker owner, the saved project
      identity, the callback channels, and one current next action. MUST NOT
      require a fixed checkpoint count or unchanged-progress receipt.

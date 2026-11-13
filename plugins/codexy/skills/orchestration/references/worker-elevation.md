@@ -24,9 +24,9 @@ handling, before changing the existing owner record.
 Work identified as hard before assignment MUST continue to use the direct
 Sol/Medium route in
 [Worker routing](child-routing-policy.md#evidenced-hard-work). This reference
-MUST be used only when a general Terra/Medium Worker discovers qualifying evidence
-after work has begun. Specialists and Workers already assigned to the hard lane
-MUST NOT use this path.
+MUST be used only when a general Terra/Medium Worker discovers qualifying
+evidence after work has begun. Specialists and Workers already assigned to the
+hard lane MUST NOT use this path.
 
 ## Eligibility conditions
 

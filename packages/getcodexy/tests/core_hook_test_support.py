@@ -37,8 +37,8 @@ def hook_payload(
 
 def worker_creation_input() -> dict[str, object]:
     return {
-        "model": "gpt-6-luna",
-        "thinking": "max",
+        "model": "gpt-6.1-terra",
+        "thinking": "medium",
         "target": {
             "type": "project",
             "projectId": "test-project",
@@ -142,8 +142,8 @@ def sized_thread_delivery_payload(size: int, event: str = "PreToolUse") -> bytes
     """Build a valid delivery fixture at an exact size for the launcher limit test."""
     tool_input = {
         "threadId": "test-worker",
-        "model": "gpt-6-luna",
-        "thinking": "max",
+        "model": "gpt-6.1-terra",
+        "thinking": "medium",
         "padding": "",
     }
     payload = _thread_delivery_payload_data(event, tool_input, None)

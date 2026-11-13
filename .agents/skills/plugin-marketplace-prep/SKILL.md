@@ -59,8 +59,8 @@ and advertised package paths.
      as an executable;
    - Codexy reviewer metadata uses optional final `codexy-sentinel` review
      (Sol/high) and targeted `codexy-warden` security review (Astra/high),
-     without light/standard/strict tiers or Inspector; Sentinel assessments
-     are limited to three including the initial review by guidance, not hooks;
+     without light/standard/strict tiers or Inspector; Sentinel assessments are
+     limited to three including the initial review by guidance, not hooks;
    - when Codexy advertises LSP or code exploration, its packaged configuration
      includes the matching LSP and Codegraph servers;
    - thread/worktree guidance states handoff fields, evidence, stop conditions,

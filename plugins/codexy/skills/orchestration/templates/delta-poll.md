@@ -26,7 +26,7 @@
 
 | Field                                  | Value |
 | -------------------------------------- | ----- |
-| optional final review decision                       |       |
+| optional final review decision         |       |
 | policy reviewer                        |       |
 | exact reviewed head                    |       |
 | terminal result or non-terminal status |       |

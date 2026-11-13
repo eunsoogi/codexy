@@ -54,16 +54,16 @@ This does not change the selected model, effort, or ownership rules below.
 Named packaged specialists MUST be selected when their role matches the task;
 their catalogued model and effort apply automatically, and callers MUST NOT
 override them. Ordinary, bounded, and simple Worker assignments MUST default to
-`gpt-6.1-terra` / `medium`. For a general Worker, Terra/Medium is also the default once
-the safety facts pass; only complete, verified hard-work facts can select
-Sol/Medium. A new general Worker with valid hard-work facts MUST be assigned
-`gpt-6.1-sol` / `medium` directly; the `general` classification alone MUST NOT
-select that pair. Parent-to-Worker follow-ups MUST preserve the known Worker's
-assigned pair and MUST NOT copy sender settings or silently reassign the Worker.
-The thread-delivery hook accepts only the exact pairs Sol/Low, Terra/Medium, and
-Sol/Medium; this is request-shape validation and does not verify who the
-recipient is or which pair was assigned. For general work, `fixed_scope`,
-`low_risk_reversible`, and `no_unresolved_decision` MUST be true;
+`gpt-6.1-terra` / `medium`. For a general Worker, Terra/Medium is also the
+default once the safety facts pass; only complete, verified hard-work facts can
+select Sol/Medium. A new general Worker with valid hard-work facts MUST be
+assigned `gpt-6.1-sol` / `medium` directly; the `general` classification alone
+MUST NOT select that pair. Parent-to-Worker follow-ups MUST preserve the known
+Worker's assigned pair and MUST NOT copy sender settings or silently reassign
+the Worker. The thread-delivery hook accepts only the exact pairs Sol/Low,
+Terra/Medium, and Sol/Medium; this is request-shape validation and does not
+verify who the recipient is or which pair was assigned. For general work,
+`fixed_scope`, `low_risk_reversible`, and `no_unresolved_decision` MUST be true;
 `deterministic_oracle` MUST be supplied but MAY be false. Missing safety facts,
 ambiguous scope or authority, missing inputs, and unresolved ownership MUST stay
 fail-closed. Difficulty evidence MUST NOT substitute for those decisions.
@@ -121,17 +121,17 @@ recipient's assigned model and effort; it MUST NOT copy sender settings. If the
 actual message-tool contract cannot accept that pair, Codex MUST NOT send an
 omitted or partial call or rely on defaults; it MUST preserve the lane as
 pending and report the exact incompatibility. Ordinary Worker creation defaults
-to Terra/Medium, including general implementation, and valid hard-work facts select
-Sol/Medium for a new Worker. Worker-to-Orchestrator delivery uses the main
-Orchestrator's assigned Sol/Low pair. The thread-delivery hook validates a
+to Terra/Medium, including general implementation, and valid hard-work facts
+select Sol/Medium for a new Worker. Worker-to-Orchestrator delivery uses the
+main Orchestrator's assigned Sol/Low pair. The thread-delivery hook validates a
 non-empty `threadId` and an explicit supported model/thinking pair
-(`gpt-6.1-sol`/`low`, `gpt-6.1-terra`/`medium`, or `gpt-6.1-sol`/`medium`) for both
-directions. It does not infer the recipient's role or verify recipient identity,
-existence, or assignment. Orchestration MUST select the known recipient and its
-assigned pair; the host authorizes the actual message delivery. Unsupported or
-mismatched recipient settings MUST leave the lane pending with the exact
-limitation. Missing observations MUST be reported as unavailable/not observed.
-Codex MUST NOT fall back to sender settings.
+(`gpt-6.1-sol`/`low`, `gpt-6.1-terra`/`medium`, or `gpt-6.1-sol`/`medium`) for
+both directions. It does not infer the recipient's role or verify recipient
+identity, existence, or assignment. Orchestration MUST select the known
+recipient and its assigned pair; the host authorizes the actual message
+delivery. Unsupported or mismatched recipient settings MUST leave the lane
+pending with the exact limitation. Missing observations MUST be reported as
+unavailable/not observed. Codex MUST NOT fall back to sender settings.
 
 The runtime keeps `codexy.child-routing-request.v1` for thread creation,
 Worker-to-Orchestrator delivery, and other existing routing requests. A v1
@@ -185,10 +185,11 @@ same sequence from that current owner. This routing clause MUST NOT be read as a
 separate recovery procedure.
 
 Worker selection owns recipient and model routing, not verification policy. The
-closed route in [context tiers](context-tiers.md) selects verification, sequencing,
-finite-work, review, and final-proof references only when applicable.
-Collaboration shape requires ownership metadata where the contract says so, but
-MUST NOT by itself require a final reviewer or historical-review path.
+closed route in [context tiers](context-tiers.md) selects verification,
+sequencing, finite-work, review, and final-proof references only when
+applicable. Collaboration shape requires ownership metadata where the contract
+says so, but MUST NOT by itself require a final reviewer or historical-review
+path.
 
 Child titles MUST follow the [title policy](child-thread-titles.md).
 
@@ -199,8 +200,8 @@ owning Worker. When selected, the Worker MUST delegate Sentinel after local
 proof, following [optional final review](review-profiles.md), including its
 instruction-only three-assessment limit. The Orchestrator MUST consume that
 evidence rather than launch a duplicate reviewer. Skipping optional review MUST
-NOT fabricate a PASS or hide known findings. This is distinct from
-a repository-required external `@codex review`, which the Orchestrator requests
+NOT fabricate a PASS or hide known findings. This is distinct from a
+repository-required external `@codex review`, which the Orchestrator requests
 when applicable; the Worker MUST NOT request that external review.
 
 Author self-review is forbidden, but delegating the independent packaged

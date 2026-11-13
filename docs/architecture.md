@@ -19,15 +19,15 @@ itself; [`catalog.toml`](../plugins/codexy/agents/catalog.toml) and the
 registration bootstrap discover and project the specialist files into Codex's
 native location.
 
-| Agent                 | Model           | Reasoning effort | Role                                                                                                                                                |
-| --------------------- | --------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `codexy-architect`    | `gpt-6-astra`   | `high`           | Defines conservative boundaries for plugin schemas, orchestration contracts, MCP/LSP wiring, validators, and durable extension points.              |
-| `codexy-advisor`      | `gpt-6-astra`   | `medium`         | Provides bounded analysis and advice; its instructions prohibit edits, delegation, ownership changes, and final approval.                           |
-| `codexy-auditor`      | `gpt-6.1-terra` | `medium`         | Turns acceptance criteria into observable QA across configuration, documentation, CLI, GitHub, app, and plugin surfaces.                            |
-| `codexy-cartographer` | `gpt-6-luna`    | `low`            | Performs fast, read-only repository discovery with codegraph, direct reads, file mapping, and ownership boundaries.                                 |
+| Agent                 | Model           | Reasoning effort | Role                                                                                                                                   |
+| --------------------- | --------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `codexy-architect`    | `gpt-6-astra`   | `high`           | Defines conservative boundaries for plugin schemas, orchestration contracts, MCP/LSP wiring, validators, and durable extension points. |
+| `codexy-advisor`      | `gpt-6-astra`   | `medium`         | Provides bounded analysis and advice; its instructions prohibit edits, delegation, ownership changes, and final approval.              |
+| `codexy-auditor`      | `gpt-6.1-terra` | `medium`         | Turns acceptance criteria into observable QA across configuration, documentation, CLI, GitHub, app, and plugin surfaces.               |
+| `codexy-cartographer` | `gpt-6-luna`    | `low`            | Performs fast, read-only repository discovery with codegraph, direct reads, file mapping, and ownership boundaries.                    |
 | `codexy-sentinel`     | `gpt-6.1-sol`   | `high`           | Provides optional final review of scope, correctness, safety, tests, and current-head evidence.                                        |
-| `codexy-shipwright`   | `gpt-6.1-sol`   | `high`           | Prepares version, manifest, marketplace, artifact, tag, release, and rollback readiness.                                                            |
-| `codexy-warden`       | `gpt-6-astra`   | `high`          | Reviews workflows, shell commands, credentials, remote MCPs, untrusted input, permissions, and state mutation.                                      |
+| `codexy-shipwright`   | `gpt-6.1-sol`   | `high`           | Prepares version, manifest, marketplace, artifact, tag, release, and rollback readiness.                                               |
+| `codexy-warden`       | `gpt-6-astra`   | `high`           | Reviews workflows, shell commands, credentials, remote MCPs, untrusted input, permissions, and state mutation.                         |
 
 These model assignments come directly from the packaged TOMLs, which are
 authoritative for a named custom agent's model and reasoning effort. Callers
@@ -49,12 +49,12 @@ for authenticated Worker-to-Orchestrator delivery. The Advisor uses
 `gpt-6-astra` / `medium` for bounded, instruction-based read-only advice; this
 boundary does not enforce host permissions. A Worker owns one issue lane, its
 branch/worktree, and its finite goal. Ordinary, simple, bounded, and general
-implementation work defaults to `gpt-6.1-terra` / `medium`. A new general Worker with
-valid facts for coupled contract changes, algorithm design, or cross-boundary
-diagnosis receives `gpt-6.1-sol` / `medium` directly. Authenticated Worker
-delivery uses the same Luna/Max and Terra/Medium pairs; existing Sol/Medium
-assignments are rejected without automatic reassignment. Ambiguous authority,
-inputs, and ownership remain fail-closed under the
+implementation work defaults to `gpt-6.1-terra` / `medium`. A new general Worker
+with valid facts for coupled contract changes, algorithm design, or
+cross-boundary diagnosis receives `gpt-6.1-sol` / `medium` directly.
+Authenticated Worker delivery uses the same Luna/Max and Terra/Medium pairs;
+existing Sol/Medium assignments are rejected without automatic reassignment.
+Ambiguous authority, inputs, and ownership remain fail-closed under the
 [Worker routing policy](../plugins/codexy/skills/orchestration/references/child-routing-policy.md).
 Role ownership is defined in the
 [supervision reference](../plugins/codexy/skills/orchestration/references/parent-supervision.md).
@@ -109,18 +109,18 @@ choices, while
 [proof-driven completion](../plugins/codexy/skills/proof-driven-completion/SKILL.md)
 audits the final current-state claim. Verification follows concrete risks and
 affected surfaces without light, standard, or strict profile tiers. Final
-Sentinel review is optional and limited by instruction to three assessments,
-not enforced by a hook or quota. Warden retains targeted security review. Reuse execution evidence per individual check, not as
-whole-change readiness: after reading the current diff and the relevant
-implementation, dependency or lock/configuration, fixtures, generated inputs,
-and environment, a current applicability assessment may preserve a passed check
-when its boundary and environment remain unchanged, including after unrelated
-prose-only or other metadata-only changes. A relevant source, dependency,
-lock/configuration, fixture, generated-input, or environment change, previous
-failure, unresolved risk, or uncertain impact invalidates the affected evidence
-and requires the check again. A reviewer PASS is always bound to its exact head;
-an older PASS does not make a changed head current or allow affected checks to
-be skipped.
+Sentinel review is optional and limited by instruction to three assessments, not
+enforced by a hook or quota. Warden retains targeted security review. Reuse
+execution evidence per individual check, not as whole-change readiness: after
+reading the current diff and the relevant implementation, dependency or
+lock/configuration, fixtures, generated inputs, and environment, a current
+applicability assessment may preserve a passed check when its boundary and
+environment remain unchanged, including after unrelated prose-only or other
+metadata-only changes. A relevant source, dependency, lock/configuration,
+fixture, generated-input, or environment change, previous failure, unresolved
+risk, or uncertain impact invalidates the affected evidence and requires the
+check again. A reviewer PASS is always bound to its exact head; an older PASS
+does not make a changed head current or allow affected checks to be skipped.
 
 ```mermaid
 flowchart TD
