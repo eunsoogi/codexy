@@ -1,4 +1,5 @@
 //! Provides mutable agent fixtures and exact-artifact privacy checks for role-contract validation.
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
@@ -94,8 +95,9 @@ pub(crate) fn public_contract_import_check() -> TestResult<Output> {
         )
         .into());
     }
+    let cargo_output = String::from_utf8(build.stdout)?;
     let mut libraries = Vec::new();
-    for line in String::from_utf8(build.stdout)?.lines() {
+    for line in cargo_output.lines() {
         let message: serde_json::Value = serde_json::from_str(line)?;
         if message["reason"] == "compiler-artifact"
             && message["target"]["name"] == "codexy_runtime"
@@ -122,7 +124,10 @@ pub(crate) fn public_contract_import_check() -> TestResult<Output> {
     let [library] = libraries.as_slice() else {
         return Err("privacy check requires exactly one current runtime rlib".into());
     };
-    if library.parent() != std::env::current_exe()?.parent().and_then(Path::parent) {
+    let executable = std::env::current_exe()?;
+    let profile =
+        cargo_test_profile_dir(&executable).ok_or("Cargo test executable profile directory")?;
+    if library.parent() != Some(profile.as_path()) {
         return Err("privacy artifact must belong to the running test profile".into());
     }
     let source = temp.path().join("main.rs");
@@ -130,39 +135,94 @@ pub(crate) fn public_contract_import_check() -> TestResult<Output> {
         &source,
         "use codexy_runtime::validation::agent_model_contract::SPECIALIST_MODEL_CONTRACTS;\nfn main() { let _ = SPECIALIST_MODEL_CONTRACTS; }\n",
     )?;
-    Ok(
-        Command::new(std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into()))
-            .args(["--edition=2024", "--emit=metadata", "--extern"])
-            .arg(format!("codexy_runtime={}", library.display()))
-            .arg("-L")
-            .arg(format!(
-                "dependency={}",
-                library
-                    .parent()
-                    .ok_or("rlib parent")?
-                    .join("deps")
-                    .display()
-            ))
-            .arg(source)
-            .arg("--out-dir")
-            .arg(temp.path())
-            .current_dir(&runtime_root)
-            .output()?,
-    )
+    // Cargo's artifact messages preserve dependency directories used by this profile.
+    let artifact_locations =
+        super::privacy_artifacts::cargo_artifact_locations(&cargo_output, &profile)?;
+    let compiler = std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into());
+    let mut arguments = vec![
+        OsStr::new("--edition=2024").to_owned(),
+        OsStr::new("--emit=metadata").to_owned(),
+        OsStr::new("--extern").to_owned(),
+        format!("codexy_runtime={}", library.display()).into(),
+    ];
+    for directory in &artifact_locations.search_directories {
+        arguments.push(OsStr::new("-L").to_owned());
+        arguments.push(format!("dependency={}", directory.display()).into());
+    }
+    arguments.extend([
+        source.as_os_str().to_owned(),
+        OsStr::new("--out-dir").to_owned(),
+        temp.path().as_os_str().to_owned(),
+    ]);
+    let mut output = Command::new(&compiler)
+        .args(&arguments)
+        .current_dir(&runtime_root)
+        .output()?;
+    if !output.status.success() {
+        // Keep Windows-only compiler and artifact details beside the failed privacy oracle.
+        let artifact_size = std::fs::metadata(library)?.len();
+        let artifact_hash = super::sha256_file(library)?;
+        let artifact_files = artifact_locations
+            .artifact_files
+            .iter()
+            .map(|path| format!("    {}", path.display()))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let dependency_search = artifact_locations
+            .search_directories
+            .iter()
+            .map(|path| format!("    {}", path.display()))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let details = format!(
+            "\nprivacy probe inputs:\n  rustc: {compiler:?}\n  rustc -vV:\n{}\n  rustc --print cfg (implicit target):\n{}\n  test executable: {}\n  profile: {}\n  selected rlib: {}\n  rlib bytes: {artifact_size}\n  rlib sha256: {artifact_hash}\n  Cargo Rust artifacts:\n{artifact_files}\n  dependency search:\n{dependency_search}\n  rustc args: {arguments:?}\n",
+            compiler_report(&compiler, &["-vV"]),
+            compiler_report(&compiler, &["--print", "cfg"]),
+            executable.display(),
+            profile.display(),
+            library.display(),
+        );
+        output.stderr.extend_from_slice(details.as_bytes());
+    }
+    Ok(output)
+}
+
+fn compiler_report(compiler: &OsStr, arguments: &[&str]) -> String {
+    match Command::new(compiler).args(arguments).output() {
+        Ok(output) => format!(
+            "status: {:?}\n{}{}",
+            output.status,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ),
+        Err(error) => format!("failed to run {compiler:?}: {error}"),
+    }
 }
 
 pub(crate) fn public_contract_target_dir() -> PathBuf {
-    // Integration tests run from <target>/<profile>/deps. Reuse that target,
-    // including an explicit CARGO_TARGET_DIR, instead of creating another tree.
-    std::env::current_exe()
-        .expect("integration test executable")
+    let executable = std::env::current_exe().expect("integration test executable");
+    let profile = cargo_test_profile_dir(&executable).expect("Cargo test profile directory");
+    profile
         .parent()
-        .expect("test dependency directory")
-        .parent()
-        .expect("test profile directory")
-        .parent()
-        .expect("test target directory")
+        .expect("Cargo target directory")
         .to_path_buf()
+}
+
+pub(crate) fn cargo_test_profile_dir(executable: &Path) -> Option<PathBuf> {
+    // Cargo uses profile/deps for ordinary tests and profile/build/.../out for generated suites.
+    let output_dir = executable.parent()?;
+    match output_dir.file_name()?.to_str()? {
+        "deps" => output_dir.parent().map(Path::to_path_buf),
+        "out" => {
+            let build_dir = output_dir.parent()?.parent()?.parent()?;
+            if build_dir.file_name()?.to_str()? == "build" {
+                build_dir.parent().map(Path::to_path_buf)
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
 }
 
 pub(crate) fn assert_privacy_diagnostic(output: &Output) -> TestResult {

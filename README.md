@@ -32,7 +32,7 @@ If the pinned CLI version below has not been published, use the
 and its tagged English README for the install and upgrade steps.
 
 ```sh
-uv tool install getcodexy==2.2.2
+uv tool install getcodexy==2.2.3
 uv tool update-shell
 getcodexy install
 ```
@@ -57,7 +57,7 @@ The github and devtools components include core automatically.
 getcodexy status
 getcodexy doctor
 getcodexy update
-uv tool upgrade getcodexy==2.2.2
+uv tool upgrade getcodexy==2.2.3
 ```
 
 Use `getcodexy status` and `getcodexy doctor` to inspect the installation,
@@ -86,7 +86,7 @@ If the marketplace ref below has not been published, use the
 and its tagged English README for the direct-install steps.
 
 ```sh
-codex plugin marketplace add eunsoogi/codexy --ref v2.2.2
+codex plugin marketplace add eunsoogi/codexy --ref v2.2.3
 codex plugin add codexy@codexy
 codex plugin add codexy-github@codexy
 codex plugin add codexy-devtools@codexy

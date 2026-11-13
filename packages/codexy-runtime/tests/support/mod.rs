@@ -24,6 +24,7 @@ mod package_fixture;
 pub(crate) mod plugin_fixture;
 pub(crate) mod plugin_fixture_copy;
 pub(crate) mod plugin_fixture_mutable;
+mod privacy_artifacts;
 pub(crate) mod profile_interval_metrics;
 pub(crate) mod profile_metrics;
 pub(crate) mod release_archive;
@@ -49,7 +50,7 @@ pub(crate) mod wrapper_platform;
 mod wrapper_process;
 
 pub(crate) use agent_model_assignments::{
-    TestResult, agent_fixture, assert_privacy_diagnostic, catalog_fixture,
+    TestResult, agent_fixture, assert_privacy_diagnostic, cargo_test_profile_dir, catalog_fixture,
     public_contract_import_check, public_contract_target_dir, validate_agent_replacement,
     validate_catalog_replacement,
 };
@@ -96,6 +97,7 @@ pub(crate) use plugin_fixture::{
     copy_plugin_fixture_with_mutable_files, fixture_mutable_files,
     materialize_admission_runtime_suite, plugin_fixture, plugin_fixture_with_mutable_files,
 };
+pub(crate) use privacy_artifacts::{CargoArtifactLocations, cargo_artifact_locations};
 pub(crate) use profile_interval_metrics::mcp_interval;
 pub(crate) use profile_metrics::record_mcp_wait;
 pub(crate) use release_archive::{assert_structured_absent_literals, assert_structured_literals};

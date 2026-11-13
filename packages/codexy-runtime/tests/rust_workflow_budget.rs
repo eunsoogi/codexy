@@ -7,6 +7,7 @@ const REQUIRED_JOBS: [(&str, &str, &str); 2] = [
     ("windows-rust-test", "Windows", "windows-latest"),
 ];
 const WINDOWS_PREP_JOB: &str = "windows-rust-prep";
+const WINDOWS_CONSUMER_DIAGNOSTIC_ARGS: &str = "${{ runner.os == 'Windows' && matrix.target.name == 'agent suite' && '--verbose' || '' }}"; // Show the Cargo consumer invocation only for the failing Windows shard.
 // This exact union keeps both OS jobs sharded across every required integration suite.
 const REQUIRED_TARGETS: [&str; 13] = [
     "--lib --bins",
@@ -130,7 +131,7 @@ fn workflow_failures(workflow: &str) -> Result<Vec<String>, Box<dyn std::error::
                 failures.push(format!("{platform} cargo test aggregates targets"));
             }
             let expected = if platform == "Windows" {
-                format!("{CARGO_COMMAND}; if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}")
+                format!("{CARGO_COMMAND} {WINDOWS_CONSUMER_DIAGNOSTIC_ARGS}; if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}")
             } else {
                 CARGO_COMMAND.to_owned()
             };

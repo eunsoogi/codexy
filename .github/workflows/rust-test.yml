@@ -244,7 +244,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement' && inputs.cache_mode == 'isolated'
         run: $env:CODEXY_MEASUREMENT_CONDITION = '${{ inputs.condition }}'; scripts/prepare-rust-measurement-toolchain.ps1
       - shell: pwsh
-        run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }}; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        run: cargo test --manifest-path packages/codexy-runtime/Cargo.toml --locked ${{ matrix.target.args }} ${{ runner.os == 'Windows' && matrix.target.name == 'agent suite' && '--verbose' || '' }}; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } # Log the successful Cargo consumer invocation for comparison with the privacy probe.
       - *rust-cache-save
       - *measurement-cache-save
       - *measurement-upload
