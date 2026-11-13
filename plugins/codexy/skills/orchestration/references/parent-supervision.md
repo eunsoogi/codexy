@@ -40,7 +40,8 @@ Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
 - Worker creation MUST use [routing](child-routing-policy.md), including its
   ordinary default and verified hard-work facts; parent-to-Worker follow-ups
   MUST preserve the known recipient's assigned pair.
-- Inspector: `gpt-6.1-sol` / `medium`.
+- Optional final Sentinel: `gpt-6.1-sol` / `high`.
+- Security-focused Warden: `gpt-6-astra` / `high`.
 
 New-role thread creation and delivery MUST use the explicit model/effort pair
 from the [child-routing policy](child-routing-policy.md). Recovery of the same

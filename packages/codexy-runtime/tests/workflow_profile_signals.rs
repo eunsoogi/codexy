@@ -129,7 +129,7 @@ fn strict_signals_before_ownership_metadata_remain_in_the_current_lane() -> Test
     let ownership = "Ownership metadata source: current-thread-classified\nLane ownership: current-thread-owned";
     assert_profile_result(
         "a strict profile before ownership metadata still requires formal proof",
-        &format!("Workflow profile: strict\n{ownership}"),
+        &format!("Task kind: security review\n{ownership}"),
         false,
     )?;
     assert_profile_result(

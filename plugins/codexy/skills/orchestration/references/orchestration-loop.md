@@ -39,9 +39,8 @@
      remains authoritative for the plan content and file state. An
      execution-authorized atomic issue MUST NOT receive a new plan solely for
      this handoff.
-   - Keep plan state when the selected profile or lane contract requires it.
-     Light and standard work MUST NOT require a visible goal/plan receipt from
-     this loop alone.
+   - Keep plan state when the task scope or lane contract requires it. Work MUST
+     NOT require a visible goal/plan receipt from this loop alone.
    - For delegated outcomes, MUST record one Worker owner, the saved project
      identity, the callback channels, and one current next action. MUST NOT
      require a fixed checkpoint count or unchanged-progress receipt.
@@ -215,12 +214,11 @@ Initial phase contract: issue outcome; Assignment objective; phase criteria
 Capacity: reserved slot; concrete shared-resource reservations; parent gates
 Setup phase: only if required; check, evidence, release condition
 Completion route: goal-transition-reporting.md; compact current-head result
-Return evidence: selected route/profile only; exact head, checks, findings,
+Return evidence: applicable route only; exact head, checks, findings,
   external gates, and one parent-owned next action
-  Strict/audited lanes: native goal and active readback; todo/plan state or
-  unavailable fallback; touched LOC; Codegraph/LSP evidence or applicability;
-  multi-agent use or concrete scope/tool rationale; current-head packaged review.
-  Light/standard: only selected-route evidence; light has no LLM reviewer.
+  Add only applicable evidence: native goal and active readback; todo/plan state
+  or unavailable fallback; touched LOC; Codegraph/LSP evidence or applicability;
+  multi-agent use or concrete scope/tool rationale; selected final review.
 Child execution discipline:
 Stop if:
 ```
@@ -232,7 +230,7 @@ MUST use the dispatch template above as its first message and retain the same
 owner for follow-up work. The return MUST include native goal readback and
 todo/plan fallback; multi-agent use or rationale; Codegraph/LSP for code;
 touched LOC for non-trivial code/harness/workflow rules; and the current-head
-packaged reviewer result when selected (strict: Sentinel).
+Sentinel result when optional final review was selected.
 
 The child thread MUST NOT merge, close issues, or claim final completion. It
 returns evidence and a commit-ready branch to the invoking orchestrator thread.

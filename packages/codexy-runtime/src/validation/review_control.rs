@@ -78,7 +78,7 @@ pub(super) fn lifecycle_error(plugin_root: &Path, record: &str) -> Option<String
     }
     let object = value.as_object()?;
     if object.contains_key("reviewed_head")
-        && object.contains_key("profile")
+        && (object.contains_key("profile") || object.contains_key("review_requested"))
         && object.contains_key("reviewer")
         && !state::is_lifecycle_terminal(plugin_root, record)
         && !state::is_lifecycle_pending(plugin_root, record)

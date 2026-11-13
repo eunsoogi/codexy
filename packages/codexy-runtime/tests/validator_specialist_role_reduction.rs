@@ -9,17 +9,17 @@ use crate::support::{TestResult, copy_plugin_fixture_with_mutable_files};
 #[path = "validator_specialist_role_reduction/catalog_mutations.rs"]
 mod catalog_mutations;
 
-const CURRENT: [&str; 8] = [
+const CURRENT: [&str; 7] = [
     "codexy-architect",
     "codexy-advisor",
     "codexy-auditor",
     "codexy-cartographer",
-    "codexy-inspector",
     "codexy-sentinel",
     "codexy-shipwright",
     "codexy-warden",
 ];
-const RETIRED: [&str; 6] = [
+const RETIRED: [&str; 7] = [
+    "codexy-inspector",
     "codexy-forge",
     "codexy-pathfinder",
     "codexy-scribe",

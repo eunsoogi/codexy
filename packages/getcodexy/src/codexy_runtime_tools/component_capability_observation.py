@@ -19,6 +19,7 @@ CAPABILITIES = {
         "specialist:codexy-advisor",
         "specialist:codexy-auditor",
         "specialist:codexy-cartographer",
+        # Preserve recognition of existing retired Inspector sessions; never register new ones.
         "specialist:codexy-inspector",
         "specialist:codexy-sentinel",
         "specialist:codexy-shipwright",
