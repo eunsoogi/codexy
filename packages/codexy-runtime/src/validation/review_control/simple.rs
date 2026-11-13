@@ -57,35 +57,52 @@ fn check(
     state: Option<&Value>,
     require_pass: bool,
 ) -> Result<(), String> {
-    // Review-bearing profiles bind the exact current head; a required pass also needs no unresolved findings.
-    if control.get("schema").and_then(Value::as_str) != Some(CONTROL_SCHEMA) {
+    // Current selection is explicit, while v1 records keep their historical identity.
+    let schema = control.get("schema").and_then(Value::as_str);
+    let expected_reviewer = if schema == Some("codexy.review-control-state.v2") {
+        if control.contains_key("profile")
+            || state.is_some_and(|value| value.get("reviewProfile").is_some())
+        {
+            return Err("review profiles are retired for v2 controls".into());
+        }
+        let selected = control
+            .get("review_requested")
+            .and_then(Value::as_bool)
+            .ok_or_else(|| {
+                "review control state must explicitly select review_requested".to_owned()
+            })?;
+        if selected && control.get("stage").and_then(Value::as_str) != Some("final") {
+            return Err("Sentinel review is only supported at the final stage".into());
+        }
+        selected.then(policy::sentinel)
+    } else if schema == Some(CONTROL_SCHEMA) {
+        let name = control
+            .get("profile")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "legacy review control state must select a profile".to_owned())?;
+        if let Some(bound) = state
+            .and_then(|value| value.get("reviewProfile"))
+            .and_then(Value::as_str)
+            .filter(|value| !value.is_empty())
+            && bound != name
+        {
+            return Err("review control state profile disagrees with the selected profile".into());
+        }
+        policy::load(plugin_root)
+            .map_err(|error| error.to_string())?
+            .remove(name)
+            .ok_or_else(|| "review control state selects an unknown profile".to_owned())?
+            .reviewer
+    } else {
         return Err("review control state has an unsupported schema".into());
-    }
-    let profile_name = control
-        .get("profile")
-        .and_then(Value::as_str)
-        .filter(|profile| !profile.is_empty())
-        .ok_or_else(|| "review control state must select a profile".to_owned())?;
-    if let Some(bound) = state
-        .and_then(|state| state.get("reviewProfile"))
-        .and_then(Value::as_str)
-        .filter(|profile| !profile.is_empty())
-        && bound != profile_name
-    {
-        return Err("review control state profile disagrees with the selected profile".into());
-    }
-    let profiles =
-        policy::load(plugin_root).map_err(|_| "review profile policy is unavailable".to_owned())?;
-    let profile = profiles
-        .get(profile_name)
-        .ok_or_else(|| "review control state selects an unknown profile".to_owned())?;
+    };
 
     if control.contains_key("terminal_result") && control.contains_key("status") {
         return Err("review control state must use one terminal_result or status".into());
     }
 
     let reviewer = control.get("reviewer");
-    if let Some(expected) = profile.reviewer.as_ref() {
+    if let Some(expected) = expected_reviewer.as_ref() {
         let expected = serde_json::to_value(expected)
             .map_err(|_| "selected reviewer is not serializable".to_owned())?;
         if reviewer != Some(&expected) {
@@ -101,9 +118,9 @@ fn check(
         .and_then(Value::as_str)
         .filter(|head| !head.is_empty());
     let result = result(control);
-    let findings = findings(control, profile.reviewer.is_some())?;
+    let findings = findings(control, expected_reviewer.is_some())?;
 
-    if profile.reviewer.is_some() {
+    if expected_reviewer.is_some() {
         if result.is_none() {
             return Err("review control state must contain terminal_result or status".into());
         }
@@ -145,7 +162,7 @@ fn check(
         return Err("review control state result is invalid".into());
     }
     if require_pass {
-        if profile.reviewer.is_some() && result != Some("PASS") {
+        if expected_reviewer.is_some() && result != Some("PASS") {
             return Err("review control state result is not PASS".into());
         }
         if !findings.is_empty() {

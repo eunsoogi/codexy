@@ -14,8 +14,8 @@ const TOOLS: &[&str] = &[
 ];
 const PAIRS: &[(&str, &str)] = &[
     ("gpt-6.1-sol", "low"),
-    ("gpt-6-luna", "max"),
     ("gpt-6.1-terra", "medium"),
+    ("gpt-6.1-sol", "medium"),
 ];
 
 #[test]
@@ -165,7 +165,7 @@ fn nonempty_recipient_shape_does_not_claim_target_authorization() -> TestResult 
                     event,
                     "mcp__codex_app__send_message_to_thread",
                     &transcript,
-                    input("another-known-thread", "gpt-6-luna", "max", "receipt"),
+                    input("another-known-thread", "gpt-6.1-terra", "medium", "receipt"),
                     Some(json!({"target_thread_id":"different-thread"})),
                 )?,
                 event,

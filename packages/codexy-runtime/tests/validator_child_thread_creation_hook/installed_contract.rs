@@ -57,7 +57,7 @@ fn worker_creation_diagnostics_describe_both_supported_pairs_and_orchestrator_re
         ),
         (
             "missing thinking",
-            json!({"model":"gpt-6-luna"}),
+            json!({"model":"gpt-6.1-terra"}),
             "MISSING_THINKING",
         ),
         (
@@ -67,12 +67,12 @@ fn worker_creation_diagnostics_describe_both_supported_pairs_and_orchestrator_re
         ),
         (
             "crossed pair",
-            json!({"model":"gpt-6.1-terra","thinking":"max"}),
+            json!({"model":"gpt-6.1-sol","thinking":"max"}),
             "UNSUPPORTED_THINKING",
         ),
         (
-            "unsupported Sol/Medium Worker pair",
-            json!({"model":"gpt-6.1-sol","thinking":"medium"}),
+            "legacy Luna/Max Worker pair",
+            json!({"model":"gpt-6-luna","thinking":"max"}),
             "UNSUPPORTED_MODEL",
         ),
     ];
@@ -92,8 +92,8 @@ fn worker_creation_diagnostics_describe_both_supported_pairs_and_orchestrator_re
                 .ok_or("Worker creation diagnostic")?;
                 assert!(reason.contains(diagnostic), "{label} {event}: {reason}");
                 for pair in [
-                    "model='gpt-6-luna' and thinking='max'",
                     "model='gpt-6.1-terra' and thinking='medium'",
+                    "model='gpt-6.1-sol' and thinking='medium'",
                 ] {
                     assert!(
                         reason.contains(pair),
@@ -113,7 +113,7 @@ fn invalid_worktree_diagnostic_assigns_the_project_target_to_the_orchestrator() 
         for event in ["PreToolUse", "PermissionRequest"] {
             let mut input = pre_tool_input(
                 tool,
-                json!({"model":"gpt-6-luna","thinking":"max"}),
+                json!({"model":"gpt-6.1-terra","thinking":"medium"}),
             );
             input["hook_event_name"] = json!(event);
             let output = hook_output(&input, event)?;
@@ -151,7 +151,7 @@ fn assert_worker_selection_guidance(reason: &str, label: &str) {
         "reuse any already-selected Worker pair",
         "if none is selected, classify the task evidence",
         "canonical child-routing policy",
-        "ordinary work uses model='gpt-6-luna' and thinking='max'",
+        "ordinary work uses model='gpt-6.1-terra' and thinking='medium'",
         "only when the task evidence meets the hard-work criteria",
         "MUST NOT ask the user to select or reconfirm model, thinking, or worktree",
         "MUST correct only the identified fields in the original create_thread request",

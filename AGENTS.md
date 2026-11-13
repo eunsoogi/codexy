@@ -71,9 +71,9 @@ codexy/
   `plugins/codexy-github/skills/git-workflow/SKILL.md`, not in this file.
 - Manual Codex connector review is available when the user, repository, or a
   concrete risk explicitly requires it; automatic connector review MUST remain
-  disabled. Standard and strict current-head work use at most one selected
-  proportionate reviewer (`codexy-inspector` or `codexy-sentinel`) when that
-  profile requires a reviewer. The compact current-head path MUST NOT require
+  disabled. Current-head work MAY use `codexy-sentinel` for optional final
+  review after implementation and applicable verification. MUST NOT use
+  intermediate Sentinel review or profile-based mandatory reviewer selection. The compact current-head path MUST NOT require
   imported transcripts, genesis records, quota counters, invocation telemetry,
   or disposition ledgers. If a manual connector review is explicitly required,
   the parent/orchestrator MUST request exactly one on the frozen head, following
@@ -91,7 +91,7 @@ codexy/
   commit, pushing it, and opening the version-bump PR.
 - MUST record why the workflow is unavailable or insufficient before using a
   manual fallback. After either route, the parent MUST still cover issue
-  linkage, repository labels, full tests, package CI, profile-selected reviewer,
+  linkage, repository labels, full tests, package CI, any selected final review,
   merge-message validation, and post-merge release/install proof.
 - MUST keep executable Git and release commands in their canonical skills rather
   than duplicating them here.

@@ -19,62 +19,13 @@ fn unsupported_models_and_crossed_pairs_have_actionable_corrections() -> TestRes
     let transcript = temp.path().join("unused-transcript.jsonl");
     let roots = plugin_roots(temp.path())?;
     let cases = [
-        (
-            "unsupported model",
-            "gpt-5.6-terra",
-            "medium",
-            "UNSUPPORTED_MODEL",
-            "model",
-        ),
-        (
-            "unsupported effort",
-            "gpt-6-luna",
-            "ultra",
-            "UNSUPPORTED_THINKING",
-            "thinking",
-        ),
-        (
-            "Sol crossed with max",
-            "gpt-6.1-sol",
-            "max",
-            "UNSUPPORTED_THINKING",
-            "thinking",
-        ),
-        (
-            "Sol crossed with medium",
-            "gpt-6.1-sol",
-            "medium",
-            "UNSUPPORTED_THINKING",
-            "thinking",
-        ),
-        (
-            "Luna crossed with low",
-            "gpt-6-luna",
-            "low",
-            "UNSUPPORTED_THINKING",
-            "thinking",
-        ),
-        (
-            "Luna crossed with medium",
-            "gpt-6-luna",
-            "medium",
-            "UNSUPPORTED_THINKING",
-            "thinking",
-        ),
-        (
-            "Terra crossed with low",
-            "gpt-6.1-terra",
-            "low",
-            "UNSUPPORTED_THINKING",
-            "thinking",
-        ),
-        (
-            "Terra crossed with max",
-            "gpt-6.1-terra",
-            "max",
-            "UNSUPPORTED_THINKING",
-            "thinking",
-        ),
+        ("legacy Luna", "gpt-6-luna", "max", "UNSUPPORTED_MODEL", "model"),
+        ("unsupported model", "gpt-5.6-terra", "medium", "UNSUPPORTED_MODEL", "model"),
+        ("unsupported effort", "gpt-6.1-terra", "ultra", "UNSUPPORTED_THINKING", "thinking"),
+        ("Sol max", "gpt-6.1-sol", "max", "UNSUPPORTED_THINKING", "thinking"),
+        ("Sol high", "gpt-6.1-sol", "high", "UNSUPPORTED_THINKING", "thinking"),
+        ("Terra low", "gpt-6.1-terra", "low", "UNSUPPORTED_THINKING", "thinking"),
+        ("Terra max", "gpt-6.1-terra", "max", "UNSUPPORTED_THINKING", "thinking"),
     ];
 
     for root in &roots {
@@ -97,9 +48,9 @@ fn unsupported_models_and_crossed_pairs_have_actionable_corrections() -> TestRes
                     for allowed_value in [
                         "gpt-6.1-sol",
                         "low",
-                        "gpt-6-luna",
-                        "max",
                         "gpt-6.1-terra",
+                        "medium",
+                        "gpt-6.1-sol",
                         "medium",
                     ] {
                         assert!(reason.contains(allowed_value), "{event} {label}: {reason}");

@@ -15,21 +15,21 @@ fn issue_1423_rejects_positional_hard_work_evidence() -> TestResult {
 }
 
 #[test]
-fn only_evidenced_hard_work_selects_terra() -> TestResult {
+fn only_evidenced_hard_work_selects_hard_worker() -> TestResult {
     for facts in hard_work_cases()? {
-        let mut hard = request("general", TERRA);
+        let mut hard = request("general", HARD_WORKER);
         hard["hard_work"] = facts;
         hard["simple_predicates"]["deterministic_oracle"] = json!(false);
-        check(hard.clone(), selected("generic", "create_thread", TERRA))?;
+        check(hard.clone(), selected("generic", "create_thread", HARD_WORKER))?;
         hard["codex_thread_capabilities"]["models"]
             .as_array_mut()
             .ok_or("models")?
-            .push(json!({"model":LUNA.0,"thinking":[LUNA.1]}));
-        check(hard.clone(), selected("generic", "create_thread", TERRA))?;
+            .push(json!({"model":DEFAULT_WORKER.0,"thinking":[DEFAULT_WORKER.1]}));
+        check(hard.clone(), selected("generic", "create_thread", HARD_WORKER))?;
         hard["codex_thread_capabilities"] =
-            request("general", LUNA)["codex_thread_capabilities"].clone();
+            request("general", DEFAULT_WORKER)["codex_thread_capabilities"].clone();
         check(hard.clone(), fallback())?;
-        // Authenticated follow-up delivery rejects Sol/Medium just as creation does.
+        // Authenticated follow-up delivery rejects Sol/High just as creation does.
         hard["codex_thread_capabilities"] =
             request("general", SOL)["codex_thread_capabilities"].clone();
         check(hard.clone(), fallback())?;
@@ -43,13 +43,13 @@ fn only_evidenced_hard_work_selects_terra() -> TestResult {
             let mut other = if classification == "bounded_evidence" {
                 bounded_request()
             } else {
-                request(classification, LUNA)
+                request(classification, DEFAULT_WORKER)
             };
             other["hard_work"] = hard["hard_work"].clone();
             check(
                 other,
                 if ["simple", "bounded_evidence"].contains(&classification) {
-                    selected("generic", "create_thread", LUNA)
+                    selected("generic", "create_thread", DEFAULT_WORKER)
                 } else {
                     fallback()
                 },
@@ -60,36 +60,36 @@ fn only_evidenced_hard_work_selects_terra() -> TestResult {
             "low_risk_reversible",
             "no_unresolved_decision",
         ] {
-            let mut unsettled = request("general", TERRA);
+            let mut unsettled = request("general", HARD_WORKER);
             unsettled["hard_work"] = hard["hard_work"].clone();
             unsettled["simple_predicates"][predicate] = json!(false);
             check(unsettled, fallback())?;
         }
     }
-    let mut ordinary = request("general", LUNA);
+    let mut ordinary = request("general", DEFAULT_WORKER);
     ordinary["simple_predicates"]["deterministic_oracle"] = json!(false);
-    check(ordinary, selected("generic", "create_thread", LUNA))?;
-    let mut available_terra_is_not_hard_work = request("general", LUNA);
-    available_terra_is_not_hard_work["codex_thread_capabilities"]["models"]
+    check(ordinary, selected("generic", "create_thread", DEFAULT_WORKER))?;
+    let mut available_hard_model_is_not_hard_work = request("general", DEFAULT_WORKER);
+    available_hard_model_is_not_hard_work["codex_thread_capabilities"]["models"]
         .as_array_mut()
         .ok_or("models")?
-        .push(json!({"model":TERRA.0,"thinking":[TERRA.1]}));
+        .push(json!({"model":HARD_WORKER.0,"thinking":[HARD_WORKER.1]}));
     check(
-        available_terra_is_not_hard_work,
-        selected("generic", "create_thread", LUNA),
+        available_hard_model_is_not_hard_work,
+        selected("generic", "create_thread", DEFAULT_WORKER),
     )?;
-    let ordinary_without_luna = request("general", TERRA);
-    check(ordinary_without_luna, fallback())?;
+    let ordinary_without_default_model = request("general", HARD_WORKER);
+    check(ordinary_without_default_model, fallback())?;
     for predicate in [
         "fixed_scope",
         "low_risk_reversible",
         "no_unresolved_decision",
     ] {
-        let mut ordinary = request("general", LUNA);
+        let mut ordinary = request("general", DEFAULT_WORKER);
         ordinary["simple_predicates"][predicate] = json!(false);
         check(ordinary, fallback())?;
     }
-    for pair in [LUNA, SOL] {
+    for pair in [DEFAULT_WORKER, SOL] {
         let mut incomplete = request("general", pair);
         incomplete
             .as_object_mut()
@@ -103,7 +103,7 @@ fn only_evidenced_hard_work_selects_terra() -> TestResult {
 #[test]
 fn issue_1423_hard_work_rejects_unsubstantiated_and_malformed_claims() -> TestResult {
     for facts in hard_work_cases()? {
-        let mut hard = request("general", TERRA);
+        let mut hard = request("general", HARD_WORKER);
         hard["hard_work"] = facts.clone();
         for field in facts.as_object().ok_or("facts")?.keys() {
             let mut missing = hard.clone();
@@ -143,7 +143,7 @@ fn issue_1423_hard_work_rejects_unsubstantiated_and_malformed_claims() -> TestRe
         json!(true),
         json!([]),
     ] {
-        let mut hard = request("general", TERRA);
+        let mut hard = request("general", HARD_WORKER);
         hard["hard_work"] = facts;
         rejects(hard, "")?;
     }

@@ -10,7 +10,7 @@ established. Unknown authority or missing inputs MUST remain fail-closed. The
 caller MUST count the complete supplied inputs, not selected excerpts from
 larger material that the Worker would need to explore. Work exceeding these
 bounds MUST use the general classification or an applicable named specialist.
-General work still defaults to Luna/Max unless a hard-work criterion is
+General work still defaults to Terra/Medium unless a hard-work criterion is
 evidenced.
 
 For example, summarizing two supplied release notes into ten factual bullets, or
@@ -42,7 +42,7 @@ original predicates. A general request MUST be evaluated by its own safety and
 hard-work facts; bounded facts MUST NOT override an evidenced hard-work
 selection. A capability mismatch MUST remain fail-closed; it MUST NOT substitute
 an unsupported pair, a default model, or a specialist whose role does not match.
-Creation MUST send the selected Luna/Max pair explicitly; recipient-bound
+Creation MUST send the selected Terra/Medium pair explicitly; recipient-bound
 follow-ups MUST preserve the assigned pair through the existing v2 route.
 Requested settings and authentic task-creation readback MUST remain distinct
 from effective host settings, which MUST be reported unavailable when unexposed.

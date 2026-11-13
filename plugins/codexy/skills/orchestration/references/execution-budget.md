@@ -16,7 +16,7 @@ list, and termination condition.
 check selection and depth;
 [proof-driven completion](../../proof-driven-completion/SKILL.md) owns evidence
 validity, reuse, and outcome judgment. Once requirements, applicable checks, and
-the selected review are satisfied with no unresolved in-scope defect, the work
+any selected final review are satisfied with no unresolved in-scope defect, the work
 MUST finish. Additional verification requires a named unmet criterion or
 concrete unresolved risk.
 
@@ -35,9 +35,10 @@ does not change those evidence requirements.
   goal. Multiple eight-target waits MUST NOT expand capacity. Pending setup,
   timeout, or attention MUST NOT release a slot; confirmed release and retained
   per-target cursors MUST follow that same supervision contract across turns.
-- Reviewer selection follows [review profiles](review-profiles.md), and reviewer
-  state follows the [review lifecycle](review-lifecycle.md). This budget adds no
-  review-history or disposition quota.
+- Optional final reviewer selection and the instruction-only maximum of three
+  Sentinel assessments follow [final review](review-profiles.md). Reviewer
+  state follows the [review lifecycle](review-lifecycle.md). MUST NOT enforce
+  that guidance with hooks, validator quotas, or mandatory count records.
 - Additional reviewers, broad rechecks, or semantic evaluators MUST be tied to
   an explicit requirement or a concrete unresolved risk; they MUST NOT be an
   automatic stack.

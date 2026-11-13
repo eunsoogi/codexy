@@ -54,14 +54,14 @@ This does not change the selected model, effort, or ownership rules below.
 Named packaged specialists MUST be selected when their role matches the task;
 their catalogued model and effort apply automatically, and callers MUST NOT
 override them. Ordinary, bounded, and simple Worker assignments MUST default to
-`gpt-6-luna` / `max`. For a general Worker, Luna/Max is also the default once
+`gpt-6.1-terra` / `medium`. For a general Worker, Terra/Medium is also the default once
 the safety facts pass; only complete, verified hard-work facts can select
-Terra/Medium. A new general Worker with valid hard-work facts MUST be assigned
-`gpt-6.1-terra` / `medium` directly; the `general` classification alone MUST NOT
+Sol/Medium. A new general Worker with valid hard-work facts MUST be assigned
+`gpt-6.1-sol` / `medium` directly; the `general` classification alone MUST NOT
 select that pair. Parent-to-Worker follow-ups MUST preserve the known Worker's
 assigned pair and MUST NOT copy sender settings or silently reassign the Worker.
-The thread-delivery hook accepts only the exact pairs Sol/Low, Luna/Max, and
-Terra/Medium; this is request-shape validation and does not verify who the
+The thread-delivery hook accepts only the exact pairs Sol/Low, Terra/Medium, and
+Sol/Medium; this is request-shape validation and does not verify who the
 recipient is or which pair was assigned. For general work, `fixed_scope`,
 `low_risk_reversible`, and `no_unresolved_decision` MUST be true;
 `deterministic_oracle` MUST be supplied but MAY be false. Missing safety facts,
@@ -121,11 +121,11 @@ recipient's assigned model and effort; it MUST NOT copy sender settings. If the
 actual message-tool contract cannot accept that pair, Codex MUST NOT send an
 omitted or partial call or rely on defaults; it MUST preserve the lane as
 pending and report the exact incompatibility. Ordinary Worker creation defaults
-to Luna/Max, including general implementation, and valid hard-work facts select
-Terra/Medium for a new Worker. Worker-to-Orchestrator delivery uses the main
+to Terra/Medium, including general implementation, and valid hard-work facts select
+Sol/Medium for a new Worker. Worker-to-Orchestrator delivery uses the main
 Orchestrator's assigned Sol/Low pair. The thread-delivery hook validates a
 non-empty `threadId` and an explicit supported model/thinking pair
-(`gpt-6.1-sol`/`low`, `gpt-6-luna`/`max`, or `gpt-6.1-terra`/`medium`) for both
+(`gpt-6.1-sol`/`low`, `gpt-6.1-terra`/`medium`, or `gpt-6.1-sol`/`medium`) for both
 directions. It does not infer the recipient's role or verify recipient identity,
 existence, or assignment. Orchestration MUST select the known recipient and its
 assigned pair; the host authorizes the actual message delivery. Unsupported or
@@ -185,19 +185,21 @@ same sequence from that current owner. This routing clause MUST NOT be read as a
 separate recovery procedure.
 
 Worker selection owns recipient and model routing, not verification policy. The
-closed route in [context tiers](context-tiers.md) selects profile, sequencing,
+closed route in [context tiers](context-tiers.md) selects verification, sequencing,
 finite-work, review, and final-proof references only when applicable.
 Collaboration shape requires ownership metadata where the contract says so, but
-MUST NOT by itself select a strict profile or historical-review path.
+MUST NOT by itself require a final reviewer or historical-review path.
 
 Child titles MUST follow the [title policy](child-thread-titles.md).
 
 ## Review routing
 
-For a Worker-owned implementation lane, the owning Worker MUST delegate the
-profile-selected internal reviewer after local proof when the selected profile
-requires one. The Orchestrator MUST consume that evidence and MUST NOT invoke
-the internal reviewer or tell the Worker not to invoke it. This is distinct from
+For a Worker-owned implementation lane, optional final review belongs to the
+owning Worker. When selected, the Worker MUST delegate Sentinel after local
+proof, following [optional final review](review-profiles.md), including its
+instruction-only three-assessment limit. The Orchestrator MUST consume that
+evidence rather than launch a duplicate reviewer. Skipping optional review MUST
+NOT fabricate a PASS or hide known findings. This is distinct from
 a repository-required external `@codex review`, which the Orchestrator requests
 when applicable; the Worker MUST NOT request that external review.
 
@@ -207,7 +209,7 @@ reviewer
 (`MUST NOT spawn, delegate to, or create any additional agent, helper,
 reviewer, task, or thread.`)
 applies to that recipient and MUST NOT be copied into a Worker assignment as a
-ban on the Worker's required review.
+ban on the Worker's selected final review.
 
 Assignments and corrections MUST use readable Markdown tables that convey the
 purpose, scope, completion criteria, and any relevant ownership or direction.

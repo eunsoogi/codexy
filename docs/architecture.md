@@ -25,10 +25,9 @@ native location.
 | `codexy-advisor`      | `gpt-6-astra`   | `medium`         | Provides bounded analysis and advice; its instructions prohibit edits, delegation, ownership changes, and final approval.                           |
 | `codexy-auditor`      | `gpt-6.1-terra` | `medium`         | Turns acceptance criteria into observable QA across configuration, documentation, CLI, GitHub, app, and plugin surfaces.                            |
 | `codexy-cartographer` | `gpt-6-luna`    | `low`            | Performs fast, read-only repository discovery with codegraph, direct reads, file mapping, and ownership boundaries.                                 |
-| `codexy-inspector`    | `gpt-6.1-sol`   | `medium`         | Performs the single bounded standard-profile review of current acceptance, changed files, and direct correctness, regression, and scope boundaries. |
-| `codexy-sentinel`     | `gpt-6-astra`   | `xhigh`          | Runs the mandatory adversarial final review of scope, correctness, safety, tests, and current-head evidence.                                        |
+| `codexy-sentinel`     | `gpt-6.1-sol`   | `high`           | Provides optional final review of scope, correctness, safety, tests, and current-head evidence.                                        |
 | `codexy-shipwright`   | `gpt-6.1-sol`   | `high`           | Prepares version, manifest, marketplace, artifact, tag, release, and rollback readiness.                                                            |
-| `codexy-warden`       | `gpt-6-astra`   | `xhigh`          | Reviews workflows, shell commands, credentials, remote MCPs, untrusted input, permissions, and state mutation.                                      |
+| `codexy-warden`       | `gpt-6-astra`   | `high`          | Reviews workflows, shell commands, credentials, remote MCPs, untrusted input, permissions, and state mutation.                                      |
 
 These model assignments come directly from the packaged TOMLs, which are
 authoritative for a named custom agent's model and reasoning effort. Callers
@@ -38,7 +37,7 @@ instruction-based and does not imply host-level permission enforcement.
 The optional `codexy-github` plugin separately packages `codexy-weaver` for
 GitHub integration after installation.
 
-Removed-role rationale and the Inspector distinction are in
+Removed-role rationale and review responsibility are in
 [`specialist-role-equivalence.md`](specialist-role-equivalence.md).
 
 ## Task roles and direct observation
@@ -50,9 +49,9 @@ for authenticated Worker-to-Orchestrator delivery. The Advisor uses
 `gpt-6-astra` / `medium` for bounded, instruction-based read-only advice; this
 boundary does not enforce host permissions. A Worker owns one issue lane, its
 branch/worktree, and its finite goal. Ordinary, simple, bounded, and general
-implementation work defaults to `gpt-6-luna` / `max`. A new general Worker with
+implementation work defaults to `gpt-6.1-terra` / `medium`. A new general Worker with
 valid facts for coupled contract changes, algorithm design, or cross-boundary
-diagnosis receives `gpt-6.1-terra` / `medium` directly. Authenticated Worker
+diagnosis receives `gpt-6.1-sol` / `medium` directly. Authenticated Worker
 delivery uses the same Luna/Max and Terra/Medium pairs; existing Sol/Medium
 assignments are rejected without automatic reassignment. Ambiguous authority,
 inputs, and ownership remain fail-closed under the
@@ -108,8 +107,10 @@ of manufactured RED. The
 [engineering skill](../plugins/codexy/skills/engineering/SKILL.md) defines these
 choices, while
 [proof-driven completion](../plugins/codexy/skills/proof-driven-completion/SKILL.md)
-audits the final current-state claim. Light, standard, and strict profiles
-follow risk and surface. Reuse execution evidence per individual check, not as
+audits the final current-state claim. Verification follows concrete risks and
+affected surfaces without light, standard, or strict profile tiers. Final
+Sentinel review is optional and limited by instruction to three assessments,
+not enforced by a hook or quota. Warden retains targeted security review. Reuse execution evidence per individual check, not as
 whole-change readiness: after reading the current diff and the relevant
 implementation, dependency or lock/configuration, fixtures, generated inputs,
 and environment, a current applicability assessment may preserve a passed check
@@ -141,18 +142,18 @@ flowchart TD
         implement --> verify["Run source-aligned tests and real-surface verification"]
         verify --> proof{"Current proof green?"}
         proof -->|No| implement
-        proof -->|Yes| profile["Select machine-owned review profile"]
-        profile -->|Light| readiness["No LLM review"]
-        profile -->|Standard| inspector["Run bounded codexy-inspector"]
-        profile -->|Strict| sentinel["Run bounded codexy-sentinel"]
-        inspector --> observation{"Selected reviewer observation"}
-        sentinel --> observation
+        proof -->|Yes| review{"Use optional final review?"}
+        review -->|No| readiness["Assess completion evidence"]
+        review -->|Yes| sentinel["Run final codexy-sentinel"]
+        sentinel --> observation{"Selected reviewer observation"}
         observation -->|PENDING or RUNNING| wait_review["Retain the same reviewer and wait for an event"]
         wait_review --> observation
         observation -->|Terminal result| verdict{"Selected reviewer verdict"}
         verdict -->|BLOCK| repair["Repair findings in the owning lane"]
         repair --> affected["Run affected verification"]
-        affected --> delta["Same reviewer recheck on the new current head"]
+        affected --> budget{"Within three-assessment guidance?"}
+        budget -->|Yes| delta["Same reviewer recheck on the new current head"]
+        budget -->|No| exhausted["Report unresolved findings without another review"]
         delta --> observation
         verdict -->|UNOBSERVABLE| blocked["Readiness remains blocked"]
         verdict -->|PASS| head_gate{"Exact-head proof still current?"}

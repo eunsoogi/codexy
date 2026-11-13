@@ -33,11 +33,11 @@ Orchestrator. Routine actions with a clear governing rule do not need
 consultation.
 
 Verification procedure remains owned by the selected references:
-[workflow profiles](references/workflow-profiles.md) selects the profile,
+[risk-based verification](references/workflow-profiles.md) selects checks,
 [TDD classification policy](references/tdd-classification-policy.md) selects
 per-boundary sequencing and proof,
 [execution budget](references/execution-budget.md) bounds finite work and
-evidence reuse, [review profiles](references/review-profiles.md) and
+evidence reuse, [optional final review](references/review-profiles.md) and
 [review lifecycle](references/review-lifecycle.md) own current-head review, and
 [proof-driven completion](../proof-driven-completion/SKILL.md) owns final
 claims. This entrypoint MUST NOT restate these policies or preload them for an
@@ -161,8 +161,8 @@ MUST NOT override a higher-priority tool restriction.
   authority.
 - MUST read [task classification](references/task-classification.md) when
   recording ownership and the atomic lane.
-- MUST read [workflow profiles](references/workflow-profiles.md) when choosing
-  the proportionate light, standard, or strict profile.
+- MUST read [risk-based verification](references/workflow-profiles.md) when
+  choosing checks proportionate to the actual change and material risks.
 - MUST read [TDD classification policy](references/tdd-classification-policy.md)
   when deciding between engineering tests and proportional proof.
 - MUST read [child-routing policy](references/child-routing-policy.md) when
@@ -200,7 +200,7 @@ MUST NOT override a higher-priority tool restriction.
 
 ### Review and communicate
 
-- MUST read [review profiles](references/review-profiles.md) when selecting a
-  proportionate current-head reviewer.
+- MUST read [optional final review](references/review-profiles.md) when selecting a
+  optional final current-head reviewer.
 - MUST read [review lifecycle](references/review-lifecycle.md) when waiting for,
   repairing from, or handing off a current-head reviewer result.

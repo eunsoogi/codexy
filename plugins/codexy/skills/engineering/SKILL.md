@@ -43,7 +43,7 @@ test plan MUST NOT be required by default.
 
 An execution-authorized atomic issue MUST proceed through engineering without a
 new plan file or an extra planning or review stage; any applicable repository or
-profile-selected review remains authoritative. It MUST NOT return to planning
+any selected final review remains authoritative. It MUST NOT return to planning
 for every technical decision. Engineering MUST propose a change to the parent
 plan only when scope, success criteria, or dependencies change; ordinary
 implementation choices remain within the assigned issue.

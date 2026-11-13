@@ -19,25 +19,25 @@ fn missing_or_empty_fields_name_the_edit_and_preserve_assignment_context() -> Te
     let cases = [
         (
             "missing recipient",
-            json!({"model":"gpt-6-luna","thinking":"max"}),
+            json!({"model":"gpt-6.1-terra","thinking":"medium"}),
             "MISSING_RECIPIENT",
             "threadId",
         ),
         (
             "empty recipient",
-            json!({"threadId":" ","model":"gpt-6-luna","thinking":"max"}),
+            json!({"threadId":" ","model":"gpt-6.1-terra","thinking":"medium"}),
             "MISSING_RECIPIENT",
             "threadId",
         ),
         (
             "missing model",
-            json!({"threadId":"known-thread","thinking":"max"}),
+            json!({"threadId":"known-thread","thinking":"medium"}),
             "MISSING_MODEL",
             "model",
         ),
         (
             "missing thinking",
-            json!({"threadId":"known-thread","model":"gpt-6-luna"}),
+            json!({"threadId":"known-thread","model":"gpt-6.1-terra"}),
             "MISSING_THINKING",
             "thinking",
         ),
@@ -70,9 +70,9 @@ fn missing_or_empty_fields_name_the_edit_and_preserve_assignment_context() -> Te
                     for allowed_value in [
                         "gpt-6.1-sol",
                         "low",
-                        "gpt-6-luna",
-                        "max",
                         "gpt-6.1-terra",
+                        "medium",
+                        "gpt-6.1-sol",
                         "medium",
                     ] {
                         assert!(reason.contains(allowed_value), "{event} {label}: {reason}");

@@ -94,8 +94,8 @@ NOT generalize it to other actions, owners, or future work.
 
 Using a plugin or loading a skill MUST NOT promote an assigned Worker,
 evaluator, or helper to orchestrator or expand its task-creation authority.
-Durable delegation and multiple lanes alone MUST NOT select the strict profile;
-follow [workflow profiles](workflow-profiles.md) for profile selection.
+Durable delegation and multiple lanes alone MUST NOT add review or verification
+gates; follow [risk-based verification](workflow-profiles.md).
 
 Planning owns plan content and ordering; MUST use its skill for plan-file rules.
 Dispatch and setup mechanics remain in
@@ -158,8 +158,8 @@ These are document scenarios, not evidence that a host executed the routes.
 
 Durable delegation and multi-lane ownership MUST emit the following record so
 ownership, scope, worktree, and handoff remain explicit. Those collaboration
-signals alone do not select the strict workflow profile. Explicit audit evidence
-and concrete strict-risk work MUST also emit:
+signals alone do not require LLM review. Explicit audit evidence and concrete
+material-risk work MUST also emit:
 
 ```text
 Ownership metadata source: parent-supplied

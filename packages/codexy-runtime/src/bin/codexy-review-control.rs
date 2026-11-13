@@ -8,7 +8,7 @@ use clap::Parser;
 use codexy_runtime::{paths, validation};
 
 #[derive(Debug, Parser)]
-#[command(about = "Resolve and validate Codexy bounded-review contracts.")]
+#[command(about = "Resolve optional final reviews and validate current-head evidence.")]
 struct Cli {
     #[arg(long)]
     plugin_root: Option<PathBuf>,
@@ -16,7 +16,7 @@ struct Cli {
     repository_root: Option<PathBuf>,
     #[arg(long)]
     ledger: Option<PathBuf>,
-    #[arg(long, conflicts_with_all = ["check_packet", "check_economics", "capture_economics", "build_pr_state", "produce_review_control", "import_pre_pr_history", "check_next_review_eligibility", "recover_native_history"])]
+    #[arg(long = "resolve-selection", alias = "resolve-profile", conflicts_with_all = ["check_packet", "check_economics", "capture_economics", "build_pr_state", "produce_review_control", "import_pre_pr_history", "check_next_review_eligibility", "recover_native_history"])]
     resolve_profile: bool,
     #[arg(long, conflicts_with_all = ["resolve_profile", "check_economics", "capture_economics", "build_pr_state", "produce_review_control", "import_pre_pr_history", "check_next_review_eligibility", "recover_native_history"])]
     check_packet: bool,

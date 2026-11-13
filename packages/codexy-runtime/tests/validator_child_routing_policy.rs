@@ -23,12 +23,12 @@ mod transport;
 #[test]
 fn resolver_preserves_simple_general_specialist_and_fail_closed_routes() -> TestResult {
     check(
-        request("general", LUNA),
-        selected("generic", "create_thread", LUNA),
+        request("general", DEFAULT_WORKER),
+        selected("generic", "create_thread", DEFAULT_WORKER),
     )?;
     check(
-        request("simple", LUNA),
-        selected("generic", "create_thread", LUNA),
+        request("simple", DEFAULT_WORKER),
+        selected("generic", "create_thread", DEFAULT_WORKER),
     )?;
     let mut specialist = request("general", SOL);
     specialist["named_specialist"] = json!("codexy-architect");
@@ -44,7 +44,7 @@ fn resolver_preserves_simple_general_specialist_and_fail_closed_routes() -> Test
         "high_risk",
         "incomplete",
     ] {
-        let mut missing = request(classification, LUNA);
+        let mut missing = request(classification, DEFAULT_WORKER);
         missing
             .as_object_mut()
             .ok_or("request object")?
@@ -57,7 +57,7 @@ fn resolver_preserves_simple_general_specialist_and_fail_closed_routes() -> Test
         "low_risk_reversible",
         "no_unresolved_decision",
     ] {
-        let mut incomplete = request("simple", LUNA);
+        let mut incomplete = request("simple", DEFAULT_WORKER);
         incomplete["simple_predicates"][predicate] = json!(false);
         check(incomplete, fallback())?;
     }

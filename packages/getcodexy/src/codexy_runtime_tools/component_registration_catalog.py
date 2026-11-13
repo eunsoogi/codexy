@@ -20,7 +20,6 @@ agent_files = [
   "codexy-cartographer.toml",
   "codexy-auditor.toml",
   "codexy-shipwright.toml",
-  "codexy-inspector.toml",
   "codexy-sentinel.toml",
   "codexy-warden.toml",
   "codexy-advisor.toml",

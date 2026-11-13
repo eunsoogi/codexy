@@ -23,7 +23,7 @@ readback, the transition MUST remain pending with the source as owner.
 
 ## Entry and record ownership
 
-The Orchestrator MAY use this procedure only after the current general Luna/Max
+The Orchestrator MAY use this procedure only after the current general Terra/Medium
 Worker satisfies the elevation decision and the parent separately authorizes the
 same-issue transition. Before advancing, it MUST verify that each required
 operation and readback is exposed in the current task. This manual procedure
@@ -97,11 +97,11 @@ a target acknowledgement transfers ownership.
    second writer.
 
 4. **Start the target with a read-only turn.** The parent MUST use a currently
-   exposed route to request Terra/Medium before the target's first inference. A
+   exposed route to request Sol/Medium before the target's first inference. A
    composer selection or accepted message proves a request or transport only.
    The parent MUST keep requested, accepted, authenticated, effective, and
    actual-execution evidence separate. Codex MUST NOT send a model override to a
-   target that remains authenticated as Luna.
+   target that remains authenticated as Terra.
 
    The target's first action MUST be its own native goal readback. It MUST
    retain the exact active assigned objective, or follow the authorized
