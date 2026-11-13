@@ -57,9 +57,10 @@ and advertised package paths.
    - when packaged, the Codexy GitHub agent bootstrap exists at
      `plugins/codexy-github/skills/git-workflow/scripts/bootstrap_codexy_github_agent.py`
      as an executable;
-   - Codexy reviewer-agent metadata follows the selected profile: light uses no
-     LLM reviewer, standard uses one `codexy-inspector` when the profile or
-     change requires independent review, and strict uses one `codexy-sentinel`;
+   - Codexy reviewer metadata uses optional final `codexy-sentinel` review
+     (Sol/high) and targeted `codexy-warden` security review (Astra/high),
+     without light/standard/strict tiers or Inspector; Sentinel assessments
+     are limited to three including the initial review by guidance, not hooks;
    - when Codexy advertises LSP or code exploration, its packaged configuration
      includes the matching LSP and Codegraph servers;
    - thread/worktree guidance states handoff fields, evidence, stop conditions,

@@ -109,7 +109,7 @@ fn check(
             return Err("review control state does not bind the selected reviewer".into());
         }
     } else if reviewer.is_some_and(|reviewer| !reviewer.is_null()) {
-        return Err("light review selection must not attach a reviewer".into());
+        return Err("unselected review must not attach a reviewer".into());
     }
 
     let reviewed_head = control
@@ -152,7 +152,7 @@ fn check(
             }
         }
     } else if reviewed_head.is_some() || result.is_some() || !findings.is_empty() {
-        return Err("light review selection must not carry review result state".into());
+        return Err("unselected review must not carry review result state".into());
     }
 
     if let Some(result) = result

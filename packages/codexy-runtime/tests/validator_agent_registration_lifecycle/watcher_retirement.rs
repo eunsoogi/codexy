@@ -39,7 +39,7 @@ fn upgrade_retires_only_managed_watcher_and_preserves_unowned_same_name()
     let diagnosis = run(&plugin_root, &codex_home, &["--diagnose"])?;
     assert!(diagnosis.status.success(), "stderr:\n{}", stderr(&diagnosis));
     let stdout = String::from_utf8_lossy(&diagnosis.stdout);
-    assert!(stdout.contains("A role-discovery: PASS (8 marker-owned standalone agents)"));
+    assert!(stdout.contains("A role-discovery: PASS (7 marker-owned standalone agents)"));
     assert!(!stdout.contains("codexy-watcher"));
     Ok(())
 }
@@ -82,7 +82,7 @@ fn upgrade_retires_only_managed_inspector_and_preserves_unowned_same_name()
     let diagnosis = run(&plugin_root, &codex_home, &["--diagnose"])?;
     assert!(diagnosis.status.success(), "stderr:\n{}", stderr(&diagnosis));
     let stdout = String::from_utf8_lossy(&diagnosis.stdout);
-    assert!(stdout.contains("A role-discovery: PASS (8 marker-owned standalone agents)"));
+    assert!(stdout.contains("A role-discovery: PASS (7 marker-owned standalone agents)"));
     assert!(!stdout.contains("codexy-inspector"));
     Ok(())
 }
