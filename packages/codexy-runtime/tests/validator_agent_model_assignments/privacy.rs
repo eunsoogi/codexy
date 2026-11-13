@@ -47,6 +47,41 @@ fn privacy_target_resolution_supports_cargo_suite_output_layouts() {
 }
 
 #[test]
+fn privacy_artifact_search_paths_follow_cargo_reported_locations() -> support::TestResult {
+    let profile = Path::new("target/debug");
+    // Windows Cargo emits dependencies under fingerprinted build output folders.
+    let runtime_rlib = profile.join("build/codexy-runtime/hash/out/libcodexy_runtime-hash.rlib");
+    let serde_rlib = profile.join("build/serde/hash/out/libserde-hash.rlib");
+    let cargo_output = [
+        serde_json::json!({
+            "reason": "compiler-artifact",
+            "target": { "name": "codexy_runtime" },
+            "filenames": [profile.join("libcodexy_runtime.rlib"), runtime_rlib],
+        })
+        .to_string(),
+        serde_json::json!({
+            "reason": "compiler-artifact",
+            "target": { "name": "serde" },
+            "filenames": [serde_rlib],
+        })
+        .to_string(),
+    ]
+    .join("\n");
+
+    let locations = support::cargo_artifact_locations(&cargo_output, profile)?;
+    assert!(locations.artifact_files.contains(&runtime_rlib));
+    assert!(locations.artifact_files.contains(&serde_rlib));
+    assert!(locations
+        .search_directories
+        .contains(&runtime_rlib.parent().expect("runtime rlib parent").to_path_buf()));
+    assert!(locations
+        .search_directories
+        .contains(&serde_rlib.parent().expect("serde rlib parent").to_path_buf()));
+    assert!(locations.search_directories.contains(&profile.join("deps")));
+    Ok(())
+}
+
+#[test]
 fn privacy_contract_import_rejects_unrelated_cargo_failures() -> support::TestResult {
     let temp = tempfile::tempdir()?;
     let output = Command::new("cargo")

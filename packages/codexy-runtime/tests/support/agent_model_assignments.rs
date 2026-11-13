@@ -95,8 +95,9 @@ pub(crate) fn public_contract_import_check() -> TestResult<Output> {
         )
         .into());
     }
+    let cargo_output = String::from_utf8(build.stdout)?;
     let mut libraries = Vec::new();
-    for line in String::from_utf8(build.stdout)?.lines() {
+    for line in cargo_output.lines() {
         let message: serde_json::Value = serde_json::from_str(line)?;
         if message["reason"] == "compiler-artifact"
             && message["target"]["name"] == "codexy_runtime"
@@ -134,19 +135,25 @@ pub(crate) fn public_contract_import_check() -> TestResult<Output> {
         &source,
         "use codexy_runtime::validation::agent_model_contract::SPECIALIST_MODEL_CONTRACTS;\nfn main() { let _ = SPECIALIST_MODEL_CONTRACTS; }\n",
     )?;
-    let dependency_dir = library.parent().ok_or("rlib parent")?.join("deps");
+    // Cargo's artifact messages preserve dependency directories used by this profile.
+    let artifact_locations =
+        super::privacy_artifacts::cargo_artifact_locations(&cargo_output, &profile)?;
     let compiler = std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into());
-    let arguments = [
+    let mut arguments = vec![
         OsStr::new("--edition=2024").to_owned(),
         OsStr::new("--emit=metadata").to_owned(),
         OsStr::new("--extern").to_owned(),
         format!("codexy_runtime={}", library.display()).into(),
-        OsStr::new("-L").to_owned(),
-        format!("dependency={}", dependency_dir.display()).into(),
+    ];
+    for directory in &artifact_locations.search_directories {
+        arguments.push(OsStr::new("-L").to_owned());
+        arguments.push(format!("dependency={}", directory.display()).into());
+    }
+    arguments.extend([
         source.as_os_str().to_owned(),
         OsStr::new("--out-dir").to_owned(),
         temp.path().as_os_str().to_owned(),
-    ];
+    ]);
     let mut output = Command::new(&compiler)
         .args(&arguments)
         .current_dir(&runtime_root)
@@ -155,14 +162,25 @@ pub(crate) fn public_contract_import_check() -> TestResult<Output> {
         // Keep Windows-only compiler and artifact details beside the failed privacy oracle.
         let artifact_size = std::fs::metadata(library)?.len();
         let artifact_hash = super::sha256_file(library)?;
+        let artifact_files = artifact_locations
+            .artifact_files
+            .iter()
+            .map(|path| format!("    {}", path.display()))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let dependency_search = artifact_locations
+            .search_directories
+            .iter()
+            .map(|path| format!("    {}", path.display()))
+            .collect::<Vec<_>>()
+            .join("\n");
         let details = format!(
-            "\nprivacy probe inputs:\n  rustc: {compiler:?}\n  rustc -vV:\n{}\n  rustc --print cfg (implicit target):\n{}\n  test executable: {}\n  profile: {}\n  selected rlib: {}\n  rlib bytes: {artifact_size}\n  rlib sha256: {artifact_hash}\n  dependency search: {}\n  rustc args: {arguments:?}\n",
+            "\nprivacy probe inputs:\n  rustc: {compiler:?}\n  rustc -vV:\n{}\n  rustc --print cfg (implicit target):\n{}\n  test executable: {}\n  profile: {}\n  selected rlib: {}\n  rlib bytes: {artifact_size}\n  rlib sha256: {artifact_hash}\n  Cargo Rust artifacts:\n{artifact_files}\n  dependency search:\n{dependency_search}\n  rustc args: {arguments:?}\n",
             compiler_report(&compiler, &["-vV"]),
             compiler_report(&compiler, &["--print", "cfg"]),
             executable.display(),
             profile.display(),
             library.display(),
-            dependency_dir.display(),
         );
         output.stderr.extend_from_slice(details.as_bytes());
     }
