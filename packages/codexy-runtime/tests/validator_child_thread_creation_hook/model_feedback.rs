@@ -24,8 +24,8 @@ fn pre_tool_denial_delivers_actionable_model_context_without_echoing_the_request
         "model and thinking",
         "reuse any already-selected Worker pair",
         "if none is selected, classify the task evidence",
-        "gpt-6-luna",
         "gpt-6.1-terra",
+        "gpt-6.1-sol",
         "projectId from the saved project selected for this task",
         "target.environment.type='worktree'",
         "correct only the identified fields in the original create_thread request",
@@ -49,8 +49,8 @@ fn app_worktree_denial_explains_the_value_source_without_inventing_an_id() -> Te
     let input = pre_tool_input(
         TOOLS[0],
         json!({
-            "model":"gpt-6-luna",
-            "thinking":"max",
+            "model":"gpt-6.1-terra",
+            "thinking":"medium",
             "target":{
                 "type":"project",
                 "projectId":"local-test-project",
@@ -82,16 +82,16 @@ fn route_field_feedback_is_error_specific_and_preserves_existing_selection() -> 
             "if none is selected, classify the task evidence",
         ),
         (
-            "missing Luna reasoning",
-            json!({"model":"gpt-6-luna","prompt":"PRIVATE_PROMPT_SENTINEL"}),
+            "missing default Worker reasoning",
+            json!({"model":"gpt-6.1-terra","prompt":"PRIVATE_PROMPT_SENTINEL"}),
             "MISSING_THINKING",
-            "preserve model='gpt-6-luna' and set thinking='max'",
+            "preserve model='gpt-6.1-terra' and set thinking='medium'",
         ),
         (
             "crossed hard pair",
-            json!({"model":"gpt-6.1-terra","thinking":"max"}),
+            json!({"model":"gpt-6.1-sol","thinking":"max"}),
             "UNSUPPORTED_THINKING",
-            "preserve model='gpt-6.1-terra' and set thinking='medium'",
+            "preserve model='gpt-6.1-sol' and set thinking='medium'",
         ),
         (
             "unsupported model",
@@ -124,8 +124,8 @@ fn parent_checkout_errors_are_distinguished_from_request_field_errors() -> TestR
     let input = pre_tool_input_at(
         TOOLS[0],
         worktree_environment::with_project_worktree(json!({
-            "model":"gpt-6-luna",
-            "thinking":"max"
+            "model":"gpt-6.1-terra",
+            "thinking":"medium"
         })),
         &linked,
     );
@@ -149,8 +149,8 @@ fn unverified_parent_checkout_reports_the_missing_execution_context() -> TestRes
     let input = pre_tool_input_at(
         TOOLS[0],
         worktree_environment::with_project_worktree(json!({
-            "model":"gpt-6-luna",
-            "thinking":"max"
+            "model":"gpt-6.1-terra",
+            "thinking":"medium"
         })),
         &missing_cwd,
     );
@@ -192,7 +192,7 @@ fn permission_request_keeps_corrective_guidance_in_the_denial_message() -> TestR
 fn incomplete_hard_selection_supplies_its_matching_setting_without_downgrading() -> TestResult {
     let input = pre_tool_input(
         TOOLS[0],
-        worktree_environment::with_project_worktree(json!({"model":"gpt-6.1-terra"})),
+        worktree_environment::with_project_worktree(json!({"model":"gpt-6.1-sol"})),
     );
     let output = hook_output(&input, "PreToolUse")?;
     let context = output["hookSpecificOutput"]["additionalContext"]
@@ -200,7 +200,7 @@ fn incomplete_hard_selection_supplies_its_matching_setting_without_downgrading()
         .ok_or("hard route model additionalContext")?;
 
     assert!(
-        context.contains("preserve model='gpt-6.1-terra' and set thinking='medium'"),
+        context.contains("preserve model='gpt-6.1-sol' and set thinking='medium'"),
         "{context}"
     );
     assert!(context.contains("only when the task evidence meets the hard-work criteria"));
@@ -208,7 +208,7 @@ fn incomplete_hard_selection_supplies_its_matching_setting_without_downgrading()
     let invalid_pair = pre_tool_input(
         TOOLS[0],
         worktree_environment::with_project_worktree(
-            json!({"model":"gpt-6.1-terra","thinking":"max"}),
+            json!({"model":"gpt-6.1-sol","thinking":"max"}),
         ),
     );
     let invalid_output = hook_output(&invalid_pair, "PreToolUse")?;
@@ -216,7 +216,7 @@ fn incomplete_hard_selection_supplies_its_matching_setting_without_downgrading()
         .as_str()
         .ok_or("invalid hard route model additionalContext")?;
     assert!(
-        invalid_context.contains("preserve model='gpt-6.1-terra' and set thinking='medium'"),
+        invalid_context.contains("preserve model='gpt-6.1-sol' and set thinking='medium'"),
         "{invalid_context}"
     );
     Ok(())

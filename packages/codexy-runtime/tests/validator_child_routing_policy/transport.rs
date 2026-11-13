@@ -14,21 +14,21 @@ fn supported_worker_pairs_survive_creation_and_request_level_delivery() -> TestR
     crate::support::copy_dir(source.clone(), &installed)?;
     let plugin_roots = [source, installed];
     let mut assignments = vec![
-        request("general", LUNA),
-        request("simple", LUNA),
+        request("general", DEFAULT_WORKER),
+        request("simple", DEFAULT_WORKER),
         bounded_request(),
     ];
     for facts in hard_work_cases()? {
-        let mut hard = request("general", TERRA);
+        let mut hard = request("general", HARD_WORKER);
         hard["hard_work"] = facts;
         assignments.push(hard);
     }
     for assignment in assignments {
         let chosen = resolve(&assignment)?;
         let expected = if assignment.get("hard_work").is_some() {
-            TERRA
+            HARD_WORKER
         } else {
-            LUNA
+            DEFAULT_WORKER
         };
         assert_eq!(chosen, selected("generic", "create_thread", expected));
         for plugin_root in &plugin_roots {
@@ -67,7 +67,7 @@ fn supported_worker_pairs_survive_creation_and_request_level_delivery() -> TestR
                 assert!(!denied(plugin_root, "codexy-thread-delivery.sh", event, &delivery)?);
                 let mut crossed = delivery.clone();
                 crossed["tool_input"]["thinking"] =
-                    json!(if expected == LUNA { "medium" } else { "max" });
+                    json!("high");
                 assert!(denied(plugin_root, "codexy-thread-delivery.sh", event, &crossed)?);
                 let mut alternate_recipient = delivery;
                 alternate_recipient["tool_input"]["threadId"] = json!("another-known-thread");

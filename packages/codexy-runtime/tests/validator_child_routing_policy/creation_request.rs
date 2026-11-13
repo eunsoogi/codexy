@@ -1,12 +1,12 @@
 //! Verifies that routing selection carries the app target into creation input.
 
-use super::{LUNA, check, request};
+use super::{DEFAULT_WORKER, check, request};
 use crate::support::TestResult;
 use serde_json::{Value, json};
 
 #[test]
 fn route_builder_preserves_app_worktree_target_in_create_thread_input() -> TestResult {
-    let mut assignment = request("general", LUNA);
+    let mut assignment = request("general", DEFAULT_WORKER);
     assignment["creation_prompt"] = json!("Resolve the assigned issue within its verified scope.");
     assignment["creation_target"] = json!({
         "type":"project",
@@ -19,12 +19,12 @@ fn route_builder_preserves_app_worktree_target_in_create_thread_input() -> TestR
         json!({
             "route":"generic",
             "codex_thread_operation":"create_thread",
-            "model":LUNA.0,
-            "thinking":LUNA.1,
+            "model":DEFAULT_WORKER.0,
+            "thinking":DEFAULT_WORKER.1,
             "tool_input":{
                 "prompt":"Resolve the assigned issue within its verified scope.",
-                "model":LUNA.0,
-                "thinking":LUNA.1,
+                "model":DEFAULT_WORKER.0,
+                "thinking":DEFAULT_WORKER.1,
                 "target":{
                     "type":"project",
                     "projectId":"assignment-selected-project",
@@ -38,7 +38,7 @@ fn route_builder_preserves_app_worktree_target_in_create_thread_input() -> TestR
 
 #[test]
 fn incomplete_prompt_or_non_worktree_target_fails_closed() -> TestResult {
-    let mut missing_prompt = request("general", LUNA);
+    let mut missing_prompt = request("general", DEFAULT_WORKER);
     missing_prompt["creation_prompt"] = json!("  ");
     check(
         missing_prompt,
@@ -48,7 +48,7 @@ fn incomplete_prompt_or_non_worktree_target_fails_closed() -> TestResult {
         }),
     )?;
 
-    let mut absent_prompt = request("general", LUNA);
+    let mut absent_prompt = request("general", DEFAULT_WORKER);
     absent_prompt
         .as_object_mut()
         .ok_or("request object")?
@@ -80,7 +80,7 @@ fn incomplete_prompt_or_non_worktree_target_fails_closed() -> TestResult {
             "environment":{"type":"worktree"}
         }),
     ] {
-        let mut invalid_target = request("general", LUNA);
+        let mut invalid_target = request("general", DEFAULT_WORKER);
         if target.is_null() {
             invalid_target
                 .as_object_mut()

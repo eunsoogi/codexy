@@ -50,12 +50,12 @@ for authenticated Worker-to-Orchestrator delivery. The Advisor uses
 `gpt-6-astra` / `medium` for bounded, instruction-based read-only advice; this
 boundary does not enforce host permissions. A Worker owns one issue lane, its
 branch/worktree, and its finite goal. Ordinary, simple, bounded, and general
-implementation work defaults to `gpt-6-luna` / `max`. A new general Worker with
-valid facts for coupled contract changes, algorithm design, or cross-boundary
-diagnosis receives `gpt-6.1-terra` / `medium` directly. Authenticated Worker
-delivery uses the same Luna/Max and Terra/Medium pairs; existing Sol/Medium
-assignments are rejected without automatic reassignment. Ambiguous authority,
-inputs, and ownership remain fail-closed under the
+implementation work defaults to `gpt-6.1-terra` / `medium`. A new general Worker
+with valid facts for coupled contract changes, algorithm design, or
+cross-boundary diagnosis receives `gpt-6.1-sol` / `medium` directly.
+Authenticated Worker delivery uses the same Terra/Medium and Sol/Medium pairs;
+legacy Luna/Max assignments are rejected without automatic reassignment.
+Ambiguous authority, inputs, and ownership remain fail-closed under the
 [Worker routing policy](../plugins/codexy/skills/orchestration/references/child-routing-policy.md).
 Role ownership is defined in the
 [supervision reference](../plugins/codexy/skills/orchestration/references/parent-supervision.md).
@@ -73,11 +73,11 @@ implementation and transport. These model pairs are configured or requested role
 settings; effective settings for a running task remain unknown without an
 authoritative host/task readback.
 
-For a general Luna/Max Worker that discovers qualifying hard-work evidence, the
-parent-loop elevation procedure connects the decision and #1447 transition to
-existing supervision records. The source remains the implementation owner while
-the target completes read-only setup and the parent confirms its goal, assigned
-pair, original-parent route, and checkout. Ownership, recipient, goal
+For a general Terra/Medium Worker that discovers qualifying hard-work evidence,
+the parent-loop elevation procedure connects the decision and #1447 transition
+to existing supervision records. The source remains the implementation owner
+while the target completes read-only setup and the parent confirms its goal,
+assigned pair, original-parent route, and checkout. Ownership, recipient, goal
 association, reservation, and observation target move together only after the
 supported source handoff and retirement; per-task cursors stay separate. Missing
 or unsupported required host readbacks keep the transition pending. The source

@@ -54,16 +54,16 @@ This does not change the selected model, effort, or ownership rules below.
 Named packaged specialists MUST be selected when their role matches the task;
 their catalogued model and effort apply automatically, and callers MUST NOT
 override them. Ordinary, bounded, and simple Worker assignments MUST default to
-`gpt-6-luna` / `max`. For a general Worker, Luna/Max is also the default once
-the safety facts pass; only complete, verified hard-work facts can select
-Terra/Medium. A new general Worker with valid hard-work facts MUST be assigned
-`gpt-6.1-terra` / `medium` directly; the `general` classification alone MUST NOT
-select that pair. Parent-to-Worker follow-ups MUST preserve the known Worker's
-assigned pair and MUST NOT copy sender settings or silently reassign the Worker.
-The thread-delivery hook accepts only the exact pairs Sol/Low, Luna/Max, and
-Terra/Medium; this is request-shape validation and does not verify who the
-recipient is or which pair was assigned. For general work, `fixed_scope`,
-`low_risk_reversible`, and `no_unresolved_decision` MUST be true;
+`gpt-6.1-terra` / `medium`. For a general Worker, Terra/Medium is also the
+default once the safety facts pass; only complete, verified hard-work facts can
+select Sol/Medium. A new general Worker with valid hard-work facts MUST be
+assigned `gpt-6.1-sol` / `medium` directly; the `general` classification alone
+MUST NOT select that pair. Parent-to-Worker follow-ups MUST preserve the known
+Worker's assigned pair and MUST NOT copy sender settings or silently reassign
+the Worker. The thread-delivery hook accepts only the exact pairs Sol/Low,
+Terra/Medium, and Sol/Medium; this is request-shape validation and does not
+verify who the recipient is or which pair was assigned. For general work,
+`fixed_scope`, `low_risk_reversible`, and `no_unresolved_decision` MUST be true;
 `deterministic_oracle` MUST be supplied but MAY be false. Missing safety facts,
 ambiguous scope or authority, missing inputs, and unresolved ownership MUST stay
 fail-closed. Difficulty evidence MUST NOT substitute for those decisions.
@@ -121,17 +121,17 @@ recipient's assigned model and effort; it MUST NOT copy sender settings. If the
 actual message-tool contract cannot accept that pair, Codex MUST NOT send an
 omitted or partial call or rely on defaults; it MUST preserve the lane as
 pending and report the exact incompatibility. Ordinary Worker creation defaults
-to Luna/Max, including general implementation, and valid hard-work facts select
-Terra/Medium for a new Worker. Worker-to-Orchestrator delivery uses the main
-Orchestrator's assigned Sol/Low pair. The thread-delivery hook validates a
+to Terra/Medium, including general implementation, and valid hard-work facts
+select Sol/Medium for a new Worker. Worker-to-Orchestrator delivery uses the
+main Orchestrator's assigned Sol/Low pair. The thread-delivery hook validates a
 non-empty `threadId` and an explicit supported model/thinking pair
-(`gpt-6.1-sol`/`low`, `gpt-6-luna`/`max`, or `gpt-6.1-terra`/`medium`) for both
-directions. It does not infer the recipient's role or verify recipient identity,
-existence, or assignment. Orchestration MUST select the known recipient and its
-assigned pair; the host authorizes the actual message delivery. Unsupported or
-mismatched recipient settings MUST leave the lane pending with the exact
-limitation. Missing observations MUST be reported as unavailable/not observed.
-Codex MUST NOT fall back to sender settings.
+(`gpt-6.1-sol`/`low`, `gpt-6.1-terra`/`medium`, or `gpt-6.1-sol`/`medium`) for
+both directions. It does not infer the recipient's role or verify recipient
+identity, existence, or assignment. Orchestration MUST select the known
+recipient and its assigned pair; the host authorizes the actual message
+delivery. Unsupported or mismatched recipient settings MUST leave the lane
+pending with the exact limitation. Missing observations MUST be reported as
+unavailable/not observed. Codex MUST NOT fall back to sender settings.
 
 The runtime keeps `codexy.child-routing-request.v1` for thread creation,
 Worker-to-Orchestrator delivery, and other existing routing requests. A v1

@@ -1,6 +1,6 @@
 # Evidenced hard work
 
-Only a general Worker MAY receive a direct Terra/Medium assignment by supplying
+Only a general Worker MAY receive a direct Sol/Medium assignment by supplying
 `hard_work` with one closed `criterion` and its complete facts:
 
 | Criterion                  | Required evidence                                                                                                                                                                                                    |
@@ -14,7 +14,7 @@ Lists MUST contain distinct nonempty facts; required prose MUST be nonempty. The
 parser validates structure, not semantic truth. File count, a general
 implementation label, an unfamiliar library, long prose, or model availability
 alone MUST NOT count as evidence. Routine edits, bounded summaries,
-known-pattern implementations and single-boundary fixes retain Luna/Max. A
+known-pattern implementations and single-boundary fixes retain Terra/Medium. A
 malformed, unknown, or incomplete hard-work object MUST be rejected; missing
 hard-work evidence MUST NOT cause escalation. Valid evidence MUST NOT change a
 simple, bounded, ambiguous, incomplete, or high-risk request into a general
@@ -28,7 +28,7 @@ criterion, but the blocker itself never does. Capability checks MUST apply to
 the selected exact pair without substitution.
 
 This is the direct assignment path for work already evidenced as hard. When a
-general Luna/Max Worker discovers qualifying evidence after work begins, the
+general Terra/Medium Worker discovers qualifying evidence after work begins, the
 Orchestrator MUST use the [Worker elevation decision](../worker-elevation.md).
 That assessment does not execute a fork or change the Worker's model or
 ownership. Before a separately authorized source/target handoff, the parent MUST

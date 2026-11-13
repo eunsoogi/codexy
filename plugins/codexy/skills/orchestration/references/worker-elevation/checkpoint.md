@@ -2,7 +2,7 @@
 
 ## Boundary
 
-This procedure prepares an existing Luna/Max Worker for a later, separately
+This procedure prepares an existing Terra/Medium Worker for a later, separately
 authorized elevation transition. The source remains the issue owner and keeps
 its active goal and reservation. This procedure MUST NOT fork or create a task,
 archive or replace the source, change its model or goal, move its worktree, or

@@ -3,14 +3,14 @@
 use super::*;
 
 #[test]
-fn issue_1412_bounded_summaries_without_deterministic_oracle_select_luna() -> TestResult {
+fn issue_1412_bounded_summaries_without_deterministic_oracle_select_default_worker() -> TestResult {
     // Human-judged wording fails the old simple gate, while these finite summaries qualify.
     for (inputs, characters, items) in [(1, 1, 1), (2, 8_000, 10), (3, 12_000, 20)] {
         let mut bounded = bounded_request();
         bounded["simple_predicates"]["bounded_evidence"]["input_count"] = json!(inputs);
         bounded["simple_predicates"]["bounded_evidence"]["input_char_count"] = json!(characters);
         bounded["simple_predicates"]["bounded_evidence"]["output_item_limit"] = json!(items);
-        check(bounded, selected("generic", "create_thread", LUNA))?;
+        check(bounded, selected("generic", "create_thread", DEFAULT_WORKER))?;
     }
     let mut old_gate = bounded_request();
     old_gate["classification"] = json!("simple");
@@ -24,7 +24,7 @@ fn issue_1412_bounded_summaries_without_deterministic_oracle_select_luna() -> Te
             .ok_or("models")?
             .push(json!({"model":SOL.0,"thinking":[SOL.1]}));
         let expected = if classification == "general" {
-            selected("generic", "create_thread", LUNA)
+            selected("generic", "create_thread", DEFAULT_WORKER)
         } else {
             fallback()
         };
@@ -67,7 +67,7 @@ fn issue_1412_bounds_safety_and_capabilities_cannot_relax() -> TestResult {
     let mut missing = bounded_request();
     missing["simple_predicates"]["bounded_evidence"] = Value::Null;
     check(missing, fallback())?;
-    for pair in [SOL, ("gpt-6-luna", "medium"), ("gpt-5.6-terra", "high")] {
+    for pair in [SOL, ("gpt-6.1-terra", "high"), ("gpt-5.6-terra", "high")] {
         let mut unsupported = bounded_request();
         unsupported["codex_thread_capabilities"] =
             request("general", pair)["codex_thread_capabilities"].clone();
