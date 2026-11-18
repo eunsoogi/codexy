@@ -5,10 +5,10 @@ use serde_json::{Value, json};
 use std::{path::PathBuf, process::Command};
 
 pub(super) const DEFAULT_WORKER: (&str, &str) = ("gpt-6.1-terra", "medium");
-pub(super) const HARD_WORKER: (&str, &str) = ("gpt-6.1-sol", "medium");
+pub(super) const HARD_WORKER: (&str, &str) = ("gpt-6.2-sol", "medium");
 pub(super) const CREATION_PROMPT: &str = "Implement the assigned issue in its managed worktree.";
 // Retain the rejected pair as an explicit negative case in creation and delivery tests.
-pub(super) const SOL: (&str, &str) = ("gpt-6.1-sol", "high");
+pub(super) const SOL: (&str, &str) = ("gpt-6.2-sol", "high");
 
 pub(super) fn creation_target() -> Value {
     json!({

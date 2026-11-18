@@ -13,8 +13,11 @@ const TOOLS: &[&str] = &[
     "mcp__codex_app__send_message_to_thread",
 ];
 const PAIRS: &[(&str, &str)] = &[
-    ("gpt-6.1-sol", "low"),
+    ("gpt-6.2-sol", "low"),
     ("gpt-6.1-terra", "medium"),
+    ("gpt-6.2-sol", "medium"),
+    // Existing recipients retain their assigned legacy pair, never new creation.
+    ("gpt-6.1-sol", "low"),
     ("gpt-6.1-sol", "medium"),
 ];
 
@@ -61,7 +64,7 @@ fn legacy_metadata_presence_and_shape_do_not_change_pair_admission() -> TestResu
             "direction":"child_to_parent",
             "sender_thread_id":"different-sender",
             "target_thread_id":"different-recipient",
-            "target_model":"gpt-6.1-sol",
+            "target_model":"gpt-6.2-sol",
             "target_thinking":"low"
         })),
         Some(json!("not-an-envelope")),
@@ -105,7 +108,7 @@ fn legacy_metadata_cannot_admit_a_crossed_pair() -> TestResult {
             "direction":"child_to_parent",
             "sender_thread_id":"known-worker",
             "target_thread_id":"known-thread",
-            "target_model":"gpt-6.1-sol",
+            "target_model":"gpt-6.2-sol",
             "target_thinking":"low"
         }),
         json!("not-an-envelope"),
@@ -115,7 +118,7 @@ fn legacy_metadata_cannot_admit_a_crossed_pair() -> TestResult {
     for root in &roots {
         for event in EVENTS {
             for tool in TOOLS {
-                let request = input("known-thread", "gpt-6.1-sol", "max", "receipt");
+                let request = input("known-thread", "gpt-6.2-sol", "max", "receipt");
                 let baseline = run_with_tool(
                     root,
                     event,

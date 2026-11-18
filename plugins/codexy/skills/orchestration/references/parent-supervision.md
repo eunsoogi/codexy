@@ -36,12 +36,12 @@ When this arrangement is authorized, Codex MUST keep these roles distinct:
 
 Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
 
-- Orchestrator and Worker-to-Orchestrator: `gpt-6.1-sol` / `low` (Sol / Light).
+- Orchestrator and Worker-to-Orchestrator: `gpt-6.2-sol` / `low` (Sol / Light).
 - Worker creation MUST use [routing](child-routing-policy.md), including its
   ordinary default and verified hard-work facts; parent-to-Worker follow-ups
-  MUST preserve the known recipient's assigned pair.
-- Optional final Sentinel: `gpt-6.1-sol` / `high`.
-- Security-focused Warden: `gpt-6-astra` / `high`.
+  MUST preserve the known recipient's assigned pair, including legacy sessions.
+- Optional final Sentinel: `gpt-6.2-sol` / `high`.
+- Security-focused Warden: `gpt-6.2-astra` / `high`.
 
 New-role thread creation and delivery MUST use the explicit model/effort pair
 from the [child-routing policy](child-routing-policy.md). Recovery of the same

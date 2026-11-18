@@ -25,7 +25,7 @@ fn pre_tool_denial_delivers_actionable_model_context_without_echoing_the_request
         "reuse any already-selected Worker pair",
         "if none is selected, classify the task evidence",
         "gpt-6.1-terra",
-        "gpt-6.1-sol",
+        "gpt-6.2-sol",
         "projectId from the saved project selected for this task",
         "target.environment.type='worktree'",
         "correct only the identified fields in the original create_thread request",
@@ -89,9 +89,9 @@ fn route_field_feedback_is_error_specific_and_preserves_existing_selection() -> 
         ),
         (
             "crossed hard pair",
-            json!({"model":"gpt-6.1-sol","thinking":"max"}),
+            json!({"model":"gpt-6.2-sol","thinking":"max"}),
             "UNSUPPORTED_THINKING",
-            "preserve model='gpt-6.1-sol' and set thinking='medium'",
+            "preserve model='gpt-6.2-sol' and set thinking='medium'",
         ),
         (
             "unsupported model",
@@ -192,7 +192,7 @@ fn permission_request_keeps_corrective_guidance_in_the_denial_message() -> TestR
 fn incomplete_hard_selection_supplies_its_matching_setting_without_downgrading() -> TestResult {
     let input = pre_tool_input(
         TOOLS[0],
-        worktree_environment::with_project_worktree(json!({"model":"gpt-6.1-sol"})),
+        worktree_environment::with_project_worktree(json!({"model":"gpt-6.2-sol"})),
     );
     let output = hook_output(&input, "PreToolUse")?;
     let context = output["hookSpecificOutput"]["additionalContext"]
@@ -200,7 +200,7 @@ fn incomplete_hard_selection_supplies_its_matching_setting_without_downgrading()
         .ok_or("hard route model additionalContext")?;
 
     assert!(
-        context.contains("preserve model='gpt-6.1-sol' and set thinking='medium'"),
+        context.contains("preserve model='gpt-6.2-sol' and set thinking='medium'"),
         "{context}"
     );
     assert!(context.contains("only when the task evidence meets the hard-work criteria"));
@@ -208,7 +208,7 @@ fn incomplete_hard_selection_supplies_its_matching_setting_without_downgrading()
     let invalid_pair = pre_tool_input(
         TOOLS[0],
         worktree_environment::with_project_worktree(
-            json!({"model":"gpt-6.1-sol","thinking":"max"}),
+            json!({"model":"gpt-6.2-sol","thinking":"max"}),
         ),
     );
     let invalid_output = hook_output(&invalid_pair, "PreToolUse")?;
@@ -216,8 +216,25 @@ fn incomplete_hard_selection_supplies_its_matching_setting_without_downgrading()
         .as_str()
         .ok_or("invalid hard route model additionalContext")?;
     assert!(
-        invalid_context.contains("preserve model='gpt-6.1-sol' and set thinking='medium'"),
+        invalid_context.contains("preserve model='gpt-6.2-sol' and set thinking='medium'"),
         "{invalid_context}"
     );
+    Ok(())
+}
+
+#[test]
+fn legacy_delivery_pair_is_not_new_worker_admission() -> TestResult {
+    for tool in TOOLS {
+        for event in ["PreToolUse", "PermissionRequest"] {
+            for thinking in ["low", "medium"] {
+                let mut input = pre_tool_input(tool, worktree_environment::with_project_worktree(
+                    json!({"model":"gpt-6.1-sol","thinking":thinking})
+                ));
+                input["hook_event_name"] = json!(event);
+                let output = hook_output(&input, event)?;
+                assert!(output.to_string().contains("UNSUPPORTED_MODEL"), "{output}");
+            }
+        }
+    }
     Ok(())
 }

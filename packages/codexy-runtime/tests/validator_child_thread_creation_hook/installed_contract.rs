@@ -67,7 +67,7 @@ fn worker_creation_diagnostics_describe_both_supported_pairs_and_orchestrator_re
         ),
         (
             "crossed pair",
-            json!({"model":"gpt-6.1-sol","thinking":"max"}),
+            json!({"model":"gpt-6.2-sol","thinking":"max"}),
             "UNSUPPORTED_THINKING",
         ),
         (
@@ -93,7 +93,7 @@ fn worker_creation_diagnostics_describe_both_supported_pairs_and_orchestrator_re
                 assert!(reason.contains(diagnostic), "{label} {event}: {reason}");
                 for pair in [
                     "model='gpt-6.1-terra' and thinking='medium'",
-                    "model='gpt-6.1-sol' and thinking='medium'",
+                    "model='gpt-6.2-sol' and thinking='medium'",
                 ] {
                     assert!(
                         reason.contains(pair),

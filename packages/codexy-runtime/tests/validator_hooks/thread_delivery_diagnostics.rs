@@ -22,8 +22,10 @@ fn unsupported_models_and_crossed_pairs_have_actionable_corrections() -> TestRes
         ("legacy Luna", "gpt-6-luna", "max", "UNSUPPORTED_MODEL", "model"),
         ("unsupported model", "gpt-5.6-terra", "medium", "UNSUPPORTED_MODEL", "model"),
         ("unsupported effort", "gpt-6.1-terra", "ultra", "UNSUPPORTED_THINKING", "thinking"),
-        ("Sol max", "gpt-6.1-sol", "max", "UNSUPPORTED_THINKING", "thinking"),
-        ("Sol high", "gpt-6.1-sol", "high", "UNSUPPORTED_THINKING", "thinking"),
+        ("legacy Sol high", "gpt-6.1-sol", "high", "UNSUPPORTED_THINKING", "thinking"),
+        ("Astra not a generic pair", "gpt-6.2-astra", "medium", "UNSUPPORTED_MODEL", "model"),
+        ("Sol max", "gpt-6.2-sol", "max", "UNSUPPORTED_THINKING", "thinking"),
+        ("Sol high", "gpt-6.2-sol", "high", "UNSUPPORTED_THINKING", "thinking"),
         ("Terra low", "gpt-6.1-terra", "low", "UNSUPPORTED_THINKING", "thinking"),
         ("Terra max", "gpt-6.1-terra", "max", "UNSUPPORTED_THINKING", "thinking"),
     ];
@@ -46,11 +48,11 @@ fn unsupported_models_and_crossed_pairs_have_actionable_corrections() -> TestRes
                     assert!(reason.contains(code), "{event} {label}: {reason}");
                     assert!(reason.contains(field), "{event} {label}: {reason}");
                     for allowed_value in [
-                        "gpt-6.1-sol",
+                        "gpt-6.2-sol",
                         "low",
                         "gpt-6.1-terra",
                         "medium",
-                        "gpt-6.1-sol",
+                        "gpt-6.2-sol",
                         "medium",
                     ] {
                         assert!(reason.contains(allowed_value), "{event} {label}: {reason}");
@@ -80,7 +82,7 @@ fn unexpected_tool_remains_an_envelope_denial() -> TestResult {
                     event,
                     "codex_app__send_message",
                     &transcript,
-                    input("known-thread", "gpt-6.1-sol", "low", "receipt"),
+                    input("known-thread", "gpt-6.2-sol", "low", "receipt"),
                     Some(json!("malformed legacy metadata")),
                 )?,
                 event,

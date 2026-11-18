@@ -5,7 +5,7 @@ use super::*;
 
 // Keep expected routes explicit so subprocess cases catch creation/delivery drift.
 pub(super) const SUPPORTED_WORKER_PAIRS: &[(&str, &str)] =
-    &[("gpt-6.1-terra", "medium"), ("gpt-6.1-sol", "medium")];
+    &[("gpt-6.1-terra", "medium"), ("gpt-6.2-sol", "medium")];
 
 #[test]
 fn app_project_worktree_is_admitted_for_both_supported_worker_pairs() -> TestResult {
@@ -31,7 +31,7 @@ fn crossed_worker_model_and_thinking_pairs_are_rejected() -> TestResult {
     let cwd = primary_checkout();
     let cases = [
         ("Terra with max", "gpt-6.1-terra", "max"),
-        ("Sol with max", "gpt-6.1-sol", "max"),
+        ("Sol with max", "gpt-6.2-sol", "max"),
     ];
 
     for (label, model, thinking) in cases {

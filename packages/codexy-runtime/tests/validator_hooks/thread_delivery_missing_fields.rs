@@ -68,11 +68,11 @@ fn missing_or_empty_fields_name_the_edit_and_preserve_assignment_context() -> Te
                     assert!(reason.contains(code), "{event} {label}: {reason}");
                     assert!(reason.contains(field), "{event} {label}: {reason}");
                     for allowed_value in [
-                        "gpt-6.1-sol",
+                        "gpt-6.2-sol",
                         "low",
                         "gpt-6.1-terra",
                         "medium",
-                        "gpt-6.1-sol",
+                        "gpt-6.2-sol",
                         "medium",
                     ] {
                         assert!(reason.contains(allowed_value), "{event} {label}: {reason}");

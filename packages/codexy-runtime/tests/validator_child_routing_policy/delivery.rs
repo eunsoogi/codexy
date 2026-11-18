@@ -3,16 +3,17 @@
 use super::*;
 
 // The parent pair is independent of both assigned Worker pairs.
-const PARENT: (&str, &str) = ("gpt-6.1-sol", "low");
+const PARENT: (&str, &str) = ("gpt-6.2-sol", "low");
 
 #[test]
-fn resolver_allows_only_creation_pairs_for_worker_delivery() -> TestResult {
+fn resolver_preserves_current_and_legacy_worker_assignments() -> TestResult {
     for pair in [
         DEFAULT_WORKER,
         HARD_WORKER,
+        ("gpt-6.1-sol", "medium"),
         SOL,
         PARENT,
-        ("gpt-6.1-sol", "max"),
+        ("gpt-6.2-sol", "max"),
         ("gpt-6-astra", "medium"),
     ] {
         let mut followup = bounded_request();
@@ -23,7 +24,7 @@ fn resolver_allows_only_creation_pairs_for_worker_delivery() -> TestResult {
         followup["recipient_assignment"] = json!({"model":pair.0,"thinking":pair.1});
         followup["codex_thread_capabilities"] =
             request("general", pair)["codex_thread_capabilities"].clone();
-        let expected = if [DEFAULT_WORKER, HARD_WORKER].contains(&pair) {
+        let expected = if [DEFAULT_WORKER, HARD_WORKER, ("gpt-6.1-sol", "medium")].contains(&pair) {
             selected("parent_to_generic", "send_message_to_thread", pair)
         } else {
             json!({"route":"root_or_named_specialist","reason":"Assigned recipient model and thinking do not form a supported Worker pair."})
@@ -48,6 +49,7 @@ fn resolver_allows_only_creation_pairs_for_worker_delivery() -> TestResult {
     )?;
     for pair in [
         PARENT,
+        ("gpt-6.1-sol", "low"),
         DEFAULT_WORKER,
         SOL,
         ("gpt-6-astra", "medium"),
@@ -113,4 +115,11 @@ fn creation_selection_is_preserved_in_recipient_followup() -> TestResult {
         )?;
     }
     Ok(())
+}
+
+#[test]
+fn legacy_model_cannot_create_new_hard_worker() -> TestResult {
+    let mut creation = request("general", ("gpt-6.1-sol", "medium"));
+    creation["hard_work"] = hard_work_cases()?.remove(0);
+    check(creation, fallback())
 }

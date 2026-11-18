@@ -10,8 +10,12 @@ pub(super) const WORKER_CREATION_ROUTES: [(&str, &str); 2] = [
     (SIMPLE_WORKER_MODEL, SIMPLE_WORKER_THINKING),
     (HARD_WORKER_MODEL, HARD_WORKER_THINKING),
 ];
-// Authenticated delivery uses the creation allowlist; existing assignments get no exception.
-pub(super) const WORKER_DELIVERY_ROUTES: [(&str, &str); 2] = WORKER_CREATION_ROUTES;
+// Existing recipient assignments survive the migration without reopening legacy creation.
+pub(super) const WORKER_DELIVERY_ROUTES: [(&str, &str); 3] = [
+    WORKER_CREATION_ROUTES[0],
+    WORKER_CREATION_ROUTES[1],
+    ("gpt-6.1-sol", "medium"),
+];
 
 pub(super) fn deserialize_bounds<'de, D>(
     deserializer: D,
