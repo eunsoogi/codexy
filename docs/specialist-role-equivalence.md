@@ -17,7 +17,7 @@ removed callable aliases.
 | `codexy-sentinel`     | Retain      | Optional final review; fixed at `gpt-6.2-sol` / `high`.                                                                                                |
 | `codexy-shipwright`   | Retain      | Release, package, and rollback readiness.                                                                                                              |
 | `codexy-tracer`       | Remove      | The engineering workflow owns diagnosis and regression investigation.                                                                                  |
-| `codexy-warden`       | Retain      | Security, permission, shell, and state-mutation boundaries; `gpt-6.2-astra` / `high`.                                                                    |
+| `codexy-warden`       | Retain      | Security, permission, shell, and state-mutation boundaries; `gpt-6.2-astra` / `high`.                                                                  |
 | `codexy-watcher`      | Remove      | The Orchestrator directly observes ordinary Worker events; core no longer registers Watcher MCP or ships the retired launcher and dedicated bootstrap. |
 | `codexy-weaver`       | Move        | GitHub/integration contract in the Codexy GitHub package.                                                                                              |
 
