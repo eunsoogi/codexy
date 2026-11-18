@@ -18,9 +18,12 @@ pub(super) fn copy_selected_sources(repo_root: &Path) {
         "plugins/codexy-devtools/runtime-release.json",
         "scripts/verify_public_marketplace_bundle.py",
         "scripts/public_marketplace_bundle_support.py",
+        "packages/getcodexy/src/codexy_runtime_tools/public_marketplace_bundle.py",
     ] {
         let source = codexy_runtime::paths::repository_root().join(relative);
         let target = repo_root.join(relative);
+        std::fs::create_dir_all(target.parent().expect("candidate source parent"))
+            .expect("candidate source directory");
         std::fs::copy(source, target).expect("candidate selected-release source");
     }
 }

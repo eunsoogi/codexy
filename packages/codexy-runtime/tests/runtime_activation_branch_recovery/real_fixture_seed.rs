@@ -16,7 +16,7 @@ pub(super) struct MaterializedFixture {
 // Keep only files that the activation and validation contracts read. The
 // verifier archives this fixture four times, so recursive source trees multiply
 // Windows filesystem work without adding an oracle.
-const PREPARED_PATHS: [&str; 28] = [
+const PREPARED_PATHS: [&str; 29] = [
     "AGENTS.md",
     ".agents/plugins",
     ".gitattributes",
@@ -42,6 +42,7 @@ const PREPARED_PATHS: [&str; 28] = [
     "scripts/download-selected-runtime-package.sh",
     "scripts/generate-release-changelog",
     "scripts/public_marketplace_bundle_support.py",
+    "packages/getcodexy/src/codexy_runtime_tools/public_marketplace_bundle.py",
     "scripts/sync-plugin-version.sh",
     "scripts/verify_public_marketplace_bundle.py",
     "scripts/verify-runtime-activation-branch",
@@ -118,7 +119,14 @@ fn prepare(repo: &Path) -> Result<String, Box<dyn std::error::Error>> {
     let pre_activation_revision = metadata::pre_activation_revision()?;
     let mut clone = Command::new("git");
     clone
-        .args(["-c", "core.autocrlf=false", "clone", "--shared", "--no-tags", "--no-checkout"])
+        .args([
+            "-c",
+            "core.autocrlf=false",
+            "clone",
+            "--shared",
+            "--no-tags",
+            "--no-checkout",
+        ])
         .arg(codexy_runtime::paths::repository_root())
         .arg(repo);
     run(&mut clone)?;
@@ -164,11 +172,15 @@ fn prepare(repo: &Path) -> Result<String, Box<dyn std::error::Error>> {
         ".github/workflows/python-package.yml",
         ".github/scripts/verify-public-marketplace-baselines.ps1",
         "scripts/public_marketplace_bundle_support.py",
+        "packages/getcodexy/src/codexy_runtime_tools/public_marketplace_bundle.py",
         "scripts/verify_public_marketplace_bundle.py",
     ] {
         let target = repo.join(relative);
         fs::create_dir_all(target.parent().ok_or("fixture source parent")?)?;
-        fs::copy(codexy_runtime::paths::repository_root().join(relative), target)?;
+        fs::copy(
+            codexy_runtime::paths::repository_root().join(relative),
+            target,
+        )?;
     }
     for relative in [
         "scripts/activate-runtime-contract.sh",
