@@ -1,7 +1,7 @@
 # Optional final review
 
 Codexy has one optional final LLM reviewer: `codexy-sentinel`, using
-`gpt-6.1-sol` / `high`. Inspector and the light, standard, and strict profile
+`gpt-6.2-sol` / `high`. Inspector and the light, standard, and strict profile
 selection are removed. MUST decide whether final review is useful from the
 actual change and concrete uncertainty; no profile label mandates a reviewer.
 

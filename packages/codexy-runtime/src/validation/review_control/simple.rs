@@ -57,7 +57,7 @@ fn check(
     state: Option<&Value>,
     require_pass: bool,
 ) -> Result<(), String> {
-    // Current selection is explicit, while v1 records keep their historical identity.
+    // Both schemas require the current model contract; old records are not rewritten.
     let schema = control.get("schema").and_then(Value::as_str);
     let expected_reviewer = if schema == Some("codexy.review-control-state.v2") {
         if control.contains_key("profile")

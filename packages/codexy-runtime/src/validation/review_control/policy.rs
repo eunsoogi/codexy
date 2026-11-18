@@ -55,13 +55,13 @@ pub(super) fn resolve(plugin_root: &Path, text: &str) -> Result<Value> {
 pub(super) fn sentinel() -> Reviewer {
     Reviewer {
         name: "codexy-sentinel".into(),
-        model: "gpt-6.1-sol".into(),
+        model: "gpt-6.2-sol".into(),
         reasoning_effort: "high".into(),
     }
 }
 
-// Read-only compatibility for historical v1 controls, not new-work selection.
-// Never reinterpret an old review as evidence from the new reviewer identity.
+// Retain the v1 schema and roles, but do not keep an executable old-model route.
+// Previously recorded identities must not be relabeled to satisfy this contract.
 fn profiles() -> BTreeMap<String, Profile> {
     BTreeMap::from([
         ("light".into(), Profile { reviewer: None }),
@@ -70,7 +70,7 @@ fn profiles() -> BTreeMap<String, Profile> {
             Profile {
                 reviewer: Some(Reviewer {
                     name: "codexy-inspector".into(),
-                    model: "gpt-6.1-sol".into(),
+                    model: "gpt-6.2-sol".into(),
                     reasoning_effort: "medium".into(),
                 }),
             },
@@ -80,7 +80,7 @@ fn profiles() -> BTreeMap<String, Profile> {
             Profile {
                 reviewer: Some(Reviewer {
                     name: "codexy-sentinel".into(),
-                    model: "gpt-6-astra".into(),
+                    model: "gpt-6.2-astra".into(),
                     reasoning_effort: "xhigh".into(),
                 }),
             },

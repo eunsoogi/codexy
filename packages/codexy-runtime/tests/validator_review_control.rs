@@ -182,7 +182,7 @@ fn explicit_final_review_controls_preserve_evidence_without_tiers_or_counts() ->
     let final_control = json!({
         "schema": "codexy.review-control-state.v2", "review_requested": true,
         "stage": "final", "reviewed_head": HEAD_OID,
-        "reviewer": {"name":"codexy-sentinel", "model":"gpt-6.1-sol", "reasoning_effort":"high"},
+        "reviewer": {"name":"codexy-sentinel", "model":"gpt-6.2-sol", "reasoning_effort":"high"},
         "terminal_result": "BLOCK", "unresolved_findings": ["unresolved security defect"]
     });
     // BLOCK is valid evidence, not a PASS. Production must preserve it verbatim.

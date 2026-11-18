@@ -88,7 +88,7 @@ fn register_codexy_agents_writes_stable_discovery_files() -> Result<(), Box<dyn 
 
     let advisor_path = agents_root.join("codexy-advisor.toml");
     let advisor: toml::Value = toml::from_str(&std::fs::read_to_string(advisor_path)?)?;
-    assert_eq!(advisor["model"].as_str(), Some("gpt-6-astra"));
+    assert_eq!(advisor["model"].as_str(), Some("gpt-6.2-astra"));
     assert_eq!(advisor["model_reasoning_effort"].as_str(), Some("medium"));
     let instructions = advisor["developer_instructions"]
         .as_str()

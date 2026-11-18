@@ -109,7 +109,7 @@ fn compact_control(result: &str, findings: Value) -> Value {
         "profile": "strict",
         "reviewer": {
             "name": "codexy-sentinel",
-            "model": "gpt-6-astra",
+            "model": "gpt-6.2-astra",
             "reasoning_effort": "xhigh"
         },
         "reviewed_head": HEAD_OID,

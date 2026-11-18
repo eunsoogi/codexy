@@ -1,4 +1,4 @@
-use crate::support::{self, normalize_fixture_text, FixtureCommand as Command};
+use crate::support::{self, FixtureCommand as Command, normalize_fixture_text};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -15,7 +15,11 @@ fn github_bootstrap_fails_closed_without_an_activated_core() -> TestResult {
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("Codexy core is not activated"));
-    assert!(!home.join("agents/codexy-github/codexy-weaver.toml").exists());
+    assert!(
+        !home
+            .join("agents/codexy-github/codexy-weaver.toml")
+            .exists()
+    );
     Ok(())
 }
 
@@ -52,6 +56,37 @@ fn github_bootstrap_requires_core_and_projects_only_its_managed_role() -> TestRe
     Ok(())
 }
 
+// Updating an owned previous-generation projection must not rewrite user configuration.
+#[test]
+fn github_bootstrap_upgrades_owned_weaver_and_preserves_personal_files() -> TestResult {
+    let temp = tempfile::tempdir()?;
+    let core = copy_plugin(temp.path(), "codexy")?;
+    let github = copy_plugin(temp.path(), "codexy-github")?;
+    let home = temp.path().join("home/.codex");
+    let activated = core_bootstrap(&core)
+        .args(["--codex-home", path(&home)?])
+        .output()?;
+    assert!(activated.status.success(), "{}", stderr(&activated));
+    let agents = home.join("agents/codexy-github");
+    std::fs::create_dir_all(&agents)?;
+    let weaver = agents.join("codexy-weaver.toml");
+    let previous = std::fs::read_to_string(github.join("agents/codexy-weaver.toml"))?
+        .replace("gpt-6.2-sol", "gpt-6.1-sol");
+    std::fs::write(&weaver, format!("# Managed by Codexy GitHub.\n{previous}"))?;
+    let personal = agents.join("personal.toml");
+    let contents = "name = \"personal\"\nmodel = \"custom-model\"\n";
+    std::fs::write(&personal, contents)?;
+    let updated = bootstrap(&github)
+        .args(["--codex-home", path(&home)?])
+        .output()?;
+    assert!(updated.status.success(), "{}", stderr(&updated));
+    let projected: toml::Value = toml::from_str(&std::fs::read_to_string(&weaver)?)?;
+    assert_eq!(projected["model"].as_str(), Some("gpt-6.2-sol"));
+    assert_eq!(projected["model_reasoning_effort"].as_str(), Some("medium"));
+    assert_eq!(std::fs::read_to_string(personal)?, contents);
+    Ok(())
+}
+
 #[test]
 fn github_bootstrap_rejects_an_untrusted_plugin_root_option() -> TestResult {
     let temp = tempfile::tempdir()?;
@@ -67,7 +102,12 @@ fn github_bootstrap_rejects_an_untrusted_plugin_root_option() -> TestResult {
 
 fn copy_plugin(base: &std::path::Path, name: &str) -> TestResult<std::path::PathBuf> {
     let root = base.join(name);
-    support::copy_dir(codexy_runtime::paths::repository_root().join("plugins").join(name), &root)?;
+    support::copy_dir(
+        codexy_runtime::paths::repository_root()
+            .join("plugins")
+            .join(name),
+        &root,
+    )?;
     Ok(root)
 }
 

@@ -1,7 +1,7 @@
 # The Advisor's read-only scope is an instruction contract; host permissions remain separate.
 name = "codexy-advisor"
 description = "Use for bounded read-only analysis and advice when the caller requests a second opinion."
-model = "gpt-6-astra"
+model = "gpt-6.2-astra"
 model_reasoning_effort = "medium"
 developer_instructions = """
 MUST provide concise analysis and advice for one bounded question from the caller.

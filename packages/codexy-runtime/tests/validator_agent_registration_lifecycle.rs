@@ -154,14 +154,16 @@ fn update_and_uninstall_touch_only_marker_owned_discovery_files()
     let install = run(&plugin_root, &codex_home, &[])?;
     assert!(install.status.success(), "stderr:\n{}", stderr(&install));
     let sentinel = agents_root.join("codexy-sentinel.toml");
-    std::fs::write(&sentinel, "# CODEXY MANAGED AGENT\nname = \"old\"\n")?;
+    let previous = std::fs::read_to_string(&sentinel)?.replace("gpt-6.2-sol", "gpt-6.1-sol");
+    std::fs::write(&sentinel, previous)?;
     let managed_retired = agents_root.join("codexy-forge.toml");
     std::fs::write(
         &managed_retired,
         "# CODEXY MANAGED AGENT\nname = \"codexy-forge\"\n",
     )?;
     let unmanaged_retired = agents_root.join("codexy-pathfinder.toml");
-    let unmanaged_retired_contents = "name = \"codexy-pathfinder\"\ndescription = \"Personal role\"\n";
+    let unmanaged_retired_contents =
+        "name = \"codexy-pathfinder\"\ndescription = \"Personal role\"\n";
     std::fs::write(&unmanaged_retired, unmanaged_retired_contents)?;
     let user_file = agents_root.join("personal.toml");
     std::fs::write(&user_file, "name = \"personal\"\n")?;
@@ -169,8 +171,14 @@ fn update_and_uninstall_touch_only_marker_owned_discovery_files()
     let update = run(&plugin_root, &codex_home, &[])?;
     assert!(update.status.success(), "stderr:\n{}", stderr(&update));
     assert!(std::fs::read_to_string(&sentinel)?.contains("name = \"codexy-sentinel\""));
+    let upgraded: toml::Value = toml::from_str(&std::fs::read_to_string(&sentinel)?)?;
+    assert_eq!(upgraded["model"].as_str(), Some("gpt-6.2-sol"));
+    assert_eq!(upgraded["model_reasoning_effort"].as_str(), Some("high"));
     assert!(!managed_retired.exists());
-    assert_eq!(std::fs::read_to_string(unmanaged_retired)?, unmanaged_retired_contents);
+    assert_eq!(
+        std::fs::read_to_string(unmanaged_retired)?,
+        unmanaged_retired_contents
+    );
     assert_eq!(
         std::fs::read_to_string(&user_file)?,
         "name = \"personal\"\n"

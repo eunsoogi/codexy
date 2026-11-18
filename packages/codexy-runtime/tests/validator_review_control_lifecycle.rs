@@ -12,7 +12,7 @@ fn child_audit_evidence(review_record: &str) -> String {
 
 #[test]
 fn lifecycle_audit_requires_explicit_terminal_fields() -> TestResult {
-    let record = r#"{"reviewed_head":"head","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"},"state":"passed"}"#;
+    let record = r#"{"reviewed_head":"head","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-6.2-astra","reasoning_effort":"xhigh"},"state":"passed"}"#;
     let output = crate::support::validator_child_lane_ownership(&child_audit_evidence(record))?;
     assert!(!output.status.success(), "terminal records without direct evidence must block");
     Ok(())
@@ -21,7 +21,7 @@ fn lifecycle_audit_requires_explicit_terminal_fields() -> TestResult {
 #[test]
 fn lifecycle_audit_recognizes_exact_pass_and_block() -> TestResult {
     for result in ["PASS", "BLOCK"] {
-        let record = format!(r#"{{"schema":"codexy.review-control-state.v1","issue_number":725,"reviewed_head":"head","profile":"strict","reviewer":{{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"}},"terminal_result":"{result}","unresolved_findings":[]}}"#);
+        let record = format!(r#"{{"schema":"codexy.review-control-state.v1","issue_number":725,"reviewed_head":"head","profile":"strict","reviewer":{{"name":"codexy-sentinel","model":"gpt-6.2-astra","reasoning_effort":"xhigh"}},"terminal_result":"{result}","unresolved_findings":[]}}"#);
         let output = crate::support::validator_child_lane_ownership(&child_audit_evidence(&record))?;
         assert!(output.status.success(), "exact {result} must be a typed terminal: {}", String::from_utf8_lossy(&output.stderr));
     }
@@ -30,7 +30,7 @@ fn lifecycle_audit_recognizes_exact_pass_and_block() -> TestResult {
 
 #[test]
 fn lifecycle_audit_keeps_a_running_review_pending() -> TestResult {
-    let record = r#"{"schema":"codexy.review-control-state.v1","reviewed_head":"head","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"},"status":"RUNNING","unresolved_findings":[]}"#;
+    let record = r#"{"schema":"codexy.review-control-state.v1","reviewed_head":"head","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-6.2-astra","reasoning_effort":"xhigh"},"status":"RUNNING","unresolved_findings":[]}"#;
     let evidence = format!(
         "Lane ownership: child-owned\nSource thread id: parent-725\nNonterminal wait handoff: state fingerprint=fp-725; producer state=ci-queued; wake route=resume; ownership=retained; goal state=active; plan state=active; goal transition=none; return control=confirmed\n{record}\n"
     );
@@ -45,7 +45,7 @@ fn lifecycle_audit_keeps_a_running_review_pending() -> TestResult {
 
 #[test]
 fn lifecycle_audit_rejects_lowercase_terminal_results() -> TestResult {
-    let record = r#"{"schema":"codexy.review-control-state.v1","issue_number":725,"reviewed_head":"head","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-6-astra","reasoning_effort":"xhigh"},"terminal_result":"pass","unresolved_findings":[] }"#;
+    let record = r#"{"schema":"codexy.review-control-state.v1","issue_number":725,"reviewed_head":"head","profile":"strict","reviewer":{"name":"codexy-sentinel","model":"gpt-6.2-astra","reasoning_effort":"xhigh"},"terminal_result":"pass","unresolved_findings":[] }"#;
     let output = crate::support::validator_child_lane_ownership(&child_audit_evidence(record))?;
     assert!(!output.status.success(), "lowercase terminal result must not be typed evidence");
     Ok(())
@@ -61,7 +61,7 @@ fn lifecycle_audit_rejects_retired_shortcuts_in_a_direct_control() -> TestResult
             "profile": "strict",
             "reviewer": {
                 "name": "codexy-sentinel",
-                "model": "gpt-6-astra",
+                "model": "gpt-6.2-astra",
                 "reasoning_effort": "xhigh"
             },
             "terminal_result": "PASS",
@@ -89,5 +89,29 @@ fn lifecycle_audit_rejects_retired_native_history_input() -> TestResult {
         String::from_utf8_lossy(&output.stderr)
             .contains("legacy review-control processing is no longer supported")
     );
+    Ok(())
+}
+
+// A retained schema is not permission to keep executable prior-generation routes.
+#[test]
+fn v1_controls_require_current_models_without_relabeling_old_evidence() -> TestResult {
+    for (profile, name, current, previous, effort) in [
+        ("standard", "codexy-inspector", "gpt-6.2-sol", "gpt-6.1-sol", "medium"),
+        ("strict", "codexy-sentinel", "gpt-6.2-astra", "gpt-6-astra", "xhigh"),
+    ] {
+        for (model, accepted) in [(current, true), (previous, false)] {
+            let record = json!({
+                "schema": "codexy.review-control-state.v1",
+                "issue_number": 725, "reviewed_head": "head", "profile": profile,
+                "reviewer": {"name": name, "model": model, "reasoning_effort": effort},
+                "terminal_result": "PASS", "unresolved_findings": []
+            });
+            let output = crate::support::validator_child_lane_ownership(
+                &child_audit_evidence(&record.to_string()),
+            )?;
+            assert_eq!(output.status.success(), accepted, "{profile} {model}: {}",
+                String::from_utf8_lossy(&output.stderr));
+        }
+    }
     Ok(())
 }

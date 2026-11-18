@@ -70,5 +70,5 @@ pub(super) fn remove_trigger(request: &mut Value, kind: &str) {
 }
 
 pub(super) fn expected_reviewer() -> Value {
-    json!({"name": "codexy-sentinel", "model": "gpt-6.1-sol", "reasoning_effort": "high"})
+    json!({"name": "codexy-sentinel", "model": "gpt-6.2-sol", "reasoning_effort": "high"})
 }
