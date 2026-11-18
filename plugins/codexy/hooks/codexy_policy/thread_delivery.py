@@ -12,14 +12,10 @@ HARD_WORKER_ROUTE = ("gpt-6.2-sol", "medium")
 FIELDS = ("model", "thinking")
 WORKER_CREATION_ROUTES = frozenset({WORKER_ROUTE, HARD_WORKER_ROUTE})
 ORCHESTRATOR_ROUTE = ("gpt-6.2-sol", "low")
-# Request admission does not authenticate the recipient. Orchestration must retain
-# its known assignment; these legacy pairs are delivery-only, not new Workers.
-LEGACY_DELIVERY_PAIRS = (("gpt-6.1-sol", "low"), ("gpt-6.1-sol", "medium"))
 ALLOWED_PAIRS = (
     ORCHESTRATOR_ROUTE,
     WORKER_ROUTE,
     HARD_WORKER_ROUTE,
-    *LEGACY_DELIVERY_PAIRS,
 )
 _ALLOWED_MODELS = frozenset(model for model, _thinking in ALLOWED_PAIRS)
 _REQUIRED_FIELDS = ("threadId", "model", "thinking")

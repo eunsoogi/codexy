@@ -221,20 +221,3 @@ fn incomplete_hard_selection_supplies_its_matching_setting_without_downgrading()
     );
     Ok(())
 }
-
-#[test]
-fn legacy_delivery_pair_is_not_new_worker_admission() -> TestResult {
-    for tool in TOOLS {
-        for event in ["PreToolUse", "PermissionRequest"] {
-            for thinking in ["low", "medium"] {
-                let mut input = pre_tool_input(tool, worktree_environment::with_project_worktree(
-                    json!({"model":"gpt-6.1-sol","thinking":thinking})
-                ));
-                input["hook_event_name"] = json!(event);
-                let output = hook_output(&input, event)?;
-                assert!(output.to_string().contains("UNSUPPORTED_MODEL"), "{output}");
-            }
-        }
-    }
-    Ok(())
-}

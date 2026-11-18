@@ -16,9 +16,6 @@ const PAIRS: &[(&str, &str)] = &[
     ("gpt-6.2-sol", "low"),
     ("gpt-6.1-terra", "medium"),
     ("gpt-6.2-sol", "medium"),
-    // Existing recipients retain their assigned legacy pair, never new creation.
-    ("gpt-6.1-sol", "low"),
-    ("gpt-6.1-sol", "medium"),
 ];
 
 #[test]

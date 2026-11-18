@@ -31,15 +31,14 @@ send_message_to_thread({
 ```
 
 The child MUST use the parent named by the assignment and its pair: Worker-to-
-Orchestrator uses `gpt-6.2-sol` / `low` for newly assigned parents per
+Orchestrator uses `gpt-6.2-sol` / `low` per
 [child-routing policy](child-routing-policy.md). Worker Terra/Medium or
-Sol/Medium MUST NOT be copied to parent reports. For an already-assigned legacy
-parent, MUST retain its known `gpt-6.1-sol` / `low` pair instead. The delivery
-hook checks fields and pair only; it does not verify identity or assignment, and
-the host authorizes delivery. Requested values remain separate from effective
-host readback; acceptance proves transport only. If unsupported, the child MUST
-NOT omit fields, use defaults, infer permission, or fallback; report
-incompatibility and keep the lane pending.
+Sol/Medium MUST NOT be copied to parent reports. The delivery hook checks fields
+and pair only; it does not verify identity or assignment, and the host
+authorizes delivery. Requested values remain separate from effective host
+readback; acceptance proves transport only. If unsupported, the child MUST NOT
+omit fields, use defaults, infer permission, or fallback; report incompatibility
+and keep the lane pending.
 
 Use the assigned parent's `threadId`; MUST NOT guess or copy one from
 transcript. Supply `hostId` when the parent's host is known.

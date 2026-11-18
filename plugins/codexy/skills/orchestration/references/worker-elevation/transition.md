@@ -135,13 +135,12 @@ Orchestrator ID supplied by the authenticated assignment. The target MUST send
 one authenticated report to that exact parent using
 `send_message_to_thread({threadId, hostId, model: "gpt-6.2-sol", thinking:
 "low", prompt})`;
-for an already-assigned legacy parent, MUST retain its known `gpt-6.1-sol` /
-`low` pair instead. Transport acceptance alone is not a parent callback. The
-Orchestrator MUST observe the report on its task and MUST send a follow-up to
-the exact target ID using the authenticated target pair. The target MUST observe
-that follow-up. This confirms message routing, not approval. The Orchestrator
-MUST also provide its fresh native readback of the exact active overall goal;
-the target cannot query another task's goal directly.
+transport acceptance alone is not a parent callback. The Orchestrator MUST
+observe the report on its task and MUST send a follow-up to the exact target ID
+using the authenticated target pair. The target MUST observe that follow-up.
+This confirms message routing, not approval. The Orchestrator MUST also provide
+its fresh native readback of the exact active overall goal; the target cannot
+query another task's goal directly.
 
 ### 4. Recheck before source retirement
 

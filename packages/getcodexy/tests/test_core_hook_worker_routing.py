@@ -24,8 +24,6 @@ LEGACY_METADATA = "codexy_thread_delivery"
 ALLOWED_PAIRS = (
     ("gpt-6.2-sol", "low"),
     ("gpt-6.2-sol", "medium"),
-    ("gpt-6.1-sol", "low"),
-    ("gpt-6.1-sol", "medium"),
     ("gpt-6.1-terra", "medium"),
 )
 TOOL_INPUT = {

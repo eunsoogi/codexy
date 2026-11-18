@@ -126,18 +126,12 @@ select Sol/Medium for a new Worker. Worker-to-Orchestrator delivery uses the
 main Orchestrator's assigned Sol/Low pair. The thread-delivery hook validates a
 non-empty `threadId` and an explicit supported model/thinking pair
 (`gpt-6.2-sol`/`low`, `gpt-6.1-terra`/`medium`, or `gpt-6.2-sol`/`medium`) for
-both directions. Delivery also admits `gpt-6.1-sol`/`low` and
-`gpt-6.1-sol`/`medium` only to preserve already-assigned recipients; these
-legacy pairs MUST NOT be used for new Worker creation. The v2 Worker follow-up
-resolver preserves the legacy medium pair only through `recipient_assignment`
-and matching host capabilities. Existing parent delivery MUST use its known
-assigned pair rather than treating the new-parent default as a migration. The
-hook does not infer the recipient's role or verify recipient identity,
-existence, or assignment. Orchestration MUST select the known recipient and its
-assigned pair; the host authorizes the actual message delivery. Unsupported or
-mismatched recipient settings MUST leave the lane pending with the exact
-limitation. Missing observations MUST be reported as unavailable/not observed.
-Codex MUST NOT fall back to sender settings.
+both directions. It does not infer the recipient's role or verify recipient
+identity, existence, or assignment. Orchestration MUST select the known
+recipient and its assigned pair; the host authorizes the actual message
+delivery. Unsupported or mismatched recipient settings MUST leave the lane
+pending with the exact limitation. Missing observations MUST be reported as
+unavailable/not observed. Codex MUST NOT fall back to sender settings.
 
 The runtime keeps `codexy.child-routing-request.v1` for thread creation,
 Worker-to-Orchestrator delivery, and other existing routing requests. A v1

@@ -163,7 +163,7 @@ fn contract() -> Policy {
             .collect(),
         fallback: "root_or_named_specialist".to_owned(),
         delivery: Delivery {
-            // Delivery alone retains the known legacy Worker assignment; creation does not.
+            // Keep delivery's allowlist aligned with new Worker creation admission.
             parent_to_generic: WORKER_DELIVERY_ROUTES
                 .iter()
                 .map(|(model, thinking)| Route {

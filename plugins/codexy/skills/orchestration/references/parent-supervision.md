@@ -39,7 +39,7 @@ Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
 - Orchestrator and Worker-to-Orchestrator: `gpt-6.2-sol` / `low` (Sol / Light).
 - Worker creation MUST use [routing](child-routing-policy.md), including its
   ordinary default and verified hard-work facts; parent-to-Worker follow-ups
-  MUST preserve the known recipient's assigned pair, including legacy sessions.
+  MUST preserve the known recipient's assigned pair.
 - Optional final Sentinel: `gpt-6.2-sol` / `high`.
 - Security-focused Warden: `gpt-6.2-astra` / `high`.
 

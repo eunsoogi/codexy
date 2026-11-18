@@ -18,12 +18,13 @@ fn unsupported_models_and_crossed_pairs_have_actionable_corrections() -> TestRes
     let temp = tempfile::tempdir()?;
     let transcript = temp.path().join("unused-transcript.jsonl");
     let roots = plugin_roots(temp.path())?;
+    // Replaced generations are rejected, not retained as delivery compatibility.
     let cases = [
+        ("replaced parent", "gpt-6.1-sol", "low", "UNSUPPORTED_MODEL", "model"),
+        ("replaced Worker", "gpt-6.1-sol", "medium", "UNSUPPORTED_MODEL", "model"),
         ("legacy Luna", "gpt-6-luna", "max", "UNSUPPORTED_MODEL", "model"),
         ("unsupported model", "gpt-5.6-terra", "medium", "UNSUPPORTED_MODEL", "model"),
         ("unsupported effort", "gpt-6.1-terra", "ultra", "UNSUPPORTED_THINKING", "thinking"),
-        ("legacy Sol high", "gpt-6.1-sol", "high", "UNSUPPORTED_THINKING", "thinking"),
-        ("Astra not a generic pair", "gpt-6.2-astra", "medium", "UNSUPPORTED_MODEL", "model"),
         ("Sol max", "gpt-6.2-sol", "max", "UNSUPPORTED_THINKING", "thinking"),
         ("Sol high", "gpt-6.2-sol", "high", "UNSUPPORTED_THINKING", "thinking"),
         ("Terra low", "gpt-6.1-terra", "low", "UNSUPPORTED_THINKING", "thinking"),
