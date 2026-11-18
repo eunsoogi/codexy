@@ -29,6 +29,9 @@ mod legacy_public_assembly;
 mod legacy_selected_source;
 #[path = "runtime_workflow_recovery/release_lineage.rs"]
 mod release_lineage;
+#[cfg(unix)]
+#[path = "runtime_workflow_recovery/release_edit_diagnostics.rs"]
+mod release_edit_diagnostics;
 #[path = "runtime_workflow_recovery/release_reconciliation.rs"]
 mod release_reconciliation;
 #[path = "runtime_workflow_recovery/release_tag_admission.rs"]
