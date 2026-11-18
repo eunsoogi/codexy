@@ -14,14 +14,14 @@ pub(super) struct SpecialistModelContract {
 
 /// Pinned model and reasoning-effort assignments required for each packaged specialist.
 pub(super) const SPECIALIST_MODEL_CONTRACTS: &[SpecialistModelContract] = &[
-    contract("codexy-architect", "gpt-6-astra", "high"),
-    contract("codexy-advisor", "gpt-6-astra", "medium"),
+    contract("codexy-architect", "gpt-6.2-astra", "high"),
+    contract("codexy-advisor", "gpt-6.2-astra", "medium"),
     // Keep acceptance verification distinct from optional final review.
     contract("codexy-auditor", "gpt-6.1-terra", "medium"),
     contract("codexy-cartographer", "gpt-6-luna", "low"),
-    contract("codexy-sentinel", "gpt-6.1-sol", "high"),
-    contract("codexy-shipwright", "gpt-6.1-sol", "high"),
-    contract("codexy-warden", "gpt-6-astra", "high"),
+    contract("codexy-sentinel", "gpt-6.2-sol", "high"),
+    contract("codexy-shipwright", "gpt-6.2-sol", "high"),
+    contract("codexy-warden", "gpt-6.2-astra", "high"),
 ];
 
 const fn contract(

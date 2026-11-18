@@ -34,15 +34,20 @@ fn top_level_agent_contract_keeps_closed_names_and_model_declarations() -> TestR
         let filename = file.as_str().ok_or("agent filename")?;
         let agent: toml::Value = toml::from_str(&fs::read_to_string(root.join(filename))?)?;
         assert!(agent["name"].as_str().is_some_and(|name| !name.is_empty()));
-        assert!(agent["model"].as_str().is_some_and(|model| !model.is_empty()));
-        assert!(agent["model_reasoning_effort"]
-            .as_str()
-            .is_some_and(|effort| !effort.is_empty()));
+        assert!(
+            agent["model"]
+                .as_str()
+                .is_some_and(|model| !model.is_empty())
+        );
+        assert!(
+            agent["model_reasoning_effort"]
+                .as_str()
+                .is_some_and(|effort| !effort.is_empty())
+        );
     }
-    let sentinel: toml::Value = toml::from_str(&fs::read_to_string(
-        root.join("codexy-sentinel.toml"),
-    )?)?;
-    assert_eq!(sentinel["model"].as_str(), Some("gpt-6.1-sol"));
+    let sentinel: toml::Value =
+        toml::from_str(&fs::read_to_string(root.join("codexy-sentinel.toml"))?)?;
+    assert_eq!(sentinel["model"].as_str(), Some("gpt-6.2-sol"));
     assert_eq!(sentinel["model_reasoning_effort"].as_str(), Some("high"));
     Ok(())
 }

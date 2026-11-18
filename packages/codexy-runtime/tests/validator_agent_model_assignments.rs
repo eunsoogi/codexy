@@ -32,13 +32,13 @@ macro_rules! expected_agent {
 }
 
 const EXPECTED_AGENTS: &[ExpectedAgent] = &[
-    expected_agent!("codexy-architect", "gpt-6-astra", "high"),
-    expected_agent!("codexy-advisor", "gpt-6-astra", "medium"),
+    expected_agent!("codexy-architect", "gpt-6.2-astra", "high"),
+    expected_agent!("codexy-advisor", "gpt-6.2-astra", "medium"),
     expected_agent!("codexy-auditor", "gpt-6.1-terra", "medium"),
     expected_agent!("codexy-cartographer", "gpt-6-luna", "low"),
-    expected_agent!("codexy-sentinel", "gpt-6.1-sol", "high"),
-    expected_agent!("codexy-shipwright", "gpt-6.1-sol", "high"),
-    expected_agent!("codexy-warden", "gpt-6-astra", "high"),
+    expected_agent!("codexy-sentinel", "gpt-6.2-sol", "high"),
+    expected_agent!("codexy-shipwright", "gpt-6.2-sol", "high"),
+    expected_agent!("codexy-warden", "gpt-6.2-astra", "high"),
 ];
 
 #[test]
@@ -82,17 +82,17 @@ fn packaged_agents_match_the_independent_role_contract() -> TestResult {
 fn github_weaver_preserves_its_sol_model_and_reasoning_contract() -> TestResult {
     let root = codexy_runtime::paths::repository_root();
     let agent = parse_agent(&root.join("plugins/codexy-github/agents/codexy-weaver.toml"))?;
-    assert_eq!(agent["model"].as_str(), Some("gpt-6.1-sol"));
+    assert_eq!(agent["model"].as_str(), Some("gpt-6.2-sol"));
     assert_eq!(agent["model_reasoning_effort"].as_str(), Some("medium"));
     Ok(())
 }
 
 #[test]
-fn validator_rejects_previous_sol_for_upgraded_roles() -> TestResult {
+fn validator_rejects_previous_generations_for_upgraded_roles() -> TestResult {
     let fixture = agent_fixture(EXPECTED_AGENTS.iter().map(|expected| expected.filename))?;
     for expected in EXPECTED_AGENTS
         .iter()
-        .filter(|agent| agent.model == "gpt-6.1-sol")
+        .filter(|agent| matches!(agent.model, "gpt-6.2-sol" | "gpt-6.2-astra"))
     {
         assert_rejected(
             validate_agent_replacement(
@@ -100,9 +100,13 @@ fn validator_rejects_previous_sol_for_upgraded_roles() -> TestResult {
                 expected.filename,
                 "model",
                 expected.model,
-                "gpt-6-sol",
+                if expected.model == "gpt-6.2-sol" {
+                    "gpt-6.1-sol"
+                } else {
+                    "gpt-6-astra"
+                },
             )?,
-                &format!("{} model must be {}", expected.name, expected.model),
+            &format!("{} model must be {}", expected.name, expected.model),
         );
     }
     Ok(())
@@ -156,7 +160,7 @@ fn optional_final_review_routes_to_sentinel_sol_high() -> TestResult {
     assert_eq!(
         route["reviewer"],
         json!({
-            "name": "codexy-sentinel", "model": "gpt-6.1-sol", "reasoning_effort": "high",
+            "name": "codexy-sentinel", "model": "gpt-6.2-sol", "reasoning_effort": "high",
         })
     );
     Ok(())
@@ -174,7 +178,7 @@ fn validator_in_process_rejects_every_role_model_regression() -> TestResult {
                 expected.model,
                 "gpt-5.5",
             )?,
-                &format!("{} model must be {}", expected.name, expected.model),
+            &format!("{} model must be {}", expected.name, expected.model),
         );
     }
     Ok(())

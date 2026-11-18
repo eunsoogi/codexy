@@ -21,13 +21,13 @@ native location.
 
 | Agent                 | Model           | Reasoning effort | Role                                                                                                                                   |
 | --------------------- | --------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `codexy-architect`    | `gpt-6-astra`   | `high`           | Defines conservative boundaries for plugin schemas, orchestration contracts, MCP/LSP wiring, validators, and durable extension points. |
-| `codexy-advisor`      | `gpt-6-astra`   | `medium`         | Provides bounded analysis and advice; its instructions prohibit edits, delegation, ownership changes, and final approval.              |
+| `codexy-architect`    | `gpt-6.2-astra` | `high`           | Defines conservative boundaries for plugin schemas, orchestration contracts, MCP/LSP wiring, validators, and durable extension points. |
+| `codexy-advisor`      | `gpt-6.2-astra` | `medium`         | Provides bounded analysis and advice; its instructions prohibit edits, delegation, ownership changes, and final approval.              |
 | `codexy-auditor`      | `gpt-6.1-terra` | `medium`         | Turns acceptance criteria into observable QA across configuration, documentation, CLI, GitHub, app, and plugin surfaces.               |
 | `codexy-cartographer` | `gpt-6-luna`    | `low`            | Performs fast, read-only repository discovery with codegraph, direct reads, file mapping, and ownership boundaries.                    |
-| `codexy-sentinel`     | `gpt-6.1-sol`   | `high`           | Provides optional final review of scope, correctness, safety, tests, and current-head evidence.                                        |
-| `codexy-shipwright`   | `gpt-6.1-sol`   | `high`           | Prepares version, manifest, marketplace, artifact, tag, release, and rollback readiness.                                               |
-| `codexy-warden`       | `gpt-6-astra`   | `high`           | Reviews workflows, shell commands, credentials, remote MCPs, untrusted input, permissions, and state mutation.                         |
+| `codexy-sentinel`     | `gpt-6.2-sol`   | `high`           | Provides optional final review of scope, correctness, safety, tests, and current-head evidence.                                        |
+| `codexy-shipwright`   | `gpt-6.2-sol`   | `high`           | Prepares version, manifest, marketplace, artifact, tag, release, and rollback readiness.                                               |
+| `codexy-warden`       | `gpt-6.2-astra` | `high`           | Reviews workflows, shell commands, credentials, remote MCPs, untrusted input, permissions, and state mutation.                         |
 
 These model assignments come directly from the packaged TOMLs, which are
 authoritative for a named custom agent's model and reasoning effort. Callers

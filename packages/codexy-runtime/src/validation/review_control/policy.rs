@@ -55,7 +55,7 @@ pub(super) fn resolve(plugin_root: &Path, text: &str) -> Result<Value> {
 pub(super) fn sentinel() -> Reviewer {
     Reviewer {
         name: "codexy-sentinel".into(),
-        model: "gpt-6.1-sol".into(),
+        model: "gpt-6.2-sol".into(),
         reasoning_effort: "high".into(),
     }
 }
