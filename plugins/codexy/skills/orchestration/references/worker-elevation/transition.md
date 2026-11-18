@@ -81,7 +81,7 @@ target is absent from a list.
 
 ### 2. Request Sol/Medium and start read-only setup
 
-Before the target's first inference, select `gpt-6.1-sol` / `medium` through the
+Before the target's first inference, select `gpt-6.2-sol` / `medium` through the
 Codex desktop model and reasoning control beneath the composer when that pair is
 available. The official control documents model and effort selection; a visible
 selection is only a request, not proof of authenticated assignment. If
@@ -133,7 +133,7 @@ prove checkout identity or survival after source archival.
 The target MUST verify the bidirectional route to the exact original
 Orchestrator ID supplied by the authenticated assignment. The target MUST send
 one authenticated report to that exact parent using
-`send_message_to_thread({threadId, hostId, model: "gpt-6.1-sol", thinking:
+`send_message_to_thread({threadId, hostId, model: "gpt-6.2-sol", thinking:
 "low", prompt})`;
 transport acceptance alone is not a parent callback. The Orchestrator MUST
 observe the report on its task and MUST send a follow-up to the exact target ID

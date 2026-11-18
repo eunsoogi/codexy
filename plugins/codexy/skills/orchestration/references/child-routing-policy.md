@@ -57,7 +57,7 @@ override them. Ordinary, bounded, and simple Worker assignments MUST default to
 `gpt-6.1-terra` / `medium`. For a general Worker, Terra/Medium is also the
 default once the safety facts pass; only complete, verified hard-work facts can
 select Sol/Medium. A new general Worker with valid hard-work facts MUST be
-assigned `gpt-6.1-sol` / `medium` directly; the `general` classification alone
+assigned `gpt-6.2-sol` / `medium` directly; the `general` classification alone
 MUST NOT select that pair. Parent-to-Worker follow-ups MUST preserve the known
 Worker's assigned pair and MUST NOT copy sender settings or silently reassign
 the Worker. The thread-delivery hook accepts only the exact pairs Sol/Low,
@@ -125,7 +125,7 @@ to Terra/Medium, including general implementation, and valid hard-work facts
 select Sol/Medium for a new Worker. Worker-to-Orchestrator delivery uses the
 main Orchestrator's assigned Sol/Low pair. The thread-delivery hook validates a
 non-empty `threadId` and an explicit supported model/thinking pair
-(`gpt-6.1-sol`/`low`, `gpt-6.1-terra`/`medium`, or `gpt-6.1-sol`/`medium`) for
+(`gpt-6.2-sol`/`low`, `gpt-6.1-terra`/`medium`, or `gpt-6.2-sol`/`medium`) for
 both directions. It does not infer the recipient's role or verify recipient
 identity, existence, or assignment. Orchestration MUST select the known
 recipient and its assigned pair; the host authorizes the actual message

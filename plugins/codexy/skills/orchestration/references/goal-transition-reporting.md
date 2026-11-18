@@ -24,14 +24,14 @@ The child-to-parent call MUST follow the current message-tool contract:
 send_message_to_thread({
   threadId: "<parent threadId supplied by the assignment>",
   hostId: "local",
-  model: "gpt-6.1-sol",
+  model: "gpt-6.2-sol",
   thinking: "low",
   prompt: "<non-empty compact receipt>"
 })
 ```
 
 The child MUST use the parent named by the assignment and its pair: Worker-to-
-Orchestrator uses `gpt-6.1-sol` / `low` per
+Orchestrator uses `gpt-6.2-sol` / `low` per
 [child-routing policy](child-routing-policy.md). Worker Terra/Medium or
 Sol/Medium MUST NOT be copied to parent reports. The delivery hook checks fields
 and pair only; it does not verify identity or assignment, and the host

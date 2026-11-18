@@ -18,10 +18,10 @@ use thread_capabilities::ThreadDirection;
 // diagnostics and model constants below.
 const SIMPLE_WORKER_MODEL: &str = "gpt-6.1-terra";
 const SIMPLE_WORKER_THINKING: &str = "medium";
-const HARD_WORKER_MODEL: &str = "gpt-6.1-sol";
+const HARD_WORKER_MODEL: &str = "gpt-6.2-sol";
 const HARD_WORKER_THINKING: &str = "medium";
 // Parent requests use Sol/Light; Worker selection and authenticated directions stay distinct.
-const ORCHESTRATOR_MODEL: &str = "gpt-6.1-sol";
+const ORCHESTRATOR_MODEL: &str = "gpt-6.2-sol";
 const ORCHESTRATOR_THINKING: &str = "low";
 
 pub(super) struct Policy {

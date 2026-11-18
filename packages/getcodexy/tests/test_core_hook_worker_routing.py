@@ -22,8 +22,8 @@ TIMING_ENV = "CODEXY_CORE_HOOK_TIMING_FILE"
 TOOL = "codex_app__send_message_to_thread"
 LEGACY_METADATA = "codexy_thread_delivery"
 ALLOWED_PAIRS = (
-    ("gpt-6.1-sol", "low"),
-    ("gpt-6.1-sol", "medium"),
+    ("gpt-6.2-sol", "low"),
+    ("gpt-6.2-sol", "medium"),
     ("gpt-6.1-terra", "medium"),
 )
 TOOL_INPUT = {

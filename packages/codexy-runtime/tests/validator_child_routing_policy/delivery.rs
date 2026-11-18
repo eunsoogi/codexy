@@ -3,16 +3,17 @@
 use super::*;
 
 // The parent pair is independent of both assigned Worker pairs.
-const PARENT: (&str, &str) = ("gpt-6.1-sol", "low");
+const PARENT: (&str, &str) = ("gpt-6.2-sol", "low");
 
 #[test]
 fn resolver_allows_only_creation_pairs_for_worker_delivery() -> TestResult {
     for pair in [
         DEFAULT_WORKER,
         HARD_WORKER,
+        ("gpt-6.1-sol", "medium"),
         SOL,
         PARENT,
-        ("gpt-6.1-sol", "max"),
+        ("gpt-6.2-sol", "max"),
         ("gpt-6-astra", "medium"),
     ] {
         let mut followup = bounded_request();
@@ -48,6 +49,7 @@ fn resolver_allows_only_creation_pairs_for_worker_delivery() -> TestResult {
     )?;
     for pair in [
         PARENT,
+        ("gpt-6.1-sol", "low"),
         DEFAULT_WORKER,
         SOL,
         ("gpt-6-astra", "medium"),

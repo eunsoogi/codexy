@@ -75,7 +75,7 @@ def _selected_route_example(data: dict[str, object]) -> str | None:
     if model == HARD_WORKER_ROUTE[0]:
         return (
             "Minimal correction if this is the existing assignment selection: "
-            "preserve model='gpt-6.1-sol' and set thinking='medium'."
+            "preserve model='gpt-6.2-sol' and set thinking='medium'."
         )
     return None
 
@@ -90,7 +90,7 @@ _WORKER_FIELD_CORRECTION_GUIDANCE = (
     "For this already-authorized Worker assignment, the Orchestrator MUST reuse any already-selected "
     "Worker pair; if none is selected, classify the task evidence under the "
     "canonical child-routing policy: ordinary work uses model='gpt-6.1-terra' and "
-    "thinking='medium'; use model='gpt-6.1-sol' and thinking='medium' only when "
+    "thinking='medium'; use model='gpt-6.2-sol' and thinking='medium' only when "
     "the task evidence meets the hard-work criteria. The assignment and its "
     "evidence, plus the canonical policy, are the sources for model and thinking. "
     "Use projectId from the saved project selected for this task; a Worker "

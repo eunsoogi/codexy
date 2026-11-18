@@ -7,11 +7,11 @@ from typing import cast
 from .envelope import Diagnostic, Request
 
 WORKER_ROUTE = ("gpt-6.1-terra", "medium")
-HARD_WORKER_ROUTE = ("gpt-6.1-sol", "medium")
+HARD_WORKER_ROUTE = ("gpt-6.2-sol", "medium")
 # Creation still requires an explicit pair; delivery also requires the recipient.
 FIELDS = ("model", "thinking")
 WORKER_CREATION_ROUTES = frozenset({WORKER_ROUTE, HARD_WORKER_ROUTE})
-ORCHESTRATOR_ROUTE = ("gpt-6.1-sol", "low")
+ORCHESTRATOR_ROUTE = ("gpt-6.2-sol", "low")
 ALLOWED_PAIRS = (
     ORCHESTRATOR_ROUTE,
     WORKER_ROUTE,
