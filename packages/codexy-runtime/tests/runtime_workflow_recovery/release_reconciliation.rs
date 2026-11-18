@@ -211,6 +211,7 @@ esac
     let state = fs::read(fixture.join("state.json"))?;
     let baseline_bytes = fs::read(fixture.join("baseline.json"))?;
     let verified = run("single")?;
+    assert!(verified.stderr.is_empty(), "{:?}", verified);
     assert!(verified.status.success(), "stdout: {} stderr: {}", String::from_utf8_lossy(&verified.stdout), String::from_utf8_lossy(&verified.stderr));
     let rejected_states: Vec<(&str, Box<dyn Fn(&mut serde_json::Value)>)> = vec![
         ("release id", Box::new(|state| state["id"] = serde_json::json!(43))),
@@ -228,7 +229,7 @@ esac
         let mut tampered: serde_json::Value = serde_json::from_slice(&state)?;
         mutate(&mut tampered);
         fs::write(fixture.join("state.json"), serde_json::to_vec(&tampered)?)?;
-        assert!(!run("single")?.status.success(), "{name} mutation was accepted");
+        super::release_edit_diagnostics::assert_protected_mutation(run("single")?, name);
     }
     fs::write(fixture.join("state.json"), &state)?;
     for (name, pointer, replacement) in [
@@ -239,7 +240,7 @@ esac
         let mut tampered: serde_json::Value = serde_json::from_slice(&baseline_bytes)?;
         *tampered.pointer_mut(pointer).ok_or("baseline field")? = replacement;
         fs::write(fixture.join("baseline.json"), serde_json::to_vec(&tampered)?)?;
-        assert!(!run("single")?.status.success(), "{name} mutation was accepted");
+        super::release_edit_diagnostics::assert_protected_mutation(run("single")?, name);
     }
     fs::write(fixture.join("baseline.json"), &baseline_bytes)?;
     assert!(run("many-unrelated")?.status.success());

@@ -1,31 +1,66 @@
 #!/bin/sh
 set -eu
 
+# Diagnostic facts never contain event values. Unknown key names are redacted,
+# known names are bounded, and the original exit status remains authoritative.
+stage=environment
+action=unavailable
+changes_keys=unavailable
+report_failure() {
+	status=$?
+	trap - 0
+	if [ "$status" -ne 0 ]; then
+		printf 'RELEASE_EDIT_VALIDATION_FAILED stage=%s action=%s changes_keys=%s\n' "$stage" "$action" "$changes_keys" >&2
+	fi
+	exit "$status"
+}
+trap report_failure 0
+
 : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
 : "${GITHUB_EVENT_PATH:?GITHUB_EVENT_PATH is required}"
 event="$GITHUB_EVENT_PATH"
+action="$(jq -sr 'if length != 1 then "invalid" else (.[0].action | if IN("edited", "created", "published", "unpublished", "deleted", "prereleased", "released") then . else "other" end) end' "$event" 2>/dev/null)" || action=invalid
+changes_keys="$(jq -sr '
+  if length != 1 then "invalid" else (.[0].changes | if type == "object" then
+    keys | . as $keys | if length == 0 then "none" else
+      (.[0:16] | map(if IN("body", "name", "tag_name", "target_commitish", "draft", "prerelease", "assets", "make_latest") then . else "other" end) | join(",")) +
+      (if ($keys | length) > 16 then ",truncated" else "" end)
+    end
+  else "invalid" end) end' "$event" 2>/dev/null)" || changes_keys=invalid
 # Only the release description may be edited; identity or asset changes must use another workflow path.
-test "$(jq -r .action "$event")" = edited
-test "$(jq -r '(.changes | keys | sort | join(","))' "$event")" = body
-release_id="$(jq -r .release.id "$event")"
-case "$release_id" in ''|*[!0-9]*) exit 1 ;; esac
-gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" | jq '{id, name, tagName: .tag_name, targetCommitish: .target_commitish, isDraft: .draft, isPrerelease: .prerelease, assets: [.assets[] | {id, name, size, digest}]}' > release-state.json
+stage=event_action
+test "$(jq -r .action "$event" 2>/dev/null)" = edited
+stage=event_changes
+test "$(jq -r '(.changes | keys | sort | join(","))' "$event" 2>/dev/null)" = body
+stage=release_id
+release_id="$(jq -r .release.id "$event" 2>/dev/null)"
+case "$release_id" in '' | *[!0-9]*) exit 1 ;; esac
+stage=release_state
+gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" | jq '{id, name, tagName: .tag_name, targetCommitish: .target_commitish, isDraft: .draft, isPrerelease: .prerelease, assets: [.assets[] | {id, name, size, digest}]}' >release-state.json
+stage=baseline_asset_id
 baseline_id="$(jq -r '.assets[] | select(.name == "release-baseline.json") | .id' release-state.json)"
-case "$baseline_id" in ''|null|*[!0-9]*) exit 1 ;; esac
+case "$baseline_id" in '' | null | *[!0-9]*) exit 1 ;; esac
 mkdir -p release-baseline release-assets
-gh api -H 'Accept: application/octet-stream' "repos/$GITHUB_REPOSITORY/releases/assets/$baseline_id" > release-baseline/release-baseline.json
+stage=baseline_download
+gh api -H 'Accept: application/octet-stream' "repos/$GITHUB_REPOSITORY/releases/assets/$baseline_id" >release-baseline/release-baseline.json
 signer="$GITHUB_REPOSITORY/.github/workflows/publish-version-release.yml"
 runtime_signer="$GITHUB_REPOSITORY/.github/workflows/runtime-candidate.yml"
 source_digest="$(jq -r .targetCommitish release-state.json)"
 # Verify the saved baseline and current assets against their distinct signer workflows and source commits.
+stage=baseline_attestation
 ACTIVATION_COMMIT="$source_digest" scripts/verify-release-attestation-set release-baseline baseline-attestation.json baseline
 for name in codexy-marketplace-plugin.tar.gz codexy-marketplace-bundle.tar.gz codexy-runtime-package.tar.gz runtime-release-receipt.json; do
-  asset_id="$(jq -r --arg name "$name" '.assets[] | select(.name == $name) | .id' release-state.json)"
-  case "$asset_id" in ''|null|*[!0-9]*) exit 1 ;; esac
-  gh api -H 'Accept: application/octet-stream' "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" > "release-assets/$name"
+	stage="asset_id_$name"
+	asset_id="$(jq -r --arg name "$name" '.assets[] | select(.name == $name) | .id' release-state.json)"
+	case "$asset_id" in '' | null | *[!0-9]*) exit 1 ;; esac
+	stage="asset_download_$name"
+	gh api -H 'Accept: application/octet-stream' "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" >"release-assets/$name"
 done
+stage=receipt_source
 staging_source_commit="$(jq -er .source.stagingSourceCommit release-assets/runtime-release-receipt.json)"
+stage=release_attestations
 STAGING_SOURCE_COMMIT="$staging_source_commit" ACTIVATION_COMMIT="$source_digest" scripts/verify-release-attestation-set release-assets release-attestations.json
+stage=baseline_comparison
 jq -e --slurpfile baseline release-baseline/release-baseline.json --slurpfile attestations release-attestations.json --arg signer "$signer" --arg runtimeSigner "$runtime_signer" --arg activation "$source_digest" --arg staging "$staging_source_commit" '
   . as $release | $baseline[0] as $expected |
   ($release.id == $expected.release.id) and ($release.name == $expected.release.name) and
