@@ -56,6 +56,34 @@ resolved by the host. Each component record must name that marketplace, its
 canonical plugin identity, and the matching absolute plugin path below that
 root. A stale or malformed record cannot be treated as an unrelated plugin.
 
+## Verified local release upgrades
+
+A frozen local marketplace is validated against its own single canonical
+version, not against the newer installer's version. Its installed records must
+match that archive. An `update` or `bootstrap` crossing versions acquires a
+separate official stable-release bundle; it never edits the old archive or
+converts it to Git.
+
+This path requires `gh` with artifact-attestation verification support. It binds
+both the bundle and release receipt to the official publishing workflow, `main`,
+and the same activation commit, independently of matching API/receipt/file
+SHA-256 digests. Missing verification fails closed before registration changes.
+Extraction rejects unsafe paths, links, collisions and oversized payloads.
+
+A marketplace version is atomic: when crossing local release versions, even an
+explicit update subset reinstalls **all already-selected components** at the new
+version, without selecting new components. Same-version updates retain the usual
+subset behavior. Bootstrap still selects the full supported installation.
+
+An operation-bound companion records the two archive identities and content
+fingerprints after the main lifecycle journal is durable. This leaves the
+existing component journal schema and ordinary mixed-source rejection unchanged.
+Interrupted switches roll back to the old local registration, exact prior
+versions, selection and managed files; unrelated settings remain user-owned. A
+failed rollback retains the journals. A committed retry verifies target contents
+before activation. These transaction records are local recovery data, not
+official release receipts.
+
 ## Commands
 
 | Command                                      | Selection rule                                                                                                                   | Mutation rule                                                                                                      |

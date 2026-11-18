@@ -77,3 +77,19 @@ def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
             raise ValueError("local Codexy marketplace provenance has duplicate keys")
         result[key] = value
     return result
+
+
+def archive_version(root: Path, plugin_names: tuple[str, ...]) -> str:
+    """Require one canonical version across all independently matching packages."""
+    from .component_manifest import valid_semver
+
+    validate_local_archive(root, plugin_names=plugin_names)
+    data = json.loads(
+        (root / ".agents/plugins/marketplace.json").read_text(),
+        object_pairs_hook=_unique_object,
+    )
+    versions = {entry["version"] for entry in data["plugins"]}
+    if len(versions) != 1 or not valid_semver(version := next(iter(versions))):
+        raise ValueError("local Codexy marketplace has mixed or invalid versions")
+    validate_local_archive(root, version, plugin_names)
+    return version

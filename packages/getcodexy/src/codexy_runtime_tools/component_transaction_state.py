@@ -146,6 +146,9 @@ def write_journal(home: Path, journal: Journal) -> None:
 
 
 def clear_journal(home: Path) -> None:
+    from .local_upgrade_state import clear
+
+    clear(home)
     _unlink_regular(_journal_path(home))
 
 

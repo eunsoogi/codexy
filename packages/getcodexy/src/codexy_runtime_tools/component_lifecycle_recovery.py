@@ -10,7 +10,12 @@ from .component_hook_activation import HookLister
 from .component_lifecycle_finish import finish_committed
 from .component_lifecycle_mcp import materialize_mcp_caches, materialize_mcp_sources
 from .component_lifecycle_preflight import existing_marketplace
-from .component_lifecycle_preflight import refresh_operation_root as _refresh
+from .local_upgrade import (
+    forward as local_forward,
+    rollback as local_rollback,
+    refresh as local_refresh,
+    verify_target,
+)
 from .component_registration_lifecycle import synchronize_component_registrations
 from .component_manifest import ComponentManifest
 from .component_resolver import (
@@ -30,7 +35,8 @@ from .component_transaction_state import (
 )
 from .component_lifecycle_terminal import terminal
 from .marketplace_repin import reconcile_official_marketplace_root
-from .pre_session import _json, official_marketplace_root
+from .pre_session import official_marketplace_root
+from .component_host_mutations import mutate, list_installed
 from .plugin_resolution import MarketplaceBinding, MarketplaceIdentity
 
 
@@ -70,7 +76,7 @@ def recover_if_needed(
                 executable, invoke, manifest, root, journal, journal.resolved, (), home
             )
         except BaseException as error:
-            root = _refresh(executable, invoke, manifest, root, home, journal.command)
+            root = local_refresh(home, executable, invoke, manifest, root, journal)
             rollback_or_raise(home, executable, invoke, manifest, root, journal, error)
             terminal(home, manifest, journal.receipt("rolled-back", journal.before))
             clear_journal(home)
@@ -122,6 +128,8 @@ def rollback_or_raise(
 ) -> None:
     try:
         write_journal(home, journal.with_phase("rolling-back"))  # Record phase first.
+        if local_rollback(home, executable, invoke, manifest, root, journal):
+            return
         restore_selection(home, executable, invoke, manifest, root, journal.before)
         installed = list_installed(executable, invoke)
         if reconcile_installed_inventory(manifest, installed, root) != journal.before:
@@ -150,7 +158,9 @@ def write_completed(
     hook_lister: HookLister | None = None,
 ) -> dict[str, object]:
     try:
+        verify_target(home, journal, manifest)
         synchronize_component_registrations(home, root, journal)
+        verify_target(home, journal, manifest)
     except BaseException as error:
         rollback_or_raise(home, executable, invoke, manifest, root, journal, error)
         receipt = terminal(
@@ -206,8 +216,19 @@ def apply_forward(
 ) -> tuple[tuple[str, ...], MarketplaceBinding]:
     if journal.command in {"update", "bootstrap"}:
         if isinstance(root, MarketplaceIdentity) and root.source_type == "local":
-            if existing_marketplace(executable, invoke, manifest) != root:
+            if (
+                existing_marketplace(
+                    executable, invoke, manifest, allow_older_local=True
+                )
+                != root
+            ):
                 raise ValueError("local Codexy marketplace identity changed")
+            previous = root
+            root = local_forward(home, executable, invoke, manifest, root, journal)
+            if root != previous:
+                adds = (
+                    journal.target
+                )  # A marketplace version is atomic across its selected plugins.
         else:
             root = reconcile_official_marketplace_root(
                 executable,
@@ -215,36 +236,15 @@ def apply_forward(
                 manifest.version,
                 home,
             )
+    verify_target(home, journal, manifest)
     materialize_mcp_sources(root, manifest, journal.target)
     for component in adds:
+        verify_target(home, journal, manifest)
         mutate(executable, invoke, "add", manifest, component)
     for component in removes:
+        verify_target(home, journal, manifest)
         mutate(executable, invoke, "remove", manifest, component)
     installed = list_installed(executable, invoke)
+    verify_target(home, journal, manifest)
     materialize_mcp_caches(home, root, manifest, journal.target)
     return _verify(manifest, installed, journal.target, root), root
-
-
-def mutate(
-    executable: Path,
-    invoke: Runner,
-    action: str,
-    manifest: ComponentManifest,
-    component_id: str,
-) -> None:
-    _json(
-        invoke(
-            [
-                str(executable),
-                "plugin",
-                action,
-                manifest.component(component_id).asset.plugin_id,
-                "--json",
-            ]
-        ),
-        f"plugin {action}",
-    )
-
-
-def list_installed(executable: Path, invoke: Runner) -> object:
-    return _json(invoke([str(executable), "plugin", "list", "--json"]), "plugin list")

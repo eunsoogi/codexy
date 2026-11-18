@@ -220,8 +220,17 @@ class WindowsActivationContractTests(unittest.TestCase):
         support = (
             repository / "scripts/public_marketplace_bundle_support.py"
         ).read_text(encoding="utf-8")
+        self.assertIn(
+            'CONTRACT = Path(".agents/plugins/release-publish-contract.json")', support
+        )
+        self.assertIn(
+            "from codexy_runtime_tools.public_marketplace_bundle import", support
+        )
+        support = (
+            repository
+            / "packages/getcodexy/src/codexy_runtime_tools/public_marketplace_bundle.py"
+        ).read_text(encoding="utf-8")
         for required in (
-            'CONTRACT = Path(".agents/plugins/release-publish-contract.json")',
             'LEGACY_UPGRADE_VERSION = "1.13.4"',
             "runtime-release-receipt/v2",
             "manifestSha256",
