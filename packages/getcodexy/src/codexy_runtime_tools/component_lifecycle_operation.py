@@ -2,24 +2,22 @@ from __future__ import annotations
 
 import os
 from contextlib import nullcontext
-from functools import partial
 from pathlib import Path
 
 from .component_lifecycle_admission import (
-    admit_pending_receipt,
     admitted_bootstrap_recovery_selection,
     admitted_recovery_selection,
     admitted_selection,
+    admit_request,
     replay_receipt,
 )
 from .component_hook_activation import HookLister
 from .component_lifecycle_interlock import migration_rejection
 from .component_manifest import ComponentManifest, load_component_manifest
+from .local_upgrade import pending_state, refresh as refresh_local
 from .component_lifecycle_preflight import (
     existing_marketplace,
     recorded_selection,
-    refresh_operation_root as _refresh,
-    validate_request,
 )
 from .component_lifecycle_recovery import (
     apply_forward as _apply_forward,
@@ -41,9 +39,7 @@ from .component_transaction_state import (
     Journal,
     PreAdmissionError,
     clear_journal,
-    decode_inventory,
     inventory_path,
-    read_journal,
     transaction_lock,
     write_inventory,
     write_journal,
@@ -86,42 +82,22 @@ def run_operation(
             home, manifest, identifier, command, requested, lock_held
         ):
             return rejection
-        pending = read_journal(home)
-        if pending is not None:
-            pending.validate(manifest, decode_inventory)
-            pending_receipt = admit_pending_receipt(home, manifest, pending)
-        else:
-            pending_receipt = None
+        pending, pending_receipt = pending_state(home, executable, invoke, manifest)
         replay = replay_receipt(home, manifest, identifier, command, requested)
         if replay is not None and pending is None:
             return replay
+        recorded, rejection = admit_request(
+            home, manifest, identifier, command, requested
+        )
+        if rejection is not None:
+            return rejection
         try:
-            validate_request(command, requested, manifest)
-            recorded = recorded_selection(home, manifest)
-        except ComponentResolutionError as error:
-            return _reject(
-                home,
+            root = existing_marketplace(
+                executable,
+                invoke,
                 manifest,
-                identifier,
-                command,
-                requested,
-                (),
-                RejectionStage.REQUEST,
-                error,
+                allow_older_local=command in {"update", "bootstrap"},
             )
-        except (OSError, ValueError, RuntimeError):
-            return _reject(
-                home,
-                manifest,
-                identifier,
-                command,
-                requested,
-                (),
-                RejectionStage.PRESTATE,
-                StateFailure.INCONSISTENT_INSTALLED_STATE,
-            )
-        try:
-            root = existing_marketplace(executable, invoke, manifest)
             inventory = _list(executable, invoke)
             if (
                 pending is not None
@@ -181,7 +157,12 @@ def run_operation(
                 _recover_if_needed(
                     home, executable, invoke, manifest, root, hook_lister
                 )
-            root = existing_marketplace(executable, invoke, manifest)
+            root = existing_marketplace(
+                executable,
+                invoke,
+                manifest,
+                allow_older_local=command in {"update", "bootstrap"},
+            )
             inventory = _list(executable, invoke)
             before = admitted_selection(manifest, inventory, root, command)
             recorded = recorded_selection(home, manifest)
@@ -228,16 +209,22 @@ def run_operation(
         write_journal(home, journal)  # Save the before-state before package changes.
         try:
             root = root or official_marketplace_root(executable, invoke)
-            forward = partial(_apply_forward, home=home)
-            installed, root = forward(
-                executable, invoke, manifest, root, journal, plan.adds, plan.removes
+            installed, root = _apply_forward(
+                executable,
+                invoke,
+                manifest,
+                root,
+                journal,
+                plan.adds,
+                plan.removes,
+                home,
             )
         except BaseException as error:
             if root is None:
                 raise RuntimeError(
                     "component operation failed; durable recovery is required"
                 ) from error
-            root = _refresh(executable, invoke, manifest, root, home, journal.command)
+            root = refresh_local(home, executable, invoke, manifest, root, journal)
             _rollback_or_raise(home, executable, invoke, manifest, root, journal, error)
             receipt = _terminal(
                 home, manifest, journal.receipt("rolled-back", journal.before)

@@ -50,6 +50,7 @@ pub(super) const REPLACED_FILES: &[&str] = &[
     "scripts/download-selected-runtime-package.sh",
     "scripts/verify_public_marketplace_bundle.py",
     "scripts/public_marketplace_bundle_support.py",
+    "packages/getcodexy/src/codexy_runtime_tools/public_marketplace_bundle.py",
     "packages/codexy-runtime/tests/runtime_workflow_recovery/ci_dispatch_fixture.rs",
 ];
 

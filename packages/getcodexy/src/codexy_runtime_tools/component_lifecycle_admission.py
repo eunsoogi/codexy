@@ -23,7 +23,11 @@ def admitted_selection(
     command: str,
 ) -> tuple[str, ...]:
     """Resolve the operation selection before any lifecycle mutation begins."""
-    return admit_operation_inventory(manifest, inventory, marketplace_root, command)
+    selected = admit_operation_inventory(manifest, inventory, marketplace_root, command)
+    from .local_upgrade import validate_inventory_version
+
+    validate_inventory_version(manifest, inventory, marketplace_root)
+    return selected
 
 
 def admitted_recovery_selection(
@@ -123,3 +127,42 @@ def _validate_receipt(manifest: ComponentManifest, receipt: dict[str, object]) -
         if str(error).startswith("operation receipt"):
             raise
         raise ValueError(f"operation receipt {error}") from error
+
+
+def admit_request(
+    home: Path,
+    manifest: ComponentManifest,
+    identifier: str,
+    command: str,
+    requested: tuple[str, ...],
+):
+    from .component_lifecycle_preflight import validate_request, recorded_selection
+    from .component_lifecycle_terminal import reject
+    from .component_resolver import ComponentResolutionError
+    from .component_transition_model import RejectionStage, StateFailure
+
+    try:
+        validate_request(command, requested, manifest)
+        return recorded_selection(home, manifest), None
+    except ComponentResolutionError as error:
+        return None, reject(
+            home,
+            manifest,
+            identifier,
+            command,
+            requested,
+            (),
+            RejectionStage.REQUEST,
+            error,
+        )
+    except (OSError, ValueError, RuntimeError):
+        return None, reject(
+            home,
+            manifest,
+            identifier,
+            command,
+            requested,
+            (),
+            RejectionStage.PRESTATE,
+            StateFailure.INCONSISTENT_INSTALLED_STATE,
+        )

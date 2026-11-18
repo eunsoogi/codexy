@@ -41,6 +41,8 @@ def existing_marketplace(
     executable: Path,
     invoke: Runner,
     manifest: ComponentManifest | None = None,
+    *,
+    allow_older_local: bool = False,
 ) -> MarketplaceBinding | None:
     payload = _json(
         invoke([str(executable), "plugin", "marketplace", "list", "--json"]),
@@ -48,9 +50,24 @@ def existing_marketplace(
     )
     binding = marketplace_identity(payload) if named_marketplace(payload) else None
     if binding is not None and manifest is not None:
+        version = manifest.version
+        if (
+            allow_older_local
+            and isinstance(binding, MarketplaceIdentity)
+            and binding.source_type == "local"
+        ):
+            from .local_marketplace import archive_version
+
+            version = archive_version(
+                binding.root, tuple(c.plugin for c in manifest.components)
+            )
+            if tuple(map(int, version.split("."))) > tuple(
+                map(int, manifest.version.split("."))
+            ):
+                raise ValueError("local marketplace is newer than the installer")
         validate_local_marketplace(
             binding,
-            manifest.version,
+            version,
             tuple(component.plugin for component in manifest.components),
         )
     return binding

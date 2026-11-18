@@ -152,6 +152,17 @@ fn check_support(root: &Path) -> Result<()> {
     let path = root.join(SUPPORT);
     let text = fs::read_to_string(&path)
         .with_context(|| format!("missing required file: {}", display_relative(&path)))?;
+    let shared =
+        root.join("packages/getcodexy/src/codexy_runtime_tools/public_marketplace_bundle.py");
+    if !text.contains("from codexy_runtime_tools.public_marketplace_bundle import") {
+        bail!(
+            "{} must use the shared public bundle verifier",
+            display_relative(&path)
+        );
+    }
+    let shared_text = fs::read_to_string(&shared)
+        .with_context(|| format!("missing required file: {}", display_relative(&shared)))?;
+    let text = format!("{text}\n{shared_text}");
     for required in [
         "CONTRACT = Path(\".agents/plugins/release-publish-contract.json\")",
         "tarfile.open",

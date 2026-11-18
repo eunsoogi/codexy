@@ -2,8 +2,8 @@ use std::fs;
 
 use serde_json::Value;
 
-use super::{archive_repository, run_sync};
 use super::isolation::{fixture_version, next_patch_version};
+use super::{archive_repository, run_sync};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -120,6 +120,21 @@ fn selected_release_projections_fail_closed_without_mutation() -> TestResult {
             },
         ),
         (
+            "shared bundle verifier detached",
+            "scripts/public_marketplace_bundle_support.py",
+            |text: String, _version: &str| {
+                text.replace(
+                    "from codexy_runtime_tools.public_marketplace_bundle import",
+                    "from unverified import",
+                )
+            },
+        ),
+        (
+            "shared bundle manifest digest bypass",
+            "packages/getcodexy/src/codexy_runtime_tools/public_marketplace_bundle.py",
+            |text: String, _version: &str| text.replace("manifestSha256", "ignoredDigest"),
+        ),
+        (
             "public bundle verifier pin",
             "scripts/public_marketplace_bundle_support.py",
             |mut text: String, _version: &str| {
@@ -138,7 +153,10 @@ fn selected_release_projections_fail_closed_without_mutation() -> TestResult {
         assert_ne!(mutated, original, "{label} fixture did not change");
         fs::write(&path, &mutated)?;
         let output = run_sync(&root, &["--check"])?;
-        assert!(!output.status.success(), "stale {label} unexpectedly passed");
+        assert!(
+            !output.status.success(),
+            "stale {label} unexpectedly passed"
+        );
         assert_eq!(fs::read_to_string(&path)?, mutated, "{label} was mutated");
     }
     Ok(())
@@ -166,9 +184,8 @@ fn candidate_keeps_the_selected_public_release_and_historical_fixtures() -> Test
         root.join(".agents/plugins/release-publish-contract.json"),
     )?)?;
     assert_eq!(contract["runtime"]["selectedTag"], format!("v{selected}"));
-    let historical = root.join(
-        "packages/codexy-runtime/tests/runtime_workflow_recovery/ci_dispatch_fixture.rs",
-    );
+    let historical =
+        root.join("packages/codexy-runtime/tests/runtime_workflow_recovery/ci_dispatch_fixture.rs");
     let historical_text = fs::read_to_string(historical)?;
     assert!(
         historical_text.contains("HISTORICAL_RELEASE_FIXTURE"),
