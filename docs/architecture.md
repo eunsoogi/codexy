@@ -35,7 +35,7 @@ should not silently override them. The Advisor's read-only boundary is
 instruction-based and does not imply host-level permission enforcement.
 
 The optional `codexy-github` plugin separately packages `codexy-weaver` for
-GitHub integration after installation.
+GitHub integration after installation, with `gpt-6.2-sol` / `medium`.
 
 Removed-role rationale and review responsibility are in
 [`specialist-role-equivalence.md`](specialist-role-equivalence.md).
@@ -44,17 +44,17 @@ Removed-role rationale and review responsibility are in
 
 The packaged specialists above are separate from issue-task ownership roles. The
 Orchestrator owns the overall goal, coordination, verification, correction, and
-acceptance; its requested pair is `gpt-6.1-sol` / `low` (Sol / Light), also used
+acceptance; its requested pair is `gpt-6.2-sol` / `low` (Sol / Light), also used
 for authenticated Worker-to-Orchestrator delivery. The Advisor uses
-`gpt-6-astra` / `medium` for bounded, instruction-based read-only advice; this
+`gpt-6.2-astra` / `medium` for bounded, instruction-based read-only advice; this
 boundary does not enforce host permissions. A Worker owns one issue lane, its
 branch/worktree, and its finite goal. Ordinary, simple, bounded, and general
 implementation work defaults to `gpt-6.1-terra` / `medium`. A new general Worker
 with valid facts for coupled contract changes, algorithm design, or
-cross-boundary diagnosis receives `gpt-6.1-sol` / `medium` directly.
-Authenticated Worker delivery uses the same Terra/Medium and Sol/Medium pairs;
-legacy Luna/Max assignments are rejected without automatic reassignment.
-Ambiguous authority, inputs, and ownership remain fail-closed under the
+cross-boundary diagnosis receives `gpt-6.2-sol` / `medium` directly.
+Authenticated Worker delivery uses the same current Terra/Medium and Sol/Medium
+pairs as creation, without an old-generation compatibility route. Ambiguous
+authority, inputs, and ownership remain fail-closed under the
 [Worker routing policy](../plugins/codexy/skills/orchestration/references/child-routing-policy.md).
 Role ownership is defined in the
 [supervision reference](../plugins/codexy/skills/orchestration/references/parent-supervision.md).
@@ -83,6 +83,9 @@ or unsupported required host readbacks keep the transition pending. The source
 contract does not establish native execution; see the
 [reconciliation procedure](../plugins/codexy/skills/orchestration/references/worker-elevation/reconciliation.md)
 and [host observations](worker-elevation-host-contract.md).
+
+See the [model migration guide](model-migration.md) for model replacement,
+support checks, and the distinction between configured and observed models.
 
 ## Detailed boundaries
 
