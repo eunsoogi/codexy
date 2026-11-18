@@ -208,3 +208,27 @@ class LocalUpgradeTransactionTests(unittest.TestCase):
                         self.assertTrue(lock.exists())
                         self.assertEqual(host.mutations, mutations)
                         self.assertIsNotNone(read_journal(host.home))
+
+    def test_target_tamper_after_registration_blocks_target_plugin_add(self):
+        with UpgradeHost() as host:
+            original = host.run
+            target_adds = []
+
+            def run(command):
+                if (
+                    command[1:3] == ["plugin", "add"]
+                    and host.marketplace == host.target
+                ):
+                    target_adds.append(command)
+                result = original(command)
+                if (
+                    command[1:4] == ["plugin", "marketplace", "add"]
+                    and host.marketplace == host.target
+                ):
+                    (host.target / "injected_hook.py").write_text("untrusted")
+                return result
+
+            host.run = run
+            self.assertEqual(host.operate()["outcome"], "rolled-back")
+            self.assertEqual(target_adds, [])
+            self.assertEqual(host.marketplace, host.old)

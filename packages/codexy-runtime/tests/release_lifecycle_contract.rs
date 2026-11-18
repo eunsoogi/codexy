@@ -22,6 +22,7 @@ fn synthetic_future_release_contract_is_admitted_without_a_publish_operation()
         ".github/scripts/verify-public-marketplace-baselines.ps1",
         "scripts/verify_public_marketplace_bundle.py",
         "scripts/public_marketplace_bundle_support.py",
+        "packages/getcodexy/src/codexy_runtime_tools/public_marketplace_bundle.py",
         "scripts/validate-release-lifecycle-contract",
     ];
     let source_contract: serde_json::Value = serde_json::from_str(&fs::read_to_string(
@@ -70,8 +71,14 @@ fn synthetic_future_release_contract_is_admitted_without_a_publish_operation()
             }
         }
         fs::write(&environment, "")?;
-        assert!(run(accepted)?, "rejected canonical target version: {accepted}");
-        assert_eq!(fs::read_to_string(&environment)?, format!("TARGET_VERSION={accepted}\nRELEASE_TAG=v{accepted}\n"));
+        assert!(
+            run(accepted)?,
+            "rejected canonical target version: {accepted}"
+        );
+        assert_eq!(
+            fs::read_to_string(&environment)?,
+            format!("TARGET_VERSION={accepted}\nRELEASE_TAG=v{accepted}\n")
+        );
         if accepted != version {
             for relative in version_sources {
                 let path = target.join(relative);
@@ -84,7 +91,10 @@ fn synthetic_future_release_contract_is_admitted_without_a_publish_operation()
             let path = target.join(relative);
             fs::write(&path, fs::read_to_string(&path)?.replace(version, invalid))?;
         }
-        assert!(!run(invalid)?, "accepted noncanonical target version: {invalid}");
+        assert!(
+            !run(invalid)?,
+            "accepted noncanonical target version: {invalid}"
+        );
         for relative in version_sources {
             let path = target.join(relative);
             fs::write(&path, fs::read_to_string(&path)?.replace(invalid, version))?;

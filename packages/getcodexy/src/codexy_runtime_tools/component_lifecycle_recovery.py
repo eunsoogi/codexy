@@ -236,11 +236,15 @@ def apply_forward(
                 manifest.version,
                 home,
             )
+    verify_target(home, journal, manifest)
     materialize_mcp_sources(root, manifest, journal.target)
     for component in adds:
+        verify_target(home, journal, manifest)
         mutate(executable, invoke, "add", manifest, component)
     for component in removes:
+        verify_target(home, journal, manifest)
         mutate(executable, invoke, "remove", manifest, component)
     installed = list_installed(executable, invoke)
+    verify_target(home, journal, manifest)
     materialize_mcp_caches(home, root, manifest, journal.target)
     return _verify(manifest, installed, journal.target, root), root
