@@ -11,6 +11,8 @@ use skill_inventory::{assert_local_links, packaged_skills, skill_path_consumer_c
 mod cargo_targets;
 #[path = "architecture_docs_inventory/mcp_inventory.rs"]
 mod mcp_inventory;
+#[path = "architecture_docs_inventory/model_routes.rs"]
+mod model_routes;
 #[path = "architecture_docs_inventory/module_roots.rs"]
 mod module_roots;
 #[path = "architecture_docs_inventory/readme_skills.rs"]

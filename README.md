@@ -117,14 +117,16 @@ unknown when the host does not expose them.
 
 | Role                         | Model           | Reasoning effort | Responsibility                                                                                                                                                                                           |
 | ---------------------------- | --------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Orchestrator / parent        | `gpt-6.1-sol`   | `low`            | Owns the overall goal, delegates and coordinates Worker assignments, verifies evidence, directs corrections, and accepts results.                                                                        |
-| Advisor / `codexy-advisor`   | `gpt-6-astra`   | `medium`         | Provides bounded, instruction-based read-only analysis and advice. It does not edit, delegate, change ownership, or grant final approval; this instruction boundary does not enforce host permissions.   |
+| Orchestrator / parent        | `gpt-6.2-sol`   | `low`            | Owns the overall goal, delegates and coordinates Worker assignments, verifies evidence, directs corrections, and accepts results.                                                                        |
+| Advisor / `codexy-advisor`   | `gpt-6.2-astra` | `medium`         | Provides bounded, instruction-based read-only analysis and advice. It does not edit, delegate, change ownership, or grant final approval; this instruction boundary does not enforce host permissions.   |
 | Worker / default             | `gpt-6.1-terra` | `medium`         | Owns one assigned issue in its managed Codex task/worktree, implements and verifies it, then returns evidence. This is the default for ordinary, simple, bounded, and general implementation work.       |
-| Worker / evidenced hard work | `gpt-6.1-sol`   | `medium`         | A new general Worker receives this pair only when valid hard-work facts show coupled contract changes, algorithm design, or cross-boundary diagnosis; the general classification alone does not qualify. |
+| Worker / evidenced hard work | `gpt-6.2-sol`   | `medium`         | A new general Worker receives this pair only when valid hard-work facts show coupled contract changes, algorithm design, or cross-boundary diagnosis; the general classification alone does not qualify. |
 
 See the [orchestration guide](plugins/codexy/skills/orchestration/SKILL.md) and
 [Worker routing policy](plugins/codexy/skills/orchestration/references/child-routing-policy.md)
-for detailed role ownership and routing rules.
+for detailed role ownership and routing rules. The
+[model migration guide](docs/model-migration.md) explains model replacement and
+the evidence needed to verify effective host settings.
 
 When an active task needs different expertise, Codexy guides the Orchestrator in
 deciding whether another Worker should take over. The Codex host determines who

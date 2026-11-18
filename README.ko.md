@@ -115,14 +115,16 @@ task의 설정은 알 수 없습니다.
 
 | 역할                        | 모델            | 추론 수준 | 담당 범위                                                                                                                                                       |
 | --------------------------- | --------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Orchestrator / parent       | `gpt-6.1-sol`   | `low`     | 전체 목표를 담당하고 Worker 작업을 배정·조정합니다. 근거를 검토하고 필요한 수정을 요청한 뒤 결과를 최종 수락합니다.                                             |
-| Advisor / `codexy-advisor`  | `gpt-6-astra`   | `medium`  | 지침에 따라 범위가 정해진 읽기 전용 분석과 조언을 제공합니다. 파일 수정·위임·담당 변경·최종 승인을 하지 않으며, 이 지침이 호스트 권한을 강제하는 것은 아닙니다. |
+| Orchestrator / parent       | `gpt-6.2-sol`   | `low`     | 전체 목표를 담당하고 Worker 작업을 배정·조정합니다. 근거를 검토하고 필요한 수정을 요청한 뒤 결과를 최종 수락합니다.                                             |
+| Advisor / `codexy-advisor`  | `gpt-6.2-astra` | `medium`  | 지침에 따라 범위가 정해진 읽기 전용 분석과 조언을 제공합니다. 파일 수정·위임·담당 변경·최종 승인을 하지 않으며, 이 지침이 호스트 권한을 강제하는 것은 아닙니다. |
 | Worker / 일반 작업          | `gpt-6.1-terra` | `medium`  | 관리되는 Codex task/worktree에서 할당된 이슈 하나를 맡아 구현·검증하고 근거를 전달합니다. 일반·단순·범위가 명확한·보통 구현 작업의 기본 경로입니다.             |
-| Worker / 확인된 고난도 작업 | `gpt-6.1-sol`   | `medium`  | 연동 계약 변경, 알고리즘 설계, 경계 간 진단 등 유효한 고난도 근거가 확인된 새 general Worker에만 배정합니다. general 분류만으로는 이 설정을 선택하지 않습니다.  |
+| Worker / 확인된 고난도 작업 | `gpt-6.2-sol`   | `medium`  | 연동 계약 변경, 알고리즘 설계, 경계 간 진단 등 유효한 고난도 근거가 확인된 새 general Worker에만 배정합니다. general 분류만으로는 이 설정을 선택하지 않습니다.  |
 
 [orchestration 안내](plugins/codexy/skills/orchestration/SKILL.md)와
 [Worker routing policy](plugins/codexy/skills/orchestration/references/child-routing-policy.md)에서
 역할별 책임과 Worker 배정 기준을 확인할 수 있습니다.
+[모델 마이그레이션 안내](docs/model-migration.md)에서는 모델 교체 범위와
+호스트의 실제 모델 설정을 확인하는 데 필요한 근거를 설명합니다.
 
 진행 중인 작업에 다른 전문성이 필요하면 Codexy는 Orchestrator가 담당자를 바꾸는
 방안을 검토하도록 안내합니다. 실제 작업 담당자는 Codex host가 결정합니다. 자세한
