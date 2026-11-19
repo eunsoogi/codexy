@@ -31,6 +31,7 @@ class RecipientAssignment:
     status: Literal["assigned", "unavailable", "unrelated"]
     model: str | None = None
     thinking: str | None = None
+    recipient: str | None = None
 
 
 def resolve_supervised_assignment(
@@ -72,8 +73,8 @@ def resolve_supervised_assignment(
     ):
         return unavailable
     if recipient == parent:
-        return RecipientAssignment("assigned", *ORCHESTRATOR_ROUTE)
-    return RecipientAssignment("assigned", model, thinking)
+        return RecipientAssignment("assigned", *ORCHESTRATOR_ROUTE, recipient)
+    return RecipientAssignment("assigned", model, thinking, recipient)
 
 
 def recipient_forbidden(
@@ -87,7 +88,11 @@ def recipient_forbidden(
         return forbidden(request)
     pair = (assignment.model, assignment.thinking)
     # Unknown or corrupt supervised state must not silently become an unrelated chat.
-    if assignment.status != "assigned" or pair not in ALLOWED_PAIRS:
+    if (
+        assignment.status != "assigned"
+        or assignment.recipient != data["threadId"]
+        or pair not in ALLOWED_PAIRS
+    ):
         return Diagnostic(
             "ASSIGNMENT_UNAVAILABLE",
             "The recipient's supervision assignment is unavailable or invalid. "

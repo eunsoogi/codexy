@@ -22,7 +22,7 @@ class RecipientDeliveryPolicyTests(unittest.TestCase):
     def test_known_parent_requires_its_pair_even_for_supported_worker_pairs(
         self,
     ) -> None:
-        parent = RecipientAssignment("assigned", "gpt-6.2-sol", "low")
+        parent = RecipientAssignment("assigned", "gpt-6.2-sol", "low", "parent")
         for fields in (
             {},
             {"model": "gpt-6.1-terra", "thinking": "medium"},
@@ -41,7 +41,7 @@ class RecipientDeliveryPolicyTests(unittest.TestCase):
 
     def test_children_require_their_own_assignments(self) -> None:
         for model in ("gpt-6.1-terra", "gpt-6.2-sol"):
-            child = RecipientAssignment("assigned", model, "medium")
+            child = RecipientAssignment("assigned", model, "medium", "child")
             self.assertFalse(
                 forbidden(
                     self.request(threadId="child", model=model, thinking="medium"),
@@ -104,12 +104,15 @@ class RecipientDeliveryPolicyTests(unittest.TestCase):
             to_child = resolve_supervised_assignment(
                 "parent", "parent", "child", lookup
             )
-            self.assertEqual(to_child, RecipientAssignment("assigned", model, "medium"))
+            self.assertEqual(
+                to_child, RecipientAssignment("assigned", model, "medium", "child")
+            )
             to_parent = resolve_supervised_assignment(
                 "parent", "child", "parent", lookup
             )
             self.assertEqual(
-                to_parent, RecipientAssignment("assigned", "gpt-6.2-sol", "low")
+                to_parent,
+                RecipientAssignment("assigned", "gpt-6.2-sol", "low", "parent"),
             )
 
     def test_missing_mismatched_and_inactive_records_are_unavailable(self) -> None:
@@ -142,6 +145,24 @@ class RecipientDeliveryPolicyTests(unittest.TestCase):
             ).status,
             "unavailable",
         )
+
+    def test_assignment_cannot_be_reused_for_another_recipient(self) -> None:
+        record = {
+            "parent": "parent",
+            "child": "child",
+            "model": "gpt-6.1-terra",
+            "thinking": "medium",
+            "state": "active",
+        }
+        assignment = resolve_supervised_assignment(
+            "parent", "parent", "child", lambda _parent, _child: record
+        )
+        result = forbidden(
+            self.request(threadId="other", model="gpt-6.1-terra", thinking="medium"),
+            assignment,
+        )
+        self.assertIsInstance(result, Diagnostic)
+        self.assertEqual(result.code, "ASSIGNMENT_UNAVAILABLE")
 
 
 if __name__ == "__main__":
