@@ -5,14 +5,11 @@ description: Use when classifying workflow, surface, and risk or coordinating ow
 
 Read the user request, parent assignment, and applicable AGENTS.md instruction
 files first. Determine whether they explicitly assign bounded work, including
-read-only diagnosis or preflight. For an authorized Orchestrator or Worker task,
-Codex MUST follow the required first transition in
-[goal-lifecycle](../goal-lifecycle/SKILL.md) before task-specific work. That
-skill owns host goal reads, native state meanings, transition rules, and
-recovery; this entrypoint MUST NOT restate those rules.
+read-only diagnosis or preflight. A child receives assignment data without a
+required native goal. Native goal tools follow the host contract.
 
-After the goal gate, read issue/PR material and classify task/surface/risk. Read
-the [context retention contract](references/context-tiers.md) for the existing
+Read issue/PR material and classify task/surface/risk. Read the
+[context retention contract](references/context-tiers.md) for the existing
 runtime handoff/route contract, then load the references selected by that route;
 these are the canonical handoff references. When a separate condition requires
 additional guidance (for example, app-thread workers or delegated goal
@@ -133,10 +130,7 @@ prove that execution or verification occurred.
 When a required model, reasoning effort, task/worktree, goal, or message setting
 appears to conflict with the active host, Codex MUST briefly identify the
 required setting, the applicable user authorization, and the actual tool
-contract. Native goal startup and state transitions MUST follow the canonical
-[goal-start contract](../goal-lifecycle/SKILL.md#goal-start-contract); this
-entrypoint MUST NOT add another goal-specific authorization gate or override the
-host's actual goal-tool restrictions.
+contract. Native goal operations MUST follow the host tool contract.
 
 Codex MUST inspect the callable tools, their current argument and permission
 contracts, and applicable documented routes for the operation. It MUST select an
@@ -193,8 +187,7 @@ MUST NOT override a higher-priority tool restriction.
   for Worker events, handling an ordinary Worker idle-wait handoff, or deciding
   whether scheduled monitoring applies.
 - MUST read [goal transition reporting](references/goal-transition-reporting.md)
-  when delivering blocked-goal recovery or terminal handoff receipts to the
-  parent.
+  when delivering terminal handoff receipts to the parent.
 - MUST read [parent stop preflight](references/parent-stop-preflight.md) before
   an implementation edit that may need child-owned Git or PR state.
 - MUST read [plugin public contracts](references/plugin-public-contracts.md)

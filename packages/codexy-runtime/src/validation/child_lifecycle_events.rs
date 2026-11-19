@@ -1,9 +1,8 @@
 pub(super) struct ActiveLine {
     pub(super) text: String,
-    pub(super) raw_text: String,
 }
 
-/// Keeps current active evidence lines and preserves both normalized and original text for classification.
+/// Keeps normalized current active evidence lines for classification.
 pub(super) fn active_lines(evidence: &str) -> Vec<ActiveLine> {
     // The private separator is never accepted from authored evidence.
     let sanitized = evidence.replace('\u{1f}', "\u{fffd}");
@@ -16,7 +15,6 @@ pub(super) fn active_lines(evidence: &str) -> Vec<ActiveLine> {
         if let Some((record, consumed)) = table_record(&fragments[index..]) {
             lines.push(ActiveLine {
                 text: record.to_ascii_lowercase(),
-                raw_text: record,
             });
             index += consumed;
             continue;
@@ -24,7 +22,6 @@ pub(super) fn active_lines(evidence: &str) -> Vec<ActiveLine> {
         if let Some(text) = super::readiness_context::active_line(fragment) {
             lines.push(ActiveLine {
                 text: text.to_ascii_lowercase(),
-                raw_text: text.to_owned(),
             });
         }
         index += 1;
@@ -48,14 +45,9 @@ pub(super) fn table_record(lines: &[&str]) -> Option<(String, usize)> {
         "terminal parent handoff:",
         "idle wait handoff:",
         "nonterminal wait handoff:",
-        "blocked goal user-decision gate:",
-        "blocked goal pre-mutation check:",
-        "parent goal pre-delivery:",
-        "parent goal post-result:",
         "parent direction event:",
         "parent route:",
         "source thread id:",
-        "goal tool result:",
         "idle child state:",
         "terminal child transition:",
     ]

@@ -174,7 +174,6 @@ The packaged plugins include these reusable skills. Each link opens its guide.
 | [decision-rationale](plugins/codexy/skills/decision-rationale/SKILL.md)           | Inspect a decision's rationale.           | `core`     |
 | [engineering](plugins/codexy/skills/engineering/SKILL.md)                         | Implement and verify one issue.           | `core`     |
 | [frame-alternatives](plugins/codexy/skills/frame-alternatives/SKILL.md)           | Compare credible options.                 | `core`     |
-| [goal-lifecycle](plugins/codexy/skills/goal-lifecycle/SKILL.md)                   | Manage authorized task goals.             | `core`     |
 | [orchestration](plugins/codexy/skills/orchestration/SKILL.md)                     | Coordinate ownership and handoffs.        | `core`     |
 | [plan-stress-test](plugins/codexy/skills/plan-stress-test/SKILL.md)               | Challenge a plan when requested.          | `core`     |
 | [planning](plugins/codexy/skills/planning/SKILL.md)                               | Create or update project plans.           | `core`     |
