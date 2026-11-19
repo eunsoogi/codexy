@@ -42,7 +42,31 @@ class SetupReconciliationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             store = open_store(root)
             store.reserve("parent", "request", "issue", "m", "t", 1)
-            reconciliation.release_failed(store, "parent", "request", None)
+            program = (
+                Path(__file__).resolve().parents[3]
+                / "plugins/codexy/hooks/codexy_supervision_owner.py"
+            )
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-I",
+                    "-B",
+                    str(program),
+                    "--plugin-data",
+                    root,
+                    "--parent",
+                    "parent",
+                    "release-failed",
+                    "--request",
+                    "request",
+                    "--no-pending",
+                    "--confirmed-failed",
+                ],
+                text=True,
+                capture_output=True,
+                check=True,
+            )
+            self.assertIn('"result":"released"', result.stdout)
             self.assertEqual(
                 store.reserve("parent", "other", "other", "m", "t", 1), "reserved"
             )
