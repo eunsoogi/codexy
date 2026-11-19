@@ -53,7 +53,7 @@ class RecipientDeliveryHookTests(unittest.TestCase):
                     )
                     self.assertIn("ASSIGNMENT_UNAVAILABLE", result.stdout)
 
-    def test_delivery_directions_unknown_and_reconciled_unrelated(self) -> None:
+    def test_delivery_directions_registered_and_unregistered(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             os.chmod(directory, 0o700)
             store = open_store(directory)
@@ -83,7 +83,9 @@ class RecipientDeliveryHookTests(unittest.TestCase):
                     ("child", "parent", "gpt-6.2-sol", "low", False),
                     ("parent", "child", "gpt-6.1-terra", "medium", False),
                     ("parent", "hard-child", "gpt-6.2-sol", "medium", False),
-                    ("parent", "unrelated", "gpt-6.2-sol", "medium", False),
+                    ("ordinary", "another", "gpt-6.2-sol", "medium", False),
+                    ("parent", "unrelated", "gpt-6.2-sol", "medium", True),
+                    ("child", "another", "gpt-6.2-sol", "low", True),
                     ("parent", "unknown", "gpt-6.2-sol", "low", True),
                     ("unknown", "parent", "gpt-6.2-sol", "low", True),
                 ):
@@ -119,7 +121,7 @@ class RecipientDeliveryHookTests(unittest.TestCase):
                             check=True,
                         )
                         self.assertEqual(bool(result.stdout), denied, result.stdout)
-                        if denied and sender == "child":
+                        if denied and sender == "child" and recipient == "parent":
                             self.assertIn("gpt-6.2-sol/low", result.stdout)
 
     def test_nonroot_and_unavailable_state_fail_closed(self) -> None:

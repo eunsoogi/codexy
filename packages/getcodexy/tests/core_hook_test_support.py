@@ -16,7 +16,7 @@ TEST_SENDER = "test-sender"
 
 
 def reconciled_delivery_store(root: Path) -> Path:
-    """Prepare explicit complete rosters for unrelated delivery fixtures."""
+    """Initialize the registry for ordinary, unregistered delivery fixtures."""
     hooks = Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"
     if str(hooks) not in sys.path:
         sys.path.insert(0, str(hooks))
@@ -27,15 +27,7 @@ def reconciled_delivery_store(root: Path) -> Path:
     data.mkdir(mode=0o700)
     if os.name != "nt":
         data.chmod(0o700)
-    dispatch = Dispatch(open_store(str(data)))
-    for identity in (
-        TEST_SENDER,
-        "parent",
-        "known-worker",
-        "another-known-thread",
-        "test-worker",
-    ):
-        dispatch.bootstrap(identity, [])
+    Dispatch(open_store(str(data)))
     return data
 
 

@@ -26,10 +26,11 @@ Thread-delivery admission reads the host session and the private supervision
 store, checks both relationship directions, and binds the request to the
 recipient's stored pair. Known parents use `gpt-6.2-sol`/`low`; known children
 use their stored pair. Unavailable, invalid, ambiguous, or inactive records and
-native subagent calls fail closed. Two independently reconciled parent rosters
-with no relationship establish unrelated traffic, which retains the existing
-pair validation. Other unrelated traffic without that evidence is also denied;
-this conservative limitation remains until an authoritative classifier exists.
+native subagent calls fail closed. An initialized, readable registry where neither
+identity is registered retains existing pair validation for ordinary messaging.
+If either identity is registered but no relationship matches, admission fails
+closed. This depends on reconciling existing supervised owners before resuming
+supervision; missing or corrupt state cannot establish ordinary messaging.
 Both events and tool aliases use the same policy. The hook does not open
 `transcript_path` or treat tool input, prompts, or message content as assignment
 authority. Bounded JSON and duplicate-key rejection remain in force. Actual
