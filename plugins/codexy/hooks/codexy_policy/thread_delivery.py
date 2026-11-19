@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import sqlite3
 from dataclasses import dataclass
-from typing import Literal, cast
+from typing import Callable, Literal, Mapping, cast
 
 from .envelope import Diagnostic, Request
 
@@ -30,6 +31,49 @@ class RecipientAssignment:
     status: Literal["assigned", "unavailable", "unrelated"]
     model: str | None = None
     thinking: str | None = None
+
+
+def resolve_supervised_assignment(
+    parent: str,
+    sender: str,
+    recipient: str,
+    lookup: Callable[[str, str], Mapping[str, object] | None],
+) -> RecipientAssignment:
+    """Consume a parent-scoped lookup after the caller authenticates the identities.
+
+    A missing record cannot distinguish an unrelated chat from a lost assignment;
+    the caller must establish unrelated traffic separately before using that status.
+    """
+    unavailable = RecipientAssignment("unavailable")
+    if not all(_non_empty_string(value) for value in (parent, sender, recipient)):
+        return unavailable
+    if sender == parent and recipient != parent:
+        child = recipient
+    elif recipient == parent and sender != parent:
+        child = sender
+    else:
+        return unavailable
+    try:
+        record = lookup(parent, child)
+    except (OSError, ValueError, sqlite3.Error):
+        return unavailable
+    if (
+        not isinstance(record, Mapping)
+        or record.get("parent") != parent
+        or record.get("child") != child
+        or record.get("state") != "active"
+    ):
+        return unavailable
+    model, thinking = record.get("model"), record.get("thinking")
+    if (
+        not isinstance(model, str)
+        or not isinstance(thinking, str)
+        or (model, thinking) not in WORKER_CREATION_ROUTES
+    ):
+        return unavailable
+    if recipient == parent:
+        return RecipientAssignment("assigned", *ORCHESTRATOR_ROUTE)
+    return RecipientAssignment("assigned", model, thinking)
 
 
 def recipient_forbidden(

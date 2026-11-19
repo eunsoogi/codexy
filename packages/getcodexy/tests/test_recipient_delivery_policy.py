@@ -8,7 +8,11 @@ HOOKS = Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"
 sys.path.insert(0, str(HOOKS))
 
 from codexy_policy.envelope import Diagnostic, Request  # noqa: E402
-from codexy_policy.thread_delivery import RecipientAssignment, forbidden  # noqa: E402
+from codexy_policy.thread_delivery import (  # noqa: E402
+    RecipientAssignment,
+    forbidden,
+    resolve_supervised_assignment,
+)
 
 
 class RecipientDeliveryPolicyTests(unittest.TestCase):
@@ -82,6 +86,62 @@ class RecipientDeliveryPolicyTests(unittest.TestCase):
         )
         self.assertIsInstance(result, Diagnostic)
         self.assertEqual(result.code, "MISSING_RECIPIENT")
+
+    def test_parent_scoped_lookup_binds_both_delivery_directions(self) -> None:
+        for model in ("gpt-6.1-terra", "gpt-6.2-sol"):
+            record = {
+                "parent": "parent",
+                "child": "child",
+                "model": model,
+                "thinking": "medium",
+                "state": "active",
+            }
+
+            def lookup(parent: str, child: str) -> dict[str, object]:
+                self.assertEqual((parent, child), ("parent", "child"))
+                return record
+
+            to_child = resolve_supervised_assignment(
+                "parent", "parent", "child", lookup
+            )
+            self.assertEqual(to_child, RecipientAssignment("assigned", model, "medium"))
+            to_parent = resolve_supervised_assignment(
+                "parent", "child", "parent", lookup
+            )
+            self.assertEqual(
+                to_parent, RecipientAssignment("assigned", "gpt-6.2-sol", "low")
+            )
+
+    def test_missing_mismatched_and_inactive_records_are_unavailable(self) -> None:
+        valid = {
+            "parent": "parent",
+            "child": "child",
+            "model": "gpt-6.1-terra",
+            "thinking": "medium",
+            "state": "active",
+        }
+        for record in (
+            None,
+            {**valid, "parent": "other"},
+            {**valid, "child": "other"},
+            {**valid, "state": "released"},
+            {**valid, "model": {}},
+        ):
+            with self.subTest(record=record):
+                result = resolve_supervised_assignment(
+                    "parent", "parent", "child", lambda _parent, _child: record
+                )
+                self.assertEqual(result.status, "unavailable")
+
+        def unavailable(_parent: str, _child: str) -> None:
+            raise OSError("store unavailable")
+
+        self.assertEqual(
+            resolve_supervised_assignment(
+                "parent", "child", "parent", unavailable
+            ).status,
+            "unavailable",
+        )
 
 
 if __name__ == "__main__":
