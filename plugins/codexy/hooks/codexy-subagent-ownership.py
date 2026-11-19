@@ -18,8 +18,15 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
 TOOLS = frozenset(
     f"{prefix}{tool}"
-    for prefix in ("", "agents__", "multi_agent_v1__")
-    for tool in ("spawn_agent", "send_message", "followup_task")
+    for prefix in (
+        "",
+        "agents__",
+        "multi_agent_v1__",
+        "agents",
+        "collaboration",
+        "multi_agent_v1",
+    )
+    for tool in ("spawn_agent", "send_message", "followup_task", "send_input")
 )
 TIMING_FILE_ENV = "CODEXY_CORE_HOOK_TIMING_FILE"
 

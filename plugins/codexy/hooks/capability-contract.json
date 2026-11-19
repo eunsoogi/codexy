@@ -1,6 +1,6 @@
 {
   "schema": "codexy.hooks.capability-contract.v3",
-  "contentDigest": "8b36a1f721785e75",
+  "contentDigest": "cad399d81dc279b4",
   "concerns": [
     {
       "concernId": "thread-delivery",
@@ -38,7 +38,7 @@
     },
     {
       "concernId": "subagent-ownership",
-      "trigger": "^(?:(?:agents|multi_agent_v1)__)?(?:spawn_agent|send_message|followup_task)$",
+      "trigger": "^(?:(?:agents|multi_agent_v1)__|agents|collaboration|multi_agent_v1)?(?:spawn_agent|send_message|followup_task|send_input)$",
       "events": [
         "PermissionRequest",
         "PreToolUse"
@@ -51,7 +51,7 @@
         "codexy-subagent-ownership.py"
       ],
       "diagnosticFamily": "CODEXY_SUBAGENT_OWNERSHIP_",
-      "contentDigest": "97a7bc9fe1d2ccf3"
+      "contentDigest": "e47672a73b0203a2"
     },
     {
       "concernId": "supervision-capacity",

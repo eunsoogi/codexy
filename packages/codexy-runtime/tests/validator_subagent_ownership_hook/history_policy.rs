@@ -18,7 +18,7 @@ const PERMITTED_ROLES: &[&str] = &[
     "codexy-warden",
     "codexy-weaver",
 ];
-const MATCHER: &str = "^(?:(?:agents|multi_agent_v1)__)?(?:spawn_agent|send_message|followup_task)$";
+const MATCHER: &str = "^(?:(?:agents|multi_agent_v1)__|agents|collaboration|multi_agent_v1)?(?:spawn_agent|send_message|followup_task|send_input)$";
 const LAUNCHER: &str = "codexy-subagent-ownership.sh";
 
 #[test]
@@ -138,7 +138,7 @@ fn isolated_package_copy_enforces_no_history_policy() -> TestResult {
         }
     }
 
-    // Existing-helper calls intentionally omit fork_turns because they do not create a child.
+    // Existing-helper calls are denied independently of their history settings.
     for event in EVENTS {
         let request = json!({
             "hook_event_name": event,
@@ -148,7 +148,9 @@ fn isolated_package_copy_enforces_no_history_policy() -> TestResult {
                 "message": "Review the supplied evidence and report findings."
             }
         });
-        assert!(run_payload_at(&candidate_root, &request, event)?.is_none());
+        let reason = run_payload_at(&candidate_root, &request, event)?
+            .ok_or("candidate must deny native follow-up")?;
+        assert!(reason.contains("CODEXY_SUBAGENT_OWNERSHIP_FOLLOWUP_DISABLED"));
     }
     Ok(())
 }
