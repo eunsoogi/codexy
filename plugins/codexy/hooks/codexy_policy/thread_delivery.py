@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import cast
+from dataclasses import dataclass
+from typing import Literal, cast
 
 from .envelope import Diagnostic, Request
 
@@ -22,8 +23,47 @@ _REQUIRED_FIELDS = ("threadId", "model", "thinking")
 _SUPPORTED_PAIRS = ", ".join(f"{model}/{thinking}" for model, thinking in ALLOWED_PAIRS)
 
 
-def forbidden(request: Request) -> bool | str | Diagnostic:
-    """Reject malformed requests and model/effort combinations the product supports."""
+@dataclass(frozen=True)
+class RecipientAssignment:
+    """Result supplied by a trusted supervision lookup, never by tool input."""
+
+    status: Literal["assigned", "unavailable", "unrelated"]
+    model: str | None = None
+    thinking: str | None = None
+
+
+def recipient_forbidden(
+    request: Request, assignment: RecipientAssignment
+) -> bool | str | Diagnostic:
+    """Apply the recipient decision once an authenticated lookup is available."""
+    data = request.tool_input
+    if not isinstance(data, dict) or not _non_empty_string(data.get("threadId")):
+        return _missing_field_diagnostic(["threadId"])
+    if assignment.status == "unrelated":
+        return forbidden(request)
+    pair = (assignment.model, assignment.thinking)
+    # Unknown or corrupt supervised state must not silently become an unrelated chat.
+    if assignment.status != "assigned" or pair not in ALLOWED_PAIRS:
+        return Diagnostic(
+            "ASSIGNMENT_UNAVAILABLE",
+            "The recipient's supervision assignment is unavailable or invalid. "
+            "Recover the trusted assignment before retrying; do not guess the model or thinking.",
+        )
+    if (data.get("model"), data.get("thinking")) != pair:
+        return Diagnostic(
+            "RECIPIENT_ROUTE_MISMATCH",
+            f"Use the recipient's assigned model/thinking pair {pair[0]}/{pair[1]}; "
+            "keep the same recipient and retry only with that pair.",
+        )
+    return False
+
+
+def forbidden(
+    request: Request, assignment: RecipientAssignment | None = None
+) -> bool | str | Diagnostic:
+    """Validate fields, optionally binding them to a trusted recipient lookup."""
+    if assignment is not None:
+        return recipient_forbidden(request, assignment)
     data = request.tool_input
     if not isinstance(data, dict):
         return _missing_field_diagnostic(list(_REQUIRED_FIELDS))
