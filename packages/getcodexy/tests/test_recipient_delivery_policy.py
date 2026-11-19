@@ -15,7 +15,9 @@ class RecipientDeliveryPolicyTests(unittest.TestCase):
     def request(self, **fields: object) -> Request:
         return Request("PreToolUse", "codex_app__send_message_to_thread", fields, None)
 
-    def test_known_parent_requires_its_pair_even_for_supported_worker_pairs(self) -> None:
+    def test_known_parent_requires_its_pair_even_for_supported_worker_pairs(
+        self,
+    ) -> None:
         parent = RecipientAssignment("assigned", "gpt-6.2-sol", "low")
         for fields in (
             {},
@@ -38,15 +40,20 @@ class RecipientDeliveryPolicyTests(unittest.TestCase):
             child = RecipientAssignment("assigned", model, "medium")
             self.assertFalse(
                 forbidden(
-                    self.request(threadId="child", model=model, thinking="medium"), child
+                    self.request(threadId="child", model=model, thinking="medium"),
+                    child,
                 )
             )
             denied = forbidden(
-                self.request(threadId="child", model="gpt-6.2-sol", thinking="low"), child)
+                self.request(threadId="child", model="gpt-6.2-sol", thinking="low"),
+                child,
+            )
             self.assertIsInstance(denied, Diagnostic)
             self.assertIn(f"{model}/medium", denied.message)
 
-    def test_unavailable_assignment_denies_and_unrelated_uses_existing_policy(self) -> None:
+    def test_unavailable_assignment_denies_and_unrelated_uses_existing_policy(
+        self,
+    ) -> None:
         request = self.request(
             threadId="recipient", model="gpt-6.1-terra", thinking="medium"
         )
