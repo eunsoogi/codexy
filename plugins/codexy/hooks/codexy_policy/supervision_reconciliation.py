@@ -31,3 +31,34 @@ def resolve_pending(
             )
         except sqlite3.IntegrityError as exc:
             raise ReservationError("child already has another reservation") from exc
+
+
+def release_failed(
+    store: Reservations, parent: str, request: str, pending: str | None
+) -> None:
+    """Release only the exact ownerless setup whose failure the caller verified."""
+    parent, request = map(_required, (parent, request))
+    if pending is not None:
+        pending = _required(pending)
+    with closing(store._connect()) as db, db:
+        db.execute("BEGIN IMMEDIATE")
+        row = store._row(db, parent, request)
+        if (
+            row["state"] != ("setting_up" if pending is not None else "reserved")
+            or row["pending"] != pending
+            or row["child"] is not None
+        ):
+            raise ReservationError(
+                "setup failure does not match an ownerless pending reservation"
+            )
+        if db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='supervision_calls'"
+        ).fetchone():
+            db.execute(
+                "UPDATE supervision_calls SET closed=1 WHERE parent=? AND request=?",
+                (parent, request),
+            )
+        db.execute(
+            "UPDATE reservations SET state='released' WHERE parent=? AND request=?",
+            (parent, request),
+        )

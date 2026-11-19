@@ -86,8 +86,10 @@ the exact native tool-input JSON on standard input to
 `codexy_supervision_prepare.py --plugin-data <root> --parent <session>
 --issue <issue>`,
 including any explicit lower `--limit`. A queued or existing result MUST NOT
-authorize a new creation. After the exact creation call, the hook retains
-uncertain outcomes until actual setup and owner evidence is known.
+authorize a new creation. The result includes the `request` digest for later
+reconciliation without exposing the raw input. After the exact creation call,
+the hook retains uncertain outcomes until actual setup and owner evidence is
+known.
 
 For a confirmed terminated owner with no remaining execution, the parent MAY use
 `codexy_supervision_owner.py --plugin-data <root> --parent <session> release
@@ -117,3 +119,15 @@ assertion, not proof. The available worktree-creation status tool describes
 worktree operations; its contract does not establish a mapping for a pending
 `create_thread` result. A missing listing, guessed identity, or timeout MUST NOT
 be treated as that mapping.
+
+When an authoritative observation confirms that an exact pending setup failed
+and has no live owner, the parent MAY use
+`codexy_supervision_owner.py
+--plugin-data <root> --parent <session> release-failed --request <request>
+--pending <pending> --confirmed-failed`.
+The matching pending ID and ownerless state are checked in the same transaction
+that releases capacity. The flag records the caller's verified conclusion; it
+does not establish that conclusion. When an ownerless failure is confirmed
+before any pending ID was returned, use `--no-pending` instead of
+`--pending <pending>`. An ambiguous response alone MUST NOT be treated as a
+confirmed failure.
