@@ -7,10 +7,36 @@ from contextlib import contextmanager
 import json
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
 TIMING_ENV = "CODEXY_CORE_HOOK_TIMING_FILE"
+TEST_SENDER = "test-sender"
+
+
+def reconciled_delivery_store(root: Path) -> Path:
+    """Prepare explicit complete rosters for unrelated delivery fixtures."""
+    hooks = Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"
+    if str(hooks) not in sys.path:
+        sys.path.insert(0, str(hooks))
+    from codexy_policy.supervision_dispatch import Dispatch
+    from codexy_policy.supervision_storage import open_store
+
+    data = root / "plugin-data"
+    data.mkdir(mode=0o700)
+    if os.name != "nt":
+        data.chmod(0o700)
+    dispatch = Dispatch(open_store(str(data)))
+    for identity in (
+        TEST_SENDER,
+        "parent",
+        "known-worker",
+        "another-known-thread",
+        "test-worker",
+    ):
+        dispatch.bootstrap(identity, [])
+    return data
 
 
 @contextmanager
@@ -30,6 +56,8 @@ def hook_payload(
     cwd: Path | None = None,
 ) -> bytes:
     value = {"hook_event_name": event, "tool_name": tool, "tool_input": tool_input}
+    if tool.endswith("send_message_to_thread"):
+        value["session_id"] = TEST_SENDER
     if cwd is not None:
         value["cwd"] = str(cwd)
     return json.dumps(value).encode()
@@ -63,7 +91,7 @@ def _thread_delivery_payload_data(
     tool_input: Mapping[str, object],
     cwd: Path | None,
 ) -> dict[str, object]:
-    """Assemble one request without host identity or recipient metadata."""
+    """Assemble a root-session request with no caller-supplied assignment."""
     recipient = tool_input.get("threadId")
     model = tool_input.get("model")
     thinking = tool_input.get("thinking")
@@ -81,6 +109,7 @@ def _thread_delivery_payload_data(
     payload: dict[str, object] = {
         "hook_event_name": event,
         "tool_name": "mcp__codex_app__send_message_to_thread",
+        "session_id": TEST_SENDER,
         "tool_input": tool_input,
     }
     if cwd is not None:
@@ -115,6 +144,11 @@ def run_timed_core_hook_case(
     """Run a core launcher fixture with optional timing output enabled."""
     environment = os.environ.copy()
     environment["PLUGIN_ROOT"] = str(plugin)
+    if stem == "codexy-thread-delivery":
+        data = plugin.parent / "plugin-data"
+        if not data.exists():
+            data = reconciled_delivery_store(plugin.parent)
+        environment["PLUGIN_DATA"] = str(data)
     _ = environment.pop(TIMING_ENV, None)
     if timing_file is not None:
         environment[TIMING_ENV] = str(timing_file)

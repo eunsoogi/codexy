@@ -12,6 +12,8 @@ from typing import cast
 
 # unittest discovery adds this directory to sys.path, so the helper is imported by its top-level name.
 from core_hook_test_support import (  # pyright: ignore[reportImplicitRelativeImport]
+    TEST_SENDER,
+    reconciled_delivery_store,
     temporary_primary_checkout,
 )
 
@@ -154,6 +156,7 @@ class CoreHookWorkerRoutingTests(unittest.TestCase):
     def _candidate(self) -> Generator[Path, None, None]:
         with temporary_primary_checkout() as primary:
             # Exercise a disposable installed copy with the current source, not personal plugin state.
+            reconciled_delivery_store(primary)
             yield Path(shutil.copytree(PLUGIN, primary / "codexy"))
 
     def _run(
@@ -167,6 +170,7 @@ class CoreHookWorkerRoutingTests(unittest.TestCase):
         payload: dict[str, object] = {
             "hook_event_name": event,
             "tool_name": TOOL,
+            "session_id": TEST_SENDER,
             "tool_input": TOOL_INPUT if tool_input is None else tool_input,
         }
         return self._run_payload(
@@ -182,6 +186,7 @@ class CoreHookWorkerRoutingTests(unittest.TestCase):
     ) -> subprocess.CompletedProcess[bytes]:
         environment = os.environ.copy()
         environment["PLUGIN_ROOT"] = str(plugin)
+        environment["PLUGIN_DATA"] = str(plugin.parent / "plugin-data")
         _ = environment.pop(TIMING_ENV, None)
         if timing_target is not None:
             environment[TIMING_ENV] = str(timing_target)

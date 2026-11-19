@@ -16,6 +16,43 @@ from codexy_policy.supervision_storage import open_store  # noqa: E402
 
 
 class RecipientDeliveryHookTests(unittest.TestCase):
+    def test_uninitialized_and_corrupt_store_are_not_unrelated(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            os.chmod(directory, 0o700)
+            open_store(directory)
+            payload = {
+                "hook_event_name": "PreToolUse",
+                "tool_name": "codex_app__send_message_to_thread",
+                "session_id": "sender",
+                "tool_input": {
+                    "threadId": "recipient",
+                    "model": "gpt-6.2-sol",
+                    "thinking": "low",
+                },
+            }
+            command = [
+                sys.executable,
+                str(PLUGIN / "hooks/codexy-thread-delivery.py"),
+                "--event",
+                "PreToolUse",
+            ]
+            env = {**os.environ, "PLUGIN_DATA": directory}
+            for state in ("uninitialized", "corrupt"):
+                with self.subTest(state=state):
+                    if state == "corrupt":
+                        (
+                            Path(directory) / "supervision/reservations.sqlite3"
+                        ).write_bytes(b"not a database")
+                    result = subprocess.run(
+                        command,
+                        input=json.dumps(payload),
+                        text=True,
+                        capture_output=True,
+                        env=env,
+                        check=True,
+                    )
+                    self.assertIn("ASSIGNMENT_UNAVAILABLE", result.stdout)
+
     def test_delivery_directions_unknown_and_reconciled_unrelated(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             os.chmod(directory, 0o700)
@@ -47,6 +84,7 @@ class RecipientDeliveryHookTests(unittest.TestCase):
                     ("parent", "child", "gpt-6.1-terra", "medium", False),
                     ("parent", "hard-child", "gpt-6.2-sol", "medium", False),
                     ("parent", "unrelated", "gpt-6.2-sol", "medium", False),
+                    ("parent", "unknown", "gpt-6.2-sol", "low", True),
                     ("unknown", "parent", "gpt-6.2-sol", "low", True),
                 ):
                     with self.subTest(

@@ -2,10 +2,14 @@
 
 import os
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
-from core_hook_test_support import sized_thread_delivery_payload
+from core_hook_test_support import (
+    reconciled_delivery_store,
+    sized_thread_delivery_payload,
+)
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -25,13 +29,19 @@ class CoreHookInputSizeTests(unittest.TestCase):
                 )
 
     def _run(self, event: str, size: int) -> bytes:
-        result = subprocess.run(
-            [str(LAUNCHER), event],
-            input=sized_thread_delivery_payload(size, event),
-            capture_output=True,
-            env={**os.environ, "PLUGIN_ROOT": str(ROOT / "plugins/codexy")},
-            check=False,
-        )
+        with tempfile.TemporaryDirectory() as directory:
+            data = reconciled_delivery_store(Path(directory))
+            result = subprocess.run(
+                [str(LAUNCHER), event],
+                input=sized_thread_delivery_payload(size, event),
+                capture_output=True,
+                env={
+                    **os.environ,
+                    "PLUGIN_ROOT": str(ROOT / "plugins/codexy"),
+                    "PLUGIN_DATA": str(data),
+                },
+                check=False,
+            )
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
         self.assertEqual(result.stderr, b"")
         return result.stdout
