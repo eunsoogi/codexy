@@ -1,11 +1,11 @@
 """Verify direction discovery against authenticated sender and recipient IDs."""
 
-import sys
 import unittest
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"))
-from codexy_policy.thread_delivery import RecipientAssignment, resolve_known_pair  # noqa: E402
+from packages.getcodexy.tests.recipient_test_support import delivery
+
+RecipientAssignment = delivery.RecipientAssignment
+resolve_known_pair = delivery.resolve_known_pair
 
 
 class RecipientPairLookupTests(unittest.TestCase):

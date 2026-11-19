@@ -11,10 +11,13 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 HOOKS = Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"
-sys.path.insert(0, str(HOOKS))
-from codexy_policy.recipient_store import resolve  # noqa: E402
-from codexy_policy.supervision_dispatch import Dispatch  # noqa: E402
-from codexy_policy.supervision_storage import open_store  # noqa: E402
+from packages.getcodexy.tests.recipient_test_support import (
+    Dispatch,
+    open_store,
+    recipient_store,
+)
+
+resolve = recipient_store.resolve
 
 
 def resolve_ordinary(root: str) -> str:

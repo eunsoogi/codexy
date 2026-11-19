@@ -7,7 +7,6 @@ from contextlib import contextmanager
 import json
 import os
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
@@ -17,11 +16,7 @@ TEST_SENDER = "test-sender"
 
 def reconciled_delivery_store(root: Path) -> Path:
     """Initialize the registry for ordinary, unregistered delivery fixtures."""
-    hooks = Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"
-    if str(hooks) not in sys.path:
-        sys.path.insert(0, str(hooks))
-    from codexy_policy.supervision_dispatch import Dispatch
-    from codexy_policy.supervision_storage import open_store
+    from packages.getcodexy.tests.recipient_test_support import Dispatch, open_store
 
     data = root / "plugin-data"
     data.mkdir(mode=0o700)

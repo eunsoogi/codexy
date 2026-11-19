@@ -4,6 +4,17 @@
 use super::{Concern, TestResult};
 use serde_json::{Value, json};
 
+pub(super) fn private_data_dir() -> TestResult<tempfile::TempDir> {
+    let directory = tempfile::tempdir()?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        // A host data root is private even when the process umask is permissive.
+        std::fs::set_permissions(directory.path(), std::fs::Permissions::from_mode(0o700))?;
+    }
+    Ok(directory)
+}
+
 pub(super) fn admitted_payload(concern: &Concern, event: &str) -> TestResult<Value> {
     let tool_input = match concern.id {
         "thread-delivery" => json!({
@@ -45,6 +56,6 @@ pub(super) fn admitted_payload(concern: &Concern, event: &str) -> TestResult<Val
             .to_string()
     };
     let payload = json!({"hook_event_name": event, "tool_name": concern.tool, "tool_input": tool_input,
-        "cwd": cwd});
+        "cwd": cwd, "session_id":"ordinary-sender"});
     Ok(payload)
 }

@@ -9,6 +9,11 @@ use std::{io::Write as _, path::Path, process::Stdio};
 fn supported_worker_pairs_survive_creation_and_request_level_delivery() -> TestResult {
     let primary = primary_checkout()?;
     let temp = tempfile::tempdir()?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(temp.path(), std::fs::Permissions::from_mode(0o700))?;
+    }
     let source = root();
     let installed = temp.path().join("installed");
     crate::support::copy_dir(source.clone(), &installed)?;
@@ -41,7 +46,8 @@ fn supported_worker_pairs_survive_creation_and_request_level_delivery() -> TestR
                     plugin_root,
                     "codexy-child-thread-creation.sh",
                     event,
-                    &creation
+                    &creation,
+                    temp.path()
                 )?);
                 let mut crossed = creation.clone();
                 crossed["tool_input"]["thinking"] = json!("high");
@@ -49,7 +55,8 @@ fn supported_worker_pairs_survive_creation_and_request_level_delivery() -> TestR
                     plugin_root,
                     "codexy-child-thread-creation.sh",
                     event,
-                    &crossed
+                    &crossed,
+                    temp.path()
                 )?);
 
                 let mut followup = request("general", expected);
@@ -64,18 +71,19 @@ fn supported_worker_pairs_survive_creation_and_request_level_delivery() -> TestR
                     selected("parent_to_generic", "send_message_to_thread", expected)
                 );
                 let delivery = delivery_request(event, &delivered, &primary);
-                assert!(!denied(plugin_root, "codexy-thread-delivery.sh", event, &delivery)?);
+                assert!(!denied(plugin_root, "codexy-thread-delivery.sh", event, &delivery, temp.path())?);
                 let mut crossed = delivery.clone();
                 crossed["tool_input"]["thinking"] =
                     json!("high");
-                assert!(denied(plugin_root, "codexy-thread-delivery.sh", event, &crossed)?);
+                assert!(denied(plugin_root, "codexy-thread-delivery.sh", event, &crossed, temp.path())?);
                 let mut alternate_recipient = delivery;
                 alternate_recipient["tool_input"]["threadId"] = json!("another-known-thread");
                 assert!(!denied(
                     plugin_root,
                     "codexy-thread-delivery.sh",
                     event,
-                    &alternate_recipient
+                    &alternate_recipient,
+                    temp.path()
                 )?);
             }
         }
@@ -84,19 +92,20 @@ fn supported_worker_pairs_survive_creation_and_request_level_delivery() -> TestR
 }
 
 fn delivery_request(event: &str, chosen: &Value, cwd: &Path) -> Value {
-    // Request admission checks field shape and the pair; the host authorizes the target.
+    // This unrelated, unregistered pair tests supported routing, not a supervised assignment.
     json!({
         "hook_event_name":event, "tool_name":"mcp__codex_app__send_message_to_thread",
-        "cwd":cwd,
+        "cwd":cwd, "session_id":"ordinary-sender",
         "tool_input":{"threadId":"worker-proof", "model":chosen["model"],
             "thinking":chosen["thinking"], "prompt":"Continue the assigned Worker scope."}
     })
 }
 
-fn denied(plugin_root: &Path, launcher: &str, event: &str, input: &Value) -> TestResult<bool> {
+fn denied(plugin_root: &Path, launcher: &str, event: &str, input: &Value, plugin_data: &Path) -> TestResult<bool> {
     let mut child = Command::new(plugin_root.join("hooks").join(launcher))
         .arg(event)
         .env("PLUGIN_ROOT", plugin_root)
+        .env("PLUGIN_DATA", plugin_data)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

@@ -10,9 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 PLUGIN = ROOT / "plugins/codexy"
-sys.path.insert(0, str(PLUGIN / "hooks"))
-from codexy_policy.supervision_dispatch import Dispatch  # noqa: E402
-from codexy_policy.supervision_storage import open_store  # noqa: E402
+from packages.getcodexy.tests.recipient_test_support import Dispatch, open_store
 
 
 class RecipientResumeHookTests(unittest.TestCase):

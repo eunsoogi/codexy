@@ -40,7 +40,8 @@ def contextual_forbidden(
     """Use a trusted identity bridge; session IDs are not assumed to be thread IDs."""
     data = request.tool_input
     if not isinstance(data, dict) or not _non_empty_string(data.get("threadId")):
-        return _missing_field_diagnostic(["threadId"])
+        # Preserve complete missing-field diagnostics before attempting lookup.
+        return forbidden(request)
     if not _non_empty_string(request.session_id):
         return recipient_forbidden(request, RecipientAssignment("unavailable"))
     try:

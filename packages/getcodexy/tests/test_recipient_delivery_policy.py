@@ -1,20 +1,17 @@
 """Recipient-bound decisions use a trusted lookup result, not request metadata."""
 
 import json
-import sys
 import unittest
-from pathlib import Path
 
-HOOKS = Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"
-sys.path.insert(0, str(HOOKS))
+from packages.getcodexy.tests.recipient_test_support import delivery, envelope
 
-from codexy_policy.envelope import Diagnostic, Request, evaluate_result  # noqa: E402
-from codexy_policy.thread_delivery import (  # noqa: E402
-    RecipientAssignment,
-    contextual_forbidden,
-    forbidden,
-    resolve_supervised_assignment,
-)
+Diagnostic = envelope.Diagnostic
+Request = envelope.Request
+evaluate_result = envelope.evaluate_result
+RecipientAssignment = delivery.RecipientAssignment
+contextual_forbidden = delivery.contextual_forbidden
+forbidden = delivery.forbidden
+resolve_supervised_assignment = delivery.resolve_supervised_assignment
 
 
 class RecipientDeliveryPolicyTests(unittest.TestCase):
