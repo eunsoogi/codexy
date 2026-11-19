@@ -49,7 +49,11 @@ NOT generalize it to other actions, owners, or future work.
    MUST stay with its app Worker in the required managed worktree. Bounded
    read-only research or review MAY use a suitable native helper without
    transferring ownership. Acceptance, coordination, and accepted-child cleanup
-   remain parent-owned.
+   remain parent-owned. Issue implementation, takeover of an existing PR, and
+   execution verification (including a verification-only PR) MUST retain one
+   durable app Worker owner for the issue even when no source changes remain.
+   A native helper MUST NOT become that owner or execute verification in its
+   place.
 4. Before dispatch, the parent MUST read back the active owner for the same
    issue-sized outcome and reuse a suitable existing owner. A helper MUST NOT
    replace, duplicate, or patch an implementation owner. MUST keep exactly one
@@ -76,7 +80,10 @@ NOT generalize it to other actions, owners, or future work.
    lane as parent-owned or current-task-owned to begin implementation, or
    substitute parent execution or an unsupported CLI/app-server route. For an
    ordinary single-task assignment, the current task MUST retain ownership when
-   it is the assigned owner.
+   it is the assigned owner. When creation authority, capacity, or the required
+   app surface is unavailable, MUST keep the issue in the parent's backlog with
+   its unmet condition and MUST NOT create a substitute owner. A later request
+   MUST reuse the suitable issue owner instead of creating another one.
 
 ### Dependencies, reservations, and integration conflicts
 
@@ -147,6 +154,7 @@ These are document scenarios, not evidence that a host executed the routes.
 | “Orchestrate investigation and implementation.” | The parent MUST coordinate; each independent substantive outcome MUST go to one bounded owner under scoped authority and current host limits.                          |
 | Vague request to “coordinate”                   | MUST NOT grant child-task authority or change implementation ownership; MUST keep work with its explicit owner or report unresolved topology.                          |
 | Existing suitable child owner                   | MUST reuse that owner; MUST NOT create a replacement or patch its branch.                                                                                              |
+| Existing PR needs execution verification        | MUST assign or reuse the issue's app Worker even when no implementation remains; a helper is not the owner.                                                          |
 | Required app-task surface or authority absent   | MUST keep selected child-owned work pending and report the exact limitation; MUST NOT silently take it over.                                                           |
 | Consumer needs a prerequisite artifact          | MUST sequence the producer before the consumer and name the needed artifact or decision.                                                                               |
 | Ready lanes list an overlapping path            | Path overlap alone MUST NOT serialize dispatch; MUST keep dependency-ready lanes concurrent within available capacity.                                                 |
