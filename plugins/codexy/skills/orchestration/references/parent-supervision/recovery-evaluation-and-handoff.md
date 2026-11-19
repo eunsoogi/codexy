@@ -1,10 +1,10 @@
 # Recovery, evaluation, and handoff
 
-- Before cleanup, the Orchestrator MUST verify native goal completion, accept
-  the result, and confirm no pending PR, CI, review, fixup, follow-up, or
-  delivery work. Idle, blocked, a terminal report, or a clean worktree is
-  insufficient. MUST retain the task, worktree, and branch through merge
-  readback (#289). MUST follow
+- Before cleanup, the Orchestrator MUST verify assignment completion, accept the
+  result, and confirm no pending PR, CI, review, fixup, follow-up, or delivery
+  work. Idle, blocked, a terminal report, or a clean worktree is insufficient.
+  MUST retain the task, worktree, and branch through merge readback (#289). MUST
+  follow
   [cleanup procedure](../../../../../codexy-github/skills/git-workflow/references/local-git-and-branches.md#accepted-child-cleanup):
   parent-owned preservation, direct thread archive and identity readback, then
   safe local branch removal; worktree archival is not a prerequisite.

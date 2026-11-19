@@ -3,7 +3,7 @@ use serde_json::{Value, json};
 
 use super::{
     HARD_WORKER_MODEL, HARD_WORKER_THINKING, Policy, SIMPLE_WORKER_MODEL, SIMPLE_WORKER_THINKING,
-    thread_capabilities::{self, RecipientAssignment, ThreadCapabilities},
+    thread_capabilities::{self, RecipientAssignment, Request, ThreadCapabilities},
 };
 
 pub(super) const WORKER_CREATION_ROUTES: [(&str, &str); 2] = [
@@ -80,6 +80,45 @@ pub(super) fn child_to_root_route(
     } else {
         json!({"route":policy.fallback})
     }
+}
+
+/// Resolve first, then carry the assigned recipient and report into the actual app call.
+pub(super) fn child_report_request(policy: &Policy, request: &Request) -> Value {
+    let mut selected = child_to_root_route(
+        policy,
+        request.codex_thread_capabilities.as_ref(),
+        &request.codex_thread_operation,
+    );
+    if selected["route"] != "child_to_root" {
+        return json!({"route":policy.fallback,"reason":"Parent model and thinking are not supported by declared thread capabilities."});
+    }
+    let Some(parent) = request
+        .parent_thread_id
+        .as_deref()
+        .filter(|v| !v.is_empty() && *v == v.trim())
+    else {
+        return json!({"route":policy.fallback,"reason":"Child report requires an assigned parent thread ID."});
+    };
+    let Some(prompt) = request
+        .report_prompt
+        .as_deref()
+        .filter(|v| !v.trim().is_empty())
+    else {
+        return json!({"route":policy.fallback,"reason":"Child report requires a non-empty report prompt."});
+    };
+    if request
+        .parent_host_id
+        .as_deref()
+        .is_some_and(|v| v.is_empty() || v != v.trim())
+    {
+        return json!({"route":policy.fallback,"reason":"Child report host ID must be non-empty and have no surrounding whitespace."});
+    }
+    let mut input = json!({"threadId":parent,"prompt":prompt,"model":selected["model"],"thinking":selected["thinking"]});
+    if let Some(host) = &request.parent_host_id {
+        input["hostId"] = json!(host);
+    }
+    selected["tool_input"] = input;
+    selected
 }
 
 pub(super) fn parent_to_generic_route(

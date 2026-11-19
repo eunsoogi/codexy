@@ -6,6 +6,7 @@ use super::{Predicates, routing_json};
 
 const LEGACY_REQUEST_SCHEMA: &str = "codexy.child-routing-request.v1";
 const RECIPIENT_REQUEST_SCHEMA: &str = "codexy.child-routing-request.v2";
+const REPORT_REQUEST_SCHEMA: &str = "codexy.child-routing-request.v3";
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -34,6 +35,13 @@ pub(super) struct Request {
     pub(super) codex_thread_capabilities: Option<ThreadCapabilities>,
     #[serde(default)]
     pub(super) recipient_assignment: Option<RecipientAssignment>,
+    // Report input comes from the assigned lane, not the sender's model settings.
+    #[serde(default)]
+    pub(super) parent_thread_id: Option<String>,
+    #[serde(default)]
+    pub(super) parent_host_id: Option<String>,
+    #[serde(default)]
+    pub(super) report_prompt: Option<String>,
     // A general label does not establish difficulty; escalation needs concrete task facts.
     #[serde(default, deserialize_with = "deserialize_hard_work")]
     pub(super) hard_work: Option<HardWork>,
@@ -186,6 +194,10 @@ pub(super) fn parse_request(text: &str) -> Result<Request> {
         RECIPIENT_REQUEST_SCHEMA => {
             bail!("Version 2 is reserved for recipient-bound parent follow-ups")
         }
+        REPORT_REQUEST_SCHEMA
+            if request.codex_thread_direction == Some(ThreadDirection::WorkerToOrchestrator)
+                && request.codex_thread_operation == "send_message_to_thread" => {}
+        REPORT_REQUEST_SCHEMA => bail!("Version 3 is reserved for child reports"),
         _ => bail!("Worker routing request has an unsupported schema"),
     }
     match (

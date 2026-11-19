@@ -173,7 +173,6 @@ Codex를 실행하는 환경에서 language server를 실행할 수 있어야 �
 | [decision-rationale](plugins/codexy/skills/decision-rationale/SKILL.md)           | 결정의 이유와 근거 살피기.            | `core`     |
 | [engineering](plugins/codexy/skills/engineering/SKILL.md)                         | 이슈 하나를 구현하고 검증하기.        | `core`     |
 | [frame-alternatives](plugins/codexy/skills/frame-alternatives/SKILL.md)           | 신뢰할 수 있는 대안 비교.             | `core`     |
-| [goal-lifecycle](plugins/codexy/skills/goal-lifecycle/SKILL.md)                   | 승인된 작업 목표 관리.                | `core`     |
 | [orchestration](plugins/codexy/skills/orchestration/SKILL.md)                     | 담당과 인수인계 조정.                 | `core`     |
 | [plan-stress-test](plugins/codexy/skills/plan-stress-test/SKILL.md)               | 요청 시 계획 점검.                    | `core`     |
 | [planning](plugins/codexy/skills/planning/SKILL.md)                               | 프로젝트 계획 작성과 갱신.            | `core`     |

@@ -61,10 +61,6 @@ pub(super) fn check_handoff(plugin_root: &Path, state: &Value) -> Vec<String> {
         .collect()
 }
 
-pub(super) fn is_lifecycle_terminal(plugin_root: &Path, record: &str) -> bool {
-    state::is_lifecycle_terminal(plugin_root, record)
-}
-
 pub(super) fn lifecycle_error(plugin_root: &Path, record: &str) -> Option<String> {
     let value = serde_json::from_str::<Value>(record).ok()?;
     if let Err(error) = request::reject_retired_inputs(&value) {

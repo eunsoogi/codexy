@@ -24,12 +24,11 @@ fn readable_wait_producer_preserves_pending_and_rejects_actionable_state() -> Te
 }
 
 #[test]
-fn phase_table_rejects_unfinished_goal_unauthorized_delivery_and_replay() -> TestResult {
+fn phase_table_rejects_unfinished_phase_unauthorized_delivery_and_replay() -> TestResult {
     let evidence = format!(
-        "{}Idle child state: goal state=complete; plan state=idle\n",
+        "{}Idle child state: plan state=idle\n",
         super::records::phase_evidence(
-            "delivery=confirmed; task surface=codex task/thread",
-            "complete"
+            "delivery=confirmed; task surface=codex task/thread"
         )
     );
     let readable = evidence
@@ -187,55 +186,5 @@ fn terminal_handoff_accepts_a_readable_table() -> TestResult {
             "{invalid}"
         );
     }
-    Ok(())
-}
-
-#[test]
-fn blocked_audit_accepts_tables_and_rejects_new_parent_direction() -> TestResult {
-    let evidence = format!(
-        "Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\n{}",
-        super::records::terminal_goal_transition("blocked", "readable", true)
-    );
-    let readable = evidence
-        .lines()
-        .map(|line| {
-            let Some((title, fields)) = line.split_once(": ") else {
-                return format!("{line}\n");
-            };
-            if ![
-                "Blocked goal user-decision gate",
-                "Parent goal pre-delivery",
-                "Blocked goal pre-mutation check",
-                "Terminal parent handoff",
-                "Parent goal post-result",
-            ]
-            .contains(&title)
-            {
-                return format!("{line}\n");
-            }
-            let mut table = format!("{title}:\n| Field | Value |\n| --- | --- |\n");
-            for field in fields.split(';') {
-                if let Some((key, value)) = field.trim().split_once('=') {
-                    table.push_str(&format!(
-                        "| {} | {} |\n",
-                        key.trim(),
-                        value.trim().replace('|', "\\|")
-                    ));
-                }
-            }
-            table
-        })
-        .collect::<String>();
-    let accepted = super::run_validator(&readable)?;
-    assert!(
-        accepted.status.success(),
-        "{}",
-        String::from_utf8_lossy(&accepted.stderr)
-    );
-    let cancelled = readable.replace(
-        "Goal tool call: update_goal",
-        "Parent direction event: version=new; cancellation=present\nGoal tool call: update_goal",
-    );
-    assert!(!super::run_validator(&cancelled)?.status.success());
     Ok(())
 }

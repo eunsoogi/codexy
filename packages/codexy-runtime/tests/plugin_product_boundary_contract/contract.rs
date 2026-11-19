@@ -168,7 +168,7 @@ pub(super) fn validate_records(root: &Path, records: &[SurfaceRecord]) -> TestRe
             return Err(format!("record matrix mismatch: {id}").into());
         }
     }
-    // Keep the separately packaged denial-feedback helper inside core hook ownership.
+    // Keep shared policy modules, including supervision, inside core hook ownership.
     assert_sources(
         records,
         "hooks.policy-core",
@@ -185,6 +185,12 @@ pub(super) fn validate_records(root: &Path, records: &[SurfaceRecord]) -> TestRe
             "plugins/codexy/hooks/codexy_policy/subagent_ownership_action.py",
             "plugins/codexy/hooks/codexy_policy/subagent_ownership_message.py",
             "plugins/codexy/hooks/codexy_policy/subagent_ownership_classifier_mask.py",
+            "plugins/codexy/hooks/codexy_policy/supervision_dispatch.py",
+            "plugins/codexy/hooks/codexy_policy/supervision_observation.py",
+            "plugins/codexy/hooks/codexy_policy/supervision_reconciliation.py",
+            "plugins/codexy/hooks/codexy_policy/supervision_reservations.py",
+            "plugins/codexy/hooks/codexy_policy/supervision_resume.py",
+            "plugins/codexy/hooks/codexy_policy/supervision_storage.py",
             "plugins/codexy/hooks/codexy_policy/timing.py",
             "plugins/codexy/hooks/codexy_policy/windows_timing.py",
         ],

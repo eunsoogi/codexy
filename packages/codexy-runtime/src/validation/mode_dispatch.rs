@@ -3,11 +3,11 @@ use std::path::{Path, PathBuf};
 use anyhow::{Result, bail};
 
 use super::{
-    Mode, child_goal_blocked_audit, child_lane_ownership, child_lifecycle_events,
-    child_terminal_handoff, completion_handoff, conventional_commit, getcodexy_component_contract,
-    github_labels, hooks, lsp, manifest, mcp, merge_authorization, merge_message, review_control,
-    roles, roles_yaml, routing_policy, runtime, tdd_classification, touched_loc,
-    workflow_profile_evidence, workflow_profiles,
+    Mode, child_lane_ownership, child_lifecycle_events, child_terminal_handoff, child_wait_handoff,
+    completion_handoff, conventional_commit, getcodexy_component_contract, github_labels, hooks,
+    lsp, manifest, mcp, merge_authorization, merge_message, review_control, roles, roles_yaml,
+    routing_policy, runtime, tdd_classification, touched_loc, workflow_profile_evidence,
+    workflow_profiles,
 };
 
 /// Runs plugin contract validation for the selected mode.
@@ -74,7 +74,7 @@ pub fn errors(plugin_root: &Path, mode: Mode) -> Vec<String> {
             errors.extend(workflow_profiles::check_evidence(plugin_root, &evidence));
             errors.extend(review_lifecycle_errors(plugin_root, &evidence));
             errors.extend(child_terminal_errors(&evidence));
-            errors.extend(child_goal_blocked_audit::check(plugin_root, &evidence));
+            errors.extend(child_wait_handoff::check(plugin_root, &evidence));
             errors
         }
         Mode::TouchedLoc { base_ref } => touched_loc::check(&base_ref),

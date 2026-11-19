@@ -20,14 +20,11 @@ const REQUIRED_FIELDS: &[&str] = &[
 /// Checks terminal receipts and honest finite-phase submission without parent-response waits.
 pub(super) fn check(lines: &[&str], source: Option<&str>) -> Vec<String> {
     let mut handoffs = TerminalHandoffs::default();
-    let mut errors: Vec<String> = lines
+    let errors: Vec<String> = lines
         .iter()
         .filter_map(|line| handoffs.observe(without_metadata_prefix(line), source))
         .map(str::to_owned)
         .collect();
-    if matches!(handoffs.state, HandoffState::AwaitingResult) {
-        errors.push("phase completion requires its native goal result".into());
-    }
     errors
 }
 
@@ -58,7 +55,6 @@ enum HandoffState {
     #[default]
     Missing,
     Ready,
-    AwaitingResult,
     Completed,
     Stopped,
 }
@@ -77,10 +73,7 @@ impl TerminalHandoffs {
             if !self
                 .events
                 .insert(field(line, "event id").unwrap_or_default().to_owned())
-                || matches!(
-                    self.state,
-                    HandoffState::Ready | HandoffState::Stopped | HandoffState::AwaitingResult
-                )
+                || matches!(self.state, HandoffState::Ready | HandoffState::Stopped)
             {
                 self.state = HandoffState::Missing;
                 return Some(
@@ -88,31 +81,18 @@ impl TerminalHandoffs {
                 );
             }
             self.phase = phase;
-            self.completed = false;
-            self.state = HandoffState::Ready;
+            // Receipt validity is independent of any native goal operation; it does not prove the work.
+            self.completed = phase;
+            self.state = if phase {
+                HandoffState::Completed
+            } else {
+                HandoffState::Ready
+            };
             return None;
         }
-        if line.starts_with("goal tool result:") && self.phase {
-            // Tool acceptance and successful completion differ; phase stops retain exit ownership.
-            if matches!(self.state, HandoffState::AwaitingResult)
-                && field(line, "operation").is_some_and(is_complete_goal_call)
-            {
-                let status = field(line, "status")?;
-                self.completed = status == "complete";
-                self.state = if self.completed {
-                    HandoffState::Completed
-                } else {
-                    HandoffState::Missing
-                };
-                return None;
-            }
-            return Some("phase goal result requires its matching completion call");
-        }
         if line.starts_with("idle child state:") {
-            return (!(self.completed
-                && field(line, "goal state") == Some("complete")
-                && field(line, "plan state") == Some("idle")))
-            .then_some("idle child state requires a successful phase goal result");
+            return (!(self.completed && field(line, "plan state") == Some("idle")))
+                .then_some("idle child state requires a valid phase handoff");
         }
         if line.starts_with("child tool call: wait_threads")
             && source.is_some_and(|parent| field(line, "target") == Some(parent))
@@ -125,22 +105,12 @@ impl TerminalHandoffs {
             return Some("terminal child transition requires one unambiguous action");
         }
         if let Some(transition) = terminal_transition(line) {
-            let valid = (matches!(self.state, HandoffState::Ready)
-                && (!self.phase || transition == "goal"))
+            let valid = matches!(self.state, HandoffState::Ready)
                 || matches!(transition, "ownership release")
                     && matches!(self.state, HandoffState::Stopped)
                 || transition == "stop" && matches!(self.state, HandoffState::Completed);
             if valid {
-                self.state = if matches!(transition, "goal") && self.phase {
-                    if !line
-                        .strip_prefix("goal tool call: ")
-                        .and_then(|value| value.split(';').next())
-                        .is_some_and(is_complete_goal_call)
-                    {
-                        return Some("idle phase handoff authorizes only goal completion");
-                    }
-                    HandoffState::AwaitingResult
-                } else if matches!(transition, "stop") && !self.phase {
+                self.state = if matches!(transition, "stop") && !self.phase {
                     HandoffState::Stopped
                 } else {
                     HandoffState::Missing
@@ -152,13 +122,6 @@ impl TerminalHandoffs {
         }
         None
     }
-}
-
-fn is_complete_goal_call(operation: &str) -> bool {
-    matches!(
-        operation,
-        "update_goal(complete)" | "update_goal(status=\"complete\")"
-    )
 }
 
 fn valid_phase(line: &str) -> bool {
@@ -173,31 +136,12 @@ fn valid_phase(line: &str) -> bool {
         && field(line, "phase criteria") == Some("satisfied")
         && field(line, "ownership") == Some("retained")
         && field(line, "issue state") == Some("not complete")
-        && field(line, "goal transition") == Some("complete")
         && field(line, "return control") == Some("confirmed")
 }
 
 fn terminal_transition(line: &str) -> Option<&str> {
-    if line
-        .strip_prefix("goal tool call: ")
-        .and_then(|value| value.split(';').next())
-        .is_some_and(is_terminal_goal_call)
-    {
-        return Some("goal");
-    }
     line.starts_with("terminal child transition:")
         .then(|| field(line, "action"))
         .flatten()
         .filter(|action| ["stop", "archive", "ownership release", "blocked"].contains(action))
-}
-
-pub(super) fn is_terminal_goal_call(operation: &str) -> bool {
-    is_complete_goal_call(operation) || is_blocked_goal_call(operation)
-}
-
-pub(super) fn is_blocked_goal_call(operation: &str) -> bool {
-    matches!(
-        operation,
-        "update_goal(blocked)" | "update_goal(status=\"blocked\")"
-    )
 }

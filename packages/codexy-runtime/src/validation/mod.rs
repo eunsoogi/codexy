@@ -2,7 +2,6 @@
 mod agent_model_contract;
 mod agent_registration;
 mod agent_registration_catalog;
-mod child_goal_blocked_audit;
 mod child_handoff_readiness;
 mod child_handoff_readiness_claims;
 mod child_handoff_readiness_heads;
@@ -56,6 +55,7 @@ mod child_lane_thread_tools;
 mod child_lifecycle_events;
 mod child_message_table;
 mod child_terminal_handoff;
+mod child_wait_handoff;
 mod completion_handoff;
 mod completion_handoff_compaction;
 mod completion_handoff_loc_polarity;

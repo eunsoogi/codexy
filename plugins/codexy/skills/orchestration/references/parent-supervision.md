@@ -4,7 +4,7 @@ Codex MUST use this reference when an Orchestrator coordinates issue-sized work
 through Codex app tasks, Worker callbacks, drift correction, or a long-lived
 release goal. It is the canonical detailed source for delegated supervision,
 evidence, and authority boundaries; it does not create a scheduler, replace
-goal-lifecycle, or choose a repository's GitHub policy.
+native goal tools, or choose a repository's GitHub policy.
 
 At assignment, the parent MUST use [Worker routing](child-routing-policy.md) for
 ordinary versus hard-work selection; this reference MUST NOT define a separate
@@ -26,13 +26,13 @@ shared capacity and ordinary observation.
 
 When this arrangement is authorized, Codex MUST keep these roles distinct:
 
-- The Orchestrator owns goal, coordination, verification, correction, and
-  acceptance; it MUST keep its exact goal active via `get_goal`. For child-owned
-  lanes it MUST assign one Worker or retain an existing usable owner; it MUST
-  NOT implement, patch, or duplicate the lane, or merge/publish without separate
-  authority.
-- Worker MUST own files, branch, verification, review patches, and finite goal.
-  Worker MUST own idle-wait and blocked recovery.
+- The Orchestrator owns coordination, verification, correction, and acceptance.
+  For child-owned lanes it MUST assign one Worker or retain an existing usable
+  owner; it MUST NOT implement, patch, or duplicate the lane, or merge/publish
+  without separate authority.
+- Worker MUST own assigned files, branch, verification, and review patches. Its
+  assignment MUST NOT require a native goal. Worker MUST own idle-wait and
+  blocked recovery.
 
 Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
 
@@ -44,14 +44,7 @@ Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
 - Security-focused Warden: `gpt-6.2-astra` / `high`.
 
 New-role thread creation and delivery MUST use the explicit model/effort pair
-from the [child-routing policy](child-routing-policy.md). Recovery of the same
-objective MUST use its source values under that policy, with requested values
-kept separate from host-exposed effective settings. The same-directory fork,
-actual CWD and Git check, source-chat archive, and post-archive acceptance
-sequence is owned by [goal-lifecycle](../../goal-lifecycle/SKILL.md). Artifact
-listings and separate lifetime guarantees MUST NOT become gates when the exact
-checkout runs successfully; role defaults and sender settings MUST NOT override
-the source pair.
+from the [child-routing policy](child-routing-policy.md).
 
 ## Message visibility and style
 
@@ -156,9 +149,8 @@ work MUST continue. The Orchestrator MUST NOT forward a correction verbatim
 without reconciling the assignment or require the user to repeat unchanged
 context. A one-off instruction to act directly applies to that assignment and
 MUST NOT silently rewrite reusable delegation policy. The decision MUST remain
-available in existing task records and conversation; any native goal transition
-MUST follow [goal-lifecycle](../../goal-lifecycle/SKILL.md). MUST NOT create a
-new ledger or record format.
+available in existing task records and conversation. MUST NOT create a new
+ledger or record format.
 
 ## Waiting and direct correction
 
@@ -173,23 +165,10 @@ For a denied or uncertain Worker creation call, Codex MUST follow
   preserve ownership and capacity, evaluate the read-only advice, and send an
   authorized concrete next action, verification, allowed phase, and stop
   condition to the existing child when possible. It MUST confirm the child's
-  actual next call, diff, or result before claiming recovery. Native blocked
-  recovery and terminal handoff MUST retain their existing lifecycle and
-  [reporting](goal-transition-reporting.md) contracts; advice MUST NOT supply
-  missing permission, bypass user decisions, or invent a goal transition.
-- When the child's native goal is blocked and its original assignment still
-  covers the same objective and scope, the Orchestrator MUST direct the existing
-  owner to the next permitted recovery step in
-  [executable-checkout recovery](../../goal-lifecycle/references/executable-checkout-recovery.md).
-  It MUST coordinate the one continuation and source retirement when those steps
-  are supported, retaining the source owner until archival is confirmed and the
-  continuation in recovery-only mode until acceptance. A missing direct resume
-  API alone MUST NOT end this route or prompt another approval. If a required
-  host operation or preservation guarantee is unavailable, it MUST report the
-  exact transition and preserve the owner and work; acknowledgement does not
-  supply the missing capability. An actual user stop, revoked or missing
-  authority, changed scope, host denial, or unresolved material decision remains
-  binding.
+  actual next call, diff, or result before claiming recovery. Terminal handoff
+  follows its [reporting](goal-transition-reporting.md) contract; advice MUST
+  NOT supply missing permission, bypass user decisions, or invent a goal
+  transition.
 - For ordinary Orchestrator-owned Worker waits, the owner MUST use cursor-based
   `wait_threads` with targets within the supervised-child ceiling and the latest
   cursor for each target. Multiple batches MUST NOT bypass that ceiling. An
