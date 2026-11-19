@@ -41,3 +41,13 @@ store does not discover children created before it was introduced: the caller
 MUST reconcile existing owners before admitting new work. Until the
 installed app provides a verified event and correlation route, the store and its
 tests do not prove that create, resume, or delivery calls are enforced.
+
+The provisional `supervision_observation.observe_create` adapter consumes a
+trusted `PostToolUse` event. It uses `session_id` as the parent key and
+`tool_use_id` as the request key, and updates only an already existing matching
+reservation. It accepts an unambiguous ready or pending MCP result and keeps
+unknown, failed, malformed, or conflicting results reserved. This is not yet
+registered as a hook: a caller still needs a trusted way to associate the
+pre-call reservation and issue with that call ID, and actual app event and
+response delivery remains unverified. The documented event fields and hook
+coverage are described in the [Codex hooks reference](https://developers.openai.com/codex/hooks).
