@@ -1,18 +1,17 @@
 """Check that a prepared request authorizes at most one creation call."""
 
 import concurrent.futures
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-previous_bytecode_setting = sys.dont_write_bytecode
-sys.dont_write_bytecode = True
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"))
-from codexy_policy.supervision_dispatch import Dispatch, fingerprint
-from codexy_policy.supervision_reservations import ReservationError, Reservations
+from packages.getcodexy.tests.supervision_test_support import dispatch, reservations
 
-sys.dont_write_bytecode = previous_bytecode_setting
+Dispatch, fingerprint = dispatch.Dispatch, dispatch.fingerprint
+ReservationError, Reservations = (
+    reservations.ReservationError,
+    reservations.Reservations,
+)
 
 
 class DispatchTests(unittest.TestCase):

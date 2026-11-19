@@ -1,20 +1,23 @@
 """Correlate synthetic create responses without releasing uncertain outcomes."""
 
 import json
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-previous_bytecode_setting = sys.dont_write_bytecode
-sys.dont_write_bytecode = True
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"))
-from codexy_policy.supervision_observation import admit_create, observe_create
-from codexy_policy.supervision_dispatch import Dispatch
-from codexy_policy.supervision_reconciliation import resolve_pending
-from codexy_policy.supervision_reservations import Reservations
+from packages.getcodexy.tests.supervision_test_support import (
+    dispatch,
+    observation,
+    reconciliation,
+    reservations,
+)
 
-sys.dont_write_bytecode = previous_bytecode_setting
+Dispatch = dispatch.Dispatch
+admit_create, observe_create = observation.admit_create, observation.observe_create
+resolve_pending, Reservations = (
+    reconciliation.resolve_pending,
+    reservations.Reservations,
+)
 
 
 class CreateObservationTests(unittest.TestCase):

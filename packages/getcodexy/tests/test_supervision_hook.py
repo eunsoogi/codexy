@@ -9,13 +9,9 @@ import unittest
 from pathlib import Path
 
 HOOKS = Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"
-previous_bytecode_setting = sys.dont_write_bytecode
-sys.dont_write_bytecode = True
-sys.path.insert(0, str(HOOKS))
-from codexy_policy.supervision_storage import open_store
-from codexy_policy.supervision_dispatch import Dispatch
+from packages.getcodexy.tests.supervision_test_support import dispatch, storage
 
-sys.dont_write_bytecode = previous_bytecode_setting
+Dispatch, open_store = dispatch.Dispatch, storage.open_store
 
 
 class SupervisionHookTests(unittest.TestCase):
