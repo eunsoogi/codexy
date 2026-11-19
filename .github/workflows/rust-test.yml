@@ -201,7 +201,7 @@ jobs:
     needs: windows-rust-prep
     if: always() && (needs.windows-rust-prep.result == 'success' || (needs.windows-rust-prep.result == 'skipped' && github.event_name == 'workflow_dispatch' && inputs.run_mode == 'measurement')) # Isolated measurements intentionally skip normal-cache preparation.
     runs-on: windows-latest
-    timeout-minutes: 5
+    timeout-minutes: ${{ matrix.target.name == 'orchestration suite' && 10 || 5 }} # Only this shard runs the large launcher matrix.
     strategy:
       fail-fast: false
       matrix:

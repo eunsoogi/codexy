@@ -49,9 +49,11 @@ mod rust_workflow_cache;
 mod rust_measurement_dispatch;
 #[path = "support/rust_workflow_prep.rs"]
 mod rust_workflow_prep;
+#[path = "support/rust_workflow_timeouts.rs"]
+mod rust_workflow_timeouts;
 
 #[test]
-fn rust_workflow_has_exact_fail_closed_five_minute_matrix_per_platform() -> TestResult {
+fn rust_workflow_has_scoped_fail_closed_timeout_budgets() -> TestResult {
     let workflow = workflow_text()?;
     let failures = workflow_failures(&workflow)?;
     assert!(failures.is_empty(), "{}", failures.join("\n"));
@@ -106,8 +108,8 @@ fn workflow_failures(workflow: &str) -> Result<Vec<String>, Box<dyn std::error::
         if job.get("runs-on").and_then(Value::as_str) != Some(runner) {
             failures.push(format!("{platform} job must run on {runner}"));
         }
-        if job.get("timeout-minutes").and_then(Value::as_u64) != Some(5) {
-            failures.push(format!("{platform} job is missing timeout-minutes: 5"));
+        if !rust_workflow_timeouts::valid(job_id, job.get("timeout-minutes")) {
+            failures.push(format!("{platform} job has an incorrect timeout budget"));
         }
         match matrix_target_args(job) {
             Ok(actual) => validate_target_union(platform, &actual, &mut failures),
