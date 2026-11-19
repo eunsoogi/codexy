@@ -2,17 +2,15 @@
 
 import concurrent.futures
 from pathlib import Path
-import sys
 import tempfile
 import unittest
 
-previous_bytecode_setting = sys.dont_write_bytecode
-sys.dont_write_bytecode = True
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"))
-from codexy_policy import supervision_reservations as module
-from codexy_policy.supervision_reconciliation import resolve_pending
+from packages.getcodexy.tests.supervision_test_support import (
+    reconciliation,
+    reservations as module,
+)
 
-sys.dont_write_bytecode = previous_bytecode_setting
+resolve_pending = reconciliation.resolve_pending
 
 
 class ReservationTests(unittest.TestCase):

@@ -6,14 +6,18 @@ import tempfile
 import unittest
 from pathlib import Path
 
-previous_bytecode_setting = sys.dont_write_bytecode
-sys.dont_write_bytecode = True
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"))
-from codexy_policy.supervision_reconciliation import resolve_pending
-from codexy_policy.supervision_reservations import ReservationError, Reservations
-from codexy_policy.supervision_storage import open_store
+from packages.getcodexy.tests.supervision_test_support import (
+    reconciliation,
+    reservations,
+    storage,
+)
 
-sys.dont_write_bytecode = previous_bytecode_setting
+resolve_pending = reconciliation.resolve_pending
+ReservationError, Reservations = (
+    reservations.ReservationError,
+    reservations.Reservations,
+)
+open_store = storage.open_store
 
 
 class SetupReconciliationTests(unittest.TestCase):

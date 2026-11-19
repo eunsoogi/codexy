@@ -1,18 +1,13 @@
 """Check private reservation storage and fail-closed path handling."""
 
 import os
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-previous_bytecode_setting = sys.dont_write_bytecode
-sys.dont_write_bytecode = True
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"))
-from codexy_policy.supervision_reservations import ReservationError
-from codexy_policy.supervision_storage import open_store
+from packages.getcodexy.tests.supervision_test_support import reservations, storage
 
-sys.dont_write_bytecode = previous_bytecode_setting
+ReservationError, open_store = reservations.ReservationError, storage.open_store
 
 
 class StorageTests(unittest.TestCase):

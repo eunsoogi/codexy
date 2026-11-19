@@ -1,18 +1,13 @@
 """A released owner must reacquire capacity before a later turn."""
 
 import concurrent.futures
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-previous_bytecode_setting = sys.dont_write_bytecode
-sys.dont_write_bytecode = True
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"))
-from codexy_policy.supervision_reservations import Reservations
-from codexy_policy.supervision_resume import resume_decision
+from packages.getcodexy.tests.supervision_test_support import reservations, resume
 
-sys.dont_write_bytecode = previous_bytecode_setting
+Reservations, resume_decision = reservations.Reservations, resume.resume_decision
 
 
 class ResumeTests(unittest.TestCase):
