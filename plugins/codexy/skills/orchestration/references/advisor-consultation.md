@@ -87,9 +87,10 @@ prove recovery. Handoffs and external waits MUST continue to follow
 [goal-transition reporting](goal-transition-reporting.md); this procedure MUST
 NOT add a parent-reply requirement or complete an unfinished phase.
 
-For the same incident, the Orchestrator MUST reuse an accessible Advisor under
-the reuse rules below. A follow-up MUST have new evidence, a distinct actual
-failure, or changed constraints; unchanged reports MUST NOT restart the loop. If
+For the same incident, the Orchestrator MUST reuse an accessible Advisor when
+the available messaging route permits it, under the reuse rules below. A
+follow-up MUST have new evidence, a distinct actual failure, or changed
+constraints; unchanged reports MUST NOT restart the loop. If
 the Advisor or a required messaging/recovery tool is unavailable, it MUST report
 the exact limitation once, retain ownership and the unmet condition, and stop
 unsupported changes. It MUST NOT implement an Advisor substitute, create an
@@ -147,7 +148,10 @@ it to the actual parent or user when appropriate.
 
 When a follow-up concerns the same pending decision or still-open failure
 episode, the caller MUST reuse the same accessible Advisor identity if its
-context and authority remain applicable. An idle or completed response does not
+context and authority remain applicable and its messaging route is permitted.
+Native subagent follow-up messages are denied; when that is the only route,
+MUST start a fresh bounded consultation with the relevant evidence and prior
+advice identified as historical. An idle or completed response does not
 by itself make that identity unavailable or justify starting a duplicate
 Advisor. A later consultation trigger in the same open episode follows this
 reuse rule too.
@@ -170,9 +174,10 @@ unavailable-Advisor fallback above and stop unsupported changes.
 A historical recommendation remains consultation history, not current proof.
 Terminal delivery alone MUST NOT trigger a duplicate consultation; the caller
 MUST use the existing identity for a related follow-up when it remains
-accessible. Reuse MUST preserve the open failure episode, caller ownership, and
-selected review. It MUST NOT relax the Advisor's read-only and no-implementation
-boundary: the Advisor MUST NOT create, edit, delete, rename, or stage files, run
+accessible through a permitted route. Reuse MUST preserve the open failure
+episode, caller ownership, and selected review. It MUST NOT relax the Advisor's
+read-only and no-implementation boundary: the Advisor MUST NOT create, edit,
+delete, rename, or stage files, run
 commands that mutate repository state, take implementation ownership, or
 redelegate work. An Advisor consultation remains separate from the selected
 reviewer and MUST NOT waive verification or review findings.

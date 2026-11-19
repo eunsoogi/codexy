@@ -24,9 +24,10 @@ pub(crate) const TOOLS: &[&str] = &[
     "agentsspawn_agent",
     "collaborationspawn_agent",
     "multi_agent_v1__spawn_agent",
+    "multi_agent_v1spawn_agent",
 ];
 pub(crate) const EVENTS: &[&str] = &["PermissionRequest", "PreToolUse"];
-const MATCHER: &str = "^(?:(?:agents|multi_agent_v1)__|agents|collaboration)?(?:spawn_agent|send_message|followup_task)$";
+const MATCHER: &str = "^(?:(?:agents|multi_agent_v1)__|agents|collaboration|multi_agent_v1)?(?:spawn_agent|send_message|followup_task|send_input)$";
 const LAUNCHER: &str = "codexy-subagent-ownership.sh";
 
 #[test]
@@ -40,8 +41,8 @@ fn installed_matcher_covers_observed_native_and_flattened_names() -> TestResult 
     for tool in TOOLS {
         assert!(matcher.is_match(tool), "matcher misses {tool}");
     }
-    for prefix in ["", "agents__", "multi_agent_v1__", "agents", "collaboration"] {
-        for name in ["send_message", "followup_task"] {
+    for prefix in ["", "agents__", "multi_agent_v1__", "agents", "collaboration", "multi_agent_v1"] {
+        for name in ["send_message", "followup_task", "send_input"] {
             assert!(matcher.is_match(&format!("{prefix}{name}")));
         }
     }

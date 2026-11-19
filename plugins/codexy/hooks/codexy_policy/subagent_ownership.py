@@ -47,6 +47,14 @@ def _role_denial(agent_type: object) -> str:
 
 def forbidden(request: Request) -> bool | str:
     """Return the policy reason when a spawn request must be denied."""
+    # Deny follow-ups before inspecting content: the host may supply opaque text.
+    operation = request.tool.rsplit("__", 1)[-1]
+    for namespace in ("agents", "collaboration", "multi_agent_v1"):
+        if operation.startswith(namespace):
+            operation = operation[len(namespace) :]
+            break
+    if operation in {"send_message", "followup_task", "send_input"}:
+        return "FOLLOWUP_DISABLED"
     tool_input = request.tool_input
     if not isinstance(tool_input, dict):
         return "ENVELOPE"
@@ -54,19 +62,6 @@ def forbidden(request: Request) -> bool | str:
     message = _message_from_input(tool_input)
     if message is None:
         return "ENVELOPE"
-    # V2 function tools flatten their namespace directly into the hook name.
-    operation = request.tool.rsplit("__", 1)[-1]
-    for namespace in ("agents", "collaboration"):
-        if operation.startswith(namespace):
-            operation = operation[len(namespace) :]
-            break
-    # Follow-up targets have no authenticated role metadata in the hook envelope.
-    # They reuse an existing helper, so they do not create a fresh history boundary.
-    if operation in {"send_message", "followup_task"}:
-        target = tool_input.get("target")
-        if not isinstance(target, str) or not target.strip():
-            return "ENVELOPE"
-        return "DURABLE_OWNER" if durable_owner_requested(message) else False
     agent_type = tool_input.get("agent_type")
     if not _is_bounded_role(agent_type):
         return _role_denial(agent_type)
@@ -112,6 +107,16 @@ _GUIDED_REASONS = frozenset(
 def forbidden_with_guidance(request: Request) -> bool | str | Diagnostic:
     """Add the child-chat route at the hook boundary without changing classifier callers."""
     result = forbidden(request)
+    if isinstance(result, str) and result == "FOLLOWUP_DISABLED":
+        return Diagnostic(
+            result,
+            "Native subagent follow-up messages are disabled because their content "
+            "cannot be reliably inspected. Use a Codex child chat for work that "
+            "requires follow-up, or start a new bounded helper with the needed context. "
+            "네이티브 하위 에이전트 후속 메시지는 내용을 신뢰성 있게 검사할 수 없어 "
+            "차단됩니다. 후속 작업에는 Codex 자식 채팅을 사용하거나 필요한 맥락을 "
+            "담아 범위가 제한된 새 보조 에이전트를 시작하세요.",
+        )
     if isinstance(result, str) and result == "FORK_TURNS":
         return Diagnostic(result, _FORK_TURNS_GUIDANCE)
     if isinstance(result, str) and result in _GUIDED_REASONS:

@@ -6,7 +6,7 @@ COMMAND_HOOKS = (
     (_TOOL_PREFIX + "send_message_to_thread$", "codexy-thread-delivery"),
     (_TOOL_PREFIX + "create_thread$", "codexy-child-thread-creation"),
     (
-        r"^(?:(?:agents|multi_agent_v1)__|agents|collaboration)?(?:spawn_agent|send_message|followup_task)$",
+        r"^(?:(?:agents|multi_agent_v1)__|agents|collaboration|multi_agent_v1)?(?:spawn_agent|send_message|followup_task|send_input)$",
         "codexy-subagent-ownership",
     ),
 )

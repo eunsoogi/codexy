@@ -62,10 +62,12 @@ filesystem operation after its immediate revalidation.
 Every new native `spawn_agent` request for a permitted role MUST explicitly set
 `fork_turns="none"`. This applies equally to `explorer` and every registered
 specialist; omitted, null, history-copying, bounded-positive, and other values
-are denied before execution. A `send_message` or `followup_task` to an existing
-permitted helper reuses that helper and is not a new spawn, so it does not need
-a new `fork_turns` field or create a new-context gate. When correcting a
-history-setting denial, MUST keep already-authorized task and model choices;
+are denied before execution. Native `send_message`, `followup_task`, and
+`send_input` follow-ups MUST NOT be used: their contents may be opaque to the
+admission hook. For work requiring follow-up, MUST use an app child chat or
+start a new bounded helper with the necessary context. App child-chat messaging
+remains governed by its own policy. When correcting a history-setting denial,
+MUST keep already-authorized task and model choices;
 MUST NOT ask the user to restate them.
 
 Each new child assignment MUST be bounded and self-contained. It MUST carry the

@@ -41,18 +41,17 @@ omitted, and unknown roles fail closed instead of becoming implementation
 owners; durable work MUST use a Codex child thread, and unavailable thread
 tooling MUST be reported as a blocker. Allowlisted specialists and `explorer`
 remain bounded helpers or reviewers; branch, worktree, pull-request, and
-review-response ownership is denied at admission. Both `send_message` and
-`followup_task` apply the same message classifier to every nonempty target. The
-follow-up envelope does not authenticate target existence or role, so the hook
-never relies on a role claimed in the message; malformed targets fail closed.
-The classifier requires readable message text: an opaque or encrypted message
-cannot prove that ownership transfer was detected. Host hook dispatch and the
-visibility of message contents must be verified on the actual installed app.
+review-response ownership is denied at admission. Native `send_message`,
+`followup_task`, and `send_input` requests are denied regardless of content:
+the host may deliver opaque messages that cannot be classified reliably. Use a
+Codex child chat for work needing follow-up, or start a new bounded helper with
+the necessary context. This does not govern app child-chat messaging. Hook
+registration alone does not prove that a host dispatches these events.
 Every new native `spawn_agent` request must explicitly set `fork_turns="none"`;
 omitted, null, history-copying, bounded-positive, and other values fail closed
 with guidance to correct the request and provide a self-contained assignment.
-This policy does not apply to a follow-up to an existing helper. A no-history
-request value alone does not prove what turns the host supplied to the child.
+A no-history request value alone does not prove what turns the host supplied to
+the child.
 The spawn-message classifier also rejects direct requests to change source,
 commit or push changes, or execute tests and checks for any admitted role.
 Bounded read-only review and research remain available when the caller retains

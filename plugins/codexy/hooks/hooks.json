@@ -24,7 +24,7 @@
         ]
       },
       {
-        "matcher": "^(?:(?:agents|multi_agent_v1)__|agents|collaboration)?(?:spawn_agent|send_message|followup_task)$",
+        "matcher": "^(?:(?:agents|multi_agent_v1)__|agents|collaboration|multi_agent_v1)?(?:spawn_agent|send_message|followup_task|send_input)$",
         "hooks": [
           {
             "type": "command",
@@ -86,7 +86,7 @@
         ]
       },
       {
-        "matcher": "^(?:(?:agents|multi_agent_v1)__|agents|collaboration)?(?:spawn_agent|send_message|followup_task)$",
+        "matcher": "^(?:(?:agents|multi_agent_v1)__|agents|collaboration|multi_agent_v1)?(?:spawn_agent|send_message|followup_task|send_input)$",
         "hooks": [
           {
             "type": "command",

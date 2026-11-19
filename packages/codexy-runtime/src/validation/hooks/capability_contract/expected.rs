@@ -42,7 +42,7 @@ pub(super) const CONCERNS: &[Expected] = &[
     },
     Expected {
         id: "subagent-ownership",
-        trigger: "^(?:(?:agents|multi_agent_v1)__|agents|collaboration)?(?:spawn_agent|send_message|followup_task)$",
+        trigger: "^(?:(?:agents|multi_agent_v1)__|agents|collaboration|multi_agent_v1)?(?:spawn_agent|send_message|followup_task|send_input)$",
         input: "codexy.hooks.subagent-ownership.v1",
         launcher: "codexy-subagent-ownership",
         diagnostic: "CODEXY_SUBAGENT_OWNERSHIP_",
