@@ -115,6 +115,7 @@ class ReservationTests(unittest.TestCase):
         self.assertEqual(self.reserve(2, limit=1), "queued")
         self.store.setup("parent", "1", "delayed")
         self.assertEqual(self.reserve(2, limit=1), "queued")
+        self.assertEqual(self.reserve(2), "queued")
 
 
 if __name__ == "__main__":

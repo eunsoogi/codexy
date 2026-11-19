@@ -21,8 +21,9 @@ requested pair.
   an existing child admitted for another turn returns `resumed`. Neither result
   authorizes creating another child. Competing owners for the same issue fail.
   The effective ceiling
-  is the smaller of eight and the caller's explicit lower limit. Resumption of a
-  released request reserves capacity again before reactivating its old owner.
+  is the smallest of eight and any lower limit supplied for that parent so far;
+  an omitted later limit cannot raise it. Resumption of a released request
+  reserves capacity again before reactivating its old owner.
 - `setup(parent, request, pending)` binds a setup ID to the existing slot.
   `ready(parent, request, child)` binds the trusted ready result to that same
   slot and preserves its requested pair. Conflicting identities fail.
@@ -42,12 +43,21 @@ MUST reconcile existing owners before admitting new work. Until the
 installed app provides a verified event and correlation route, the store and its
 tests do not prove that create, resume, or delivery calls are enforced.
 
-The provisional `supervision_observation.observe_create` adapter consumes a
-trusted `PostToolUse` event. It uses `session_id` as the parent key and
-`tool_use_id` as the request key, and updates only an already existing matching
-reservation. It accepts an unambiguous ready or pending MCP result and keeps
-unknown, failed, malformed, or conflicting results reserved. This is not yet
-registered as a hook: a caller still needs a trusted way to associate the
-pre-call reservation and issue with that call ID, and actual app event and
-response delivery remains unverified. The documented event fields and hook
-coverage are described in the [Codex hooks reference](https://developers.openai.com/codex/hooks).
+`supervision_dispatch.Dispatch.prepare` reserves the canonical SHA-256 digest of
+the exact structured creation input for an explicit issue and its requested
+model pair. `claim` binds that digest and parent session to a native tool call
+ID in one transaction. A second call cannot consume the same reservation;
+repeated delivery of the same call is idempotent. Confirmed release retains a
+closed-call tombstone so a late event cannot claim a later attempt. No raw
+prompt is stored in this mapping. Callers MUST NOT infer the issue or pair from
+free-form prompt or title text.
+
+The provisional `supervision_observation` adapter consumes trusted hook events.
+`admit_create` requires a matching prepared input before allowing creation;
+`observe_create` reconciles the corresponding `PostToolUse` result by session,
+call ID, and input digest. It accepts an unambiguous ready or pending MCP result
+and keeps unknown, failed, malformed, or conflicting results reserved. It is
+not yet registered as a hook, and the preflight producer, safe private database
+location, runtime event delivery, and installed-app behavior remain unverified.
+The documented event fields and hook coverage are described in the
+[Codex hooks reference](https://developers.openai.com/codex/hooks).

@@ -37,6 +37,8 @@ class Reservations:
                 ON reservations(parent, issue)""")
             db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS pending_identity
                 ON reservations(parent, pending) WHERE pending IS NOT NULL""")
+            db.execute("""CREATE TABLE IF NOT EXISTS supervision_limits (
+                parent TEXT PRIMARY KEY, ceiling INTEGER NOT NULL)""")
 
     def _connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self.path, timeout=10, isolation_level=None)
@@ -60,6 +62,15 @@ class Reservations:
             raise ReservationError("limit must be a nonnegative integer")
         with closing(self._connect()) as db, db:
             db.execute("BEGIN IMMEDIATE")
+            # A later call that omits a lower limit must not silently raise it.
+            db.execute(
+                "INSERT INTO supervision_limits(parent,ceiling) VALUES(?,?) "
+                "ON CONFLICT(parent) DO UPDATE SET ceiling=min(ceiling,excluded.ceiling)",
+                (parent, min(8, limit)),
+            )
+            limit = db.execute(
+                "SELECT ceiling FROM supervision_limits WHERE parent=?", (parent,)
+            ).fetchone()[0]
             row = db.execute(
                 "SELECT * FROM reservations WHERE parent=? AND request=?",
                 (parent, request),
@@ -194,6 +205,14 @@ class Reservations:
         with closing(self._connect()) as db, db:
             db.execute("BEGIN IMMEDIATE")
             self._row(db, parent, request)
+            # Retain a tombstone so a late replay cannot claim a later attempt.
+            if db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='supervision_calls'"
+            ).fetchone():
+                db.execute(
+                    "UPDATE supervision_calls SET closed=1 WHERE parent=? AND request=?",
+                    (parent, request),
+                )
             db.execute(
                 "UPDATE reservations SET state='released' WHERE parent=? AND request=?",
                 (parent, request),

@@ -9,7 +9,8 @@ from pathlib import Path
 previous_bytecode_setting = sys.dont_write_bytecode
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"))
-from codexy_policy.supervision_observation import observe_create
+from codexy_policy.supervision_observation import admit_create, observe_create
+from codexy_policy.supervision_dispatch import Dispatch
 from codexy_policy.supervision_reservations import Reservations
 
 sys.dont_write_bytecode = previous_bytecode_setting
@@ -20,17 +21,27 @@ class CreateObservationTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.store = Reservations(Path(self.directory.name) / "state.sqlite")
-        self.store.reserve("parent", "call", "issue", "model", "medium", 1)
+        self.input = {"model": "model", "thinking": "medium", "prompt": "assignment"}
+        dispatch = Dispatch(self.store)
+        dispatch.prepare("parent", "issue", self.input, 1)
+        self.assertTrue(dispatch.claim("parent", "call", self.input))
         self.event = {
             "hook_event_name": "PostToolUse",
             "tool_name": "mcp__codex_app__create_thread",
             "session_id": "parent",
             "tool_use_id": "call",
+            "tool_input": self.input,
         }
 
     def observe(self, result):
         self.event["tool_response"] = result
         return observe_create(self.store, self.event)
+
+    def test_pre_call_must_match_the_claimed_request(self):
+        pre = {**self.event, "hook_event_name": "PreToolUse"}
+        self.assertTrue(admit_create(self.store, pre))
+        self.assertFalse(admit_create(self.store, {**pre, "tool_use_id": "other"}))
+        self.assertFalse(admit_create(self.store, {**pre, "tool_input": {}}))
 
     def test_pending_then_ready_keeps_same_slot_and_route(self):
         self.assertEqual(

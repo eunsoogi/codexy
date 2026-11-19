@@ -3,11 +3,28 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from typing import Any
 
+from .supervision_dispatch import Dispatch, fingerprint
 from .supervision_reservations import ReservationError, Reservations
 
 CREATE_TOOLS = frozenset({"codex_app__create_thread", "mcp__codex_app__create_thread"})
+
+
+def admit_create(store: Reservations, event: dict[str, Any]) -> bool:
+    """Fail closed unless this exact pre-authorized call claims its slot."""
+    if (
+        event.get("hook_event_name") != "PreToolUse"
+        or event.get("tool_name") not in CREATE_TOOLS
+    ):
+        return False
+    try:
+        return Dispatch(store).claim(
+            event.get("session_id"), event.get("tool_use_id"), event.get("tool_input")
+        )
+    except (ReservationError, OSError, sqlite3.Error):
+        return False
 
 
 def _unique(items: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -48,20 +65,23 @@ def observe_create(store: Reservations, event: dict[str, Any]) -> str:
         or event.get("tool_name") not in CREATE_TOOLS
     ):
         return "ignored"
-    parent, request = event.get("session_id"), event.get("tool_use_id")
+    parent, call = event.get("session_id"), event.get("tool_use_id")
     data = _result(event.get("tool_response"))
-    if not isinstance(parent, str) or not isinstance(request, str) or data is None:
+    if not isinstance(parent, str) or not isinstance(call, str) or data is None:
         return "uncertain"
     child, pending = data.get("threadId"), data.get("clientThreadId")
     if bool(child) == bool(pending):
         return "uncertain"
     try:
+        request = Dispatch(store).request_for_call(parent, call)
+        if request is None or fingerprint(event.get("tool_input")) != request:
+            return "uncertain"
         if isinstance(child, str) and not pending:
             store.ready(parent, request, child)
             return "ready"
         if isinstance(pending, str) and not child:
             store.setup(parent, request, pending)
             return "pending"
-    except ReservationError:
+    except (ReservationError, OSError, sqlite3.Error):
         return "uncertain"
     return "uncertain"
