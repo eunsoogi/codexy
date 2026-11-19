@@ -26,15 +26,23 @@ Thread-delivery admission reads the host session and the private supervision
 store, checks both relationship directions, and binds the request to the
 recipient's stored pair. Known parents use `gpt-6.2-sol`/`low`; known children
 use their stored pair. Unavailable, invalid, ambiguous, or inactive records and
-native subagent calls fail closed. An initialized, readable registry where neither
-identity is registered retains existing pair validation for ordinary messaging.
-If either identity is registered but no relationship matches, admission fails
-closed. This depends on reconciling existing supervised owners before resuming
-supervision; missing or corrupt state cannot establish ordinary messaging.
+native subagent calls fail closed. An initialized, readable registry where
+neither identity is registered retains existing pair validation for ordinary
+messaging. If either identity is registered but no relationship matches,
+admission fails closed. This depends on reconciling existing supervised owners
+before resuming supervision; missing or corrupt state cannot establish ordinary
+messaging. A fresh private data root is initialized with a separate receipt
+before the database; interruption or later database loss leaves delivery denied.
+Existing valid registries are checked read-only before receiving a receipt.
+Concurrent first calls may temporarily be denied while initialization completes.
+The receipt detects loss only while its data root remains intact: losing the
+entire root also loses that evidence, so existing supervised owners must be
+reconciled before any supervision resumes. POSIX persists the receipt and its
+directory entry; Windows directory-entry durability is not established here.
 Both events and tool aliases use the same policy. The hook does not open
 `transcript_path` or treat tool input, prompts, or message content as assignment
-authority. Bounded JSON and duplicate-key rejection remain in force. Actual
-host session-to-thread identity and hook invocation require installed-app proof.
+authority. Bounded JSON and duplicate-key rejection remain in force. Actual host
+session-to-thread identity and hook invocation require installed-app proof.
 
 The child-thread-creation concern still requires native, non-empty `model` and
 `thinking` fields. The plugin admits `spawn_agent` only for exact packaged

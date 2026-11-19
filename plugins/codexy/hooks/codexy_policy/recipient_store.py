@@ -4,7 +4,7 @@ from contextlib import closing
 import sqlite3
 
 from .supervision_reservations import ReservationError
-from .supervision_storage import open_store
+from .recipient_initialization import open_recipient_store
 from .thread_delivery import RecipientAssignment, resolve_known_pair
 
 
@@ -12,7 +12,7 @@ def resolve(plugin_data: str, sender: str, recipient: str) -> RecipientAssignmen
     """Read both relationships and registered identities in one snapshot."""
     unavailable = RecipientAssignment("unavailable")
     try:
-        store = open_store(plugin_data)
+        store = open_recipient_store(plugin_data)
         with closing(store._connect()) as db:
             db.execute("BEGIN")
             rows = db.execute(
