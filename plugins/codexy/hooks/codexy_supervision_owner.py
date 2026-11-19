@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
 from codexy_policy.supervision_dispatch import Dispatch
 from codexy_policy.supervision_observation import _unique
+from codexy_policy.supervision_reconciliation import resolve_pending
 from codexy_policy.supervision_reservations import ReservationError
 from codexy_policy.supervision_storage import open_store
 
@@ -24,6 +25,10 @@ def main() -> int:
     sub = parser.add_subparsers(dest="action", required=True)
     bootstrap = sub.add_parser("bootstrap")
     bootstrap.add_argument("--confirmed-complete", action="store_true", required=True)
+    ready = sub.add_parser("resolve-pending")
+    for name in ("request", "pending", "child"):
+        ready.add_argument(f"--{name}", required=True)
+    ready.add_argument("--confirmed-ready", action="store_true", required=True)
     adopt = sub.add_parser("adopt")
     for name in ("request", "issue", "model", "thinking", "child"):
         adopt.add_argument(f"--{name}", required=True)
@@ -45,6 +50,9 @@ def main() -> int:
                 args.parent, json.loads(raw, object_pairs_hook=_unique)
             )
             result = {"result": "reconciled"}
+        elif args.action == "resolve-pending":
+            resolve_pending(store, args.parent, args.request, args.pending, args.child)
+            result = {"result": "ready"}
         elif args.action == "adopt":
             store.adopt(
                 args.parent,

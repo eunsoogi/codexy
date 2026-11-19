@@ -24,8 +24,10 @@ model from the requested pair.
   for that parent so far; an omitted later limit cannot raise it. Resumption of
   a released request reserves capacity again before reactivating its old owner.
 - `setup(parent, request, pending)` binds a setup ID to the existing slot.
-  `ready(parent, request, child)` binds the trusted ready result to that same
-  slot and preserves its requested pair. Conflicting identities fail.
+  `ready(parent, request, child)` binds a direct ready result to that same slot.
+  Once pending, `resolve_pending(store, parent, request, pending, child)` MUST
+  use an authenticated observation establishing that exact mapping; mismatched
+  or unknown IDs leave the slot occupied. Conflicting identities fail.
 - `adopt(parent, request, issue, model, thinking, child)` records an already
   known owner from trusted evidence. It preserves owners even above the ceiling;
   subsequent reservations remain queued until capacity is available.
@@ -55,7 +57,7 @@ The provisional `supervision_observation` adapter consumes trusted hook events.
 `admit_create` requires a matching prepared input before allowing creation;
 `observe_create` reconciles the corresponding `PostToolUse` result by session,
 call ID, and input digest. It accepts an unambiguous ready or pending MCP result
-and keeps unknown, failed, malformed, or conflicting results reserved. It is is
+and keeps unknown, failed, malformed, or conflicting results reserved. It is
 registered for creation events. The `codexy_supervision_prepare.py` accepts an
 explicit parent session, issue, lower limit, private plugin-data root, and the
 exact structured creation input on standard input. The hook entrypoint uses the
@@ -65,6 +67,12 @@ route for exposing that same plugin-data root to the preflight caller, runtime
 event delivery, and installed-app behavior remain unverified. The documented
 event fields and hook coverage are described in the
 [Codex hooks reference](https://developers.openai.com/codex/hooks).
+
+Native subagents can share a root session ID. The creation adapter rejects
+events carrying an `agent_id` or `agent_type`, rather than letting a subagent
+consume a root reservation. This protection depends on the host actually
+delivering those identifiers; missing identifiers are not proof of root origin.
+The installed host's handling of these fields remains unverified.
 
 Before the first dispatch in a parent session, the Orchestrator MUST reconcile
 the complete existing owner roster and pass the resulting JSON array to
@@ -88,3 +96,24 @@ The flag records the caller's verified conclusion; it is not itself proof.
 Reserve the same owner with `resume --child <child>` before resuming it. The
 current implementation does not intercept resume calls; direct delivery
 enforcement remains unverified.
+
+For a known child,
+`supervision_resume.resume_decision(store, parent_session,
+child_id)` returns
+`active`, `released`, or `unknown`. A delivery consumer MUST deny a known
+released owner until capacity has been reserved again. `unknown` does not prove
+an unrelated recipient; the caller MUST establish that separately. The caller
+MUST authenticate the parent session and child IDs, and MUST NOT assume a
+session ID equals an app thread ID without host evidence. Child-to-parent
+delivery and parent-to-child resumption require separately established
+direction.
+
+After an authoritative ready observation links a pending setup ID to a child,
+`codexy_supervision_owner.py --plugin-data <root> --parent <session>
+resolve-pending --request <request> --pending <pending> --child <child>
+--confirmed-ready`
+performs that guarded transition. The confirmation flag is the caller's
+assertion, not proof. The available worktree-creation status tool describes
+worktree operations; its contract does not establish a mapping for a pending
+`create_thread` result. A missing listing, guessed identity, or timeout MUST NOT
+be treated as that mapping.

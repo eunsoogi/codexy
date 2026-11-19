@@ -49,4 +49,6 @@ DEPENDENCIES = (
     "hooks/codexy_policy/supervision_dispatch.py",
     "hooks/codexy_policy/supervision_observation.py",
     "hooks/codexy_policy/supervision_storage.py",
+    "hooks/codexy_policy/supervision_resume.py",
+    "hooks/codexy_policy/supervision_reconciliation.py",
 )

@@ -1,19 +1,18 @@
 """Exercise parent capacity, identity reconciliation, and concurrent admission."""
 
 import concurrent.futures
-import importlib.util
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 
-MODULE = (
-    Path(__file__).resolve().parents[3]
-    / "plugins/codexy/hooks/codexy_policy/supervision_reservations.py"
-)
-spec = importlib.util.spec_from_file_location("supervision_reservations", MODULE)
-assert spec and spec.loader
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
+previous_bytecode_setting = sys.dont_write_bytecode
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"))
+from codexy_policy import supervision_reservations as module
+from codexy_policy.supervision_reconciliation import resolve_pending
+
+sys.dont_write_bytecode = previous_bytecode_setting
 
 
 class ReservationTests(unittest.TestCase):
@@ -64,7 +63,7 @@ class ReservationTests(unittest.TestCase):
         )
         with self.assertRaises(module.ReservationError):
             restored.reserve("parent", "another", "issue-1", "model", "medium")
-        restored.ready("parent", "1", "child")
+        resolve_pending(restored, "parent", "1", "pending", "child")
         self.assertEqual(restored.lookup("parent", "child")["model"], "model")
         with self.assertRaises(module.ReservationError):
             restored.ready("parent", "1", "other-child")
@@ -75,7 +74,7 @@ class ReservationTests(unittest.TestCase):
         self.store.release("parent", "1", confirmed=True)
         self.assertEqual(self.reserve(1), "reserved")
         self.store.setup("parent", "1", "new-pending")
-        self.store.ready("parent", "1", "child")
+        resolve_pending(self.store, "parent", "1", "new-pending", "child")
         self.assertEqual(self.store.lookup("parent", "child")["issue"], "issue-1")
 
     def test_parent_isolation_and_over_limit_preserves_owners(self):
