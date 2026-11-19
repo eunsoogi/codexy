@@ -34,6 +34,25 @@ class RecipientAssignment:
     recipient: str | None = None
 
 
+def contextual_forbidden(
+    request: Request, resolve: Callable[[str, str], RecipientAssignment]
+) -> bool | str | Diagnostic:
+    """Use a trusted identity bridge; session IDs are not assumed to be thread IDs."""
+    data = request.tool_input
+    if not isinstance(data, dict) or not _non_empty_string(data.get("threadId")):
+        return _missing_field_diagnostic(["threadId"])
+    if not _non_empty_string(request.session_id):
+        return recipient_forbidden(request, RecipientAssignment("unavailable"))
+    try:
+        # Only the host envelope supplies the session; tool input cannot select it.
+        assignment = resolve(cast(str, request.session_id), cast(str, data["threadId"]))
+    except (OSError, ValueError, sqlite3.Error):
+        assignment = RecipientAssignment("unavailable")
+    if not isinstance(assignment, RecipientAssignment):
+        assignment = RecipientAssignment("unavailable")
+    return recipient_forbidden(request, assignment)
+
+
 def resolve_supervised_assignment(
     parent: str,
     sender: str,

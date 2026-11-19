@@ -1,5 +1,6 @@
 """Recipient-bound decisions use a trusted lookup result, not request metadata."""
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -7,9 +8,10 @@ from pathlib import Path
 HOOKS = Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"
 sys.path.insert(0, str(HOOKS))
 
-from codexy_policy.envelope import Diagnostic, Request  # noqa: E402
+from codexy_policy.envelope import Diagnostic, Request, evaluate_result  # noqa: E402
 from codexy_policy.thread_delivery import (  # noqa: E402
     RecipientAssignment,
+    contextual_forbidden,
     forbidden,
     resolve_supervised_assignment,
 )
@@ -163,6 +165,57 @@ class RecipientDeliveryPolicyTests(unittest.TestCase):
         )
         self.assertIsInstance(result, Diagnostic)
         self.assertEqual(result.code, "ASSIGNMENT_UNAVAILABLE")
+
+    def test_host_envelope_session_is_separate_from_untrusted_tool_input(self) -> None:
+        seen: list[tuple[str, str]] = []
+
+        def resolve(session: str, recipient: str) -> RecipientAssignment:
+            seen.append((session, recipient))
+            return RecipientAssignment("assigned", "gpt-6.2-sol", "low", recipient)
+
+        for event in ("PreToolUse", "PermissionRequest"):
+            payload = {
+                "hook_event_name": event,
+                "tool_name": "codex_app__send_message_to_thread",
+                "session_id": "host-session",
+                "tool_input": {
+                    "threadId": "parent",
+                    "session_id": "forged-session",
+                    "model": "gpt-6.1-terra",
+                    "thinking": "medium",
+                },
+            }
+            result = evaluate_result(
+                event,
+                json.dumps(payload).encode(),
+                frozenset({"codex_app__send_message_to_thread"}),
+                "TEST_",
+                lambda request: contextual_forbidden(request, resolve),
+            )
+            self.assertEqual(result.decision, "deny")
+            self.assertIn(b"gpt-6.2-sol/low", result.output)
+        self.assertEqual(seen, [("host-session", "parent")] * 2)
+
+    def test_missing_session_or_unknown_relation_never_becomes_unrelated(self) -> None:
+        request = self.request(threadId="parent", model="gpt-6.2-sol", thinking="low")
+        result = contextual_forbidden(
+            request, lambda _session, _recipient: RecipientAssignment("unrelated")
+        )
+        self.assertIsInstance(result, Diagnostic)
+        self.assertEqual(result.code, "ASSIGNMENT_UNAVAILABLE")
+        request = Request(
+            request.event, request.tool, request.tool_input, None, "session"
+        )
+        result = contextual_forbidden(
+            request, lambda _session, _recipient: RecipientAssignment("unavailable")
+        )
+        self.assertIsInstance(result, Diagnostic)
+        self.assertEqual(result.code, "ASSIGNMENT_UNAVAILABLE")
+        self.assertFalse(
+            contextual_forbidden(
+                request, lambda _session, _recipient: RecipientAssignment("unrelated")
+            )
+        )
 
 
 if __name__ == "__main__":
