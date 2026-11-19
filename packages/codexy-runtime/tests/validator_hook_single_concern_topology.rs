@@ -165,7 +165,7 @@ fn each_concern_rejects_wrong_events_with_its_diagnostic_family() -> TestResult 
         for concern in CONCERNS {
             let payload = admitted_payload::admitted_payload(concern, event)?;
             let admitted = run_launcher(concern, event, payload.clone())?;
-            assert!(admitted.is_none(), "{} valid input denied", concern.id);
+            assert!(admitted.is_none(), "{} valid input denied: {admitted:?}", concern.id);
             let other_event = EVENTS
                 .iter()
                 .copied()
@@ -202,6 +202,8 @@ fn expected_group(group: &Value, event: &str) -> Option<&'static Concern> {
 
 fn run_launcher(concern: &Concern, event: &str, payload: Value) -> LauncherResult {
     let root = codexy_runtime::paths::repository_root();
+    // Each invocation gets genuine private hook state, independent of the user installation.
+    let plugin_data = admitted_payload::private_data_dir()?;
     let hooks = if INSTALLED_IDS.contains(&concern.id) {
         root.join("plugins/codexy/hooks")
     } else {
@@ -210,6 +212,7 @@ fn run_launcher(concern: &Concern, event: &str, payload: Value) -> LauncherResul
     let mut child = Command::new(hooks.join(format!("{}.sh", concern.launcher)))
         .arg(event)
         .env("PLUGIN_ROOT", hooks.parent().ok_or("plugin root")?)
+        .env("PLUGIN_DATA", plugin_data.path())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

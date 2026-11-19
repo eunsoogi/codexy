@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import cast
+import sqlite3
+from dataclasses import dataclass
+from typing import Callable, Literal, Mapping, cast
 
 from .envelope import Diagnostic, Request
 
@@ -22,8 +24,140 @@ _REQUIRED_FIELDS = ("threadId", "model", "thinking")
 _SUPPORTED_PAIRS = ", ".join(f"{model}/{thinking}" for model, thinking in ALLOWED_PAIRS)
 
 
-def forbidden(request: Request) -> bool | str | Diagnostic:
-    """Reject malformed requests and model/effort combinations the product supports."""
+@dataclass(frozen=True)
+class RecipientAssignment:
+    """Result supplied by a trusted supervision lookup, never by tool input."""
+
+    status: Literal["assigned", "unavailable", "unrelated"]
+    model: str | None = None
+    thinking: str | None = None
+    recipient: str | None = None
+
+
+def contextual_forbidden(
+    request: Request, resolve: Callable[[str, str], RecipientAssignment]
+) -> bool | str | Diagnostic:
+    """Use a trusted identity bridge; session IDs are not assumed to be thread IDs."""
+    data = request.tool_input
+    if not isinstance(data, dict) or not _non_empty_string(data.get("threadId")):
+        # Preserve complete missing-field diagnostics before attempting lookup.
+        return forbidden(request)
+    if not _non_empty_string(request.session_id):
+        return recipient_forbidden(request, RecipientAssignment("unavailable"))
+    try:
+        # Only the host envelope supplies the session; tool input cannot select it.
+        assignment = resolve(cast(str, request.session_id), cast(str, data["threadId"]))
+    except (OSError, ValueError, sqlite3.Error):
+        assignment = RecipientAssignment("unavailable")
+    if not isinstance(assignment, RecipientAssignment):
+        assignment = RecipientAssignment("unavailable")
+    return recipient_forbidden(request, assignment)
+
+
+def resolve_supervised_assignment(
+    parent: str,
+    sender: str,
+    recipient: str,
+    lookup: Callable[[str, str], Mapping[str, object] | None],
+) -> RecipientAssignment:
+    """Consume a parent-scoped lookup after the caller authenticates the identities.
+
+    A missing record cannot distinguish an unrelated chat from a lost assignment;
+    the caller must establish unrelated traffic separately before using that status.
+    """
+    unavailable = RecipientAssignment("unavailable")
+    if not all(_non_empty_string(value) for value in (parent, sender, recipient)):
+        return unavailable
+    if sender == parent and recipient != parent:
+        child = recipient
+    elif recipient == parent and sender != parent:
+        child = sender
+    else:
+        return unavailable
+    try:
+        record = lookup(parent, child)
+    except (OSError, ValueError, sqlite3.Error):
+        return unavailable
+    if (
+        not isinstance(record, Mapping)
+        or record.get("parent") != parent
+        or record.get("child") != child
+        or record.get("state") != "active"
+    ):
+        return unavailable
+    model, thinking = record.get("model"), record.get("thinking")
+    if (
+        not isinstance(model, str)
+        or not isinstance(thinking, str)
+        or (model, thinking) not in WORKER_CREATION_ROUTES
+    ):
+        return unavailable
+    if recipient == parent:
+        return RecipientAssignment("assigned", *ORCHESTRATOR_ROUTE, recipient)
+    return RecipientAssignment("assigned", model, thinking, recipient)
+
+
+def resolve_known_pair(
+    sender: str,
+    recipient: str,
+    lookup: Callable[[str, str], Mapping[str, object] | None],
+) -> RecipientAssignment:
+    """Resolve one authenticated thread pair without guessing its direction."""
+    unavailable = RecipientAssignment("unavailable")
+    if not _non_empty_string(sender) or not _non_empty_string(recipient):
+        return unavailable
+    if sender == recipient:
+        return unavailable
+    try:
+        forward = lookup(sender, recipient)
+        reverse = lookup(recipient, sender)
+    except (OSError, ValueError, sqlite3.Error):
+        return unavailable
+    # Two matches are ambiguous; no match alone cannot establish unrelated traffic.
+    if (forward is None) == (reverse is None):
+        return unavailable
+    parent, record = (sender, forward) if forward is not None else (recipient, reverse)
+    return resolve_supervised_assignment(
+        parent, sender, recipient, lambda _p, _c: record
+    )
+
+
+def recipient_forbidden(
+    request: Request, assignment: RecipientAssignment
+) -> bool | str | Diagnostic:
+    """Apply the recipient decision once an authenticated lookup is available."""
+    data = request.tool_input
+    if not isinstance(data, dict) or not _non_empty_string(data.get("threadId")):
+        return _missing_field_diagnostic(["threadId"])
+    if assignment.status == "unrelated":
+        return forbidden(request)
+    pair = (assignment.model, assignment.thinking)
+    # Unknown or corrupt supervised state must not silently become an unrelated chat.
+    if (
+        assignment.status != "assigned"
+        or assignment.recipient != data["threadId"]
+        or pair not in ALLOWED_PAIRS
+    ):
+        return Diagnostic(
+            "ASSIGNMENT_UNAVAILABLE",
+            "The recipient's supervision assignment is unavailable or invalid. "
+            "Recover the trusted assignment before retrying; do not guess the model or thinking.",
+        )
+    if (data.get("model"), data.get("thinking")) != pair:
+        return Diagnostic(
+            "RECIPIENT_ROUTE_MISMATCH",
+            f"Use the recipient's assigned model/thinking pair {pair[0]}/{pair[1]}; "
+            "keep the same recipient and retry only with that pair.",
+        )
+    return False
+
+
+def forbidden(
+    request: Request, assignment: RecipientAssignment | None = None
+) -> bool | str | Diagnostic:
+    """Validate fields, optionally binding them to a trusted recipient lookup."""
+    if assignment is not None:
+        return recipient_forbidden(request, assignment)
     data = request.tool_input
     if not isinstance(data, dict):
         return _missing_field_diagnostic(list(_REQUIRED_FIELDS))

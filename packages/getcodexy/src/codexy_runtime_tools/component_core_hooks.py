@@ -27,6 +27,8 @@ DEPENDENCIES = (
     "hooks/codexy-hook-runtime.sh",
     "hooks/codexy-thread-delivery.py",
     "hooks/codexy_policy/thread_delivery.py",
+    "hooks/codexy_policy/recipient_store.py",
+    "hooks/codexy_policy/recipient_initialization.py",
     "hooks/codexy-child-thread-creation.py",
     "hooks/codexy_policy/child_thread_creation.py",
     # The admission module imports this helper when constructing denial feedback.

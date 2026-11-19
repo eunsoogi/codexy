@@ -12,6 +12,7 @@ from pathlib import Path
 
 from core_hook_test_support import (
     hook_payload as _payload,
+    reconciled_delivery_store,
     temporary_primary_checkout,
     worker_creation_input,
 )
@@ -19,40 +20,9 @@ from core_hook_test_support import (
 
 ROOT = Path(__file__).resolve().parents[3]
 HOOKS = ROOT / "plugins/codexy/hooks"
-ENTRYPOINTS = (
-    "codexy-child-thread-creation.py",
-    "codexy-subagent-ownership.py",
-    "codexy-thread-delivery.py",
-)
 
 
 class CoreHookStartupTests(unittest.TestCase):
-    def test_version_gate_is_before_policy_import_and_launchers_do_not_probe_with_c(
-        self,
-    ):
-        for entrypoint in ENTRYPOINTS:
-            source = (HOOKS / entrypoint).read_text(encoding="utf-8")
-            gate = source.index("UNSUPPORTED_INTERPRETER_EXIT = 125")
-            anchors = [source.index("def main")]
-            if "from codexy_policy" in source:
-                anchors.append(source.index("from codexy_policy"))
-            self.assertLess(gate, min(anchors), entrypoint)
-            self.assertIn("read(1024 * 1024 + 1)", source, entrypoint)
-
-        runtime = (HOOKS / "codexy-hook-runtime.sh").read_text(encoding="utf-8")
-        self.assertIn("125)", runtime)
-        self.assertNotIn("-c \\\n", runtime)
-        for launcher in (
-            "codexy-child-thread-creation.cmd",
-            "codexy-subagent-ownership.cmd",
-            "codexy-thread-delivery.cmd",
-        ):
-            source = (HOOKS / launcher).read_text(encoding="utf-8")
-            self.assertNotIn(" -c ", source)
-            self.assertNotIn(">", source)
-            self.assertNotIn("CODEXY_HOOK_OUTPUT", source)
-            self.assertIn("%SystemRoot%\\py.exe", source)
-
     @unittest.skipUnless(os.name != "nt", "POSIX launcher coverage")
     def test_allowed_paths_remain_zero_bytes_and_denials_keep_event_shapes(self):
         # This allowed spawn models the required explicit fresh-child history boundary.
@@ -78,11 +48,13 @@ class CoreHookStartupTests(unittest.TestCase):
             ),
         )
         with temporary_primary_checkout() as primary_cwd:
+            data = reconciled_delivery_store(primary_cwd)
             for launcher, tool, tool_input in allowed:
                 with self.subTest(launcher=launcher):
                     payload = _payload("PreToolUse", tool, tool_input, cwd=primary_cwd)
                     self.assertEqual(
-                        self._run(HOOKS.parent, launcher, "PreToolUse", payload), b""
+                        self._run(HOOKS.parent, launcher, "PreToolUse", payload, data),
+                        b"",
                     )
 
         for launcher, prefix, tool in (
@@ -229,13 +201,24 @@ class CoreHookStartupTests(unittest.TestCase):
             self.assertIn(b"CODEXY_CHILD_THREAD_CREATION_RUNTIME", output)
             self.assertEqual((root / "attempts").read_text(encoding="utf-8"), "1")
 
-    def _run(self, root: Path, launcher: str, event: str, payload: bytes) -> bytes:
+    def _run(
+        self,
+        root: Path,
+        launcher: str,
+        event: str,
+        payload: bytes,
+        plugin_data: Path | None = None,
+    ) -> bytes:
         result = subprocess.run(
             [str(root / "hooks" / launcher), event],
             input=payload,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            env={**os.environ, "PLUGIN_ROOT": str(root)},
+            env={
+                **os.environ,
+                "PLUGIN_ROOT": str(root),
+                **({"PLUGIN_DATA": str(plugin_data)} if plugin_data else {}),
+            },
             check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))

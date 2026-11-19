@@ -16,6 +16,9 @@ class Request:
     tool: str
     tool_input: object
     cwd: object
+    # Host session identity is distinct from any sender identity claimed in tool input.
+    session_id: object = None
+    agent_id: object = None
 
 
 @dataclass(frozen=True)
@@ -108,6 +111,8 @@ def evaluate_result(
         data["tool_name"],
         data.get("tool_input"),
         data.get("cwd"),
+        data.get("session_id"),
+        data.get("agent_id"),
     )
     try:
         blocked = forbidden(request)

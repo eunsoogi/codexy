@@ -23,7 +23,9 @@ TIMING_FILE_ENV = "CODEXY_CORE_HOOK_TIMING_FILE"
 
 def main() -> int:
     from codexy_policy.envelope import evaluate_result
-    from codexy_policy.thread_delivery import forbidden
+    from codexy_policy.envelope import Request
+    from codexy_policy.recipient_store import resolve
+    from codexy_policy.thread_delivery import RecipientAssignment, contextual_forbidden
 
     parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument(
@@ -43,12 +45,26 @@ def main() -> int:
             started_ns = timing.start()
         except Exception:
             timing = None
+
+    def decision(request: Request):
+        # Native subagents share a parent's session and cannot claim its identity.
+        if request.agent_id is not None:
+            return contextual_forbidden(
+                request, lambda _session, _recipient: RecipientAssignment("unavailable")
+            )
+        return contextual_forbidden(
+            request,
+            lambda session, recipient: resolve(
+                os.environ.get("PLUGIN_DATA", ""), session, recipient
+            ),
+        )
+
     result = evaluate_result(
         event,
         payload,
         TOOLS,
         "CODEXY_THREAD_DELIVERY_",
-        forbidden,
+        decision,
     )
     if timing is not None and started_ns is not None:
         timing.record(

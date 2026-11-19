@@ -22,6 +22,12 @@ pub(super) fn input(recipient: &str, model: &str, thinking: &str, prompt: &str) 
 }
 
 pub(super) fn plugin_roots(temp: &Path) -> TestResult<[PathBuf; 2]> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        // Hook state enforces a private host data directory, including in tests.
+        std::fs::set_permissions(temp, std::fs::Permissions::from_mode(0o700))?;
+    }
     let installed = temp.join("installed");
     crate::support::copy_dir(
         codexy_runtime::paths::repository_root().join("plugins/codexy"),
@@ -46,6 +52,7 @@ pub(super) fn run_with_tool(
         "hook_event_name":event,
         "tool_name":tool_name,
         "tool_input":tool_input,
+        "session_id":"ordinary-sender",
         "transcript_path":transcript
     });
     if let Some(metadata) = legacy_metadata {
@@ -56,6 +63,8 @@ pub(super) fn run_with_tool(
     let mut child = command
         .arg(event)
         .env("PLUGIN_ROOT", root)
+        // A private disposable data root exercises real first-use initialization.
+        .env("PLUGIN_DATA", transcript.parent().ok_or("fixture data root")?)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
