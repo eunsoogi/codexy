@@ -1,6 +1,6 @@
 {
   "name": "codexy-github",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Optional GitHub issue, pull request, review, and merge workflow for any repository.",
   "author": {
     "name": "Eunsoo Lee",
