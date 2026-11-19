@@ -11,6 +11,7 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "plugins/codexy/hooks"))
 from codexy_policy.supervision_observation import admit_create, observe_create
 from codexy_policy.supervision_dispatch import Dispatch
+from codexy_policy.supervision_reconciliation import resolve_pending
 from codexy_policy.supervision_reservations import Reservations
 
 sys.dont_write_bytecode = previous_bytecode_setting
@@ -43,6 +44,15 @@ class CreateObservationTests(unittest.TestCase):
         self.assertTrue(admit_create(self.store, pre))
         self.assertFalse(admit_create(self.store, {**pre, "tool_use_id": "other"}))
         self.assertFalse(admit_create(self.store, {**pre, "tool_input": {}}))
+        self.assertFalse(admit_create(self.store, {**pre, "agent_id": "subagent"}))
+        self.assertFalse(admit_create(self.store, {**pre, "agent_type": "worker"}))
+
+    def test_subagent_result_cannot_bind_parent_reservation(self):
+        self.event["agent_id"] = "subagent"
+        self.assertEqual(
+            self.observe({"structuredContent": {"threadId": "child"}}), "ignored"
+        )
+        self.assertIsNone(self.store.lookup("parent", "child"))
 
     def test_pending_then_ready_keeps_same_slot_and_route(self):
         self.assertEqual(
@@ -57,8 +67,10 @@ class CreateObservationTests(unittest.TestCase):
                     ]
                 }
             ),
-            "ready",
+            "uncertain",
         )
+        request = Dispatch(self.store).request_for_call("parent", "call")
+        resolve_pending(self.store, "parent", request, "pending", "child")
         self.assertEqual(self.store.lookup("parent", "child")["model"], "model")
         self.assertEqual(
             self.store.reserve("parent", "other", "other-issue", "m", "t", 1), "queued"

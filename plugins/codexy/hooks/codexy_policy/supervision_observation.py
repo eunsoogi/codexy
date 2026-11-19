@@ -17,6 +17,8 @@ def admit_create(store: Reservations, event: dict[str, Any]) -> bool:
     if (
         event.get("hook_event_name") != "PreToolUse"
         or event.get("tool_name") not in CREATE_TOOLS
+        or event.get("agent_id") is not None
+        or event.get("agent_type") is not None
     ):
         return False
     try:
@@ -63,6 +65,8 @@ def observe_create(store: Reservations, event: dict[str, Any]) -> str:
     if (
         event.get("hook_event_name") != "PostToolUse"
         or event.get("tool_name") not in CREATE_TOOLS
+        or event.get("agent_id") is not None
+        or event.get("agent_type") is not None
     ):
         return "ignored"
     parent, call = event.get("session_id"), event.get("tool_use_id")

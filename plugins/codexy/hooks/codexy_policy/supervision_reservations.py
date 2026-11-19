@@ -185,7 +185,7 @@ class Reservations:
         with closing(self._connect()) as db, db:
             db.execute("BEGIN IMMEDIATE")
             row = self._row(db, parent, request)
-            if row["state"] not in ("reserved", "setting_up", "active") or row[
+            if row["state"] not in ("reserved", "active") or row[
                 "child"
             ] not in (None, child):
                 raise ReservationError("conflicting child identity")

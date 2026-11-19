@@ -107,23 +107,23 @@
         ]
       },
       {
-        "matcher": "^(?:codex_app__|mcp__codex_app__)create_thread$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${PLUGIN_ROOT}/hooks/codexy-supervision-capacity.sh\" PreToolUse",
-            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-supervision-capacity.cmd\" PreToolUse",
-            "timeout": 5
-          }
-        ]
-      },
-      {
         "matcher": "^(?:(?:agents|multi_agent_v1)__)?(?:spawn_agent|send_message|followup_task)$",
         "hooks": [
           {
             "type": "command",
             "command": "\"${PLUGIN_ROOT}/hooks/codexy-subagent-ownership.sh\" PreToolUse",
             "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-subagent-ownership.cmd\" PreToolUse",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "^(?:codex_app__|mcp__codex_app__)create_thread$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${PLUGIN_ROOT}/hooks/codexy-supervision-capacity.sh\" PreToolUse",
+            "commandWindows": "\"${PLUGIN_ROOT}/hooks/codexy-supervision-capacity.cmd\" PreToolUse",
             "timeout": 5
           }
         ]
