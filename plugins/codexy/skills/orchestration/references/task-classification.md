@@ -51,8 +51,8 @@ NOT generalize it to other actions, owners, or future work.
    transferring ownership. Acceptance, coordination, and accepted-child cleanup
    remain parent-owned. Issue implementation, takeover of an existing PR, and
    execution verification (including a verification-only PR) MUST retain one
-   durable app Worker owner for the issue even when no source changes remain.
-   A native helper MUST NOT become that owner or execute verification in its
+   durable app Worker owner for the issue even when no source changes remain. A
+   native helper MUST NOT become that owner or execute verification in its
    place.
 4. Before dispatch, the parent MUST read back the active owner for the same
    issue-sized outcome and reuse a suitable existing owner. A helper MUST NOT
@@ -154,7 +154,7 @@ These are document scenarios, not evidence that a host executed the routes.
 | “Orchestrate investigation and implementation.” | The parent MUST coordinate; each independent substantive outcome MUST go to one bounded owner under scoped authority and current host limits.                          |
 | Vague request to “coordinate”                   | MUST NOT grant child-task authority or change implementation ownership; MUST keep work with its explicit owner or report unresolved topology.                          |
 | Existing suitable child owner                   | MUST reuse that owner; MUST NOT create a replacement or patch its branch.                                                                                              |
-| Existing PR needs execution verification        | MUST assign or reuse the issue's app Worker even when no implementation remains; a helper is not the owner.                                                          |
+| Existing PR needs execution verification        | MUST assign or reuse the issue's app Worker even when no implementation remains; a helper is not the owner.                                                            |
 | Required app-task surface or authority absent   | MUST keep selected child-owned work pending and report the exact limitation; MUST NOT silently take it over.                                                           |
 | Consumer needs a prerequisite artifact          | MUST sequence the producer before the consumer and name the needed artifact or decision.                                                                               |
 | Ready lanes list an overlapping path            | Path overlap alone MUST NOT serialize dispatch; MUST keep dependency-ready lanes concurrent within available capacity.                                                 |

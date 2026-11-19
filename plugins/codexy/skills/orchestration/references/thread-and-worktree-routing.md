@@ -90,12 +90,12 @@ After ownership readback authorizes a new Worker, MUST resolve the creation
 request and pass its complete `tool_input` directly to `create_thread`; this
 keeps the assignment prompt, selected pair, and managed project target together.
 If the resolver returns a fallback or lacks a complete creation input, MUST
-leave the lane pending rather than reconstructing omitted fields.
-For an existing PR, MUST supply its remote branch and current remote head to the
-issue owner and use the assigned managed worktree to resume the outstanding
-criteria. If no suitable owner exists and creation is unavailable, MUST record
-the issue and reason in the parent backlog; MUST NOT create a substitute helper
-or transfer execution to the parent. Repeated requests MUST first reuse the
+leave the lane pending rather than reconstructing omitted fields. For an
+existing PR, MUST supply its remote branch and current remote head to the issue
+owner and use the assigned managed worktree to resume the outstanding criteria.
+If no suitable owner exists and creation is unavailable, MUST record the issue
+and reason in the parent backlog; MUST NOT create a substitute helper or
+transfer execution to the parent. Repeated requests MUST first reuse the
 existing suitable issue owner.
 
 When task classification and the required owner/tool readbacks authorize a new
