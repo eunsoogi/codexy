@@ -23,6 +23,7 @@ class CreateObservationTests(unittest.TestCase):
         self.store = Reservations(Path(self.directory.name) / "state.sqlite")
         self.input = {"model": "model", "thinking": "medium", "prompt": "assignment"}
         dispatch = Dispatch(self.store)
+        dispatch.bootstrap("parent", [])
         dispatch.prepare("parent", "issue", self.input, 1)
         self.assertTrue(dispatch.claim("parent", "call", self.input))
         self.event = {

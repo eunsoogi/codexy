@@ -41,11 +41,52 @@ class Dispatch:
                 closed INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (parent, call))""")
             db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS open_supervision_call
                 ON supervision_calls(parent, request) WHERE closed=0""")
+            db.execute("""CREATE TABLE IF NOT EXISTS supervision_parents (
+                parent TEXT PRIMARY KEY)""")
+
+    def bootstrap(self, parent: str, owners: list[dict[str, str]]) -> None:
+        """Record the caller's complete, independently reconciled owner roster."""
+        parent = _required(parent)
+        if not isinstance(owners, list):
+            raise ReservationError("owner roster must be a list")
+        with closing(self.store._connect()) as db, db:
+            db.execute("BEGIN IMMEDIATE")
+            if db.execute(
+                "SELECT 1 FROM supervision_parents WHERE parent=?", (parent,)
+            ).fetchone():
+                raise ReservationError("parent roster already reconciled")
+            for owner in owners:
+                if not isinstance(owner, dict) or set(owner) != {
+                    "request",
+                    "issue",
+                    "model",
+                    "thinking",
+                    "child",
+                }:
+                    raise ReservationError("invalid owner roster")
+                values = tuple(
+                    _required(owner[key])
+                    for key in ("request", "issue", "model", "thinking", "child")
+                )
+                try:
+                    db.execute(
+                        "INSERT INTO reservations(parent,request,issue,model,thinking,child,state) VALUES(?,?,?,?,?,?,'active')",
+                        (parent, *values),
+                    )
+                except sqlite3.IntegrityError as exc:
+                    raise ReservationError("conflicting owner roster") from exc
+            # No dispatch can observe a partially imported roster.
+            db.execute("INSERT INTO supervision_parents(parent) VALUES(?)", (parent,))
 
     def prepare(
         self, parent: str, issue: str, tool_input: dict[str, Any], limit: int = 8
     ) -> str:
         """Reserve a slot for these exact input bytes and requested model pair."""
+        with closing(self.store._connect()) as db:
+            if not db.execute(
+                "SELECT 1 FROM supervision_parents WHERE parent=?", (_required(parent),)
+            ).fetchone():
+                raise ReservationError("parent owner roster has not been reconciled")
         model, thinking = tool_input.get("model"), tool_input.get("thinking")
         return self.store.reserve(
             parent,

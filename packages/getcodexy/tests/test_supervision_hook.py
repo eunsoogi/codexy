@@ -13,6 +13,7 @@ previous_bytecode_setting = sys.dont_write_bytecode
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(HOOKS))
 from codexy_policy.supervision_storage import open_store
+from codexy_policy.supervision_dispatch import Dispatch
 
 sys.dont_write_bytecode = previous_bytecode_setting
 
@@ -22,12 +23,13 @@ class SupervisionHookTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             tool_input = {"model": "m", "thinking": "medium", "prompt": "assignment"}
             store = open_store(root)
+            Dispatch(store).bootstrap("parent", [])
             preparation = subprocess.run(
                 [
                     sys.executable,
                     "-I",
                     "-B",
-                    str(HOOKS / "codexy-supervision-prepare.py"),
+                    str(HOOKS / "codexy_supervision_prepare.py"),
                     "--plugin-data",
                     root,
                     "--parent",
@@ -55,7 +57,7 @@ class SupervisionHookTests(unittest.TestCase):
                         sys.executable,
                         "-I",
                         "-B",
-                        str(HOOKS / "codexy-supervision-capacity.py"),
+                        str(HOOKS / "codexy_supervision_capacity.py"),
                         "--event",
                         name,
                     ],

@@ -22,6 +22,9 @@ class DispatchTests(unittest.TestCase):
         self.store = Reservations(Path(self.directory.name) / "state.sqlite")
         self.dispatch = Dispatch(self.store)
         self.input = {"model": "model", "thinking": "medium", "prompt": "private"}
+        with self.assertRaises(ReservationError):
+            self.dispatch.prepare("parent", "issue", self.input, 1)
+        self.dispatch.bootstrap("parent", [])
         self.assertEqual(
             self.dispatch.prepare("parent", "issue", self.input, 1), "reserved"
         )
@@ -63,6 +66,49 @@ class DispatchTests(unittest.TestCase):
         self.assertFalse(
             self.dispatch.claim("parent", "call", {**self.input, "model": "other"})
         )
+
+    def test_bootstrapped_owners_reduce_available_capacity(self):
+        owners = [
+            {
+                "request": f"old-{n}",
+                "issue": f"issue-{n}",
+                "model": "m",
+                "thinking": "medium",
+                "child": f"child-{n}",
+            }
+            for n in range(4)
+        ]
+        self.dispatch.bootstrap("other", owners)
+        results = [
+            self.dispatch.prepare("other", f"new-{n}", {**self.input, "prompt": str(n)})
+            for n in range(7)
+        ]
+        self.assertEqual(results, ["reserved"] * 4 + ["queued"] * 3)
+        self.store.release("other", "old-0", confirmed=True)
+        self.assertEqual(
+            self.dispatch.prepare("other", "new-4", {**self.input, "prompt": "4"}),
+            "reserved",
+        )
+        self.assertEqual(
+            self.dispatch.prepare("other", "new-5", {**self.input, "prompt": "5"}),
+            "queued",
+        )
+
+    def test_incomplete_roster_import_does_not_open_dispatch(self):
+        owner = {
+            "request": "r",
+            "issue": "i",
+            "model": "m",
+            "thinking": "t",
+            "child": "c",
+        }
+        with self.assertRaises(ReservationError):
+            self.dispatch.bootstrap("third", [owner, {"issue": "invalid"}])
+        self.assertIsNone(self.store.lookup("third", "c"))
+        with self.assertRaises(ReservationError):
+            self.dispatch.prepare("third", "next", self.input)
+        self.dispatch.bootstrap("third", [owner])
+        self.assertEqual(self.store.lookup("third", "c")["issue"], "i")
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ DENIAL = {
     "hookSpecificOutput": {
         "hookEventName": "PreToolUse",
         "permissionDecision": "deny",
-        "permissionDecisionReason": "Supervision capacity has no matching prepared reservation; reconcile the parent and prepare this exact request before dispatch.",
+        "permissionDecisionReason": "CODEXY_SUPERVISION_CAPACITY_UNPREPARED: reconcile the parent and prepare this exact request before dispatch.",
     }
 }
 
@@ -37,7 +37,18 @@ def main() -> None:
             raise ValueError("invalid hook input")
         store = open_store(os.environ.get("PLUGIN_DATA", ""))
         if event == "PreToolUse":
-            result = {} if admit_create(store, payload) else DENIAL
+            if admit_create(store, payload):
+                result = {}
+            else:
+                # The caller needs the exact host-provided root for preflight;
+                # do not invent a shared location from the installed plugin path.
+                result = {
+                    "hookSpecificOutput": {
+                        **DENIAL["hookSpecificOutput"],
+                        "additionalContext": "Reconcile existing owners and prepare this request using the supervision reservation instructions. Host plugin-data root: "
+                        + os.environ["PLUGIN_DATA"],
+                    }
+                }
         else:
             observation = observe_create(store, payload)
             result = (

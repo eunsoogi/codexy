@@ -41,7 +41,8 @@ class Reservations:
                 parent TEXT PRIMARY KEY, ceiling INTEGER NOT NULL)""")
 
     def _connect(self) -> sqlite3.Connection:
-        db = sqlite3.connect(self.path, timeout=10, isolation_level=None)
+        # Return a denial before the host's five-second hook deadline.
+        db = sqlite3.connect(self.path, timeout=2, isolation_level=None)
         db.row_factory = sqlite3.Row
         return db
 
