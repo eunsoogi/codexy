@@ -58,7 +58,7 @@ def forbidden(request: Request) -> bool | str:
     operation = request.tool.rsplit("__", 1)[-1]
     for namespace in ("agents", "collaboration"):
         if operation.startswith(namespace):
-            operation = operation[len(namespace):]
+            operation = operation[len(namespace) :]
             break
     # Follow-up targets have no authenticated role metadata in the hook envelope.
     # They reuse an existing helper, so they do not create a fresh history boundary.
