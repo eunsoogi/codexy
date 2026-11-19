@@ -56,8 +56,8 @@ branch, worktree, PR, durable child context, or review-response ownership:
     assigned implementation without a required child goal. The Orchestrator MUST
     use direct cursor-based observation for ordinary Worker targets. Keep these
     surfaces separate and use
-    [goal-transition-reporting.md](goal-transition-reporting.md) for
-    blocked-goal recovery and terminal transition receipts.
+    [goal-transition-reporting.md](goal-transition-reporting.md) for terminal
+    transition receipts.
 11. For ordinary Worker observation, the Orchestrator MUST use native
     `wait_threads` with each target's latest cursor. A native reviewer's
     terminal delivery is separate and MUST NOT authorize Worker observation.

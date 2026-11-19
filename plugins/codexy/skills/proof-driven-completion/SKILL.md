@@ -74,9 +74,7 @@ contradictory.
 - Missing goal, plan, tool, or multi-agent receipts alone MUST NOT invalidate
   otherwise current and complete outcome evidence. Those producers own their own
   process contracts.
-- Native goal transitions and blocked-goal recovery are owned by
-  [goal-lifecycle](../goal-lifecycle/SKILL.md); delivery order and receipts are
-  owned by
+- Delivery order and receipts are owned by
   [goal-transition-reporting](../orchestration/references/goal-transition-reporting.md).
   Control-plane readbacks, recovery preparation, and accepted delivery MUST NOT
   substitute for the evidence required to judge an issue, implementation,

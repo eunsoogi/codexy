@@ -1,6 +1,0 @@
-interface:
-  display_name: "Goal Lifecycle"
-  short_description: "Use goal tools and follow supported same-directory recovery for blocked goals."
-  default_prompt: "Use $goal-lifecycle for an explicitly managed native goal or its recovery. A child assignment MUST NOT require goal reads, creation, transitions, or receipts. Preserve existing user goals and parent control. Recovery of an unchanged goal-controlled objective carries the original assignment authority; a blocked state alone MUST NOT require new user confirmation. You MUST NOT mark an unfinished goal complete to obtain recovery. Verify the actual same-directory fork, exact CWD, Git checkout identity, process, source archival, and sole owner under the recovery procedure. Report requested model and effort separately from host-exposed effective settings."
-policy:
-  allow_implicit_invocation: true

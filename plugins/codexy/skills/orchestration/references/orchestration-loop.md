@@ -44,8 +44,6 @@
    - For delegated outcomes, MUST record one Worker owner, the saved project
      identity, the callback channels, and one current next action. MUST NOT
      require a fixed checkpoint count or unchanged-progress receipt.
-   - In [the canonical role mapping](parent-supervision.md), MUST read back the
-     Orchestrator's exact active overall goal.
    - MUST apply task classification before substantive work and carry its
      established atomic scope into the selected planning or dispatch procedure.
      Use [child routing](child-routing-policy.md#orchestration-request-dispatch)
@@ -86,8 +84,7 @@
      not requested edits. A status-only child MUST NOT mask substantive parent
      execution.
    - The initial assignment MUST carry the issue outcome, executable phase
-     objective and completion criteria from
-     [goal-lifecycle](../../goal-lifecycle/SKILL.md), the
+     objective and completion criteria, the
      [terminal handoff route](goal-transition-reporting.md), and the
      [supervised slot reservation](parent-supervision.md#supervised-app-child-capacity).
      At capacity, MUST retain ready work in the parent backlog without creating

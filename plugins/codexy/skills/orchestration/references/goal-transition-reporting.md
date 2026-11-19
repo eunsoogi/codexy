@@ -2,10 +2,8 @@
 
 ## Scope
 
-This contract governs blocked-goal recovery and terminal child handoffs. Native
-goal startup follows `goal-lifecycle` without parent registration receipts.
-Ordinary Worker observation uses the cursor contract in
-[parent supervision](parent-supervision.md).
+This contract governs terminal child handoffs. Ordinary Worker observation uses
+the cursor contract in [parent supervision](parent-supervision.md).
 
 ## Source Parent Binding
 
@@ -60,11 +58,6 @@ parent task surface. Without that readback, callback status MUST remain
 or missing. Absence claims MUST also follow the
 [observation evidence boundaries](observation-evidence.md).
 
-## Goal startup boundary
-
-Native goal reads, objective selection, and transition rules are owned by
-[goal-lifecycle](../../goal-lifecycle/SKILL.md).
-
 ## Monitoring route
 
 Heartbeat registration and runtime monitor identity are defined by
@@ -73,15 +66,11 @@ as evidence that a monitor exists or ran.
 
 ## Ordered Receipts
 
-Native startup and routine readbacks MUST remain task-local under
-`goal-lifecycle`, without parent registration receipts.
-
 ### Normal completed-phase submission
 
 Before submission, the owner MUST establish that the phase outcome is satisfied
-under [$proof-driven-completion](../../proof-driven-completion/SKILL.md). Native
-goal state follows [goal-lifecycle](../../goal-lifecycle/SKILL.md); this section
-owns the handoff receipt and delivery sequence.
+under [$proof-driven-completion](../../proof-driven-completion/SKILL.md). This
+section owns the handoff receipt and delivery sequence.
 
 For a satisfied phase, the child MUST prepare exactly one `Idle wait handoff:`
 as a readable Markdown table with one fact per row. Row order and ordinary
@@ -101,14 +90,12 @@ The `current gate`, `producer state`, `wake route`, and `parent next action`
 MUST distinguish a required child-phase result from a pending parent-owned gate.
 An ordinary pending review or execution result for an unmet child criterion MUST
 use the nonterminal wait route below while the child retains its assignment. A
-direct user stop, a user-requested pause, or a host-permitted blocked transition
-remains governed by [goal-lifecycle](../../goal-lifecycle/SKILL.md) and MUST NOT
-be encoded as this ordinary wait. A parent-owned merge, acceptance or
-acknowledgement, or future assignment after this handoff MUST NOT delay child
-completion. The `parent next action` MUST name one supported operation or
-observation and its owner. The parent MUST continue its own active goal from
-that action, using [parent supervision](parent-supervision.md) for Worker
-observation and [runtime-heartbeats](runtime-heartbeats.md) for scheduled
+direct user stop or user-requested pause MUST NOT be encoded as this ordinary
+wait. A parent-owned merge, acceptance or acknowledgement, or future assignment
+after this handoff MUST NOT delay child completion. The `parent next action`
+MUST name one supported operation or observation and its owner. The parent MUST
+continue from that action, using [parent supervision](parent-supervision.md) for
+Worker observation and [runtime-heartbeats](runtime-heartbeats.md) for scheduled
 monitoring. Message transport acceptance proves delivery only; it does not prove
 parent readback, acceptance, or merge.
 
@@ -134,22 +121,19 @@ observations MUST be deduplicated rather than trigger another send. Follow-up
 work stays with the same owner. Validator fixtures prove receipt checks, not
 that a live host delivered the handoff.
 
-### Other terminal exits and blocked recovery
+### Other terminal exits
 
 For stop, archive, ownership release, or blocked transition outside normal phase
 completion, the child MUST send exactly one `Terminal parent handoff:` table
 before transitioning. It MUST carry the common bound fields above and show
-confirmed delivery on the Codex task/thread surface. When no goal operation
-represents the transition, evidence MUST identify the actual stop, archive,
-ownership release, or blocked action. A related terminal stop and ownership
-release MUST share the same receipt. Archival or ownership release MUST have
-explicit authority covering that transition and appear in the confirmed terminal
-receipt. For same-scope blocked-goal recovery, the child MUST reuse the original
-assignment's authority when it covers the source-chat archive; it MUST NOT ask
-for a new approval solely because the goal is blocked. A completed-phase handoff
-authorizes only its stated idle/stop outcome. The terminal handoff MUST report
-the state observed before the transition and mark any authorized next action as
-pending; it MUST NOT claim that action's later result.
+confirmed delivery on the Codex task/thread surface. Evidence MUST identify the
+actual stop, archive, ownership release, or blocked action. A related terminal
+stop and ownership release MUST share the same receipt. Archival or ownership
+release MUST have explicit authority covering that transition and appear in the
+confirmed terminal receipt. A completed-phase handoff authorizes only its stated
+idle/stop outcome. The terminal handoff MUST report the state observed before
+the transition and mark any authorized next action as pending; it MUST NOT claim
+that action's later result.
 
 For an unfinished phase, the terminal handoff MUST report
 `phase criteria=unsatisfied` and `issue state=not complete`; identify remaining
@@ -159,9 +143,8 @@ contents), the observed write-cessation state, and the single continuation
 owner. It MUST state which commit, push, Draft PR, archive, or deletion actions
 were authorized, completed, failed, or remain unauthorized at the time of the
 handoff, and identify any authorized next action as pending. It MUST report the
-goal and thread state observed before the transition and MUST NOT use
-completion-only values such as `phase criteria=satisfied` or
-`goal transition=complete` for unfinished work. A cooperative stop message or
+thread state observed before the transition and MUST NOT use
+`phase criteria=satisfied` for unfinished work. A cooperative stop message or
 its delivery MUST NOT be represented as proof that an in-flight write ended. An
 explicit cease-write direction MUST still be honored by issuing no further
 implementation or worktree writes while the handoff or preservation is pending;
@@ -173,44 +156,23 @@ authorized archival, following the
 After any authorized action marked pending in the handoff is attempted, the
 terminal result MUST report its exact outcome from a post-action readback on the
 relevant authoritative surface. This includes commit, push, Draft PR creation or
-update, stop, archive, deletion, and ownership release. Goal or thread
-transitions MUST also report the resulting goal and thread state from host
-readback; blocked-goal transitions MUST use the ordered receipts below. Actions
-not yet attempted MUST remain pending, and unauthorized actions MUST remain
+update, stop, archive, deletion, and ownership release. Thread transitions MUST
+also report the resulting thread state from host readback. Actions not yet
+attempted MUST remain pending, and unauthorized actions MUST remain
 unauthorized. The pre-transition handoff MUST NOT be used as proof of a later
 result. If post-action readback is unavailable, the result MUST remain unknown
 or unconfirmed, and any later action that depends on the unconfirmed state MUST
 remain pending until that state is verified. This requirement MUST NOT add a
-second pre-transition handoff or change the ordered blocked-goal receipts below.
+second pre-transition handoff.
 
 If delivery is unavailable, the child MUST emit one unavailable receipt and
-retain the lane. It MUST NOT retry or claim a stop, archive, blocked-goal, or
+retain the lane. It MUST NOT retry or claim a stop, archive, or
 ownership-release transition that lacks supported readback. The child MUST honor
 an already-authorized cease-write direction, retain its existing work and
 checkout at the current authorized location, and leave archival pending until
 the terminal handoff can be confirmed.
 
-Blocked-goal recovery retains its ordered receipts. Whether a native blocked
-transition is permitted is owned by
-[goal-lifecycle](../../goal-lifecycle/SKILL.md). Before `update_goal(blocked)`,
-the child MUST send a `Parent goal pre-delivery:` naming issue/PR, pending
-operation, parent task, plan step, branch/worktree, HEAD, dirty/index, evidence,
-next action, stable transition key, and confirmed transport acceptance. It MUST
-NOT call blocked before that acceptance. After the call, it MUST send
-`Parent goal post-result:` with the exact tool result, operation, parent task,
-matching key, and actual delivery state. The terminal handoff and
-intended-transition data MAY share one transport submission; static records MUST
-preserve each record's fields and ordering. These blocked-recovery obligations
-MUST NOT add pre/post-result messages to normal phase completion.
-
-## Blocked Goal User-Decision Gate
-
-For the typed gate, pre-mutation check, and correction ordering, MUST read the
-[blocked goal user-decision gate](goal-transition-reporting/blocked-goal-user-decision-gate.md).
-
-When a required child-phase result remains pending, the child MUST follow the
-nonterminal wait classification in
-[goal-lifecycle](../../goal-lifecycle/SKILL.md) and use a
+When a required child-phase result remains pending, the child MUST use a
 `Nonterminal wait
 handoff:` with a stable state fingerprint, the unmet
 criterion, nonterminal producer, wake route, `ownership=retained`,
@@ -226,12 +188,9 @@ route without polling, interrupting, replacing, or approving a live producer.
 
 ## Validator Contract
 
-The blocked-goal and terminal-handoff validators MUST enforce only their
-respective transition and exit receipts, required ordering, parent route, and
-bound fields. Normal idle-phase records MUST accept one transport-confirmed
-handoff or the explicitly unconfirmed host-result fallback, require satisfied
-phase criteria and reject repeated event identities and child waits for parent
-merge, acknowledgement, or future assignment. They MUST NOT require a child goal
-result. They MUST NOT require parent pre-delivery or post-result registration
-receipts for initial `get_goal`, `create_goal`, or active readback; native
-startup order remains governed by `goal-lifecycle`.
+The terminal-handoff validator MUST enforce its exit receipts, required
+ordering, parent route, and bound fields. Normal idle-phase records MUST accept
+one transport-confirmed handoff or the explicitly unconfirmed host-result
+fallback, require satisfied phase criteria and reject repeated event identities
+and child waits for parent merge, acknowledgement, or future assignment. They
+MUST NOT require a child goal result.
