@@ -96,6 +96,31 @@ def resolve_supervised_assignment(
     return RecipientAssignment("assigned", model, thinking, recipient)
 
 
+def resolve_known_pair(
+    sender: str,
+    recipient: str,
+    lookup: Callable[[str, str], Mapping[str, object] | None],
+) -> RecipientAssignment:
+    """Resolve one authenticated thread pair without guessing its direction."""
+    unavailable = RecipientAssignment("unavailable")
+    if not _non_empty_string(sender) or not _non_empty_string(recipient):
+        return unavailable
+    if sender == recipient:
+        return unavailable
+    try:
+        forward = lookup(sender, recipient)
+        reverse = lookup(recipient, sender)
+    except (OSError, ValueError, sqlite3.Error):
+        return unavailable
+    # Two matches are ambiguous; no match alone cannot establish unrelated traffic.
+    if (forward is None) == (reverse is None):
+        return unavailable
+    parent, record = (sender, forward) if forward is not None else (recipient, reverse)
+    return resolve_supervised_assignment(
+        parent, sender, recipient, lambda _p, _c: record
+    )
+
+
 def recipient_forbidden(
     request: Request, assignment: RecipientAssignment
 ) -> bool | str | Diagnostic:
