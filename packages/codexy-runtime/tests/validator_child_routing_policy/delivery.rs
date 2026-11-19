@@ -6,6 +6,37 @@ use super::*;
 const PARENT: (&str, &str) = ("gpt-6.2-sol", "low");
 
 #[test]
+fn child_reports_construct_the_assigned_parent_request() -> TestResult {
+    for report in ["progress", "decision", "blocker", "final"] {
+        let mut input = request("general", PARENT);
+        input["schema"] = json!("codexy.child-routing-request.v3");
+        input["codex_thread_operation"] = json!("send_message_to_thread");
+        input["codex_thread_direction"] = json!("child_to_root");
+        input["parent_thread_id"] = json!("assigned-parent");
+        input["report_prompt"] = json!(report);
+        let result = resolve(&input)?;
+        assert_eq!(result["tool_input"], json!({"threadId":"assigned-parent", "prompt":report, "model":PARENT.0, "thinking":PARENT.1}));
+    }
+    let mut missing = request("general", PARENT);
+    missing["schema"] = json!("codexy.child-routing-request.v3");
+    missing["codex_thread_operation"] = json!("send_message_to_thread");
+    missing["codex_thread_direction"] = json!("child_to_root");
+    missing["report_prompt"] = json!("retained report");
+    let result = resolve(&missing)?;
+    assert_eq!(result["reason"], "Child report requires an assigned parent thread ID.");
+    assert!(result.get("tool_input").is_none());
+    missing["parent_thread_id"] = json!("assigned-parent");
+    missing["parent_host_id"] = json!("local");
+    missing["named_specialist"] = json!("codexy-architect");
+    assert_eq!(resolve(&missing)?["tool_input"]["hostId"], "local");
+    missing["codex_thread_capabilities"] = request("general", DEFAULT_WORKER)["codex_thread_capabilities"].clone();
+    let unavailable = resolve(&missing)?;
+    assert_eq!(unavailable["reason"], "Parent model and thinking are not supported by declared thread capabilities.");
+    assert!(unavailable.get("tool_input").is_none());
+    Ok(())
+}
+
+#[test]
 fn resolver_allows_only_creation_pairs_for_worker_delivery() -> TestResult {
     for pair in [
         DEFAULT_WORKER,

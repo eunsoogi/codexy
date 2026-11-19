@@ -19,10 +19,15 @@ substitute a helper or parent implementation. MUST apply scoped user overrides
 only as directed.
 
 Each assignment MUST name the exact objective, scope, input evidence,
-deliverable and success criteria, verification, and stop/report conditions.
-Creating a child only to report status while the parent does the substantive
-work MUST NOT count as delegation. A prompt or task-creation result alone MUST
-NOT prove execution.
+deliverable and success criteria, verification, and stop/report conditions. For
+issue implementation, PR takeover, or execution verification, the initial
+assignment and any resumption MUST identify the issue, the remote branch and
+current remote head when a PR exists, and the outstanding acceptance criteria.
+MUST direct repeat requests and feedback to the same suitable issue owner; a
+verification-only assignment MUST remain actionable from the remote PR. Creating
+a child only to report status while the parent does the substantive work MUST
+NOT count as delegation. A prompt or task-creation result alone MUST NOT prove
+execution.
 
 Each app-managed assignment MUST identify its parent and MUST NOT require child
 goal reads, creation, transitions, or receipts. Existing user goals and host
@@ -139,6 +144,18 @@ selected pair MUST be used for the known recipient and pass through follow-up
 routing unchanged. The delivery hook independently rejects crossed or
 unsupported request pairs, but it cannot verify that the pair matches a
 recipient assignment.
+
+For every Worker progress, decision, blocker, or final report, including a
+Worker without a native goal, MUST resolve a `codexy.child-routing-request.v3`
+with `codex_thread_operation` set to `send_message_to_thread`,
+`codex_thread_direction` set to `child_to_root`, the assigned
+`parent_thread_id`, the complete `report_prompt`, and advertised thread
+capabilities. Include `parent_host_id` when known. MUST pass the returned
+`tool_input` unchanged to the app message tool on the first attempt. If the
+parent identity or route is unavailable, MUST retain the report and surface the
+resolver's reason; MUST NOT construct a partial request or guess a recipient.
+The v1 route remains available for existing callers, but does not construct a
+report request. Host message authorization still applies.
 
 ### Bounded evidence summaries
 
