@@ -11,7 +11,7 @@ if sys.version_info < (3, 10):
     raise SystemExit(125)
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
-from codexy_policy.supervision_dispatch import Dispatch
+from codexy_policy.supervision_dispatch import Dispatch, fingerprint
 from codexy_policy.supervision_observation import _unique
 from codexy_policy.supervision_reservations import ReservationError
 from codexy_policy.supervision_storage import open_store
@@ -34,7 +34,11 @@ def main() -> int:
         result = Dispatch(open_store(args.plugin_data)).prepare(
             args.parent, args.issue, data, args.limit
         )
-        print(json.dumps({"result": result}, separators=(",", ":")))
+        print(
+            json.dumps(
+                {"result": result, "request": fingerprint(data)}, separators=(",", ":")
+            )
+        )
         return 0
     except (OSError, ValueError, ReservationError, sqlite3.Error):
         print(json.dumps({"error": "Unable to prepare supervision reservation."}))

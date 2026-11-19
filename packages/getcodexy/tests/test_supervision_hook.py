@@ -38,7 +38,9 @@ class SupervisionHookTests(unittest.TestCase):
                 capture_output=True,
                 check=True,
             )
-            self.assertEqual(json.loads(preparation.stdout)["result"], "reserved")
+            prepared = json.loads(preparation.stdout)
+            self.assertEqual(prepared["result"], "reserved")
+            self.assertEqual(prepared["request"], dispatch.fingerprint(tool_input))
             event = {
                 "hook_event_name": "PreToolUse",
                 "tool_name": "mcp__codex_app__create_thread",
