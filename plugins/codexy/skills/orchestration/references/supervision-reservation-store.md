@@ -57,7 +57,12 @@ The provisional `supervision_observation` adapter consumes trusted hook events.
 `observe_create` reconciles the corresponding `PostToolUse` result by session,
 call ID, and input digest. It accepts an unambiguous ready or pending MCP result
 and keeps unknown, failed, malformed, or conflicting results reserved. It is
-not yet registered as a hook, and the preflight producer, safe private database
-location, runtime event delivery, and installed-app behavior remain unverified.
+not yet registered as a hook. The provisional `codexy-supervision-prepare.py`
+accepts an explicit parent session, issue, lower limit, private plugin-data root,
+and the exact structured creation input on standard input. The hook entrypoint
+uses the host-provided `PLUGIN_DATA` and rejects missing or non-private state.
+Callers MUST reconcile all existing owners before preparing new dispatches. The
+host route for exposing that same plugin-data root to the preflight caller,
+runtime event delivery, and installed-app behavior remain unverified.
 The documented event fields and hook coverage are described in the
 [Codex hooks reference](https://developers.openai.com/codex/hooks).
