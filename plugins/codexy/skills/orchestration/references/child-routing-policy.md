@@ -19,10 +19,15 @@ substitute a helper or parent implementation. MUST apply scoped user overrides
 only as directed.
 
 Each assignment MUST name the exact objective, scope, input evidence,
-deliverable and success criteria, verification, and stop/report conditions.
-Creating a child only to report status while the parent does the substantive
-work MUST NOT count as delegation. A prompt or task-creation result alone MUST
-NOT prove execution.
+deliverable and success criteria, verification, and stop/report conditions. For
+issue implementation, PR takeover, or execution verification, the initial
+assignment and any resumption MUST identify the issue, the remote branch and
+current remote head when a PR exists, and the outstanding acceptance criteria.
+MUST direct repeat requests and feedback to the same suitable issue owner; a
+verification-only assignment MUST remain actionable from the remote PR. Creating
+a child only to report status while the parent does the substantive work MUST
+NOT count as delegation. A prompt or task-creation result alone MUST NOT prove
+execution.
 
 Every app-managed child assignment governed by a native goal MUST link to the
 [canonical goal-start contract](../../goal-lifecycle/SKILL.md#goal-start-contract)
