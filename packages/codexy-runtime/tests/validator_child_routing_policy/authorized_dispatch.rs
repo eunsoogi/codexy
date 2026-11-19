@@ -125,6 +125,11 @@ fn assignment_consumers_do_not_require_child_goal_startup() -> TestResult {
         let prose = text.split_whitespace().collect::<Vec<_>>().join(" ");
         assert!(prose.contains(required), "{consumer} lacks: {required}");
     }
+    let metadata = std::fs::read_to_string(skills_root.join("goal-lifecycle/agents/openai.yaml"))?;
+    assert!(metadata.contains("A child assignment MUST NOT require goal reads"));
+    assert!(!metadata.contains("before authorized Orchestrator or Worker task work"));
+    let template = std::fs::read_to_string(skills_root.join("orchestration/templates/delta-poll.md"))?;
+    assert!(!template.contains("| Goal transition                 | complete"));
     Ok(())
 }
 
