@@ -6,6 +6,9 @@ case "$entrypoint" in
 codexy-child-thread-creation.py | codexy-subagent-ownership.py | codexy-thread-delivery.py)
 	case "$event" in PreToolUse | PermissionRequest) ;; *) exit 1 ;; esac
 	;;
+codexy_supervision_capacity.py)
+	case "$event" in PreToolUse | PostToolUse) ;; *) exit 1 ;; esac
+	;;
 codexy_cleanup_progress.py)
 	case "$event" in PostToolUse | Stop | Interrupt) ;; *) exit 1 ;; esac
 	;;

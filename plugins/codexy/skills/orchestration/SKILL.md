@@ -64,7 +64,9 @@ correction, or Worker elevation, MUST read
 observation, reporting, correction, or handoff. Eligible elevation MUST also
 read [reconciliation](references/worker-elevation/reconciliation.md). These
 references define role, model, report and wait routing, plus deduplication,
-capacity, interruption, cancellation, drift, and evaluation.
+capacity, interruption, cancellation, drift, and evaluation. For app-child
+capacity, MUST also read the
+[reservation store contract](references/supervision-reservation-store.md).
 
 When consuming a Worker creation denial or uncertain creation outcome, Codex
 MUST follow

@@ -72,19 +72,27 @@ fn packaged_hooks_bind_each_concern_and_event_once() -> TestResult {
     let events = hooks["hooks"].as_object().ok_or("hooks object")?;
 
     assert_eq!(events.len(), EVENTS.len() + 3, "declared core events remain");
-    for event in ["PostToolUse", "Stop", "Interrupt"] {
+    for event in ["Stop", "Interrupt"] {
         let groups = events[event].as_array().ok_or("cleanup event groups")?;
         assert_eq!(groups.len(), 1, "{event} cleanup coverage");
         assert_eq!(groups[0]["hooks"][0]["command"],
             format!("\"${{PLUGIN_ROOT}}/hooks/codexy-cleanup-progress.sh\" {event}"));
     }
+    let post = events["PostToolUse"].as_array().ok_or("post events")?;
+    assert_eq!(post.len(), 2);
+    assert_eq!(post[0]["hooks"][0]["command"], "\"${PLUGIN_ROOT}/hooks/codexy-supervision-capacity.sh\" PostToolUse");
+    assert_eq!(post[1]["hooks"][0]["command"], "\"${PLUGIN_ROOT}/hooks/codexy-cleanup-progress.sh\" PostToolUse");
     for event in EVENTS {
         let groups = events[*event]
             .as_array()
             .ok_or("event groups")?;
-        assert_eq!(groups.len(), INSTALLED_IDS.len(), "{event} concern coverage");
+        assert_eq!(groups.len(), INSTALLED_IDS.len() + usize::from(*event == "PreToolUse"), "{event} concern coverage");
         let mut seen = HashSet::new();
         for group in groups {
+            if *event == "PreToolUse" && group["hooks"][0]["command"] == "\"${PLUGIN_ROOT}/hooks/codexy-supervision-capacity.sh\" PreToolUse" {
+                assert_eq!(group["matcher"], "^(?:codex_app__|mcp__codex_app__)create_thread$");
+                continue;
+            }
             let concern = expected_group(group, event).ok_or("unknown concern binding")?;
             assert!(seen.insert(concern.id), "duplicate {} binding", concern.id);
         }
@@ -105,10 +113,15 @@ fn capability_contract_accounts_for_every_concern_once() -> TestResult {
         .iter()
         .filter(|concern| concern["preventive"] == true)
         .collect::<Vec<_>>();
-    assert_eq!(preventive.len(), INSTALLED_IDS.len());
+    assert_eq!(preventive.len(), INSTALLED_IDS.len() + 1);
     let mut seen = HashSet::new();
     for actual in preventive {
         let id = actual["concernId"].as_str().ok_or("concern id")?;
+        if id == "supervision-capacity" {
+            assert_eq!(actual["events"], serde_json::json!(["PreToolUse", "PostToolUse"]));
+            assert_eq!(actual["inputContract"], "codexy.hooks.supervision-capacity.v1");
+            continue;
+        }
         let expected = CONCERNS
             .iter()
             .find(|concern| concern.id == id && INSTALLED_IDS.contains(&concern.id))
