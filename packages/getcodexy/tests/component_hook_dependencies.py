@@ -6,6 +6,7 @@ CORE_HOOK_DEPENDENCIES = (
     "hooks/codexy-thread-delivery.cmd",
     "hooks/codexy-thread-delivery.py",
     "hooks/codexy_policy/thread_delivery.py",
+    "hooks/codexy_policy/recipient_store.py",
     "hooks/codexy-child-thread-creation.sh",
     "hooks/codexy-child-thread-creation.cmd",
     "hooks/codexy-child-thread-creation.py",
