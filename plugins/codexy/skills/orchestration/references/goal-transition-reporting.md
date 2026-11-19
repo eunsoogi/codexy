@@ -18,7 +18,9 @@ messaging surface; otherwise normal submission MUST use the host terminal result
 below. Local multi-agent messaging, including `agents.send_message('/root')`,
 MUST NOT be presented as a substitute.
 
-The child-to-parent call MUST follow the current message-tool contract:
+Every child report, including one from a goal-free Worker, MUST use the v3
+report construction in [child routing](child-routing-policy.md) and pass its
+`tool_input` unchanged to the message tool. The resulting call has this shape:
 
 ```text
 send_message_to_thread({

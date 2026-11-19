@@ -100,6 +100,9 @@ pub(super) fn resolve(plugin_root: &Path, request: &str) -> Result<Value> {
             &request.codex_thread_operation,
         ));
     }
+    if request.schema == "codexy.child-routing-request.v3" {
+        return Ok(routes::child_report_request(&policy, &request));
+    }
     if let Some(agent_type) = request
         .named_specialist
         .as_deref()
