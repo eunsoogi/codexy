@@ -67,8 +67,8 @@ are denied before execution. Native `send_message`, `followup_task`, and
 admission hook. For work requiring follow-up, MUST use an app child chat or
 start a new bounded helper with the necessary context. App child-chat messaging
 remains governed by its own policy. When correcting a history-setting denial,
-MUST keep already-authorized task and model choices;
-MUST NOT ask the user to restate them.
+MUST keep already-authorized task and model choices; MUST NOT ask the user to
+restate them.
 
 Each new child assignment MUST be bounded and self-contained. It MUST carry the
 objective, latest relevant user corrections, owned scope, authority and
