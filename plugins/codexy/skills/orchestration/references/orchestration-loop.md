@@ -95,8 +95,8 @@
    - If parent environment validation is required after creation, MUST assign a
      short setup phase naming its check, evidence, and parent release condition.
      The parent MUST verify actual task state and permissions before releasing
-     the already-scoped execution phase; the same owner MUST use actual goal
-     lifecycle readback. Setup completion alone MUST NOT authorize execution.
+     the already-scoped execution phase. Setup completion alone MUST NOT
+     authorize execution or require a child goal readback.
    - Dependency, owner, and conflict decisions MUST come from task
      classification. After they are established, keep ready work moving within
      the selected capacity and resource procedures; route actual integration
@@ -227,10 +227,10 @@ Stop if:
 
 For any lane needing its own branch, PR, or long-running implementation context,
 MUST use the dispatch template above as its first message and retain the same
-owner for follow-up work. The return MUST include native goal readback and
-todo/plan fallback; multi-agent use or rationale; Codegraph/LSP for code;
-touched LOC for non-trivial code/harness/workflow rules; and the current-head
-Sentinel result when optional final review was selected.
+owner for follow-up work. The return MUST include todo/plan fallback;
+multi-agent use or rationale; Codegraph/LSP for code; touched LOC for
+non-trivial code/harness/workflow rules; and the current-head Sentinel result
+when optional final review was selected.
 
 The child thread MUST NOT merge, close issues, or claim final completion. It
 returns evidence and a commit-ready branch to the invoking orchestrator thread.

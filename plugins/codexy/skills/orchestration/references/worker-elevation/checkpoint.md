@@ -4,7 +4,7 @@
 
 This procedure prepares an existing Terra/Medium Worker for a later, separately
 authorized elevation transition. The source remains the issue owner and keeps
-its active goal and reservation. This procedure MUST NOT fork or create a task,
+its assignment and reservation. This procedure MUST NOT fork or create a task,
 archive or replace the source, change its model or goal, move its worktree, or
 enable a live elevation entrypoint.
 
@@ -16,8 +16,8 @@ activation.
 Here, quiescence means observed absence of implementation writes and live
 file-writing producers under a cooperative no-write instruction that persists
 across continuation turns. Automatic reasoning and read-only turns may still
-happen. The source task and goal are not terminal, and this procedure MUST NOT
-claim otherwise.
+happen. The source task is not terminal, and this procedure MUST NOT claim
+otherwise.
 
 The Orchestrator MUST use this only after rechecking the current eligibility
 decision and evidence, any separate transition authorization, source owner,
@@ -37,20 +37,18 @@ recent turns. `wait_threads` waits for completion or attention; a timeout or
 only the current desktop task's terminal output, not another task's process
 state.
 
-The source's `get_goal({})` reads only that source task's goal. The Orchestrator
-MUST obtain a fresh source-side call and its actual result; the Orchestrator's
-goal, a title, or a worker's paraphrase is not a substitute. `list_threads`
-exposes task identity, host, status, project, and CWD, but not branch, HEAD,
-dirty state, running processes, or queued prompts. `read_thread` can show recent
-tool output, but it can be truncated or stale and is not a live process or queue
-inventory.
+The Orchestrator MUST preserve any existing source goal and MUST NOT require a
+child goal readback for the assignment. `list_threads` exposes task identity,
+host, status, project, and CWD, but not branch, HEAD, dirty state, running
+processes, or queued prompts. `read_thread` can show recent tool output, but it
+can be truncated or stale and is not a live process or queue inventory.
 
 The current callable surface has no standalone current-turn cancel, queued
 continuation inspection, or automatic-continuation disable operation. A message
 requesting a freeze is cooperative; it is not a hard stop. The no-write
 instruction MUST remain in force across continuation turns until an explicitly
 supported transfer or parent release. Automatic reasoning and read-only turns
-may still happen while the source goal is active. This procedure MUST NOT claim
+may still happen while the source remains active. This procedure MUST NOT claim
 that continuation is disabled or that the source task is terminal. The native
 `handoff_thread` call interrupts a running _other_ task before moving its Git
 state between a checkout and worktree, and cannot move its caller. That move is
@@ -85,18 +83,18 @@ is not quiescent. The Orchestrator MUST preserve ownership, MUST NOT create a
 target, and MUST report the exact unsupported operation and remaining producers.
 An ACK, a quiet terminal, an idle status, or an unchanged Git readback alone
 MUST NOT be reported as proof of quiescence. Automatic reasoning or read-only
-continuation may occur under the active goal and is not itself a failed stop.
+continuation may occur under the assignment and is not itself a failed stop.
 
 ## Prepare and verify the checkpoint
 
 1. The Orchestrator MUST recheck the issue, PR, current eligibility decision and
    evidence, any separate transition authorization, and the parent instructions
    that permit it. It MUST verify the actual source task ID and host, source
-   ownership, requested model/effort, and the source's exact active goal and
-   objective. It MUST record effective model/effort only when the host exposes
-   it; otherwise record it as unknown. If the decision, evidence, authorization,
-   or parent instructions have changed, the Orchestrator MUST stop preparation
-   and update the existing decision before continuing.
+   ownership, requested model/effort, and the source assignment objective and
+   scope. It MUST record effective model/effort only when the host exposes it;
+   otherwise record it as unknown. If the decision, evidence, authorization, or
+   parent instructions have changed, the Orchestrator MUST stop preparation and
+   update the existing decision before continuing.
 2. The Orchestrator MUST ask the source to finish any current write-producing
    call, stop launching writes, and keep a cooperative no-write instruction in
    force across continuation turns until an explicitly supported transfer or
@@ -123,12 +121,12 @@ continuation may occur under the active goal and is not itself a failed stop.
    Orchestrator MUST invalidate the record and wait for a new matching readback.
 4. After identified current writers have ended and the source's cooperative
    no-write instruction is in force, the Orchestrator MUST have the source read
-   its own goal and repository state from the same task and checkout. It MUST
-   capture at least:
+   its own assignment and repository state from the same task and checkout. It
+   MUST capture at least:
 
    - issue and PR, actual parent/source IDs and host, source issue ownership and
-     reservation, exact active goal status and objective, observed task status,
-     and unmet acceptance criteria;
+     reservation, assignment objective and scope, observed task status, and
+     unmet acceptance criteria;
    - project, actual CWD/worktree, branch, and HEAD;
    - staged and unstaged paths, required untracked paths, required ignored
      artifacts, content fingerprints for each staged and unstaged diff, and
@@ -168,8 +166,8 @@ continuation may occur under the active goal and is not itself a failed stop.
    `git rev-parse --git-path index.lock` exists. Record the paths, statuses, and
    fingerprints in the existing task handoff record without copying sensitive
    contents.
-6. Immediately before handoff, the Orchestrator MUST reread the source goal and
-   its status, source task ID and host, issue owner and reservation, project,
+6. Immediately before handoff, the Orchestrator MUST reread the source
+   assignment, source task ID and host, issue owner and reservation, project,
    actual CWD/worktree, branch, HEAD, staged/unstaged/untracked/required-ignored
    state, diff and artifact fingerprints, index-lock state, verification
    revisions, reviewer and unresolved findings, failure episode and remaining

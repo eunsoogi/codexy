@@ -37,10 +37,9 @@ elevation:
   assignment record MUST identify it as a `gpt-6.1-terra` / `medium` Worker. The
   Orchestrator MUST keep any host-effective model observation separate; if it is
   not exposed, it remains unknown.
-- The source's actual native goal MUST be active and its objective MUST exactly
-  match the current `Assignment objective:`. The Orchestrator MUST inspect the
-  source goal readback; its own goal or the Worker's status text is not a
-  substitute.
+- The source's assignment objective and scope MUST match the issue lane. An
+  existing user goal MUST remain unchanged and MUST NOT be required for this
+  eligibility decision.
 - Scope, permissions, inputs, and ownership MUST be resolved, and the existing
   general Worker conditions `fixed_scope`, `low_risk_reversible`, and
   `no_unresolved_decision` MUST remain satisfied.

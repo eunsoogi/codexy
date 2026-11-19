@@ -42,6 +42,26 @@ pub(super) fn phase_evidence(delivery: &str, status: &str) -> String {
 }
 
 #[test]
+fn goal_free_wait_and_handoff_need_no_goal_operation() -> super::TestResult {
+    let handoff = handoff_for_parent("goal-free", "parent-375")
+        .replace("Terminal parent handoff:", "Idle wait handoff:")
+        .replace('\n', "; phase objective=verify remote PR; phase criteria=satisfied; state fingerprint=head-abc; producer state=parent review; wake route=parent message; ownership=retained; issue state=not complete; return control=confirmed\n");
+    let evidence = format!(
+        "Lane ownership: child-owned\nSource thread id: parent-375\nNonterminal wait handoff: state fingerprint=head-abc; producer state=resource-slot-pending; wake route=resource release; ownership=retained; plan state=active; return control=confirmed\n{handoff}Idle child state: plan state=idle\n"
+    );
+    let output = super::run_validator(&evidence)?;
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    for invalid in [
+        evidence.replace("phase criteria=satisfied", "phase criteria=unfinished"),
+        evidence.replace("last proof=focused validator", "last proof=none"),
+        evidence.replace("Idle child state: plan state=idle", "Idle child state: goal state=complete; plan state=idle"),
+    ] {
+        assert!(!super::run_validator(&invalid)?.status.success());
+    }
+    Ok(())
+}
+
+#[test]
 fn completed_phase_submission_does_not_need_parent_response() -> super::TestResult {
     let evidence = phase_evidence(
         "delivery=confirmed; task surface=codex task/thread",

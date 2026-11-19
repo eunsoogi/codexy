@@ -6,9 +6,9 @@ This procedure transfers one active Terra/Medium issue lane to a same-issue
 Sol/Medium Worker after the Orchestrator records **Elevation may proceed** under
 [the elevation decision](../worker-elevation.md) and confirms the
 [source checkpoint](checkpoint.md). The existing source remains the sole
-implementation owner until the target's read-only setup, identity, goal, model
-assignment, parent route, and same-checkout state are confirmed and the source
-is safely retired.
+implementation owner until the target's read-only setup, identity, assignment,
+model assignment, parent route, and same-checkout state are confirmed and the
+source is safely retired.
 
 This procedure describes request routes and their evidence limits. A request
 MUST NOT be reported as a successful native transition. It does not imply a
@@ -24,13 +24,13 @@ parent cannot confirm that setup stayed read-only, the source MUST remain owner.
 ## Preconditions
 
 Before forking, the Orchestrator MUST re-read the issue and parent instructions,
-its own exact active overall goal, the source's exact active goal, the current
-eligibility decision, separate transition authorization, and source checkpoint.
-The source MUST remain the authenticated issue owner under a cooperative
-no-write instruction that stays in force across continuation turns. Every
-identified file-writing producer or tool call MUST have an actual completion or
-termination result. A quiet status, ACK, or unchanged Git state alone does not
-prove quiescence.
+its own applicable overall goal, the source assignment, the current eligibility
+decision, separate transition authorization, and source checkpoint. The source
+MUST remain the authenticated issue owner under a cooperative no-write
+instruction that stays in force across continuation turns. Every identified
+file-writing producer or tool call MUST have an actual completion or termination
+result. A quiet status, ACK, or unchanged Git state alone does not prove
+quiescence.
 
 The parent MUST verify and record the source's project, CWD, branch, HEAD,
 staged and unstaged changes, required untracked and ignored files, lock
@@ -98,13 +98,10 @@ and actual execution separately.
 
 ### 3. Complete target read-only setup and parent-route checks
 
-The target's first action MUST be its own `get_goal` readback. If the exact
-assigned phase objective is active, it MUST continue that objective without
-replacement. For exact null, a top-level `goal: null`, or exact
-`status=complete`, it MUST create the same authorized finite phase objective and
-immediately read back that exact objective as active. A blocked, different
-unfinished, unknown, malformed, or error result MUST stop the target before any
-other work. MUST NOT assume that a fork copies the source goal or permissions.
+The target MUST receive the original assignment objective, scope, evidence, stop
+condition, and parent identity. It MUST NOT be required to read, create, or
+transition a native goal for this assignment. Existing user goals MUST NOT be
+modified to enable elevation.
 
 The target MAY inspect only its native task identity, project, CWD, checkout,
 branch, HEAD, index, and required files. It MUST confirm these match the source
@@ -139,18 +136,19 @@ transport acceptance alone is not a parent callback. The Orchestrator MUST
 observe the report on its task and MUST send a follow-up to the exact target ID
 using the authenticated target pair. The target MUST observe that follow-up.
 This confirms message routing, not approval. The Orchestrator MUST also provide
-its fresh native readback of the exact active overall goal; the target cannot
-query another task's goal directly.
+the applicable parent objective and its own current state when relevant; the
+target MUST NOT query or change the parent goal.
 
 ### 4. Recheck before source retirement
 
 Before transfer, the Orchestrator MUST recheck the target's exact identity,
-authenticated pair, active objective, parent route, and same-checkout state. It
-MUST also recheck the source's no-write instruction, actual writer completion,
-original ownership, active goal, checkpoint, and current parent instructions.
-Any new writer, changed file state, missing or mismatched binding, or ambiguous
-readback MUST stop advancement. The Orchestrator MUST keep both actual
-reservations and preserve both tasks and the checkout for parent disposition.
+authenticated pair, assignment objective, parent route, and same-checkout state.
+It MUST also recheck the source's no-write instruction, actual writer
+completion, original ownership, assignment, checkpoint, and current parent
+instructions. Any new writer, changed file state, missing or mismatched binding,
+or ambiguous readback MUST stop advancement. The Orchestrator MUST keep both
+actual reservations and preserve both tasks and the checkout for parent
+disposition.
 
 ### 5. Deliver the existing terminal handoff and retire the source
 
@@ -160,12 +158,13 @@ authenticated parent ID, a fresh event identity, and the Worker-to- Orchestrator
 pair. The source MUST preserve the contract's exact common bound fields and
 confirmed delivery through the Codex task/thread surface. It MUST add the
 issue/PR, source and target IDs, objective, branch/worktree/HEAD and dirty-index
-state, source writer results, target goal/environment/model/parent readbacks,
-review and failure history, remaining checks, and requested ownership transfer.
-The source MUST NOT reuse the event identity for a second transition. Transport
-acceptance is not parent approval or proof of a callback. Once the authenticated
-handoff is accepted, an unobserved callback MUST remain a separate unknown and
-MUST NOT add a parent-reply or callback-observation gate to source retirement.
+state, source writer results, target assignment/environment/model/parent
+readbacks, review and failure history, remaining checks, and requested ownership
+transfer. The source MUST NOT reuse the event identity for a second transition.
+Transport acceptance is not parent approval or proof of a callback. Once the
+authenticated handoff is accepted, an unobserved callback MUST remain a separate
+unknown and MUST NOT add a parent-reply or callback-observation gate to source
+retirement.
 
 Before issuing the archive request, the Orchestrator MUST establish that it is
 source-only and will preserve the target and original checkout, including the
@@ -203,10 +202,10 @@ checkout, staged and unstaged work, required artifacts, reviewer, unresolved
 findings, failure history, and reservations. The target MUST NOT implement until
 the parent has made the single-owner transfer after all required readbacks.
 
-The target MAY implement only after a final readback confirms its exact active
-goal, assignment, permissions, pair, same checkout, and ownership. The source
-MUST remain read-only. The parent determines resumed work from the target's
-actual next tool call, diff, or result.
+The target MAY implement only after a final readback confirms its exact
+assignment, permissions, pair, same checkout, and ownership. The source MUST
+remain read-only. The parent determines resumed work from the target's actual
+next tool call, diff, or result.
 
 ## Failure handling
 
@@ -217,13 +216,13 @@ actual next tool call, diff, or result.
 | Target model request is unavailable or rejected, or its authenticated assignment is missing, unauthenticated, or mismatched | MUST NOT retire the source or implement. Preserve both IDs and reservations; report requested, accepted, authenticated, effective, and actual-execution evidence separately.                                           |
 | Effective settings are not exposed                                                                                          | Record them as unavailable and do not infer their value. Continue only when the authenticated target assignment is confirmed as Sol/Medium.                                                                            |
 | An explicitly observed effective pair is wrong                                                                              | MUST NOT retire the source or implement. Preserve both IDs and reservations and report the observed mismatch.                                                                                                          |
-| Target goal is blocked, different, malformed, or unknown                                                                    | MUST stop before further setup or implementation. MUST NOT fabricate or replace a goal.                                                                                                                                |
-| Parent route or parent active-goal evidence is missing                                                                      | MUST NOT retire the source or implement. Preserve the target and checkout; route the exact gap to the parent.                                                                                                          |
+| A target has an existing user goal                                                                                          | MUST preserve its state and follow any applicable host constraints; MUST NOT alter it for elevation.                                                                                                                   |
+| Parent route or assignment evidence is missing                                                                              | MUST NOT retire the source or implement. Preserve the target and checkout; route the exact gap to the parent.                                                                                                          |
 | Source handoff is not accepted or authenticated                                                                             | MUST NOT retire the source or transfer ownership. If accepted, an unknown callback remains separate and MUST NOT require a parent reply or another callback observation.                                               |
 | Source-only archival, descendant effects, or checkout preservation cannot be established before the request                 | MUST NOT archive, transfer ownership, or authorize implementation. Keep both tasks, reservations, and checkout for parent disposition.                                                                                 |
 | Source retirement fails or its preservation effect is ambiguous after the request                                           | Neither task may implement or transfer ownership. MUST keep identities, checkout, and reservations for parent disposition.                                                                                             |
 | Reservation release is requested                                                                                            | MUST retain the reservation until supported explicit termination or release and absence of remaining execution, including relevant descendants, are confirmed. Archival or a missing list entry alone is insufficient. |
-| Target assignment, environment, or goal fails after retirement                                                              | MUST keep the target and unfinished-issue reservation. MUST NOT revive the source or create another fork.                                                                                                              |
+| Target assignment or environment fails after retirement                                                                     | MUST keep the target and unfinished-issue reservation. MUST NOT revive the source or create another fork.                                                                                                              |
 | First continuation acceptance is ambiguous                                                                                  | MUST inspect events on the known target. MUST NOT resend or fork again before reconciliation.                                                                                                                          |
 
 Retry requires a separate parent instruction after reconciliation and a

@@ -31,8 +31,9 @@ When this arrangement is authorized, Codex MUST keep these roles distinct:
   lanes it MUST assign one Worker or retain an existing usable owner; it MUST
   NOT implement, patch, or duplicate the lane, or merge/publish without separate
   authority.
-- Worker MUST own files, branch, verification, review patches, and finite goal.
-  Worker MUST own idle-wait and blocked recovery.
+- Worker MUST own assigned files, branch, verification, and review patches. Its
+  assignment MUST NOT require a native goal. Worker MUST own idle-wait and
+  blocked recovery.
 
 Codex MUST auto-select model/effort; MUST NOT ask users to choose or reconfirm:
 

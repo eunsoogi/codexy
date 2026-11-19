@@ -1,59 +1,57 @@
 ---
 name: goal-lifecycle
-description: Use before any explicitly authorized Orchestrator or implementation Worker task, including read-only diagnosis, when using goal tools or resuming a task controlled by a goal, or for same-directory fork recovery of a blocked task. MUST NOT infer execution or goal authority from ordinary questions, ambiguous discussion, or unassigned suggestions.
+description: Use when managing or resuming an explicitly authorized native goal, including recovery from a blocked goal. Delegated assignments do not require child goals.
 ---
 
 # Goal Lifecycle
 
+## Delegated assignment boundary
+
+A child assignment MUST carry its objective, scope, evidence, stop condition,
+and parent as assignment data. It MUST NOT require child goal reads, creation,
+transitions, or receipts. A child MUST preserve existing user goals and MUST NOT
+change the parent's goal. The parent controls its own goal independently. The
+goal-specific procedures below apply only to explicitly goal-controlled tasks,
+not to ordinary delegated assignments.
+
 ## Purpose
 
-Codex MUST use this skill before explicitly assigned Orchestrator or
-implementation Worker task work, including read-only diagnosis, and for every
-goal-tool operation or resume of a task controlled by a goal. Codex MUST load it
-before task-specific work, not only after choosing a goal-tool operation. Codex
-MUST treat the host goal tools as authoritative. The lifecycle governs fresh
-goal startup, active continuation, and authorized recovery from blocked goals.
-It MUST NOT change host goal state, issue ownership, branch, or worktree to
-simulate completion. Fork recovery changes only the active task thread through a
-same-directory fork and archive; a supported same-task resume retains it.
+Codex MUST use this skill for every goal-tool operation or resume of a task
+explicitly controlled by a goal. Codex MUST load it before task-specific work,
+not only after choosing a goal-tool operation. Codex MUST treat the host goal
+tools as authoritative. The lifecycle governs fresh goal startup, active
+continuation, and authorized recovery from blocked goals. It MUST NOT change
+host goal state, issue ownership, branch, or worktree to simulate completion.
+Fork recovery changes only the active task thread through a same-directory fork
+and archive; a supported same-task resume retains it.
 
 ## Goal-start contract
 
-A delegated assignment MUST distinguish the overall issue outcome from the
-child's currently executable phase. The parent MUST state the phase objective
-once as `Assignment objective:`, with bounded scope, success criteria,
-verification, handoff, and a stop condition. Preparation, implementation, or
-verification MAY be separate phases only when explicitly assigned; the child
-MUST NOT invent a narrower phase to clear an unfinished goal. The phase criteria
-MUST cover the assigned deliverable, required proof, and any review or execution
-result required for that phase. The child MUST keep the phase unfinished while
-any such criterion is unmet; native goal status MUST follow the applicable
-lifecycle rules below. Parent merge, parent acceptance or acknowledgement, and
-future instructions MUST NOT be phase completion criteria.
+A delegated assignment MUST state the objective, bounded scope, success
+criteria, verification, handoff, stop condition, and parent. Parent merge,
+acceptance, acknowledgement, and future instructions MUST NOT be child
+completion criteria. The assignment is data, not an instruction to manage a
+child goal.
 
-The child MUST use that exact phase objective for its finite goal. When the host
-requires an explicit user or system request, neither the parent assignment nor
-scoped orchestration authority for child tasks or messages supplies it. An
-applicable explicit user request covering the parent goal and multiple Worker
-goals MUST be reused for every covered goal; the task MUST NOT require a
-separate unchanged confirmation for each Worker or another opt-in merely because
-a covered goal is assigned its own phase. The parent MUST include the request's
-source and scope in the child context or provide an authenticated reference when
-the original request is not visible to the child. A later user stop or
-revocation MUST override that authority for its stated scope. Plan-only or
-question-only requests and unassigned suggestions MUST NOT create execution
-goals. The task MUST preserve the native `get_goal` readback and report
-genuinely missing authority before task work. If the host cannot support the
-required operation, it MUST identify that host boundary accurately; it MUST NOT
-infer permission or call a forbidden `create_goal`.
+For an explicitly requested native goal, when the host requires an explicit user
+or system request, neither the parent assignment nor scoped orchestration
+authority for child tasks or messages supplies it. An applicable explicit user
+request covering the parent goal and multiple Worker goals MUST be reused for
+every covered goal; the task MUST NOT require a separate unchanged confirmation
+for each Worker or another opt-in merely because a covered goal is assigned its
+own phase. The parent MUST include the request's source and scope in the child
+context or provide an authenticated reference when the original request is not
+visible to the child. A later user stop or revocation MUST override that
+authority for its stated scope. Plan-only or question-only requests and
+unassigned suggestions MUST NOT create execution goals. The task MUST preserve
+the native `get_goal` readback and report genuinely missing authority before
+task work. If the host cannot support the required operation, it MUST identify
+that host boundary accurately; it MUST NOT infer permission or call a forbidden
+`create_goal`.
 
-For an Orchestrator/Worker arrangement, the Orchestrator MUST establish or
-continue its exact overall goal before its task work and before Worker dispatch.
-Before dispatch, it MUST give each Worker one exact `Assignment objective:`
-line, bounded scope, success criteria, verification, stop condition, and an
-explicit direction to complete the Worker's own first transition before
-task-specific work. A parent goal MUST NOT stand in for a Worker's task-scoped
-goal.
+For an Orchestrator/Worker arrangement, the parent manages any explicitly
+authorized overall goal itself. Before dispatch it MUST supply the assignment
+data above; it MUST NOT require a Worker goal or goal transition.
 
 The finite goal MUST NOT broaden scope, invent work, replace external proof, or
 override native lifecycle state. An existing broader active objective MUST NOT
@@ -63,8 +61,8 @@ disposition.
 
 ## Required first transition
 
-Before any edit, command, verification, GitHub mutation, delegation, or other
-task work, the task MUST call `get_goal` and MUST use its current result:
+For an explicitly goal-controlled task, before task work, the task MUST call
+`get_goal` and MUST use its current result:
 
 1. If the result is exactly `null`, is a host response envelope whose top-level
    `goal` is exactly `null`, or has exactly `status=complete`, the task MUST

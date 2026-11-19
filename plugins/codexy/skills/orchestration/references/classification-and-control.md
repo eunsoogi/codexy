@@ -27,17 +27,13 @@ Child implementation threads assigned a non-trivial lane MUST run their own
 execution loop instead of treating the parent handoff as permission for
 unassigned or out-of-scope edits.
 
-- MUST use the native goal tools for lane state: `create_goal`, `get_goal`, and
-  `update_goal`. A native goal object and actual state/transition readback are
-  mandatory for normal execution; prose-only `Goal:` text MUST NOT substitute
-  for the goal API. If the native goal surface is unavailable, MUST report the
-  exact limitation and required action, and MUST NOT start or claim execution
-  that depends on it.
+- Assignment objective, scope, evidence, stop condition, and parent are lane
+  data. A child MUST NOT be required to use native goal tools. Explicitly
+  managed goals retain their host-controlled state and transition rules.
 - MUST keep real todo/plan state current with `update_plan` or the active todo
   surface when available, updating statuses from discovery through handoff.
-  Prose-only `Todo:` text is not proof of todo/plan tooling. Using only goal or
-  only todo/plan is insufficient for non-trivial child lanes unless the missing
-  tool is unavailable and reported with its fallback.
+  Prose-only `Todo:` text is not proof of todo/plan tooling. Report an
+  unavailable todo surface and its fallback.
 - MUST use multi-agent execution when the lane has independent research
   questions, disjoint implementation slices, parallel QA or verification, review
   gates, review-feedback validation, or separable non-trivial subtasks.
