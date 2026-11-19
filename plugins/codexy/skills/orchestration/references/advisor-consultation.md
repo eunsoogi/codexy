@@ -41,11 +41,6 @@ limit the proposed action until the owner supplies the authoritative readback.
 
 - Blocked wording with an active goal MAY describe an actionable technical
   obstacle; it MUST NOT cause a goal transition by itself.
-- Native `status=blocked` MUST stop child implementation until the explicitly
-  authorized recovery in [goal-lifecycle](../../goal-lifecycle/SKILL.md) is
-  satisfied. Advice MUST NOT clear it with `complete`, treat it as active, or
-  invent fork/archive/resume authority. That recovery MUST preserve the original
-  objective, branch/worktree, source settings, and exactly one active owner.
 - Reviewer `BLOCK` MUST retain the selected review and unresolved findings;
   consultation MAY propose a repair but MUST NOT change the verdict.
 - A dependency wait MUST retain its real producer and wake condition. If the

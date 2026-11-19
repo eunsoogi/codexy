@@ -64,11 +64,6 @@ observed work. A repeated repair result MAY support elevation only when its
 task-specific observations establish every required fact in one existing
 category; repetition alone does not qualify.
 
-An actual native blocked goal MUST remain blocked until the explicitly
-authorized, source-pair-preserving recovery in
-[goal lifecycle](../../goal-lifecycle/SKILL.md) is complete. This assessment
-MUST NOT bypass or replace that recovery.
-
 ## Evidence and decision
 
 The Worker's existing report to its parent MUST include the original objective

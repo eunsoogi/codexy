@@ -46,11 +46,6 @@ fn canonical_guidance_preserves_scoped_authority_and_parallel_dispatch() -> Test
             "without scanning paths or gating on path overlap",
             "",
         ),
-        (
-            "goal-lifecycle/SKILL.md",
-            "neither the parent assignment nor scoped orchestration authority for child tasks or messages supplies it",
-            "",
-        ),
     ] {
         let content = std::fs::read_to_string(root.join(path))?;
         let prose = content.split_whitespace().collect::<Vec<_>>().join(" ");
@@ -125,9 +120,8 @@ fn assignment_consumers_do_not_require_child_goal_startup() -> TestResult {
         let prose = text.split_whitespace().collect::<Vec<_>>().join(" ");
         assert!(prose.contains(required), "{consumer} lacks: {required}");
     }
-    let metadata = std::fs::read_to_string(skills_root.join("goal-lifecycle/agents/openai.yaml"))?;
-    assert!(metadata.contains("A child assignment MUST NOT require goal reads"));
-    assert!(!metadata.contains("before authorized Orchestrator or Worker task work"));
+    // The removed lifecycle skill must not reappear in the packaged inventory.
+    assert!(!skills_root.join("goal-lifecycle").exists());
     let template = std::fs::read_to_string(skills_root.join("orchestration/templates/delta-poll.md"))?;
     assert!(!template.contains("| Goal transition                 | complete"));
     Ok(())

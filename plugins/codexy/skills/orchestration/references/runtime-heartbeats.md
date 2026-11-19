@@ -122,9 +122,8 @@ below.
 ## Goal And Terminal Lifecycle
 
 Heartbeat registration governs monitoring only; it does not set native goal
-state or prove a phase outcome. For native transitions, phase outcome judgment,
-and terminal delivery, use [goal-lifecycle](../../goal-lifecycle/SKILL.md),
-[proof-driven-completion](../../proof-driven-completion/SKILL.md), and
+state or prove a phase outcome. For phase outcome judgment and terminal delivery, use
+[proof-driven-completion](../../proof-driven-completion/SKILL.md) and
 [goal-transition-reporting](goal-transition-reporting.md), respectively.
 Heartbeat state MUST NOT override or stand in for any of those contracts.
 

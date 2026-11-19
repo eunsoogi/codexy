@@ -86,8 +86,7 @@
      not requested edits. A status-only child MUST NOT mask substantive parent
      execution.
    - The initial assignment MUST carry the issue outcome, executable phase
-     objective and completion criteria from
-     [goal-lifecycle](../../goal-lifecycle/SKILL.md), the
+     objective and completion criteria, the
      [terminal handoff route](goal-transition-reporting.md), and the
      [supervised slot reservation](parent-supervision.md#supervised-app-child-capacity).
      At capacity, MUST retain ready work in the parent backlog without creating

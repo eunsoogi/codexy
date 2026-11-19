@@ -58,5 +58,4 @@ Search, verification, recovery, and replanning MUST stay inside the existing
 unbounded exploration or a new budget. MUST NOT skip mandatory checks for
 efficiency, manufacture completion at budget exhaustion, or treat stopping a
 search branch as a native goal state transition. When proof remains missing,
-MUST retain an incomplete or uncertain outcome under the existing completion and
-goal-lifecycle contracts.
+MUST retain an incomplete or uncertain outcome under the existing completion contract and host goal state.

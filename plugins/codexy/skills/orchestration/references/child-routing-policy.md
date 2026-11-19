@@ -151,32 +151,6 @@ for its exact limits, examples, and fallback behavior.
 For the criteria, evidence requirements, and elevation boundary, MUST read
 [evidenced hard work](child-routing-policy/evidenced-hard-work.md).
 
-### Blocked-goal fork recovery
-
-An authorized same-directory fork continues the source task lane and role; it is
-not a new Worker or role assignment. For that same task, this recovery exception
-MUST preserve the source model and reasoning effort even when they differ from
-ordinary role defaults. Codex MUST read requested values from the source
-assignment or creation record and keep host-exposed effective values separate.
-For each field, Codex MUST use the effective source value when observable and
-otherwise the exact requested value. If either is unavailable from both sources,
-Codex MUST keep the lane pending. The continuation MUST use
-`send_message_to_thread` with explicit `model` and `thinking` fields; it MUST
-NOT inherit sender or role defaults or reselect the task role. A requested pair
-proves only what was requested. If effective settings are not exposed, Codex
-MUST report them as unavailable/not observed, not as preserved.
-
-Recovery of the unchanged objective and scope carries the original assignment
-authority; blocked status alone MUST NOT require new user confirmation. The
-same-directory fork, necessary work preservation, actual CWD and Git check,
-source-chat archive, and post-archive acceptance steps are owned by
-[goal-lifecycle](../../goal-lifecycle/SKILL.md) and its
-[executable-checkout recovery](../../goal-lifecycle/references/executable-checkout-recovery.md).
-An unavailable artifact listing or separate lifetime guarantee MUST NOT block a
-confirmed checkout. If a continuation remains blocked, the owner MUST apply the
-same sequence from that current owner. This routing clause MUST NOT be read as a
-separate recovery procedure.
-
 Worker selection owns recipient and model routing, not verification policy. The
 closed route in [context tiers](context-tiers.md) selects verification,
 sequencing, finite-work, review, and final-proof references only when
