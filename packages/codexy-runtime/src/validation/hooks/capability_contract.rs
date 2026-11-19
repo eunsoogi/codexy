@@ -153,6 +153,8 @@ fn entrypoints(launcher: &str) -> Vec<String> {
         format!("{launcher}.cmd"),
         if launcher == "codexy-cleanup-progress" {
             "codexy_cleanup_progress.py".to_string()
+        } else if launcher == "codexy-supervision-capacity" {
+            "codexy_supervision_capacity.py".to_string()
         } else {
             format!("{launcher}.py")
         },

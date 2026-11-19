@@ -87,9 +87,8 @@ scope, or leaves a material choice unresolved.
 A direct user stop MUST stop the covered creation operation immediately. Codex
 MUST NOT resume or retry that operation until the user resumes it or grants
 authority again. Codex MUST continue only independent work that remains
-authorized by the user's instruction. Goal-state changes MUST follow the
-[goal-lifecycle contract](../../../goal-lifecycle/SKILL.md); a stop MUST NOT be
-used to manufacture completion or a blocked result.
+authorized by the user's instruction. A stop MUST NOT be used to manufacture
+completion or a blocked result.
 
 ## Resolve uncertain outcomes and preserve the owner
 
@@ -124,8 +123,7 @@ was not created.
 Codex MUST keep useful, independent authorized work moving while only the
 affected creation remains pending. A denial MUST NOT itself transfer ownership
 or change a native goal. A repeated denial or turn count alone MUST NOT mark a
-goal blocked; native blocked status follows the
-[goal-lifecycle contract](../../../goal-lifecycle/SKILL.md#deciding-whether-work-is-blocked).
+goal blocked; native goal status follows the host tool contract.
 
 ## Evidence boundary
 

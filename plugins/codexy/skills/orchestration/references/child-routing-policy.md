@@ -19,21 +19,19 @@ substitute a helper or parent implementation. MUST apply scoped user overrides
 only as directed.
 
 Each assignment MUST name the exact objective, scope, input evidence,
-deliverable and success criteria, verification, and stop/report conditions.
-Creating a child only to report status while the parent does the substantive
-work MUST NOT count as delegation. A prompt or task-creation result alone MUST
-NOT prove execution.
+deliverable and success criteria, verification, and stop/report conditions. For
+issue implementation, PR takeover, or execution verification, the initial
+assignment and any resumption MUST identify the issue, the remote branch and
+current remote head when a PR exists, and the outstanding acceptance criteria.
+MUST direct repeat requests and feedback to the same suitable issue owner; a
+verification-only assignment MUST remain actionable from the remote PR. Creating
+a child only to report status while the parent does the substantive work MUST
+NOT count as delegation. A prompt or task-creation result alone MUST NOT prove
+execution.
 
-Every app-managed child assignment governed by a native goal MUST link to the
-[canonical goal-start contract](../../goal-lifecycle/SKILL.md#goal-start-contract)
-and direct the child to call native `get_goal` before any task-specific work,
-then complete the contract's required first transition. The assignment MUST make
-clear that `get_goal` precedes issue or repository reads, commands,
-verification, delegation, and edits; later goal activation MUST NOT satisfy that
-ordering. When an explicit user request covers the parent and child goals, the
-parent MUST preserve its source and scope in the child's context or an
-authenticated reference and MUST NOT ask each Worker to renew it. The assignment
-itself MUST NOT be treated as host goal-tool permission.
+Each app-managed assignment MUST identify its parent and MUST NOT require child
+goal reads, creation, transitions, or receipts. Existing user goals and host
+permissions remain unchanged.
 
 After classification selects an owner and route, MUST follow the
 [thread/worktree rules](thread-and-worktree-routing.md). Before child creation
@@ -147,6 +145,18 @@ routing unchanged. The delivery hook independently rejects crossed or
 unsupported request pairs, but it cannot verify that the pair matches a
 recipient assignment.
 
+For every Worker progress, decision, blocker, or final report, including a
+Worker without a native goal, MUST resolve a `codexy.child-routing-request.v3`
+with `codex_thread_operation` set to `send_message_to_thread`,
+`codex_thread_direction` set to `child_to_root`, the assigned
+`parent_thread_id`, the complete `report_prompt`, and advertised thread
+capabilities. Include `parent_host_id` when known. MUST pass the returned
+`tool_input` unchanged to the app message tool on the first attempt. If the
+parent identity or route is unavailable, MUST retain the report and surface the
+resolver's reason; MUST NOT construct a partial request or guess a recipient.
+The v1 route remains available for existing callers, but does not construct a
+report request. Host message authorization still applies.
+
 ### Bounded evidence summaries
 
 When assigning bounded evidence work, MUST read the
@@ -157,32 +167,6 @@ for its exact limits, examples, and fallback behavior.
 
 For the criteria, evidence requirements, and elevation boundary, MUST read
 [evidenced hard work](child-routing-policy/evidenced-hard-work.md).
-
-### Blocked-goal fork recovery
-
-An authorized same-directory fork continues the source task lane and role; it is
-not a new Worker or role assignment. For that same task, this recovery exception
-MUST preserve the source model and reasoning effort even when they differ from
-ordinary role defaults. Codex MUST read requested values from the source
-assignment or creation record and keep host-exposed effective values separate.
-For each field, Codex MUST use the effective source value when observable and
-otherwise the exact requested value. If either is unavailable from both sources,
-Codex MUST keep the lane pending. The continuation MUST use
-`send_message_to_thread` with explicit `model` and `thinking` fields; it MUST
-NOT inherit sender or role defaults or reselect the task role. A requested pair
-proves only what was requested. If effective settings are not exposed, Codex
-MUST report them as unavailable/not observed, not as preserved.
-
-Recovery of the unchanged objective and scope carries the original assignment
-authority; blocked status alone MUST NOT require new user confirmation. The
-same-directory fork, necessary work preservation, actual CWD and Git check,
-source-chat archive, and post-archive acceptance steps are owned by
-[goal-lifecycle](../../goal-lifecycle/SKILL.md) and its
-[executable-checkout recovery](../../goal-lifecycle/references/executable-checkout-recovery.md).
-An unavailable artifact listing or separate lifetime guarantee MUST NOT block a
-confirmed checkout. If a continuation remains blocked, the owner MUST apply the
-same sequence from that current owner. This routing clause MUST NOT be read as a
-separate recovery procedure.
 
 Worker selection owns recipient and model routing, not verification policy. The
 closed route in [context tiers](context-tiers.md) selects verification,
@@ -222,10 +206,7 @@ second authored machine payload or hide one in a table cell.
 When a handoff contract requires a receipt, it MUST carry that contract's stable
 `transition key`, `event id`, or `state fingerprint`. A completed delivery with
 the same recipient, phase, and key MUST NOT be sent again; unchanged status MUST
-remain silent. Initial `get_goal`, `create_goal`, and the required active
-readback MUST happen in the owning task before task work, but MUST NOT generate
-separate parent registration receipts. Blocked-goal recovery and terminal
-handoff receipts remain governed by their canonical references.
+remain silent. Terminal handoff receipts follow their canonical reference.
 
 Unknown, ambiguous, incomplete, and unsupported requests fail closed to the
 Orchestrator or named-specialist route. The executable contract is maintained by

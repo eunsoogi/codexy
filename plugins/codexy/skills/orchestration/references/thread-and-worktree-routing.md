@@ -90,12 +90,18 @@ After ownership readback authorizes a new Worker, MUST resolve the creation
 request and pass its complete `tool_input` directly to `create_thread`; this
 keeps the assignment prompt, selected pair, and managed project target together.
 If the resolver returns a fallback or lacks a complete creation input, MUST
-leave the lane pending rather than reconstructing omitted fields.
+leave the lane pending rather than reconstructing omitted fields. For an
+existing PR, MUST supply its remote branch and current remote head to the issue
+owner and use the assigned managed worktree to resume the outstanding criteria.
+If no suitable owner exists and creation is unavailable, MUST record the issue
+and reason in the parent backlog; MUST NOT create a substitute helper or
+transfer execution to the parent. Repeated requests MUST first reuse the
+existing suitable issue owner.
 
 When task classification and the required owner/tool readbacks authorize a new
 app task, the Orchestrator MUST use the actual `create_thread` tool and read
 back the returned task identity, owner, project, actual CWD, starting HEAD, app
-worktree environment, exposed permissions and model settings, and native goal
+worktree environment, exposed permissions and model settings, and assignment
 before execution. The requested target, checkout path, or attached artifact
 alone does not prove the task environment. The call is non-blocking: a ready
 `threadId`/`hostId` is an actual task identity, while a setup `clientThreadId`
@@ -105,7 +111,7 @@ wait for the ready task and verify its actual owner and worktree before
 implementation starts. Later repairs MUST return to that owner and workspace
 unless a supported, authorized ownership transition has completed.
 
-Each selected owner route MUST preserve the native goal and ordinary direct
+Each selected owner route MUST preserve existing user goals and ordinary direct
 `wait_threads` observation with each target's latest cursor. Neither route may
 replace these host surfaces with text, an app-server/CLI path, a fake task, or a
 silent fallback. Source tests, configuration, and app-server transcripts MUST

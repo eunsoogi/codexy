@@ -21,19 +21,16 @@ no-change parent-turn savings remain unmeasured.
   conflicts, actual authority, safety decisions, required review, and slot
   capacity MUST remain gates.
 - While authorized work or observation remains actionable, preserve the full
-  assignment, active goal owner, and next action. Same-turn waiting applies only
-  while the host keeps its supported route; it does not imply runtime suspension
-  of a parent turn.
-- Same-owner re-entry MUST follow the actual
-  [goal-lifecycle](../../goal-lifecycle/SKILL.md) readback and preserve the
-  latest per-target cursors under [parent supervision](parent-supervision.md).
-  Advance only on actual results; input at re-entry MUST NOT imply wait
-  cancellation or resumption.
+  assignment, owner, and next action. Same-turn waiting applies only while the
+  host keeps its supported route; it does not imply runtime suspension of a
+  parent turn.
+- Same-owner re-entry MUST preserve the assignment and latest per-target cursors
+  under [parent supervision](parent-supervision.md). Advance only on actual
+  results; input at re-entry MUST NOT imply wait cancellation or resumption.
 - Outside a route-required quiet wait, MUST provide concise progress commentary
   at meaningful checkpoints during active work; commentary does not end the turn
   or prove completion. Phase outcome and final handoff MUST follow the canonical
   [proof](../../proof-driven-completion/SKILL.md),
-  [goal lifecycle](../../goal-lifecycle/SKILL.md), and
   [reporting](goal-transition-reporting.md) contracts.
 - This default MUST NOT create busy polling, endless loops, repeat unchanged
   work, artificial token use, exceed host limits, or extend work beyond
@@ -49,7 +46,6 @@ Worker targets; see [parent supervision](parent-supervision.md). The same
 reviewer MUST remain pending until its natural terminal result and MUST NOT be
 polled, messaged, interrupted, replaced, or duplicated. Use
 [review-lifecycle](review-lifecycle.md) for reviewer state, and the canonical
-[goal lifecycle](../../goal-lifecycle/SKILL.md),
 [proof](../../proof-driven-completion/SKILL.md), and
 [reporting](goal-transition-reporting.md) contracts for phase state and handoff.
 
@@ -109,9 +105,8 @@ MUST use this flow after compaction and before handoff:
    and suppression of unchanged continuation turns MUST follow
    [runtime-heartbeats](runtime-heartbeats.md).
 
-Native goal status, outcome judgment, and worker-to-parent delivery MUST follow
-[goal-lifecycle](../../goal-lifecycle/SKILL.md),
-[proof-driven-completion](../../proof-driven-completion/SKILL.md), and
+Outcome judgment and worker-to-parent delivery MUST follow
+[proof-driven-completion](../../proof-driven-completion/SKILL.md) and
 [goal-transition-reporting](goal-transition-reporting.md), respectively. This
 coordination guide MUST NOT define a second phase-completion or handoff rule.
 
@@ -142,8 +137,7 @@ shared message rule.
 
 MUST use [runtime-heartbeats.md](runtime-heartbeats.md) for registration,
 schedules, fingerprints, cleanup, and Worker idle handoffs. A heartbeat MUST NOT
-replace a live Sentinel's no-poll route. The owner MUST record the
-Orchestrator's active overall goal separately from the heartbeat registration.
+replace a live Sentinel's no-poll route.
 
 For repeat handoffs, copy [the delta-poll template](../templates/delta-poll.md)
 and fill only the current slots. MUST keep the template output in the thread or

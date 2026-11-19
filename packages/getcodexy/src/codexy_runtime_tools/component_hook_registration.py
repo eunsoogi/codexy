@@ -85,8 +85,22 @@ def _core_hooks() -> dict[str, object]:
     return {
         "hooks": {
             "PermissionRequest": command("PermissionRequest"),
-            "PreToolUse": command("PreToolUse"),
-            "PostToolUse": [post],
+            "PreToolUse": command("PreToolUse")
+            + [
+                _command_hook(
+                    "^(?:codex_app__|mcp__codex_app__)create_thread$",
+                    "codexy-supervision-capacity",
+                    "PreToolUse",
+                )
+            ],
+            "PostToolUse": [
+                _command_hook(
+                    "^(?:codex_app__|mcp__codex_app__)create_thread$",
+                    "codexy-supervision-capacity",
+                    "PostToolUse",
+                ),
+                post,
+            ],
             "Stop": [lifecycle("Stop")],
             "Interrupt": [lifecycle("Interrupt", 1)],
         }

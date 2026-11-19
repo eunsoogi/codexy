@@ -1,15 +1,15 @@
 # Codexy hooks
 
 Codex loads this directory as a plugin hook source and substitutes `PLUGIN_ROOT`
-before invoking each configured concern launcher. Admission hooks are stateless:
-a permitted operation writes zero bytes; a denied operation emits only the
-official event-native denial schema with its concern's diagnostic family. The
-core manifest registers the thread-delivery, child-thread-creation,
-subagent-ownership, and cleanup-progress concerns. Watcher waits and session
-cancellation remain in the MCP runtime and host transport; the core package does
-not add `watcher_wait`, sender `PostToolUse`, or `UserPromptSubmit` cancellation
-hooks. The cleanup concern's `Interrupt` handler only suppresses its own
-continuation.
+before invoking each configured concern launcher. Routing admission hooks are
+stateless; supervision capacity persists parent-scoped reservations. A denied
+operation emits the official event-native denial schema with its concern's
+diagnostic family. The core manifest registers the thread-delivery,
+child-thread-creation, supervision-capacity, subagent-ownership, and
+cleanup-progress concerns. Watcher waits and session cancellation remain in the
+MCP runtime and host transport; the core package does not add `watcher_wait`,
+sender `PostToolUse`, or `UserPromptSubmit` cancellation hooks. The cleanup
+concern's `Interrupt` handler only suppresses its own continuation.
 
 Cleanup progress observes an exact thread archive request returning a non-error
 MCP envelope. This does not establish archival, identity, acceptance, or
@@ -71,9 +71,10 @@ independently. `PreToolUse` and `PermissionRequest` bind the same concern
 owners; matching handlers are independent and any denial is conservative.
 Malformed governed input fails visibly rather than guessing.
 
-The retained admission launchers run Python isolated from user configuration and
-never install, cache, update, or mutate user state. A trusted operator may set
-the absolute `CODEXY_CORE_HOOK_TIMING_FILE` environment variable to enable one
+The retained admission launchers run Python isolated from user configuration.
+The supervision hook writes only its private plugin-data reservation database;
+the routing hooks do not update user state. A trusted operator may set the
+absolute `CODEXY_CORE_HOOK_TIMING_FILE` environment variable to enable one
 bounded local JSONL record per core-hook decision. Each record contains only
 `event`, `concern`, integer nanosecond `elapsed`, and `decision`; the payload
 cannot choose the setting or path. The file is created private to its owner,

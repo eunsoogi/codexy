@@ -17,20 +17,20 @@ branch, worktree, PR, durable child context, or review-response ownership:
    A needed branch, worktree, PR, issue assignment, or task complexity MUST NOT
    by itself authorize `create_thread`.
 3. When classification assigns the lane to the current task, the current-task
-   route MUST continue under its native goal without creating a duplicate task.
-   When classification selects a child-owned lane, the parent MUST NOT implement
-   in that lane or create a duplicate owner. If ownership is unresolved or
-   required authority or tooling is unavailable, implementation MUST remain
-   pending and the exact gap MUST be reported. If an active child already owns
-   the lane, the parent MUST send correction instructions through the supported
-   task route; this does not require authority to create another task.
+   route MUST continue its assignment without creating a duplicate task. When
+   classification selects a child-owned lane, the parent MUST NOT implement in
+   that lane or create a duplicate owner. If ownership is unresolved or required
+   authority or tooling is unavailable, implementation MUST remain pending and
+   the exact gap MUST be reported. If an active child already owns the lane, the
+   parent MUST send correction instructions through the supported task route;
+   this does not require authority to create another task.
 4. When the classified route selects an app task and current invocation limits
    and host permissions allow it, the parent MUST use the actual callable
    `create_thread` contract and verify the returned task identity, owner,
-   project/worktree, and native goal before execution. The parent MUST NOT use
-   an app-server/CLI bypass, fake task, or silent fallback. A text-only record
-   MAY preserve the objective and exact unsupported state, but MUST NOT
-   authorize execution or prove completion without the native goal.
+   project/worktree, and assignment before execution. The parent MUST NOT use an
+   app-server/CLI bypass, fake task, or silent fallback. A text-only record MAY
+   preserve the objective and exact unsupported state, but MUST NOT authorize
+   execution or prove completion without the actual task.
 5. If the lane is `child-owned`, the parent may prepare issue text, branch
    names, worktree requests, handoff text, and acceptance criteria, but it MUST
    NOT patch implementation files, create implementation branches or worktrees
@@ -52,12 +52,12 @@ branch, worktree, PR, durable child context, or review-response ownership:
    [parent-supervision.md](parent-supervision.md), the canonical source for
    role/model assignments, report routing, waits, limits, interruption,
    cancellation, and fallback.
-10. The Orchestrator's exact overall goal MUST remain active; the Worker owns
-    implementation and its finite goal. The Orchestrator MUST use direct
-    cursor-based observation for ordinary Worker targets. Keep these surfaces
-    separate and use
-    [goal-transition-reporting.md](goal-transition-reporting.md) for
-    blocked-goal recovery and terminal transition receipts.
+10. The Orchestrator retains control of any overall goal; the Worker owns its
+    assigned implementation without a required child goal. The Orchestrator MUST
+    use direct cursor-based observation for ordinary Worker targets. Keep these
+    surfaces separate and use
+    [goal-transition-reporting.md](goal-transition-reporting.md) for terminal
+    transition receipts.
 11. For ordinary Worker observation, the Orchestrator MUST use native
     `wait_threads` with each target's latest cursor. A native reviewer's
     terminal delivery is separate and MUST NOT authorize Worker observation.

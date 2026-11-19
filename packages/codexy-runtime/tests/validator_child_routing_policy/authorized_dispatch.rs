@@ -46,11 +46,6 @@ fn canonical_guidance_preserves_scoped_authority_and_parallel_dispatch() -> Test
             "without scanning paths or gating on path overlap",
             "",
         ),
-        (
-            "goal-lifecycle/SKILL.md",
-            "neither the parent assignment nor scoped orchestration authority for child tasks or messages supplies it",
-            "",
-        ),
     ] {
         let content = std::fs::read_to_string(root.join(path))?;
         let prose = content.split_whitespace().collect::<Vec<_>>().join(" ");
@@ -113,25 +108,22 @@ fn canonical_guidance_preserves_scoped_authority_and_parallel_dispatch() -> Test
 }
 
 #[test]
-fn goal_start_contract_links_resolve_for_assignment_consumers() -> TestResult {
+fn assignment_consumers_do_not_require_child_goal_startup() -> TestResult {
     let skills_root = codexy_runtime::paths::repository_root().join("plugins/codexy/skills");
-    // Consumer references must continue to resolve to the shared startup contract.
-    for (consumer, target) in [
-        (
-            "orchestration/SKILL.md",
-            "../goal-lifecycle/SKILL.md#goal-start-contract",
-        ),
-        (
-            "orchestration/references/child-routing-policy.md",
-            "../../goal-lifecycle/SKILL.md#goal-start-contract",
-        ),
-        (
-            "orchestration/references/parent-supervision/message-visibility.md",
-            "../../../goal-lifecycle/SKILL.md#goal-start-contract",
-        ),
+    // Assignment and message guidance must consistently allow goal-free children.
+    for (consumer, required) in [
+        ("orchestration/SKILL.md", "without a required native goal"),
+        ("orchestration/references/child-routing-policy.md", "MUST NOT require child goal reads"),
+        ("orchestration/references/parent-supervision/message-visibility.md", "Child assignment MUST NOT require goal startup"),
     ] {
-        assert_authority_link_resolves(&skills_root, consumer, target)?;
+        let text = std::fs::read_to_string(skills_root.join(consumer))?;
+        let prose = text.split_whitespace().collect::<Vec<_>>().join(" ");
+        assert!(prose.contains(required), "{consumer} lacks: {required}");
     }
+    // The removed lifecycle skill must not reappear in the packaged inventory.
+    assert!(!skills_root.join("goal-lifecycle").exists());
+    let template = std::fs::read_to_string(skills_root.join("orchestration/templates/delta-poll.md"))?;
+    assert!(!template.contains("| Goal transition                 | complete"));
     Ok(())
 }
 

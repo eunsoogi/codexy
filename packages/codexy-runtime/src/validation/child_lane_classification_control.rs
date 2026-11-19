@@ -4,7 +4,7 @@ use super::child_lane_classification_setup::formal_classification_complete_index
 use super::child_lane_classification_setup_context::prior_child_lane_context_applies;
 use super::child_terminal_handoff::without_metadata_prefix;
 
-/// Requires a formal lane classification before control calls when prior evidence establishes child ownership.
+/// Requires a formal lane classification before plan control when prior evidence establishes child ownership.
 pub(super) fn check(evidence: &str) -> Vec<String> {
     let lines = evidence.lines().map(str::trim).collect::<Vec<_>>();
     if lines.iter().enumerate().any(|(index, line)| {
@@ -18,10 +18,7 @@ pub(super) fn check(evidence: &str) -> Vec<String> {
 }
 
 fn is_control_call(line: &str) -> bool {
-    matches!(
-        normalize_metadata_prefix(line),
-        "goal tool call: create_goal" | "plan tool call: update_plan"
-    )
+    normalize_metadata_prefix(line) == "plan tool call: update_plan"
 }
 
 pub(super) fn normalize_metadata_prefix(line: &str) -> &str {

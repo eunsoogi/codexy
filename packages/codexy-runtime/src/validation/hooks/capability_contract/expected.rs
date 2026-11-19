@@ -50,6 +50,15 @@ pub(super) const CONCERNS: &[Expected] = &[
         preventive: true,
     },
     Expected {
+        id: "supervision-capacity",
+        trigger: "^(?:codex_app__|mcp__codex_app__)create_thread$",
+        input: "codexy.hooks.supervision-capacity.v1",
+        launcher: "codexy-supervision-capacity",
+        diagnostic: "CODEXY_SUPERVISION_CAPACITY_",
+        events: &["PreToolUse", "PostToolUse"],
+        preventive: true,
+    },
+    Expected {
         id: "cleanup-progress",
         trigger: "^(?:codex_app__|mcp__codex_app__)(?:set_thread_archived|list_archived_threads)$",
         input: "codexy.hooks.cleanup-progress.v1",
