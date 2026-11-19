@@ -18,7 +18,7 @@ const PERMITTED_ROLES: &[&str] = &[
     "codexy-warden",
     "codexy-weaver",
 ];
-const MATCHER: &str = "^(?:(?:agents|multi_agent_v1)__)?(?:spawn_agent|send_message|followup_task)$";
+const MATCHER: &str = "^(?:(?:agents|multi_agent_v1)__|agents|collaboration)?(?:spawn_agent|send_message|followup_task)$";
 const LAUNCHER: &str = "codexy-subagent-ownership.sh";
 
 #[test]

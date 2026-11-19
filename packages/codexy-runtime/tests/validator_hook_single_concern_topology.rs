@@ -56,7 +56,7 @@ const CONCERNS: &[Concern] = &[
     ),
     Concern::new(
         "subagent-ownership",
-        "^(?:(?:agents|multi_agent_v1)__)?(?:spawn_agent|send_message|followup_task)$",
+        "^(?:(?:agents|multi_agent_v1)__|agents|collaboration)?(?:spawn_agent|send_message|followup_task)$",
         "codexy-subagent-ownership",
         "CODEXY_SUBAGENT_OWNERSHIP_",
         "multi_agent_v1__spawn_agent",

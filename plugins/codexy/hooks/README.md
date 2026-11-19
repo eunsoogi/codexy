@@ -45,6 +45,9 @@ review-response ownership is denied at admission. Both `send_message` and
 `followup_task` apply the same message classifier to every nonempty target. The
 follow-up envelope does not authenticate target existence or role, so the hook
 never relies on a role claimed in the message; malformed targets fail closed.
+The classifier requires readable message text: an opaque or encrypted message
+cannot prove that ownership transfer was detected. Host hook dispatch and the
+visibility of message contents must be verified on the actual installed app.
 Every new native `spawn_agent` request must explicitly set `fork_turns="none"`;
 omitted, null, history-copying, bounded-positive, and other values fail closed
 with guidance to correct the request and provide a self-contained assignment.

@@ -54,7 +54,12 @@ def forbidden(request: Request) -> bool | str:
     message = _message_from_input(tool_input)
     if message is None:
         return "ENVELOPE"
+    # V2 function tools flatten their namespace directly into the hook name.
     operation = request.tool.rsplit("__", 1)[-1]
+    for namespace in ("agents", "collaboration"):
+        if operation.startswith(namespace):
+            operation = operation[len(namespace):]
+            break
     # Follow-up targets have no authenticated role metadata in the hook envelope.
     # They reuse an existing helper, so they do not create a fresh history boundary.
     if operation in {"send_message", "followup_task"}:
