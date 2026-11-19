@@ -85,15 +85,14 @@ def _core_hooks() -> dict[str, object]:
     return {
         "hooks": {
             "PermissionRequest": command("PermissionRequest"),
-            "PreToolUse": command("PreToolUse")[:2]
+            "PreToolUse": command("PreToolUse")
             + [
                 _command_hook(
                     "^(?:codex_app__|mcp__codex_app__)create_thread$",
                     "codexy-supervision-capacity",
                     "PreToolUse",
                 )
-            ]
-            + command("PreToolUse")[2:],
+            ],
             "PostToolUse": [
                 _command_hook(
                     "^(?:codex_app__|mcp__codex_app__)create_thread$",
