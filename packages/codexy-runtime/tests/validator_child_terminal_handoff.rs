@@ -1,17 +1,28 @@
-//! Requires one delivered parent handoff before terminal exits and goal
-//! transitions; blocked transitions also need a typed user-decision gate.
+//! Requires one delivered parent handoff before terminal child exits.
 
-use records::terminal_goal_transition;
 use std::process::Output;
 
-#[path = "validator_child_terminal_handoff/blocked_goal.rs"]
-mod blocked_goal;
 #[path = "validator_child_terminal_handoff/records.rs"]
 mod records;
 #[path = "validator_child_terminal_handoff/readable_table.rs"]
 mod readable_table;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+#[test]
+fn native_goal_operations_do_not_require_plugin_receipts() -> TestResult {
+    // Native goal operations are governed by the host, independently of child handoff receipts.
+    let create = run_validator("Lane ownership: child-owned\nGoal tool call: create_goal\n")?;
+    assert!(create.status.success(), "{}", String::from_utf8_lossy(&create.stderr));
+    for status in ["complete", "blocked"] {
+        let evidence = format!(
+            "Lane ownership: child-owned\nGoal tool call: update_goal(status=\"{status}\")\n"
+        );
+        let output = run_validator(&evidence)?;
+        assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    }
+    Ok(())
+}
 
 fn validator_rejects_local_parent_tasks_in_terminal_only_handoffs() -> TestResult {
     for parent_task in ["/root", "agents.send_message('/root')", "codex task/thread"] {
@@ -139,69 +150,6 @@ fn validator_rejects_handoff_after_stop_before_ownership_release() -> TestResult
     Ok(())
 }
 
-fn validator_requires_handoff_for_status_form_goal_transitions() -> TestResult {
-    for status in ["complete", "blocked"] {
-        let missing = run_validator(&format!(
-            "Lane ownership: child-owned\nGoal tool call: update_goal(status=\"{status}\")\n"
-        ))?;
-        assert!(
-            !missing.status.success(),
-            "status-form {status} transition must require a handoff"
-        );
-    }
-
-    let accepted = run_validator(
-        "Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\nGoal transition key: 375:complete:proof\nParent goal pre-delivery: operation=update_goal(status=\"complete\"); parent task=parent-375; delivery=confirmed; task surface=codex task/thread; issue=#375; plan step=verify; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; evidence=proof; next action=complete; transition key=375:complete:proof\nTerminal parent handoff: event id=terminal-child|375|complete; issue/pr=#375 / PR #376; child task=child-375; parent task=parent-375; branch=codexy/375; worktree=/worktree; head=abc; clean/index=clean; last proof=focused validator; current gate=parent review; preserved reservation/artifacts=worktree reserved; parent next action=inspect the PR; delivery=confirmed; task surface=codex task/thread\nGoal tool call: update_goal(status=\"complete\")\nParent goal post-result: operation=update_goal(status=\"complete\"); exact tool result=complete; parent task=parent-375; delivery=confirmed; task surface=codex task/thread; transition key=375:complete:proof\n",
-    )?;
-    assert!(accepted.status.success());
-    Ok(())
-}
-
-fn validator_requires_a_fresh_handoff_for_each_terminal_goal_transition() -> TestResult {
-    let missing_second_handoff = format!(
-        "Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\n{}{}",
-        terminal_goal_transition("complete", "first", true),
-        terminal_goal_transition("blocked", "second", false),
-    );
-    let rejected = run_validator(&missing_second_handoff)?;
-    assert!(
-        !rejected.status.success(),
-        "a distinct terminal goal transition must consume its handoff"
-    );
-    assert!(String::from_utf8_lossy(&rejected.stderr).contains(
-        "terminal child transition requires exactly one confirmed terminal parent handoff"
-    ));
-
-    let fresh_handoff_per_transition = format!(
-        "Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\n{}{}",
-        terminal_goal_transition("complete", "first", true),
-        terminal_goal_transition("blocked", "second", true),
-    );
-    let accepted = run_validator(&fresh_handoff_per_transition)?;
-    assert!(
-        accepted.status.success(),
-        "a fresh handoff for each terminal goal transition must remain valid: {}",
-        String::from_utf8_lossy(&accepted.stderr)
-    );
-    Ok(())
-}
-
-fn validator_requires_typed_user_decision_gate_for_blocked_terminal_goal_transition() -> TestResult
-{
-    let evidence = format!(
-        "Lane ownership: child-owned\nSource thread id: parent-375\nGoal control state: source_thread_id=parent-375\n{}",
-        terminal_goal_transition("blocked", "without-gate", true)
-            .replace(&blocked_goal::gate(), ""),
-    );
-    let output = run_validator(&evidence)?;
-    assert!(!output.status.success());
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("blocked goal call requires a typed unanswered user-decision gate")
-    );
-    Ok(())
-}
-
 fn terminal_only_evidence(parent_task: &str) -> String {
     terminal_only_evidence_for_tasks(parent_task, "child-375")
 }
@@ -230,8 +178,5 @@ fn validator_child_terminal_handoff_matrix() -> TestResult {
     validator_rejects_duplicate_handoffs_before_one_terminal_transition()?;
     validator_keeps_one_handoff_for_related_terminal_transitions()?;
     validator_rejects_handoff_after_stop_before_ownership_release()?;
-    validator_requires_handoff_for_status_form_goal_transitions()?;
-    validator_requires_typed_user_decision_gate_for_blocked_terminal_goal_transition()?;
-    validator_requires_a_fresh_handoff_for_each_terminal_goal_transition()?;
     Ok(())
 }

@@ -109,8 +109,8 @@ a target acknowledgement transfers ownership.
    message routes. It MUST NOT implement, stage, commit, run implementation
    checks, or start another writer during this turn.
 
-   The parent MUST preserve its own goal independently. The target MUST confirm
-   the authenticated original-parent route; the parent MUST observe one target
+   The parent MUST preserve any existing goal. The target MUST confirm the
+   authenticated original-parent route; the parent MUST observe one target
    report, send a follow-up to that exact target using its assigned pair, and
    observe the target's read-only receipt of that follow-up. The report MUST
    identify the exact active objective, the target's actual next permitted work,

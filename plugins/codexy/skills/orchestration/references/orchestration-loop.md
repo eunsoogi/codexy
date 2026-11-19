@@ -44,8 +44,6 @@
    - For delegated outcomes, MUST record one Worker owner, the saved project
      identity, the callback channels, and one current next action. MUST NOT
      require a fixed checkpoint count or unchanged-progress receipt.
-   - In [the canonical role mapping](parent-supervision.md), MUST read back the
-     Orchestrator's exact active overall goal.
    - MUST apply task classification before substantive work and carry its
      established atomic scope into the selected planning or dispatch procedure.
      Use [child routing](child-routing-policy.md#orchestration-request-dispatch)

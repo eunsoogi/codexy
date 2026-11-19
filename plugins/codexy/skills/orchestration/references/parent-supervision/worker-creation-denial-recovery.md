@@ -87,8 +87,8 @@ scope, or leaves a material choice unresolved.
 A direct user stop MUST stop the covered creation operation immediately. Codex
 MUST NOT resume or retry that operation until the user resumes it or grants
 authority again. Codex MUST continue only independent work that remains
-authorized by the user's instruction. A stop MUST NOT be
-used to manufacture completion or a blocked result.
+authorized by the user's instruction. A stop MUST NOT be used to manufacture
+completion or a blocked result.
 
 ## Resolve uncertain outcomes and preserve the owner
 

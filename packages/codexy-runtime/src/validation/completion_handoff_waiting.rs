@@ -4,7 +4,7 @@ pub(crate) mod readiness_status;
 mod matching;
 mod phrases;
 
-use super::child_goal_blocked_audit::wait_taxonomy::{
+use super::child_wait_handoff::wait_taxonomy::{
     WaitDisposition, classify_reviewer_text, classify_wait_text,
 };
 use matching::{has_any, has_unnegated_word};

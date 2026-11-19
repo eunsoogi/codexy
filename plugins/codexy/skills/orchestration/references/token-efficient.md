@@ -137,8 +137,7 @@ shared message rule.
 
 MUST use [runtime-heartbeats.md](runtime-heartbeats.md) for registration,
 schedules, fingerprints, cleanup, and Worker idle handoffs. A heartbeat MUST NOT
-replace a live Sentinel's no-poll route. The owner MUST record the
-Orchestrator's active overall goal separately from the heartbeat registration.
+replace a live Sentinel's no-poll route.
 
 For repeat handoffs, copy [the delta-poll template](../templates/delta-poll.md)
 and fill only the current slots. MUST keep the template output in the thread or

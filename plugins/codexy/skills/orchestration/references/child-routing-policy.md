@@ -189,10 +189,7 @@ second authored machine payload or hide one in a table cell.
 When a handoff contract requires a receipt, it MUST carry that contract's stable
 `transition key`, `event id`, or `state fingerprint`. A completed delivery with
 the same recipient, phase, and key MUST NOT be sent again; unchanged status MUST
-remain silent. Initial `get_goal`, `create_goal`, and the required active
-readback MUST happen in the owning task before task work, but MUST NOT generate
-separate parent registration receipts. Blocked-goal recovery and terminal
-handoff receipts remain governed by their canonical references.
+remain silent. Terminal handoff receipts follow their canonical reference.
 
 Unknown, ambiguous, incomplete, and unsupported requests fail closed to the
 Orchestrator or named-specialist route. The executable contract is maintained by

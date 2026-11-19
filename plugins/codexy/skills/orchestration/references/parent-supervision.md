@@ -26,11 +26,10 @@ shared capacity and ordinary observation.
 
 When this arrangement is authorized, Codex MUST keep these roles distinct:
 
-- The Orchestrator owns goal, coordination, verification, correction, and
-  acceptance; it MUST keep its exact goal active via `get_goal`. For child-owned
-  lanes it MUST assign one Worker or retain an existing usable owner; it MUST
-  NOT implement, patch, or duplicate the lane, or merge/publish without separate
-  authority.
+- The Orchestrator owns coordination, verification, correction, and acceptance.
+  For child-owned lanes it MUST assign one Worker or retain an existing usable
+  owner; it MUST NOT implement, patch, or duplicate the lane, or merge/publish
+  without separate authority.
 - Worker MUST own assigned files, branch, verification, and review patches. Its
   assignment MUST NOT require a native goal. Worker MUST own idle-wait and
   blocked recovery.
@@ -166,10 +165,10 @@ For a denied or uncertain Worker creation call, Codex MUST follow
   preserve ownership and capacity, evaluate the read-only advice, and send an
   authorized concrete next action, verification, allowed phase, and stop
   condition to the existing child when possible. It MUST confirm the child's
-  actual next call, diff, or result before claiming recovery. Native blocked
-  recovery and terminal handoff MUST retain their existing lifecycle and
-  [reporting](goal-transition-reporting.md) contracts; advice MUST NOT supply
-  missing permission, bypass user decisions, or invent a goal transition.
+  actual next call, diff, or result before claiming recovery. Terminal handoff
+  follows its [reporting](goal-transition-reporting.md) contract; advice MUST
+  NOT supply missing permission, bypass user decisions, or invent a goal
+  transition.
 - For ordinary Orchestrator-owned Worker waits, the owner MUST use cursor-based
   `wait_threads` with targets within the supervised-child ceiling and the latest
   cursor for each target. Multiple batches MUST NOT bypass that ceiling. An

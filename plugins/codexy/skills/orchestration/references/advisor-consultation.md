@@ -19,8 +19,8 @@ that route.
 
 The [Worker elevation decision](worker-elevation.md) is a separate evidence
 assessment. An elevation decision MUST NOT be treated as executing a fork or
-replacing the consultation triggers or blocked-goal recovery defined here. When
-it permits a transition, the parent MUST follow the
+replacing the consultation triggers defined here. When it permits a transition,
+the parent MUST follow the
 [elevation reconciliation](worker-elevation/reconciliation.md); a clear
 reconciliation MUST NOT add an Advisor approval step.
 
@@ -70,10 +70,9 @@ ownership, safety, or dependency constraint, plus the evidence gap and required
 evidence, next permitted phase, and stop condition. The Worker MUST choose any
 in-scope diagnostic or repair action under
 [issue-owned implementation decisions](task-classification.md#issue-owned-implementation-decisions).
-A generic "continue" message MUST NOT substitute for that instruction. Native
-blocked-goal recovery MUST use its lifecycle route before implementation; other
-cases MUST retain the same child owner. The Orchestrator MUST reconcile capacity
-before any resume under
+A generic "continue" message MUST NOT substitute for that instruction. The
+Orchestrator MUST retain the same child owner and reconcile capacity before any
+resume under
 [supervised app-child capacity](parent-supervision.md#supervised-app-child-capacity).
 
 The Orchestrator MUST confirm the child's actual next relevant call, diff, or
