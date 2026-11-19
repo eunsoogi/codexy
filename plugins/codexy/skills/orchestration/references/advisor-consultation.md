@@ -58,12 +58,13 @@ limit the proposed action until the owner supplies the authoritative readback.
   responsible owner, and continue only independent authorized work.
 
 The consultation MUST carry the original objective and success criteria; the
-child's identity, owned scope, branch/worktree, and goal-state evidence; actual
-attempts, failures, partial passes, and current evidence; user and host
-constraints; known unknowns; and possible next steps. The question MUST ask for
-the likely cause, the smallest progress path within existing authority, missing
-evidence, and a verification result that could disprove that path. The Advisor
-MUST remain read-only and MUST NOT take ownership or make the final decision.
+child's identity, owned scope, branch/worktree, and any applicable goal-state
+evidence; actual attempts, failures, partial passes, and current evidence; user
+and host constraints; known unknowns; and possible next steps. The question MUST
+ask for the likely cause, the smallest progress path within existing authority,
+missing evidence, and a verification result that could disprove that path. The
+Advisor MUST remain read-only and MUST NOT take ownership or make the final
+decision.
 
 After advice arrives, the Orchestrator MUST compare it with current evidence,
 including any new user direction, and the actual authority. It MUST record the

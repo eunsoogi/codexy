@@ -52,14 +52,13 @@ a target acknowledgement transfers ownership.
 ## Parent-loop sequence
 
 1. **Reconcile eligibility and prerequisites.** The Orchestrator MUST read the
-   current source report, native goal, parent instructions, existing owner
+   current source report, assignment, parent instructions, existing owner
    record, and stable event identity, then apply the
    [elevation decision](../worker-elevation.md) to the observed `hard_work`
-   evidence. A blocked goal MUST stay on the separate source-pair-preserving
-   [blocked-goal recovery](../../../goal-lifecycle/SKILL.md) route. An Advisor
-   consultation remains governed by
-   [advisor-consultation](../advisor-consultation.md); this clear policy path
-   MUST NOT add an Advisor approval step.
+   evidence. Existing user goals MUST remain unchanged; any applicable host
+   constraint on an existing goal remains authoritative. An Advisor consultation
+   remains governed by [advisor-consultation](../advisor-consultation.md); this
+   clear policy path MUST NOT add an Advisor approval step.
 
    Before preparing a target, the parent MUST confirm that current routing
    compatibility, the source checkpoint, and the separately authorized
@@ -71,12 +70,12 @@ a target acknowledgement transfers ownership.
 
 2. **Quiesce and checkpoint the source.** Under the continuing cooperative
    no-write instruction, the parent MUST confirm actual completion or
-   termination of every identified writer, unchanged source goal and ownership,
-   and the checkpoint required by [the source procedure](checkpoint.md). A quiet
-   task, acknowledgement, timeout, archive request, or unchanged Git status
-   alone MUST NOT stand in for a writer result. The parent MUST recheck the
-   checkpoint immediately before the fork. Any new writer or changed source
-   state MUST invalidate it.
+   termination of every identified writer, unchanged source assignment and
+   ownership, and the checkpoint required by
+   [the source procedure](checkpoint.md). A quiet task, acknowledgement,
+   timeout, archive request, or unchanged Git status alone MUST NOT stand in for
+   a writer result. The parent MUST recheck the checkpoint immediately before
+   the fork. Any new writer or changed source state MUST invalidate it.
 
 3. **Reserve actual capacity, then prepare one inert target.** Before forking,
    the parent MUST count the source and target separately whenever both occupy
@@ -103,31 +102,28 @@ a target acknowledgement transfers ownership.
    actual-execution evidence separate. Codex MUST NOT send a model override to a
    target that remains authenticated as Terra.
 
-   The target's first action MUST be its own native goal readback. It MUST
-   retain the exact active assigned objective, or follow the authorized
-   goal-startup rules and read back the exact objective as active. If its
-   readback is blocked, has a different unfinished objective, is malformed or
-   unknown, or errors, the target MUST stop. The target MAY inspect its own
-   identity, environment, project, checkout, branch, HEAD, index, required
-   files, and supported authenticated message routes. It MUST NOT implement,
-   stage, commit, run implementation checks, or start another writer during this
-   turn.
+   The target MUST receive the same assignment objective, scope, evidence, stop
+   condition, and parent. It MUST NOT be required to read, create, or transition
+   a child goal. The target MAY inspect its own identity, environment, project,
+   checkout, branch, HEAD, index, required files, and supported authenticated
+   message routes. It MUST NOT implement, stage, commit, run implementation
+   checks, or start another writer during this turn.
 
-   The parent MUST provide its fresh active overall-goal readback. The target
-   MUST confirm the authenticated original-parent route; the parent MUST observe
-   one target report, send a follow-up to that exact target using its assigned
-   pair, and observe the target's read-only receipt of that follow-up. The
-   report MUST identify the exact active objective, the target's actual next
-   permitted work, and the observed goal, task, model-assignment, parent-route,
-   and checkout evidence. The parent MUST verify each claim from the target and
+   The parent MUST preserve its own goal independently. The target MUST confirm
+   the authenticated original-parent route; the parent MUST observe one target
+   report, send a follow-up to that exact target using its assigned pair, and
+   observe the target's read-only receipt of that follow-up. The report MUST
+   identify the exact active objective, the target's actual next permitted work,
+   and the observed assignment, task, model-assignment, parent-route, and
+   checkout evidence. The parent MUST verify each claim from the target and
    parent surfaces. Effective-model telemetry MAY remain unavailable only when
    authenticated assignment is otherwise confirmed; a missing or mismatched
    authenticated assignment MUST stop advancement.
 
 5. **Recheck before retirement.** The parent MUST read the known source and
    target independently. It MUST confirm the source's no-write instruction,
-   actual writer completion, exact active goal, owner, checkpoint, and current
-   parent instructions. It MUST confirm the target identity, active objective,
+   actual writer completion, assignment, owner, checkpoint, and current parent
+   instructions. It MUST confirm the target identity, active objective,
    authenticated assignment, original-parent route, read-only setup, checkout
    match, and next permitted work. Missing, mismatched, changing, or ambiguous
    evidence stops advancement. The parent MUST preserve both task identities,
@@ -150,12 +146,13 @@ a target acknowledgement transfers ownership.
 
 7. **Transfer the existing owner record and observe the target.** Only after the
    required source handoff and retirement evidence is reconciled may the parent
-   transfer ownership. It MUST update the authenticated target recipient, goal
-   association, resource reservation, and observation target together in the
-   existing supervision records. It MUST preserve the source pair and transition
-   as history. The parent MUST keep the source reservation until a supported
-   explicit stop/release and absence of remaining execution are confirmed; it
-   MUST NOT free it based on archival, timeout, or omission from a task list.
+   transfer ownership. It MUST update the authenticated target recipient,
+   assignment association, resource reservation, and observation target together
+   in the existing supervision records. It MUST preserve the source pair and
+   transition as history. The parent MUST keep the source reservation until a
+   supported explicit stop/release and absence of remaining execution are
+   confirmed; it MUST NOT free it based on archival, timeout, or omission from a
+   task list.
 
    The Orchestrator MUST observe ordinary Worker events directly through native
    `wait_threads`. Source and target belong to different task identities and

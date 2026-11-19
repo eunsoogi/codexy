@@ -92,15 +92,15 @@ is the terminal handoff, not a wait for parent follow-through or an additional
 pre-delivery receipt. It MUST bind `event id`, `issue/pr`, `child task`,
 `parent task`, `branch`, `worktree`, `head`, `clean/index`, `last proof`,
 `current gate`, `preserved reservation/artifacts`, and `parent next action`. It
-MUST also carry `phase objective` matching the active goal,
+MUST also carry `phase objective` matching the assignment,
 `phase criteria=satisfied`, `state fingerprint`, nonterminal `producer state`,
-exact `wake route`, `ownership=retained`, `issue state=not complete`,
-`goal transition=complete`, and `return control=confirmed`.
+exact `wake route`, `ownership=retained`, `issue state=not complete`, and
+`return control=confirmed`. A child goal or goal receipt MUST NOT be required.
 
 The `current gate`, `producer state`, `wake route`, and `parent next action`
 MUST distinguish a required child-phase result from a pending parent-owned gate.
 An ordinary pending review or execution result for an unmet child criterion MUST
-use the nonterminal wait route below while the child goal remains active. A
+use the nonterminal wait route below while the child retains its assignment. A
 direct user stop, a user-requested pause, or a host-permitted blocked transition
 remains governed by [goal-lifecycle](../../goal-lifecycle/SKILL.md) and MUST NOT
 be encoded as this ordinary wait. A parent-owned merge, acceptance or
@@ -124,25 +124,15 @@ parent readback, acceptance, or merge.
    unauthorized message, claim confirmed delivery, retry, or manufacture a
    parent receipt. This fallback preserves the result and reservation for parent
    observation; it does not prove transport acceptance.
-3. After the handoff submission or permitted host-result fallback, the child
-   MUST make the lifecycle-authorized completion call and preserve its exact
-   native result locally, including the operation and returned status. A failed,
-   unknown, or still-active result MUST retain its actual state and MUST NOT
-   claim idle completion. The handoff MUST NOT be resent to obtain a successful
-   goal call.
-4. Only after native completion, the child MUST record the complete goal and
-   idle plan state, then return its compact terminal result and leave the task
-   idle. That result MUST include the exact goal outcome and any unconfirmed
-   delivery limitation. A separate parent post-result message MUST NOT be
-   required. Phase completion MUST NOT claim issue closure, merge, release,
-   ownership transfer, or parent acceptance.
+3. After submission or permitted host-result fallback, the child MUST return its
+   compact terminal result and any delivery limitation. It MUST NOT require a
+   native goal completion call. Phase completion MUST NOT claim issue closure,
+   merge, release, ownership transfer, or parent acceptance.
 
 One event identity MUST NOT authorize a second transition. Duplicate delivery
-observations MUST be deduplicated rather than trigger another send or goal call.
-Follow-up work stays with the same owner and MUST use the actual lifecycle
-readback defined by [goal-lifecycle](../../goal-lifecycle/SKILL.md), rather than
-unconditionally creating a goal. Validator fixtures prove receipt checks, not
-that a live host completed an idle transition.
+observations MUST be deduplicated rather than trigger another send. Follow-up
+work stays with the same owner. Validator fixtures prove receipt checks, not
+that a live host delivered the handoff.
 
 ### Other terminal exits and blocked recovery
 
@@ -224,10 +214,9 @@ nonterminal wait classification in
 `Nonterminal wait
 handoff:` with a stable state fingerprint, the unmet
 criterion, nonterminal producer, wake route, `ownership=retained`,
-`goal state=active`, `plan state=active`, `goal transition=none`, and
-`return control=confirmed`. A pending parent-owned gate after child-phase
-completion MUST be recorded in the terminal handoff above; it MUST NOT be
-represented as a child wait for the parent.
+`plan state=active`, and `return control=confirmed`. A pending parent-owned gate
+after child-phase completion MUST be recorded in the terminal handoff above; it
+MUST NOT be represented as a child wait for the parent.
 
 After [proof-driven-completion](../../proof-driven-completion/SKILL.md)
 establishes phase satisfaction, the child MUST use the normal completed-phase
@@ -241,9 +230,8 @@ The blocked-goal and terminal-handoff validators MUST enforce only their
 respective transition and exit receipts, required ordering, parent route, and
 bound fields. Normal idle-phase records MUST accept one transport-confirmed
 handoff or the explicitly unconfirmed host-result fallback, require satisfied
-phase criteria, reject repeated event identities and child waits for parent
-merge, acknowledgement, or future assignment, and require a successful native
-goal result before an idle completion claim. They MUST NOT require parent
-pre-delivery or post-result registration receipts for initial `get_goal`,
-`create_goal`, or active readback; native startup order remains governed by
-`goal-lifecycle`.
+phase criteria and reject repeated event identities and child waits for parent
+merge, acknowledgement, or future assignment. They MUST NOT require a child goal
+result. They MUST NOT require parent pre-delivery or post-result registration
+receipts for initial `get_goal`, `create_goal`, or active readback; native
+startup order remains governed by `goal-lifecycle`.

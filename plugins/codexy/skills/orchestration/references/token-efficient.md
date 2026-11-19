@@ -21,14 +21,13 @@ no-change parent-turn savings remain unmeasured.
   conflicts, actual authority, safety decisions, required review, and slot
   capacity MUST remain gates.
 - While authorized work or observation remains actionable, preserve the full
-  assignment, active goal owner, and next action. Same-turn waiting applies only
-  while the host keeps its supported route; it does not imply runtime suspension
-  of a parent turn.
-- Same-owner re-entry MUST follow the actual
-  [goal-lifecycle](../../goal-lifecycle/SKILL.md) readback and preserve the
-  latest per-target cursors under [parent supervision](parent-supervision.md).
-  Advance only on actual results; input at re-entry MUST NOT imply wait
-  cancellation or resumption.
+  assignment, owner, and next action. Same-turn waiting applies only while the
+  host keeps its supported route; it does not imply runtime suspension of a
+  parent turn.
+- Same-owner re-entry MUST preserve the assignment and latest per-target cursors
+  under [parent supervision](parent-supervision.md). Explicitly managed goals
+  follow [goal-lifecycle](../../goal-lifecycle/SKILL.md). Advance only on actual
+  results; input at re-entry MUST NOT imply wait cancellation or resumption.
 - Outside a route-required quiet wait, MUST provide concise progress commentary
   at meaningful checkpoints during active work; commentary does not end the turn
   or prove completion. Phase outcome and final handoff MUST follow the canonical

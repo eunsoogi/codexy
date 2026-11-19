@@ -9,7 +9,7 @@ A completed child-phase handoff returns control to the Orchestrator; it does not
 complete or suspend the parent's overall goal. The parent MUST consume the
 handoff and continue its own next supported action. Parent-owned merge,
 acceptance or acknowledgement, and future assignment MUST NOT be sent back as
-wait criteria for the completed child goal. The parent's observation route
+wait criteria for the completed child assignment. The parent's observation route
 remains governed by [parent supervision](parent-supervision.md).
 
 ## Same-Turn Wait Handling
@@ -115,9 +115,9 @@ explicit user/Orchestrator message.
 
 A live Sentinel, pending Worker, queued CI, pending connector review,
 Orchestrator authorization, dependency integration, or resource slot is a
-nonterminal producer. Its goal state, phase outcome, and wait or idle handoff
-MUST follow the [Goal And Terminal Lifecycle](#goal-and-terminal-lifecycle)
-contract below.
+nonterminal producer. Its assignment outcome and wait or idle handoff MUST
+follow the [Goal And Terminal Lifecycle](#goal-and-terminal-lifecycle) contract
+below.
 
 ## Goal And Terminal Lifecycle
 
@@ -129,13 +129,11 @@ and terminal delivery, use [goal-lifecycle](../../goal-lifecycle/SKILL.md),
 Heartbeat state MUST NOT override or stand in for any of those contracts.
 
 While a required review or execution result for an unmet phase criterion is
-pending as an ordinary producer wait, the child MUST keep its goal active and
-follow the supported wait route. A direct user stop, a user-requested pause, or
-a host-permitted blocked transition remains governed by
-[goal-lifecycle](../../goal-lifecycle/SKILL.md). After the child submits its
-completed-phase handoff, remaining parent-owned work stays with the parent under
-its active goal; it MUST continue observation or execution through the supported
-route instead of extending the child's completed goal.
+pending as an ordinary producer wait, the child MUST retain its assignment and
+follow the supported wait route without requiring a goal transition. A direct
+user stop or user-requested pause remains binding. After the child submits its
+completed handoff, remaining parent-owned work stays with the parent, which
+continues observation or execution through the supported route.
 
 The awakened owner MUST consume the event in the same turn and record the
 resulting lifecycle state in the compact lane delta. When no further observation

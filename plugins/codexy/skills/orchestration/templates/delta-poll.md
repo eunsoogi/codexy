@@ -69,7 +69,6 @@ Idle wait handoff:
 | Wake route                      |              |
 | Ownership                       | retained     |
 | Issue state                     | not complete |
-| Goal transition                 | complete     |
 | Return control                  | confirmed    |
 
 Terminal parent handoff:

@@ -1,8 +1,9 @@
 # Executable-checkout recovery
 
 This reference is part of [goal-lifecycle](../SKILL.md). It defines same-scope
-recovery of an unfinished blocked assignment. It MUST NOT authorize a new task,
-clear a goal, or permit issue work before recovery acceptance.
+recovery of an explicitly goal-controlled blocked assignment. Goal-free child
+assignments do not use this procedure. It MUST NOT authorize a new task, clear a
+goal, or permit issue work before recovery acceptance.
 
 ## Authority and safety boundary
 

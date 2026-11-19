@@ -50,6 +50,7 @@ struct TerminalHandoffs {
     state: HandoffState,
     phase: bool,
     completed: bool,
+    goal_free: bool,
     events: std::collections::BTreeSet<String>,
 }
 
@@ -88,8 +89,15 @@ impl TerminalHandoffs {
                 );
             }
             self.phase = phase;
-            self.completed = false;
-            self.state = HandoffState::Ready;
+            // A goal-free assignment completes on its verified handoff; legacy
+            // goal-controlled phases still require their actual tool result.
+            self.goal_free = phase && field(line, "goal transition").is_none();
+            self.completed = self.goal_free;
+            self.state = if self.goal_free {
+                HandoffState::Completed
+            } else {
+                HandoffState::Ready
+            };
             return None;
         }
         if line.starts_with("goal tool result:") && self.phase {
@@ -110,7 +118,8 @@ impl TerminalHandoffs {
         }
         if line.starts_with("idle child state:") {
             return (!(self.completed
-                && field(line, "goal state") == Some("complete")
+                && (self.goal_free && field(line, "goal state").is_none()
+                    || !self.goal_free && field(line, "goal state") == Some("complete"))
                 && field(line, "plan state") == Some("idle")))
             .then_some("idle child state requires a successful phase goal result");
         }
@@ -173,7 +182,7 @@ fn valid_phase(line: &str) -> bool {
         && field(line, "phase criteria") == Some("satisfied")
         && field(line, "ownership") == Some("retained")
         && field(line, "issue state") == Some("not complete")
-        && field(line, "goal transition") == Some("complete")
+        && matches!(field(line, "goal transition"), None | Some("complete"))
         && field(line, "return control") == Some("confirmed")
 }
 

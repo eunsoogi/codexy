@@ -5,11 +5,9 @@ description: Use when classifying workflow, surface, and risk or coordinating ow
 
 Read the user request, parent assignment, and applicable AGENTS.md instruction
 files first. Determine whether they explicitly assign bounded work, including
-read-only diagnosis or preflight. For an authorized Orchestrator or Worker task,
-Codex MUST follow the required first transition in
-[goal-lifecycle](../goal-lifecycle/SKILL.md) before task-specific work. That
-skill owns host goal reads, native state meanings, transition rules, and
-recovery; this entrypoint MUST NOT restate those rules.
+read-only diagnosis or preflight. A child receives assignment data without a
+required native goal. For an explicitly goal-controlled task,
+[goal-lifecycle](../goal-lifecycle/SKILL.md) owns native state and recovery.
 
 After the goal gate, read issue/PR material and classify task/surface/risk. Read
 the [context retention contract](references/context-tiers.md) for the existing
