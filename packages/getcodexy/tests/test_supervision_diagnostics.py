@@ -34,13 +34,21 @@ class SupervisionDiagnosticsTests(unittest.TestCase):
                     env={**os.environ, "PLUGIN_DATA": plugin_root},
                 )
                 self.assertFalse(outcome.stderr)
-                for secret in (root, event["session_id"], event["tool_use_id"], data.get("prompt", "private input")):
+                for secret in (
+                    root,
+                    event["session_id"],
+                    event["tool_use_id"],
+                    data.get("prompt", "private input"),
+                ):
                     self.assertNotIn(secret, outcome.stdout)
                 return outcome.returncode, json.loads(outcome.stdout)
 
             def hook(plugin_root=root):
                 code, result = call(
-                    "codexy_supervision_capacity.py", ["--event", "PreToolUse"], event, plugin_root
+                    "codexy_supervision_capacity.py",
+                    ["--event", "PreToolUse"],
+                    event,
+                    plugin_root,
                 )
                 self.assertEqual(code, 0)
                 return result
@@ -48,20 +56,38 @@ class SupervisionDiagnosticsTests(unittest.TestCase):
             def prep(issue, data, plugin_root=root):
                 return call(
                     "codexy_supervision_prepare.py",
-                    ["--plugin-data", plugin_root, "--parent", event["session_id"],
-                     "--issue", issue, "--limit", "1"], data, plugin_root,
+                    [
+                        "--plugin-data",
+                        plugin_root,
+                        "--parent",
+                        event["session_id"],
+                        "--issue",
+                        issue,
+                        "--limit",
+                        "1",
+                    ],
+                    data,
+                    plugin_root,
                 )
 
             def deny(result, reason, action):
                 output = result["hookSpecificOutput"]
                 self.assertEqual(output["permissionDecision"], "deny")
-                self.assertTrue(output["permissionDecisionReason"].startswith(reason + ":"))
+                self.assertTrue(
+                    output["permissionDecisionReason"].startswith(reason + ":")
+                )
                 self.assertIn(action, output["permissionDecisionReason"])
 
             invalid_root = str(Path(root) / "nonexistent")
-            deny(hook(invalid_root), "CODEXY_SUPERVISION_STORE_UNAVAILABLE", "private reservation store")
+            deny(
+                hook(invalid_root),
+                "CODEXY_SUPERVISION_STORE_UNAVAILABLE",
+                "private reservation store",
+            )
             code, result = prep("new", tool_input, invalid_root)
-            self.assertEqual((code, result["reason"]), (1, "CODEXY_SUPERVISION_STORE_UNAVAILABLE"))
+            self.assertEqual(
+                (code, result["reason"]), (1, "CODEXY_SUPERVISION_STORE_UNAVAILABLE")
+            )
             if os.name != "nt":
                 unsafe = Path(root) / "shared"
                 unsafe.mkdir()
@@ -72,19 +98,36 @@ class SupervisionDiagnosticsTests(unittest.TestCase):
                     "private reservation store",
                 )
                 self.assertFalse((unsafe / "supervision").exists())
-            deny(hook(), "CODEXY_SUPERVISION_PARENT_UNINITIALIZED", "bootstrap --confirmed-complete")
+            deny(
+                hook(),
+                "CODEXY_SUPERVISION_PARENT_UNINITIALIZED",
+                "bootstrap --confirmed-complete",
+            )
             code, result = prep("new", tool_input)
-            self.assertEqual((code, result["reason"]), (1, "CODEXY_SUPERVISION_PARENT_UNINITIALIZED"))
+            self.assertEqual(
+                (code, result["reason"]), (1, "CODEXY_SUPERVISION_PARENT_UNINITIALIZED")
+            )
 
-            dispatch.Dispatch(storage.open_store(root)).bootstrap(event["session_id"], [])
-            deny(hook(), "CODEXY_SUPERVISION_CAPACITY_UNPREPARED", "prepare the exact current")
+            store = storage.open_store(root)
+            dispatch.Dispatch(store).bootstrap(event["session_id"], [])
+            deny(
+                hook(),
+                "CODEXY_SUPERVISION_CAPACITY_UNPREPARED",
+                "prepare the exact current",
+            )
             self.assertEqual(prep("first", tool_input)[1]["result"], "reserved")
             self.assertEqual(hook(), {})
-            code, result = prep("first", {**tool_input, "prompt": "other private input"})
-            self.assertEqual((code, result["reason"]), (1, "CODEXY_SUPERVISION_PREPARE_REJECTED"))
+            other = {**tool_input, "prompt": "other private input"}
+            code, result = prep("first", other)
+            self.assertEqual(
+                (code, result["reason"]), (1, "CODEXY_SUPERVISION_PREPARE_REJECTED")
+            )
             self.assertIn("reuse an existing owner", result["nextAction"])
-            code, result = prep("second", {**tool_input, "prompt": "other private input"})
-            self.assertEqual((code, result["result"], result["reason"]), (0, "queued", "CODEXY_SUPERVISION_SLOT_LIMIT"))
+            code, result = prep("second", other)
+            self.assertEqual(
+                (code, result["result"], result["reason"]),
+                (0, "queued", "CODEXY_SUPERVISION_SLOT_LIMIT"),
+            )
             self.assertIn("continue independent parent work", result["nextAction"])
 
 

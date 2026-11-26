@@ -11,13 +11,12 @@ if sys.version_info < (3, 10):
     raise SystemExit(125)
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
-from codexy_policy.supervision_diagnostics import diagnostic
 from codexy_policy.supervision_dispatch import (
     Dispatch,
     ParentNotInitialized,
     fingerprint,
 )
-from codexy_policy.supervision_observation import _unique
+from codexy_policy.supervision_observation import _unique, diagnostic
 from codexy_policy.supervision_reservations import ReservationError
 from codexy_policy.supervision_storage import open_store
 

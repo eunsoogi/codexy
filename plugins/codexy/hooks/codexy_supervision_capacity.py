@@ -11,14 +11,15 @@ if sys.version_info < (3, 10):
     raise SystemExit(125)
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
-from codexy_policy.supervision_diagnostics import diagnostic
 from codexy_policy.supervision_observation import (
     _unique,
     admit_create_result,
+    diagnostic,
     observe_create,
 )
 from codexy_policy.supervision_reservations import ReservationError
 from codexy_policy.supervision_storage import open_store
+
 
 def denied(outcome: str) -> dict[str, object]:
     detail = diagnostic(outcome)

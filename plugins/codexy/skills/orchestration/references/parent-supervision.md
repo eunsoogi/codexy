@@ -165,8 +165,8 @@ before preparation. `CODEXY_SUPERVISION_CAPACITY_UNPREPARED` requires
 reconciling any retained call and preparing the exact creation input.
 `CODEXY_SUPERVISION_SLOT_LIMIT` is a successful preparation check with a
 `queued` result, not a dispatch denial. Keep the item queued until a confirmed
-slot frees and continue independent parent work; do not reset ownership.
-The reason does not disclose a private path or supply store discovery.
+slot frees and continue independent parent work; do not reset ownership. The
+reason does not disclose a private path or supply store discovery.
 
 - A new child blocked report MUST follow the
   [Advisor consultation procedure](advisor-consultation.md#a-new-child-blocked-report)

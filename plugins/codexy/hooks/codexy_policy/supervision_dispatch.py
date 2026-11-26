@@ -107,9 +107,7 @@ class Dispatch:
     def claim(self, parent: str, call: str, tool_input: object) -> bool:
         return self.claim_result(parent, call, tool_input) == "claimed"
 
-    def claim_result(
-        self, parent: str, call: str, tool_input: object
-    ) -> ClaimResult:
+    def claim_result(self, parent: str, call: str, tool_input: object) -> ClaimResult:
         """Consume a prepared request once; duplicate delivery of one call is safe."""
         parent, call, request = (
             _required(parent),

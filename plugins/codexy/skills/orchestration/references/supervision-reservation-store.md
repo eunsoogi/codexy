@@ -81,10 +81,10 @@ the complete existing owner roster and pass the resulting JSON array to
 Each element MUST contain `request`, `issue`, `model`, `thinking`, and `child`
 from known assignments; an empty array is valid only when no supervised children
 exist. The Orchestrator MUST use a verified configured private root that matches
-the hook's host-provided `PLUGIN_DATA`. Denials do not disclose that path. If the
-same private root cannot be verified, do not guess a path or dispatch a child.
-Before each new creation, the Orchestrator MUST supply
-the exact native tool-input JSON on standard input to
+the hook's host-provided `PLUGIN_DATA`. Denials do not disclose that path. If
+the same private root cannot be verified, do not guess a path or dispatch a
+child. Before each new creation, the Orchestrator MUST supply the exact native
+tool-input JSON on standard input to
 `codexy_supervision_prepare.py --plugin-data <root> --parent <session>
 --issue <issue>`,
 including any explicit lower `--limit`. A queued or existing result MUST NOT
