@@ -157,6 +157,17 @@ ledger or record format.
 For a denied or uncertain Worker creation call, Codex MUST follow
 [Worker creation denial recovery](parent-supervision/worker-creation-denial-recovery.md).
 
+Treat the caller-visible reservation reason as the boundary that failed.
+`CODEXY_SUPERVISION_STORE_UNAVAILABLE` requires a verified accessible, private
+host store, not a guessed replacement. `CODEXY_SUPERVISION_PARENT_UNINITIALIZED`
+requires reconciling the full existing roster and bootstrapping this parent
+before preparation. `CODEXY_SUPERVISION_CAPACITY_UNPREPARED` requires
+reconciling any retained call and preparing the exact creation input.
+`CODEXY_SUPERVISION_SLOT_LIMIT` is a successful preparation check with a
+`queued` result, not a dispatch denial. Keep the item queued until a confirmed
+slot frees and continue independent parent work; do not reset ownership.
+The reason does not disclose a private path or supply store discovery.
+
 - A new child blocked report MUST follow the
   [Advisor consultation procedure](advisor-consultation.md#a-new-child-blocked-report)
   before disposition, without waiting for three failures. The Orchestrator MUST

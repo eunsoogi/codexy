@@ -6,9 +6,16 @@ import hashlib
 import json
 import sqlite3
 from contextlib import closing
-from typing import Any
+from typing import Any, Literal
 
 from .supervision_reservations import ReservationError, Reservations, _required
+
+
+class ParentNotInitialized(ReservationError):
+    """The current parent has no confirmed ownership roster."""
+
+
+ClaimResult = Literal["claimed", "parent_uninitialized", "unmatched_request"]
 
 
 def fingerprint(tool_input: object) -> str:
@@ -86,7 +93,7 @@ class Dispatch:
             if not db.execute(
                 "SELECT 1 FROM supervision_parents WHERE parent=?", (_required(parent),)
             ).fetchone():
-                raise ReservationError("parent owner roster has not been reconciled")
+                raise ParentNotInitialized("parent owner roster has not been reconciled")
         model, thinking = tool_input.get("model"), tool_input.get("thinking")
         return self.store.reserve(
             parent,
@@ -98,6 +105,11 @@ class Dispatch:
         )
 
     def claim(self, parent: str, call: str, tool_input: object) -> bool:
+        return self.claim_result(parent, call, tool_input) == "claimed"
+
+    def claim_result(
+        self, parent: str, call: str, tool_input: object
+    ) -> ClaimResult:
         """Consume a prepared request once; duplicate delivery of one call is safe."""
         parent, call, request = (
             _required(parent),
@@ -106,32 +118,40 @@ class Dispatch:
         )
         with closing(self.store._connect()) as db, db:
             db.execute("BEGIN IMMEDIATE")
+            if not db.execute(
+                "SELECT 1 FROM supervision_parents WHERE parent=?", (parent,)
+            ).fetchone():
+                return "parent_uninitialized"
             row = db.execute(
                 "SELECT state,child FROM reservations WHERE parent=? AND request=?",
                 (parent, request),
             ).fetchone()
             if row is None or row["state"] != "reserved" or row["child"] is not None:
-                return False
+                return "unmatched_request"
             previous = db.execute(
                 "SELECT request,closed FROM supervision_calls WHERE parent=? AND call=?",
                 (parent, call),
             ).fetchone()
             if previous:
-                return previous["request"] == request and previous["closed"] == 0
+                return (
+                    "claimed"
+                    if previous["request"] == request and previous["closed"] == 0
+                    else "unmatched_request"
+                )
             existing = db.execute(
                 "SELECT call FROM supervision_calls WHERE parent=? AND request=? AND closed=0",
                 (parent, request),
             ).fetchone()
             if existing:
-                return False
+                return "unmatched_request"
             try:
                 db.execute(
                     "INSERT INTO supervision_calls(parent,request,call) VALUES(?,?,?)",
                     (parent, request, call),
                 )
             except sqlite3.IntegrityError:
-                return False
-            return True
+                return "unmatched_request"
+            return "claimed"
 
     def request_for_call(self, parent: str, call: str) -> str | None:
         with closing(self.store._connect()) as db:

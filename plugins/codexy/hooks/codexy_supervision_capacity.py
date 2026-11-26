@@ -11,17 +11,24 @@ if sys.version_info < (3, 10):
     raise SystemExit(125)
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
-from codexy_policy.supervision_observation import _unique, admit_create, observe_create
+from codexy_policy.supervision_diagnostics import diagnostic
+from codexy_policy.supervision_observation import (
+    _unique,
+    admit_create_result,
+    observe_create,
+)
 from codexy_policy.supervision_reservations import ReservationError
 from codexy_policy.supervision_storage import open_store
 
-DENIAL = {
-    "hookSpecificOutput": {
-        "hookEventName": "PreToolUse",
-        "permissionDecision": "deny",
-        "permissionDecisionReason": "CODEXY_SUPERVISION_CAPACITY_UNPREPARED: reconcile the parent and prepare this exact request before dispatch.",
+def denied(outcome: str) -> dict[str, object]:
+    detail = diagnostic(outcome)
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": detail["reason"] + ": " + detail["nextAction"],
+        }
     }
-}
 
 
 def main() -> None:
@@ -35,20 +42,16 @@ def main() -> None:
         payload = json.loads(raw, object_pairs_hook=_unique)
         if not isinstance(payload, dict) or payload.get("hook_event_name") != event:
             raise ValueError("invalid hook input")
-        store = open_store(os.environ.get("PLUGIN_DATA", ""))
+        try:
+            store = open_store(os.environ.get("PLUGIN_DATA", ""))
+        except (OSError, ReservationError, sqlite3.Error):
+            if event == "PreToolUse":
+                print(json.dumps(denied("store_unavailable"), separators=(",", ":")))
+                return
+            raise
         if event == "PreToolUse":
-            if admit_create(store, payload):
-                result = {}
-            else:
-                # The caller needs the exact host-provided root for preflight;
-                # do not invent a shared location from the installed plugin path.
-                result = {
-                    "hookSpecificOutput": {
-                        **DENIAL["hookSpecificOutput"],
-                        "additionalContext": "Reconcile existing owners and prepare this request using the supervision reservation instructions. Host plugin-data root: "
-                        + os.environ["PLUGIN_DATA"],
-                    }
-                }
+            outcome = admit_create_result(store, payload)
+            result = {} if outcome == "claimed" else denied(outcome)
         else:
             observation = observe_create(store, payload)
             result = (
@@ -60,7 +63,7 @@ def main() -> None:
             )
     except (OSError, ValueError, ReservationError, sqlite3.Error):
         result = (
-            DENIAL
+            denied("unmatched_request")
             if event == "PreToolUse"
             else {
                 "systemMessage": "Supervision state is unavailable; retain reservations and reconcile before dispatch."
