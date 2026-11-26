@@ -129,8 +129,8 @@ goal blocked; native goal status follows the host tool contract.
 
 When denied creation follows specialist queue findings, the parent MUST keep the
 affected issue and exact unmet condition in its backlog. The specialist MUST
-remain read-only. The parent and specialist MUST NOT take over implementation
-or execution verification. MUST preserve any already matched issue owner and any
+remain read-only. The parent and specialist MUST NOT take over implementation or
+execution verification. MUST preserve any already matched issue owner and any
 uncertain reservation. MUST continue other authorized issue lanes independently.
 Before retrying, MUST reconcile this issue again using
 [queue assignment readback](../thread-and-worktree-routing.md#queue-assignment-readback)

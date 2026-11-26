@@ -93,10 +93,10 @@ If the resolver returns a fallback or lacks a complete creation input, MUST
 leave the lane pending rather than reconstructing omitted fields. For an
 existing PR, MUST supply its remote branch and current remote head to the issue
 owner and use the assigned managed worktree to resume the outstanding criteria.
-If blocked, MUST backlog the issue; MUST NOT create a substitute owner.
-When task classification and the required owner/tool readbacks authorize a new
-app task, the Orchestrator MUST use the actual `create_thread` tool and read
-back the returned task identity, owner, project, actual CWD, starting HEAD, app
+If blocked, MUST backlog the issue; MUST NOT create a substitute owner. When
+task classification and the required owner/tool readbacks authorize a new app
+task, the Orchestrator MUST use the actual `create_thread` tool and read back
+the returned task identity, owner, project, actual CWD, starting HEAD, app
 worktree environment, exposed permissions and model settings, and assignment
 before execution. The requested target, checkout path, or attached artifact
 alone does not prove the task environment. The call is non-blocking: a ready
