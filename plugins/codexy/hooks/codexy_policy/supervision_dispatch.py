@@ -93,7 +93,9 @@ class Dispatch:
             if not db.execute(
                 "SELECT 1 FROM supervision_parents WHERE parent=?", (_required(parent),)
             ).fetchone():
-                raise ParentNotInitialized("parent owner roster has not been reconciled")
+                raise ParentNotInitialized(
+                    "parent owner roster has not been reconciled"
+                )
         model, thinking = tool_input.get("model"), tool_input.get("thinking")
         return self.store.reserve(
             parent,

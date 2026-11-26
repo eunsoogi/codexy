@@ -59,7 +59,10 @@ def main() -> int:
 def reject(outcome: str) -> int:
     print(
         json.dumps(
-            {"error": "Unable to prepare supervision reservation.", **diagnostic(outcome)}
+            {
+                "error": "Unable to prepare supervision reservation.",
+                **diagnostic(outcome),
+            }
         )
     )
     return 1
