@@ -85,6 +85,26 @@ NOT generalize it to other actions, owners, or future work.
    its unmet condition and MUST NOT create a substitute owner. A later request
    MUST reuse the suitable issue owner instead of creating another one.
 
+### Specialist queue findings
+
+For authorized queue work, the parent MUST assign substantive queue research,
+code discovery, and cause analysis to a bounded specialist whose role matches
+the work. That specialist MUST return findings and their issue scope to the
+parent without taking implementation or execution verification. A research
+start, result, or completion MUST NOT establish an issue owner or expand the
+approved queue.
+
+On receipt, the parent MUST reconcile findings against the existing issue lanes
+and classify each issue separately. For each in-scope issue ready for execution,
+the parent MUST reuse a matching app Worker or assign one app Worker when
+readback establishes that the issue has no owner and creation is authorized.
+That issue's Worker MUST own implementation and subsequent execution
+verification, including verification-only work; the parent MUST retain
+coordination and acceptance. For assignment, MUST follow
+[queue assignment readback](thread-and-worktree-routing.md#queue-assignment-readback).
+A denial, pending setup, or an unresolved owner MUST NOT make the specialist or
+parent the issue's execution owner.
+
 ### Dependencies, reservations, and integration conflicts
 
 - A planning dependency exists when a consumer needs an unavailable artifact,
