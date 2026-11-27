@@ -1,34 +1,34 @@
 {
   "artifact": {
-    "payloadManifestSha256": "a258f56e2679e3bb94cf6a354f513c466f0428187d437af6d5d5e373afd1f24d",
-    "sha256": "c99fd836cea4a5ac215a734112a1d9ac1a33054bf65be67e8c72b2953bf49166"
+    "payloadManifestSha256": "04d99e83908a242754216a36df8587f0b30b82f433c9685fdd1240a5a4fe1379",
+    "sha256": "4b0f51734cd53336e883dbac4f03d6a49006061dda9e9ef1084ae4bee12eacda"
   },
   "candidate": {
     "artifact": {
       "stagingRunAttempt": 1,
-      "stagingRunId": 44473304900
+      "stagingRunId": 46024783635
     },
     "classes": {
       "coreHandoff": {
         "manifest": {
           "path": "handoff-runtime.json",
-          "sha256": "2a699257e6b2280694bb737174805496751fbba54fefd403eeaaa8e4d0a63b18"
+          "sha256": "96e941f13f19025ee1752ca59bc407a3bc7be0a0b0616be4617681536ed625c4"
         },
         "platforms": {
           "darwin-arm64": {
             "kind": "mach-o",
             "path": "runtime/codexy-handoff-validate-darwin-arm64.bin",
-            "sha256": "19825ed43f380b38b3e7cac7853a0dea8966a6c6c8810c648b60ba89e518ed7b"
+            "sha256": "474abc63401bdd87c4ba20f083a454e6c2a2b820b73eceaea0b41600dd1726e4"
           },
           "linux-x86_64": {
             "kind": "elf",
             "path": "runtime/codexy-handoff-validate-linux-x86_64.bin",
-            "sha256": "c383d36cae23d5f94bf6bd5bc5b63e5a2b30bc9019d9b64ffceb4163ffd06cf1"
+            "sha256": "ba8e67ef2079ea0612e2a92f145b520727eefa4cbe37729f7531b73a0e9117dd"
           },
           "windows-x86_64": {
             "kind": "pe",
             "path": "runtime/codexy-handoff-validate-windows-x86_64.exe",
-            "sha256": "7a270dbef4a5e1037df74110a28f823c74a614a147d0c9b1bff68cd7d014ecdc"
+            "sha256": "7903e7d1b310aed087a5573eb9410cf442891aabbb4449fe212a964ab70c0a03"
           }
         }
       },
@@ -37,31 +37,31 @@
           "darwin-arm64": {
             "codegraph": {
               "path": "runtime/codexy-mcp-codegraph-darwin-arm64.bin",
-              "sha256": "ce0f3d13d4551152e4901e353462a4eaab65968137b0e18a557054a2eba72d97"
+              "sha256": "acd1960f23ad54def179037b0f233c11ced7e8518c5ef61c2bd1759c9582499d"
             },
             "lsp": {
               "path": "runtime/codexy-mcp-lsp-darwin-arm64.bin",
-              "sha256": "446e1e46548330cec4aac4fbcaef96c2d7b36258123435bd016b5c65158afa5f"
+              "sha256": "3489ad7e5b18e977fd57b541244593af66effb7d210edf8e51a62cd4774c52b5"
             }
           },
           "linux-x86_64": {
             "codegraph": {
               "path": "runtime/codexy-mcp-codegraph-linux-x86_64.bin",
-              "sha256": "a94a25e5c9f9b3c410b094a89d32c02494f55d6368c731eea561bd7ea4327118"
+              "sha256": "19c3aa02402bef99b7620e492c9bfcff6617c7e34d896de4531f0ad23727f3f5"
             },
             "lsp": {
               "path": "runtime/codexy-mcp-lsp-linux-x86_64.bin",
-              "sha256": "d87003bb89451fa02c65fb0518200d9a4ad660a566bb7d9bc6ccb31b2ccee2a8"
+              "sha256": "50ceaeeea0ff891b4fdeb0d6d9611a5187be5dc6a82f20ec8ef9d59719e0bfda"
             }
           },
           "windows-x86_64": {
             "codegraph": {
               "path": "runtime/codexy-mcp-codegraph-windows-x86_64.exe",
-              "sha256": "98f440cb1aeca0a5c760bb7811a8c6897647a813bdba8410235396276c47ed23"
+              "sha256": "cf12550622285837a754843e81394fe908973a94fab123bfa2b6e4cb062b8f86"
             },
             "lsp": {
               "path": "runtime/codexy-mcp-lsp-windows-x86_64.exe",
-              "sha256": "38e46bc5ba4d284e0f577dd17dc90e7f47c959152de53db79c838a9ecf4efc74"
+              "sha256": "c869ae77a66c63f15eb55c747080f8ced71221d7205d6125e8a82f254c7739ca"
             }
           }
         }
@@ -77,47 +77,47 @@
       "darwin-arm64": {
         "codegraph": {
           "path": "runtime/codexy-mcp-codegraph-darwin-arm64.bin",
-          "sha256": "ce0f3d13d4551152e4901e353462a4eaab65968137b0e18a557054a2eba72d97"
+          "sha256": "acd1960f23ad54def179037b0f233c11ced7e8518c5ef61c2bd1759c9582499d"
         },
         "lsp": {
           "path": "runtime/codexy-mcp-lsp-darwin-arm64.bin",
-          "sha256": "446e1e46548330cec4aac4fbcaef96c2d7b36258123435bd016b5c65158afa5f"
+          "sha256": "3489ad7e5b18e977fd57b541244593af66effb7d210edf8e51a62cd4774c52b5"
         }
       },
       "linux-x86_64": {
         "codegraph": {
           "path": "runtime/codexy-mcp-codegraph-linux-x86_64.bin",
-          "sha256": "a94a25e5c9f9b3c410b094a89d32c02494f55d6368c731eea561bd7ea4327118"
+          "sha256": "19c3aa02402bef99b7620e492c9bfcff6617c7e34d896de4531f0ad23727f3f5"
         },
         "lsp": {
           "path": "runtime/codexy-mcp-lsp-linux-x86_64.bin",
-          "sha256": "d87003bb89451fa02c65fb0518200d9a4ad660a566bb7d9bc6ccb31b2ccee2a8"
+          "sha256": "50ceaeeea0ff891b4fdeb0d6d9611a5187be5dc6a82f20ec8ef9d59719e0bfda"
         }
       },
       "windows-x86_64": {
         "codegraph": {
           "path": "runtime/codexy-mcp-codegraph-windows-x86_64.exe",
-          "sha256": "98f440cb1aeca0a5c760bb7811a8c6897647a813bdba8410235396276c47ed23"
+          "sha256": "cf12550622285837a754843e81394fe908973a94fab123bfa2b6e4cb062b8f86"
         },
         "lsp": {
           "path": "runtime/codexy-mcp-lsp-windows-x86_64.exe",
-          "sha256": "38e46bc5ba4d284e0f577dd17dc90e7f47c959152de53db79c838a9ecf4efc74"
+          "sha256": "c869ae77a66c63f15eb55c747080f8ced71221d7205d6125e8a82f254c7739ca"
         }
       }
     },
     "schema": "codexy-runtime-candidate/v1",
     "source": {
-      "commit": "6a6205185b69e5e7c21e8ea5faec23d38c35881e",
+      "commit": "d993d5de7fcd84a7f5544ab576206bcb7a262c62",
       "repository": "https://github.com/eunsoogi/codexy",
-      "tree": "b7124207f386b57fe6a3eca754ff71940e103778"
+      "tree": "bfa8988d7ef909a46b318267c35357976d75954b"
     }
   },
   "provenance": {
     "repositoryId": 1269350143,
     "runAttempt": 1,
-    "runId": 44473304900,
+    "runId": 46024783635,
     "workflowPath": ".github/workflows/runtime-candidate.yml",
-    "workflowRunUrl": "https://github.com/eunsoogi/codexy/actions/runs/44473304900"
+    "workflowRunUrl": "https://github.com/eunsoogi/codexy/actions/runs/46024783635"
   },
   "schema": "codexy-runtime-candidate-receipt/v1"
 }
