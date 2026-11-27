@@ -93,14 +93,10 @@ If the resolver returns a fallback or lacks a complete creation input, MUST
 leave the lane pending rather than reconstructing omitted fields. For an
 existing PR, MUST supply its remote branch and current remote head to the issue
 owner and use the assigned managed worktree to resume the outstanding criteria.
-If no suitable owner exists and creation is unavailable, MUST record the issue
-and reason in the parent backlog; MUST NOT create a substitute helper or
-transfer execution to the parent. Repeated requests MUST first reuse the
-existing suitable issue owner.
-
-When task classification and the required owner/tool readbacks authorize a new
-app task, the Orchestrator MUST use the actual `create_thread` tool and read
-back the returned task identity, owner, project, actual CWD, starting HEAD, app
+If blocked, MUST backlog the issue; MUST NOT create a substitute owner. When
+task classification and the required owner/tool readbacks authorize a new app
+task, the Orchestrator MUST use the actual `create_thread` tool and read back
+the returned task identity, owner, project, actual CWD, starting HEAD, app
 worktree environment, exposed permissions and model settings, and assignment
 before execution. The requested target, checkout path, or attached artifact
 alone does not prove the task environment. The call is non-blocking: a ready
@@ -118,6 +114,17 @@ silent fallback. Source tests, configuration, and app-server transcripts MUST
 NOT substitute for actual host task creation and ownership readback. If a
 required host route is unsupported, the agent MUST report the exact limitation
 and required action and distinguish preparation from execution.
+
+### Queue assignment readback
+
+After specialist findings, MUST reconcile active and pending task ownership per
+repository and issue before dispatch. MUST reuse the matching app child on
+repeat assignment. For an unowned issue, MUST use a separate request carrying
+that issue's assignment; bind the ready app child ID and its first assigned turn
+to that issue. If creation is unavailable or denied, MUST retain only the
+affected issue in the parent backlog with its unmet condition; MUST NOT assign
+it to the specialist or parent. Uncertain setup MUST use the existing retained
+reservation and identity reconciliation rules, never a duplicate creation.
 
 ## Codex App Worktree Creation Preflight
 
