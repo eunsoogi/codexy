@@ -4,29 +4,37 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from typing import Any
+from typing import Any, Literal
 
-from .supervision_dispatch import Dispatch, fingerprint
+from .supervision_dispatch import ClaimResult, Dispatch, fingerprint
 from .supervision_reservations import ReservationError, Reservations
 
 CREATE_TOOLS = frozenset({"codex_app__create_thread", "mcp__codex_app__create_thread"})
 
 
 def admit_create(store: Reservations, event: dict[str, Any]) -> bool:
-    """Fail closed unless this exact pre-authorized call claims its slot."""
+    return admit_create_result(store, event) == "claimed"
+
+
+def admit_create_result(
+    store: Reservations, event: dict[str, Any]
+) -> ClaimResult | Literal["store_unavailable"]:
+    """Report only the fail-closed decision at the owning admission boundary."""
     if (
         event.get("hook_event_name") != "PreToolUse"
         or event.get("tool_name") not in CREATE_TOOLS
         or event.get("agent_id") is not None
         or event.get("agent_type") is not None
     ):
-        return False
+        return "unmatched_request"
     try:
-        return Dispatch(store).claim(
+        return Dispatch(store).claim_result(
             event.get("session_id"), event.get("tool_use_id"), event.get("tool_input")
         )
-    except (ReservationError, OSError, sqlite3.Error):
-        return False
+    except ReservationError:
+        return "unmatched_request"
+    except (OSError, sqlite3.Error):
+        return "store_unavailable"
 
 
 def _unique(items: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -89,3 +97,37 @@ def observe_create(store: Reservations, event: dict[str, Any]) -> str:
     except (ReservationError, OSError, sqlite3.Error):
         return "uncertain"
     return "uncertain"
+
+
+_REASONS = {
+    "store_unavailable": (
+        "CODEXY_SUPERVISION_STORE_UNAVAILABLE",
+        "Verify the host-configured private reservation store is accessible; "
+        "do not dispatch until it can be verified.",
+    ),
+    "parent_uninitialized": (
+        "CODEXY_SUPERVISION_PARENT_UNINITIALIZED",
+        "Reconcile this parent's complete existing owner roster and run "
+        "bootstrap --confirmed-complete before preparing a request.",
+    ),
+    "unmatched_request": (
+        "CODEXY_SUPERVISION_CAPACITY_UNPREPARED",
+        "Reconcile any existing call or owner, then prepare the exact current "
+        "creation input for this parent before dispatch.",
+    ),
+    "slot_limit": (
+        "CODEXY_SUPERVISION_SLOT_LIMIT",
+        "Keep this item queued; continue independent parent work and prepare "
+        "again only after a confirmed slot release.",
+    ),
+    "prepare_rejected": (
+        "CODEXY_SUPERVISION_PREPARE_REJECTED",
+        "Check the exact creation input, route and retained issue owner; "
+        "reuse an existing owner instead of creating a duplicate.",
+    ),
+}
+
+
+def diagnostic(outcome: str) -> dict[str, str]:
+    reason, action = _REASONS[outcome]
+    return {"reason": reason, "nextAction": action}

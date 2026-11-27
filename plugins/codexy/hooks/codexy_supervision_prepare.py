@@ -11,8 +11,12 @@ if sys.version_info < (3, 10):
     raise SystemExit(125)
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
-from codexy_policy.supervision_dispatch import Dispatch, fingerprint
-from codexy_policy.supervision_observation import _unique
+from codexy_policy.supervision_dispatch import (
+    Dispatch,
+    ParentNotInitialized,
+    fingerprint,
+)
+from codexy_policy.supervision_observation import _unique, diagnostic
 from codexy_policy.supervision_reservations import ReservationError
 from codexy_policy.supervision_storage import open_store
 
@@ -31,18 +35,37 @@ def main() -> int:
         data = json.loads(raw, object_pairs_hook=_unique)
         if not isinstance(data, dict):
             raise ValueError("creation input must be an object")
-        result = Dispatch(open_store(args.plugin_data)).prepare(
-            args.parent, args.issue, data, args.limit
-        )
+        try:
+            store = open_store(args.plugin_data)
+        except (OSError, ReservationError, sqlite3.Error):
+            return reject("store_unavailable")
+        result = Dispatch(store).prepare(args.parent, args.issue, data, args.limit)
+        detail = diagnostic("slot_limit") if result == "queued" else {}
         print(
             json.dumps(
-                {"result": result, "request": fingerprint(data)}, separators=(",", ":")
+                {"result": result, "request": fingerprint(data), **detail},
+                separators=(",", ":"),
             )
         )
         return 0
-    except (OSError, ValueError, ReservationError, sqlite3.Error):
-        print(json.dumps({"error": "Unable to prepare supervision reservation."}))
-        return 1
+    except ParentNotInitialized:
+        return reject("parent_uninitialized")
+    except (OSError, sqlite3.Error):
+        return reject("store_unavailable")
+    except ValueError:
+        return reject("prepare_rejected")
+
+
+def reject(outcome: str) -> int:
+    print(
+        json.dumps(
+            {
+                "error": "Unable to prepare supervision reservation.",
+                **diagnostic(outcome),
+            }
+        )
+    )
+    return 1
 
 
 if __name__ == "__main__":
