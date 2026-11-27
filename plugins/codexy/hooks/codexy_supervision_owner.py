@@ -15,12 +15,12 @@ from codexy_policy.supervision_dispatch import Dispatch
 from codexy_policy.supervision_observation import _unique
 from codexy_policy.supervision_reconciliation import release_failed, resolve_pending
 from codexy_policy.supervision_reservations import ReservationError
-from codexy_policy.supervision_storage import open_store
+from codexy_policy.supervision_storage import open_configured_store
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(allow_abbrev=False)
-    parser.add_argument("--plugin-data", required=True)
+    parser.add_argument("--plugin-data")
     parser.add_argument("--parent", required=True)
     sub = parser.add_subparsers(dest="action", required=True)
     bootstrap = sub.add_parser("bootstrap")
@@ -47,7 +47,7 @@ def main() -> int:
             entry.add_argument("--confirmed", action="store_true", required=True)
     args = parser.parse_args()
     try:
-        store = open_store(args.plugin_data)
+        store = open_configured_store(args.plugin_data)
         if args.action == "bootstrap":
             raw = sys.stdin.buffer.read(1024 * 1024 + 1)
             if len(raw) > 1024 * 1024:
