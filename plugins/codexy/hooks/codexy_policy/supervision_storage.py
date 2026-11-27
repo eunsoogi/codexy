@@ -18,6 +18,27 @@ def _private(info: os.stat_result, *, directory: bool) -> bool:
     return True
 
 
+def resolve_supervision_root(explicit: str | None) -> str:
+    """Use only the explicit root or the host-configured plugin environment.
+
+    A conflict is not a fallback; the hook will still enforce the root it
+    actually received. This helper does not discover or authenticate a parent.
+    """
+    configured = os.environ.get("PLUGIN_DATA") or None
+    if explicit is not None and configured is not None:
+        if Path(explicit) != Path(configured):
+            raise ReservationError("private plugin data root mismatch")
+    result = explicit if explicit is not None else configured
+    if not result or not Path(result).is_absolute():
+        raise ReservationError("private plugin data root is unavailable")
+    return result
+
+
+def open_configured_store(explicit: str | None) -> Reservations:
+    """Validate the configured root using the same store path as the hook."""
+    return open_store(resolve_supervision_root(explicit))
+
+
 def open_store(plugin_data: str) -> Reservations:
     """Reject missing, shared, or symlinked state roots; never use a fallback."""
     root = Path(plugin_data)

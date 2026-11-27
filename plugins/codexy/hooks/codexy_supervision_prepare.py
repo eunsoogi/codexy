@@ -18,12 +18,12 @@ from codexy_policy.supervision_dispatch import (
 )
 from codexy_policy.supervision_observation import _unique, diagnostic
 from codexy_policy.supervision_reservations import ReservationError
-from codexy_policy.supervision_storage import open_store
+from codexy_policy.supervision_storage import open_configured_store
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(allow_abbrev=False)
-    parser.add_argument("--plugin-data", required=True)
+    parser.add_argument("--plugin-data")
     parser.add_argument("--parent", required=True)
     parser.add_argument("--issue", required=True)
     parser.add_argument("--limit", type=int, default=8)
@@ -36,7 +36,7 @@ def main() -> int:
         if not isinstance(data, dict):
             raise ValueError("creation input must be an object")
         try:
-            store = open_store(args.plugin_data)
+            store = open_configured_store(args.plugin_data)
         except (OSError, ReservationError, sqlite3.Error):
             return reject("store_unavailable")
         result = Dispatch(store).prepare(args.parent, args.issue, data, args.limit)
